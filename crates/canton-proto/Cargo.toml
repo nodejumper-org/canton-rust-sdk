@@ -1,0 +1,43 @@
+[package]
+name         = "canton-proto"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+description  = "Generated Canton Ledger API v2 gRPC types and client stubs (internal to the SDK)."
+
+[features]
+# Generate gRPC server stubs too. Off by default (the SDK is a client); enabled
+# dev-only by tests that need an in-process server (e.g. the TLS handshake test).
+server = []
+
+[dependencies]
+tonic       = { workspace = true, features = ["transport", "codegen"] }
+tonic-prost = { workspace = true }
+prost       = { workspace = true }
+prost-types = { workspace = true }
+
+[build-dependencies]
+tonic-prost-build   = { workspace = true }
+protoc-bin-vendored = { workspace = true }
+walkdir             = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[[example]]
+name = "smoke_version"
+
+# Generated code trips lints we do not control; this crate opts out of the
+# workspace lint set (which forbids unsafe and warns on missing docs).
+[lints.rust]
+missing_docs = "allow"
+
+[lints.clippy]
+all = "allow"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

@@ -1,0 +1,30 @@
+[package]
+name         = "canton-auth"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = { workspace = true }
+keywords     = { workspace = true }
+description  = "JWT/OIDC authentication for the Canton Rust SDK (client-credentials, caching, refresh)."
+
+[dependencies]
+canton-core = { workspace = true }
+reqwest     = { workspace = true, features = ["json", "rustls-tls"] }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+tokio       = { workspace = true, features = ["sync"] }
+tracing     = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

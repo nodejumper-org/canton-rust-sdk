@@ -1,0 +1,34 @@
+[package]
+name         = "canton-admin"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = { workspace = true }
+keywords     = { workspace = true }
+description  = "Canton admin client: party management, user self-inspect, and topology read (gRPC)."
+
+[dependencies]
+canton-proto = { workspace = true }
+canton-core  = { workspace = true }
+tonic        = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
+tonic-prost  = { workspace = true }
+tokio        = { workspace = true, features = ["rt", "macros", "time"] }
+tracing      = { workspace = true }
+
+[dev-dependencies]
+canton-auth  = { workspace = true }
+# Server stubs (dev-only) so in-process gRPC test servers can be built.
+canton-proto = { workspace = true, features = ["server"] }
+tokio        = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net"] }
+tokio-stream = { workspace = true, features = ["net"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

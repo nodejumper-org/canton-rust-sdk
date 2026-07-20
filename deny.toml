@@ -1,0 +1,14 @@
+[advisories]
+version = 2
+
+[licenses]
+version = 2
+# CDLA-Permissive-2.0 covers the Mozilla root-CA data bundled by `webpki-roots`
+# (a permissive data license, pulled in transitively via reqwest/hyper-rustls).
+allow = ["Apache-2.0", "MIT", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "CDLA-Permissive-2.0"]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"

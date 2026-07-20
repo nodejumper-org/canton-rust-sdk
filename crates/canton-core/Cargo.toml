@@ -1,0 +1,52 @@
+[package]
+name         = "canton-core"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = { workspace = true }
+keywords     = { workspace = true }
+description  = "Core types for the Canton Rust SDK: error model, telemetry, and the shared connection kernel (config, auth, TLS, retry)."
+
+[dependencies]
+tonic      = { workspace = true, features = ["transport", "tls-ring", "tls-native-roots"] }
+tonic-types = { workspace = true }
+thiserror  = { workspace = true }
+serde_json = { workspace = true }
+tracing    = { workspace = true }
+metrics    = { workspace = true }
+# Connection kernel: `retry` uses `tokio::time::sleep`; the channel builder and
+# auth interceptor use tonic's transport + TLS.
+tokio      = { workspace = true, features = ["time"] }
+
+# `otel` feature: bridge the emitted `tracing` spans to an OTLP collector and
+# propagate W3C trace context. Off by default — the base build only emits.
+opentelemetry         = { version = "0.27", optional = true }
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"], optional = true }
+opentelemetry-otlp    = { version = "0.27", features = ["grpc-tonic"], optional = true }
+tracing-opentelemetry = { version = "0.28", optional = true }
+http                  = { version = "1", optional = true }
+
+[features]
+otel = [
+    "dep:opentelemetry",
+    "dep:opentelemetry_sdk",
+    "dep:opentelemetry-otlp",
+    "dep:tracing-opentelemetry",
+    "dep:http",
+]
+
+[dev-dependencies]
+tokio              = { workspace = true, features = ["rt", "macros"] }
+tracing-subscriber = "0.3"
+metrics-util       = "0.19"
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
