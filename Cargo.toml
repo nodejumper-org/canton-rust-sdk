@@ -50,6 +50,12 @@ uuid         = { version = "1", features = ["v4"] }
 tonic-prost-build   = { version = "0.14" }
 protoc-bin-vendored = { version = "3" }
 walkdir             = { version = "2" }
+# codegen (M2): Rust source emission + formatting + case conversion
+proc-macro2  = { version = "1" }
+quote        = { version = "1" }
+syn          = { version = "2", features = ["full", "parsing"] }
+prettyplease = { version = "0.2" }
+heck         = { version = "0.5" }
 
 [workspace.lints.rust]
 unsafe_code                   = "forbid"
