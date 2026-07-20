@@ -143,6 +143,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "canton"
+version = "0.1.0"
+dependencies = [
+ "canton-admin",
+ "canton-auth",
+ "canton-core",
+ "canton-ledger",
+]
+
+[[package]]
 name = "canton-admin"
 version = "0.1.0"
 dependencies = [

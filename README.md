@@ -10,6 +10,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 
 | Crate | What it is |
 |---|---|
+| `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin` + the shared `Config`/`Error` at the root) with the `ws`/`otel` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
@@ -36,14 +37,21 @@ crates release in **lockstep** — mix only equal versions
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
 
+The `canton` facade forwards both: `canton = { version = "0.1", features = ["ws", "otel"] }`.
+
 Telemetry follows the standard Rust model: the SDK **emits** (`tracing` spans, `metrics` counters labelled by method + transport); the application installs the subscriber/recorder of its choice.
 
 ## Quickstart
 
-```rust
-use canton_ledger::{CantonClient, Config};
+```sh
+cargo add canton            # the whole SDK, one crate
+# or pick pieces: cargo add canton-ledger canton-auth
+```
 
-# async fn run() -> canton_ledger::Result<()> {
+```rust
+use canton::ledger::{CantonClient, Config};
+
+# async fn run() -> canton::Result<()> {
 let client = CantonClient::connect_lazy(Config::new("http://localhost:3901"))?;
 println!("ledger api version: {}", client.version().await?);
 println!("node health:        {:?}", client.health_check().await?);
@@ -54,10 +62,10 @@ println!("node health:        {:?}", client.health_check().await?);
 With OIDC auth and a command:
 
 ```rust
-use canton_auth::{OidcConfig, TokenProvider};
-use canton_ledger::{CantonClient, Config, Submit, create, identifier, record, value};
+use canton::auth::{OidcConfig, TokenProvider};
+use canton::ledger::{CantonClient, Config, Submit, create, identifier, record, value};
 
-# async fn run(party: &str, pkg: &str) -> canton_ledger::Result<()> {
+# async fn run(party: &str, pkg: &str) -> canton::Result<()> {
 let auth = TokenProvider::new(OidcConfig::keycloak(
     "http://keycloak.localhost:8082", "AppProvider", "client-id", "client-secret",
 ));

@@ -11,6 +11,11 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ### Added — Milestone 1: core Ledger API client, auth & PoC
 
+- **`canton`** — the SDK entry point: a thin facade (re-exports only, no
+  logic) over the crate family — `canton::ledger` / `canton::auth` /
+  `canton::admin`, the shared `Config`/`Error`/TLS/retry types at the root,
+  and the `ws`/`otel` features forwarded (ADR-0007).
+
 - **`canton-ledger`** — async Ledger API v2 client over gRPC:
   - Command submission: fire-and-forget `submit`, `submit_and_wait`
     (update id), and `submit_and_wait_for_transaction`; change-ID

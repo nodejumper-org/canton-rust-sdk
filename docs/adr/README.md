@@ -12,3 +12,4 @@ reversal is a new ADR that supersedes the old one.
 | [0004](0004-streams-use-precise-capturing.md) | Returned streams are detached from the client lifetime (`use<>`) | Accepted |
 | [0005](0005-lockstep-versioning.md) | All `canton-*` crates version in lockstep | Accepted |
 | [0006](0006-telemetry-emits-consumer-exports.md) | Telemetry: the SDK emits, the application exports | Accepted |
+| [0007](0007-thin-facade-crate.md) | A thin `canton` facade crate is the documented entry point | Accepted |
