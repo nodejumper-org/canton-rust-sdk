@@ -137,3 +137,12 @@ pub struct Choice {
     /// The type the choice returns.
     pub returns: DamlType,
 }
+
+/// A module's worth of generated declarations: its data types and templates.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Module {
+    /// The named data types (records, variants, enums).
+    pub data_types: Vec<DataType>,
+    /// The templates.
+    pub templates: Vec<Template>,
+}

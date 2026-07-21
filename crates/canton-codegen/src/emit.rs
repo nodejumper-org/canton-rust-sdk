@@ -4,7 +4,7 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 
-use crate::ir::{DataType, Enum, Record, Template, Variant};
+use crate::ir::{DataType, Enum, Module, Record, Template, Variant};
 use crate::map::rust_type;
 
 /// Emit the Rust item(s) for a named data type (record, variant, or enum).
@@ -14,6 +14,17 @@ pub fn data_type(data_type: &DataType) -> TokenStream {
         DataType::Record(record) => record_struct(record),
         DataType::Variant(variant) => variant_enum(variant),
         DataType::Enum(enumeration) => enum_type(enumeration),
+    }
+}
+
+/// Emit every item of a module — its data types, then its templates.
+#[must_use]
+pub fn module_items(module: &Module) -> TokenStream {
+    let data_types = module.data_types.iter().map(data_type);
+    let templates = module.templates.iter().map(template);
+    quote! {
+        #(#data_types)*
+        #(#templates)*
     }
 }
 

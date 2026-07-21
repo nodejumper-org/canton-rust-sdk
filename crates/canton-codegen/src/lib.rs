@@ -27,7 +27,16 @@ pub mod map;
 
 use proc_macro2::TokenStream;
 
-use crate::ir::{DataType, Record, Template};
+use crate::ir::{DataType, Module, Record, Template};
+
+/// The header prepended to every generated module: lints appropriate for
+/// generated code, plus the `use canton_daml as rt;` alias the emitted `rt::…`
+/// references resolve through.
+const MODULE_PREAMBLE: &str = concat!(
+    "#![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]\n",
+    "//! Generated Daml bindings — do not edit by hand.\n\n",
+    "use canton_daml as rt;\n\n",
+);
 
 /// Format a stream of generated items as Rust source, first checking it is
 /// syntactically valid Rust.
@@ -62,6 +71,17 @@ pub fn generate_data_type(data_type: &DataType) -> Result<String, syn::Error> {
 /// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
 pub fn generate_template(template: &Template) -> Result<String, syn::Error> {
     format_items(emit::template(template))
+}
+
+/// Generate a complete module file: the `use canton_daml as rt;` preamble plus
+/// every data type and template, ready to write to a `.rs` file in a generated
+/// crate.
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
+pub fn generate_module(module: &Module) -> Result<String, syn::Error> {
+    let body = format_items(emit::module_items(module))?;
+    Ok(format!("{MODULE_PREAMBLE}{body}"))
 }
 
 #[cfg(test)]
@@ -200,6 +220,44 @@ mod tests {
             "{src}"
         );
         assert!(src.contains("const CONSUMING: bool = true"), "{src}");
+    }
+
+    #[test]
+    fn module_wraps_items_with_the_runtime_preamble() {
+        use crate::ir::{Choice, Enum, Module, Template};
+
+        let module = Module {
+            data_types: vec![DataType::Enum(Enum {
+                name: "Color".to_string(),
+                constructors: vec!["Red".to_string(), "Green".to_string()],
+            })],
+            templates: vec![Template {
+                name: "AppInstall".to_string(),
+                fields: vec![field("provider", DamlType::Party)],
+                choices: vec![Choice {
+                    name: "Accept".to_string(),
+                    consuming: true,
+                    argument: DamlType::Ref(TypeRef {
+                        name: "AppInstall_Accept".to_string(),
+                        args: Vec::new(),
+                    }),
+                    returns: DamlType::Unit,
+                }],
+                key: None,
+            }],
+        };
+
+        let src = generate_module(&module).unwrap();
+        // The whole file (preamble + items) is valid Rust.
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("use canton_daml as rt;"), "{src}");
+        assert!(src.contains("#![allow(non_camel_case_types"), "{src}");
+        assert!(src.contains("pub enum Color"), "{src}");
+        assert!(src.contains("pub struct AppInstall"), "{src}");
+        assert!(
+            src.contains("impl rt::Choice<AppInstall> for AppInstall_Accept"),
+            "{src}"
+        );
     }
 
     #[test]
