@@ -36,6 +36,7 @@ fn generated_module_compiles_and_round_trips_against_runtime() {
             ],
         })],
         templates: Vec::new(),
+        interfaces: Vec::new(),
     };
     let generated = generate_module(&module).unwrap();
 

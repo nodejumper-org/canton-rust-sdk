@@ -23,7 +23,10 @@
 
 pub mod emit;
 pub mod ir;
+pub mod lower;
 pub mod map;
+
+pub use lower::{LowerError, lower_package};
 
 use proc_macro2::TokenStream;
 
@@ -307,6 +310,7 @@ mod tests {
                 }],
                 key: None,
             }],
+            interfaces: Vec::new(),
         };
 
         let src = generate_module(&module).unwrap();

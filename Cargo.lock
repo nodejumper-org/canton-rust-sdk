@@ -197,6 +197,7 @@ dependencies = [
 name = "canton-codegen"
 version = "0.1.0"
 dependencies = [
+ "canton-lf",
  "heck",
  "prettyplease",
  "proc-macro2",

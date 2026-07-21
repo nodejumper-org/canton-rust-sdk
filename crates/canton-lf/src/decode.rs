@@ -57,6 +57,30 @@ pub fn interned_str(package: &Package, index: i32) -> Option<&str> {
         .map(String::as_str)
 }
 
+/// Resolve an interned dotted name (a module or type name) to its `.`-joined
+/// form, e.g. `"Licensing.AppInstall"`.
+#[must_use]
+pub fn interned_dotted_name(package: &Package, index: i32) -> Option<String> {
+    let dotted = usize::try_from(index)
+        .ok()
+        .and_then(|i| package.interned_dotted_names.get(i))?;
+    let segments = dotted
+        .segments_interned_str
+        .iter()
+        .map(|&segment| interned_str(package, segment))
+        .collect::<Option<Vec<_>>>()?;
+    Some(segments.join("."))
+}
+
+/// Resolve an interned type by its `i32` index into a package's `interned_types`
+/// table (LF 2.x stores types once and references them by index).
+#[must_use]
+pub fn interned_type(package: &Package, index: i32) -> Option<&crate::pb::daml_lf_2::Type> {
+    usize::try_from(index)
+        .ok()
+        .and_then(|i| package.interned_types.get(i))
+}
+
 /// The package name from its metadata (`PackageMetadata.name_interned_str`).
 #[must_use]
 pub fn package_name(package: &Package) -> Option<&str> {

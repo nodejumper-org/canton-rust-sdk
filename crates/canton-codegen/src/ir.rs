@@ -138,11 +138,28 @@ pub struct Choice {
     pub returns: DamlType,
 }
 
-/// A module's worth of generated declarations: its data types and templates.
+/// A module's worth of generated declarations: its data types, templates, and
+/// interfaces.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Module {
     /// The named data types (records, variants, enums).
     pub data_types: Vec<DataType>,
     /// The templates.
     pub templates: Vec<Template>,
+    /// The interfaces. The IR reserves their shape (view + choices) so the
+    /// AST→IR bridge fixes it now; full codegen of interfaces lands later.
+    pub interfaces: Vec<Interface>,
+}
+
+/// A Daml interface. Its shape is reserved in the IR — a PR reviewer named
+/// DAR-interfaces → typed Rust as a hard requirement, so the bridge pins the
+/// form now (view type + choices) even before the generator emits them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Interface {
+    /// The interface name (PascalCase).
+    pub name: String,
+    /// The interface's view type (its `viewtype`), if known.
+    pub view: Option<DamlType>,
+    /// The choices the interface declares.
+    pub choices: Vec<Choice>,
 }
