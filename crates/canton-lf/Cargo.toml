@@ -22,8 +22,5 @@ prost     = { workspace = true }
 prost-build         = { workspace = true }
 protoc-bin-vendored = { workspace = true }
 
-# Note: like `canton-proto`, this crate hosts generated protobuf code and a
-# proto-compiling build script (which needs `unsafe { set_var }` to point at
-# the vendored protoc), so it does not opt into the workspace's
-# `unsafe_code = "forbid"` lint set. Hand-written modules (e.g. `dar`) still
-# follow the same conventions.
+[lints]
+workspace = true

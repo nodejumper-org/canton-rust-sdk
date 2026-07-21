@@ -154,3 +154,46 @@ impl<'de> serde::Deserialize<'de> for Date {
         Ok(Self(i32::try_from(days).map_err(serde::de::Error::custom)?))
     }
 }
+
+/// A Daml `Optional` **nested inside another `Optional`**. Same runtime meaning
+/// as [`Option`], but its LF-JSON encoding is the nested-optional *list* form
+/// (`None → []`, `Some(x) → [x]`) instead of `null`/value.
+///
+/// The Daml-LF JSON spec keeps the top-level Optional as `null`/value, but every
+/// Optional below it must use the list form so `Some None` (encoded `[]`) is
+/// distinguishable from `None` (encoded `null`). Codegen wraps each nested
+/// Optional layer in `NestedOpt`; the gRPC (`Value`) encoding is identical to
+/// `Option` (a proto `Optional`), so only the JSON form differs.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct NestedOpt<T>(pub Option<T>);
+
+impl<T> NestedOpt<T> {
+    /// Wrap an [`Option`].
+    pub fn new(value: Option<T>) -> Self {
+        Self(value)
+    }
+}
+
+impl<T: serde::Serialize> serde::Serialize for NestedOpt<T> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // Nested-optional rule: None → [], Some(x) → [x]. If `T` is itself a
+        // `NestedOpt`, its own serde recurses, giving `[[]]` / `[[x]]`, etc.
+        match &self.0 {
+            None => serializer.collect_seq(core::iter::empty::<&T>()),
+            Some(value) => serializer.collect_seq(core::iter::once(value)),
+        }
+    }
+}
+
+impl<'de, T: serde::Deserialize<'de>> serde::Deserialize<'de> for NestedOpt<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut items = Vec::<T>::deserialize(deserializer)?;
+        match items.len() {
+            0 => Ok(Self(None)),
+            1 => Ok(Self(Some(items.remove(0)))),
+            n => Err(serde::de::Error::custom(format!(
+                "nested Optional expects a 0- or 1-element array, got {n}"
+            ))),
+        }
+    }
+}

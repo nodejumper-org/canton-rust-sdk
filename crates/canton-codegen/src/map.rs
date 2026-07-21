@@ -34,7 +34,10 @@ pub fn rust_type(ty: &DamlType) -> TokenStream {
             quote!(Vec<#inner>)
         }
         DamlType::Optional(inner) => {
-            let inner = rust_type(inner);
+            // The top-level Optional maps to `Option`; any Optional directly
+            // nested inside it maps to `rt::NestedOpt`, so the JSON codec uses
+            // the LF-JSON nested-optional list form (see `rt::NestedOpt`).
+            let inner = nested_optional_inner(inner);
             quote!(Option<#inner>)
         }
         DamlType::TextMap(inner) => {
@@ -51,6 +54,19 @@ pub fn rust_type(ty: &DamlType) -> TokenStream {
             let ident = type_var_ident(name);
             quote!(#ident)
         }
+    }
+}
+
+/// Map the inner type of an `Optional`, wrapping any further nested `Optional`
+/// layers in `rt::NestedOpt` (their JSON encoding is the list form). A
+/// non-optional inner type maps normally.
+fn nested_optional_inner(ty: &DamlType) -> TokenStream {
+    match ty {
+        DamlType::Optional(inner) => {
+            let inner = nested_optional_inner(inner);
+            quote!(rt::NestedOpt<#inner>)
+        }
+        other => rust_type(other),
     }
 }
 

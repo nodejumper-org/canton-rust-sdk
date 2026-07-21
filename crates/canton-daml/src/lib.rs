@@ -15,7 +15,7 @@ mod primitives;
 mod value;
 
 pub use choice::Choice;
-pub use primitives::{ContractId, Date, GenMap, Numeric, Party, TextMap, Timestamp};
+pub use primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp};
 pub use value::{FromValue, ToValue, ValueError, record, record_field};
 
 /// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
@@ -178,5 +178,46 @@ mod tests {
             let text = serde_json::to_string(&date).unwrap();
             assert_eq!(serde_json::from_str::<Date>(&text).unwrap(), date);
         }
+    }
+
+    #[test]
+    fn nested_optional_uses_the_lf_json_list_form() {
+        use serde_json::json;
+
+        // Daml `Optional (Optional Text)` → `Option<NestedOpt<String>>`.
+        // Top-level: None → null; nested: Some None → [], Some (Some x) → [x].
+        let none: Option<NestedOpt<String>> = None;
+        let some_none: Option<NestedOpt<String>> = Some(NestedOpt(None));
+        let some_some: Option<NestedOpt<String>> = Some(NestedOpt(Some("x".to_string())));
+
+        assert_eq!(serde_json::to_value(&none).unwrap(), json!(null));
+        assert_eq!(serde_json::to_value(&some_none).unwrap(), json!([]));
+        assert_eq!(serde_json::to_value(&some_some).unwrap(), json!(["x"]));
+
+        // The whole point: Some(None) survives a JSON round-trip instead of
+        // collapsing into None.
+        for value in [none, some_none, some_some] {
+            let text = serde_json::to_string(&value).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Option<NestedOpt<String>>>(&text).unwrap(),
+                value
+            );
+        }
+
+        // Triple nesting: Some (Some None) → [[]].
+        let triple: Option<NestedOpt<NestedOpt<String>>> = Some(NestedOpt(Some(NestedOpt(None))));
+        assert_eq!(serde_json::to_value(&triple).unwrap(), json!([[]]));
+    }
+
+    #[test]
+    fn nested_optional_grpc_matches_option() {
+        // On the gRPC wire a nested Optional is still a proto Optional, so
+        // Some(None) and None stay distinct and round-trip.
+        let some_none: Option<NestedOpt<String>> = Some(NestedOpt(None));
+        let back: Option<NestedOpt<String>> = FromValue::from_value(&some_none.to_value()).unwrap();
+        assert_eq!(back, some_none);
+
+        let none: Option<NestedOpt<String>> = None;
+        assert_ne!(none.to_value(), some_none.to_value());
     }
 }

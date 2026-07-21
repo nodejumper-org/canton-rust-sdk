@@ -13,3 +13,5 @@ reversal is a new ADR that supersedes the old one.
 | [0005](0005-lockstep-versioning.md) | All `canton-*` crates version in lockstep | Accepted |
 | [0006](0006-telemetry-emits-consumer-exports.md) | Telemetry: the SDK emits, the application exports | Accepted |
 | [0007](0007-thin-facade-crate.md) | A thin `canton` facade crate is the documented entry point | Accepted |
+| [0008](0008-native-lf-decoder.md) | A native Rust Daml-LF decoder (not the JVM `daml-lf-archive`) | Accepted |
+| [0009](0009-lf-version-support.md) | Daml-LF version-support policy for codegen | Accepted |

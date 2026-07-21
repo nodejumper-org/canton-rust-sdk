@@ -155,6 +155,31 @@ mod tests {
     }
 
     #[test]
+    fn nested_optional_maps_to_nested_opt() {
+        let record = Record {
+            name: "R".to_string(),
+            type_params: Vec::new(),
+            fields: vec![
+                field("single", DamlType::Optional(Box::new(DamlType::Text))),
+                field(
+                    "nested",
+                    DamlType::Optional(Box::new(DamlType::Optional(Box::new(DamlType::Text)))),
+                ),
+            ],
+        };
+
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+        // A single Optional stays a plain Option.
+        assert!(src.contains("pub single: Option<String>"), "{src}");
+        // A nested Optional wraps the inner layer in rt::NestedOpt (list JSON).
+        assert!(
+            src.contains("pub nested: Option<rt::NestedOpt<String>>"),
+            "{src}"
+        );
+    }
+
+    #[test]
     fn record_derives_the_json_codec() {
         let record = Record {
             name: "Payload".to_string(),

@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use canton_proto::com::daml::ledger::api::v2 as pb;
 
-use crate::primitives::{ContractId, Date, Numeric, Party, Timestamp};
+use crate::primitives::{ContractId, Date, NestedOpt, Numeric, Party, Timestamp};
 
 /// An error converting a Ledger API [`Value`](pb::Value) into a typed value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -238,6 +238,27 @@ impl<T: FromValue> FromValue for Option<T> {
             pb::value::Sum::Optional(opt) => match &opt.value {
                 Some(inner) => Ok(Some(T::from_value(inner)?)),
                 None => Ok(None),
+            },
+            other => Err(mismatch("Optional", other)),
+        }
+    }
+}
+
+// `NestedOpt` is a Daml Optional at a nested position; on the gRPC wire it is a
+// proto `Optional`, exactly like `Option` (only its JSON form differs).
+impl<T: ToValue> ToValue for NestedOpt<T> {
+    fn to_value(&self) -> pb::Value {
+        wrap(pb::value::Sum::Optional(Box::new(pb::Optional {
+            value: self.0.as_ref().map(|inner| Box::new(inner.to_value())),
+        })))
+    }
+}
+impl<T: FromValue> FromValue for NestedOpt<T> {
+    fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
+        match sum(value)? {
+            pb::value::Sum::Optional(opt) => match &opt.value {
+                Some(inner) => Ok(NestedOpt(Some(T::from_value(inner)?))),
+                None => Ok(NestedOpt(None)),
             },
             other => Err(mismatch("Optional", other)),
         }
