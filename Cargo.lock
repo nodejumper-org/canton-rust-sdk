@@ -265,6 +265,9 @@ dependencies = [
 name = "canton-lf"
 version = "0.1.0"
 dependencies = [
+ "prost 0.14.4",
+ "prost-build",
+ "protoc-bin-vendored",
  "thiserror 2.0.18",
  "zip",
 ]

@@ -13,5 +13,23 @@
 //!   the design of fujiapple's `daml-lf` but re-vendoring the LF 2.x protobufs.
 
 mod dar;
+mod decode;
 
 pub use dar::{Dar, DarError};
+pub use decode::{
+    DecodeError, decode_main_package, decode_package, interned_str, package_name, package_version,
+};
+
+/// The generated Daml-LF archive types, from the vendored `.proto` files:
+/// `pb::daml_lf_dev` (the `Archive`/`ArchivePayload` wrapper) and
+/// `pb::daml_lf_2` (the LF 2 AST — `Package`, `Module`, `DefDataType`, …).
+pub mod pb {
+    #![allow(
+        clippy::all,
+        clippy::pedantic,
+        missing_docs,
+        unreachable_pub,
+        clippy::doc_markdown
+    )]
+    include!(concat!(env!("OUT_DIR"), "/_daml_lf.rs"));
+}
