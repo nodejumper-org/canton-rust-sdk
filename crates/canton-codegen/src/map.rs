@@ -10,7 +10,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::emit::type_ident;
+use crate::emit::{type_ident, type_var_ident};
 use crate::ir::{DamlType, TypeRef};
 
 /// Map a [`DamlType`] to the Rust type that represents it in generated code.
@@ -48,7 +48,7 @@ pub fn rust_type(ty: &DamlType) -> TokenStream {
         }
         DamlType::Ref(reference) => rust_ref(reference),
         DamlType::Var(name) => {
-            let ident = type_ident(name);
+            let ident = type_var_ident(name);
             quote!(#ident)
         }
     }

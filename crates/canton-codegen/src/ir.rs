@@ -71,3 +71,69 @@ pub struct Record {
     /// The fields, in declaration order.
     pub fields: Vec<Field>,
 }
+
+/// A named data type declared in a module: a record, a variant, or an enum.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DataType {
+    /// A record (product) type.
+    Record(Record),
+    /// A variant (sum) type.
+    Variant(Variant),
+    /// An enumeration (constructors carrying no payload).
+    Enum(Enum),
+}
+
+/// A variant (sum) type: named constructors, each optionally carrying a payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Variant {
+    /// The type name (PascalCase).
+    pub name: String,
+    /// Type parameters, in order, if generic.
+    pub type_params: Vec<String>,
+    /// The constructors, in declaration order.
+    pub constructors: Vec<VariantConstructor>,
+}
+
+/// One constructor of a [`Variant`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VariantConstructor {
+    /// The constructor name (PascalCase).
+    pub name: String,
+    /// The payload type, or `None` for a constructor that carries no data.
+    pub payload: Option<DamlType>,
+}
+
+/// An enumeration: named constructors that carry no payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Enum {
+    /// The type name (PascalCase).
+    pub name: String,
+    /// The constructor names, in declaration order.
+    pub constructors: Vec<String>,
+}
+
+/// A template: its payload fields, its choices, and an optional contract key.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Template {
+    /// The template name (PascalCase).
+    pub name: String,
+    /// The payload fields, in declaration order.
+    pub fields: Vec<Field>,
+    /// The choices exercisable on a contract of this template.
+    pub choices: Vec<Choice>,
+    /// The contract key type, if the template declares a key.
+    pub key: Option<DamlType>,
+}
+
+/// A choice on a [`Template`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Choice {
+    /// The choice name (PascalCase).
+    pub name: String,
+    /// Whether exercising the choice archives the contract.
+    pub consuming: bool,
+    /// The choice argument type (usually a reference to a record).
+    pub argument: DamlType,
+    /// The type the choice returns.
+    pub returns: DamlType,
+}

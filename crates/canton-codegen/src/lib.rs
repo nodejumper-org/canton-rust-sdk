@@ -13,28 +13,55 @@
 //! DAR ──(decoder)──▶ ir ──(this crate)──▶ Rust source ──▶ crate
 //! ```
 //!
-//! The generator ([`gen`]) and the type mapping ([`map`]) consume the IR and
+//! The generator ([`emit`]) and the type mapping ([`map`]) consume the IR and
 //! never touch Daml-LF, so the LF-decoder choice (JVM `daml-lf-archive` vs a
 //! native Rust decoder) is isolated to the decoder module (Phase B).
 //!
-//! Current status: Phase A — IR, the Daml-LF → Rust type mapping, and record
-//! emission, with a test that the generated source is valid Rust.
+//! Current status: Phase A — the IR, the Daml-LF → Rust type mapping, and
+//! emission of records, variants, enums, and templates (with typed choice
+//! impls); every generator verifies its output is valid Rust.
 
 pub mod emit;
 pub mod ir;
 pub mod map;
 
-use crate::ir::Record;
+use proc_macro2::TokenStream;
+
+use crate::ir::{DataType, Record, Template};
+
+/// Format a stream of generated items as Rust source, first checking it is
+/// syntactically valid Rust.
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the tokens are not valid Rust — a generator bug.
+fn format_items(tokens: TokenStream) -> Result<String, syn::Error> {
+    let file: syn::File = syn::parse2(tokens)?;
+    Ok(prettyplease::unparse(&file))
+}
 
 /// Generate formatted Rust source for a single record data type.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust — that
-/// would be a generator bug, so callers can treat it as such.
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
 pub fn generate_record(record: &Record) -> Result<String, syn::Error> {
-    let tokens = emit::record_struct(record);
-    let file: syn::File = syn::parse2(tokens)?;
-    Ok(prettyplease::unparse(&file))
+    format_items(emit::record_struct(record))
+}
+
+/// Generate formatted Rust source for a named data type (record / variant / enum).
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
+pub fn generate_data_type(data_type: &DataType) -> Result<String, syn::Error> {
+    format_items(emit::data_type(data_type))
+}
+
+/// Generate formatted Rust source for a template: its payload struct plus the
+/// typed choice impls.
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
+pub fn generate_template(template: &Template) -> Result<String, syn::Error> {
+    format_items(emit::template(template))
 }
 
 #[cfg(test)]
@@ -86,6 +113,93 @@ mod tests {
         assert!(src.contains("Vec<String>"), "{src}");
         assert!(src.contains("Option<String>"), "{src}");
         assert!(src.contains("r#type: String"), "{src}");
+    }
+
+    #[test]
+    fn variant_generates_a_rust_enum() {
+        use crate::ir::{Variant, VariantConstructor};
+
+        let variant = Variant {
+            name: "Shape".to_string(),
+            type_params: Vec::new(),
+            constructors: vec![
+                VariantConstructor {
+                    name: "Circle".to_string(),
+                    payload: Some(DamlType::Numeric(10)),
+                },
+                VariantConstructor {
+                    name: "Point".to_string(),
+                    payload: None,
+                },
+            ],
+        };
+
+        let src = generate_data_type(&DataType::Variant(variant)).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("pub enum Shape"), "{src}");
+        assert!(src.contains("Circle(rt::Numeric)"), "{src}");
+        // A nullary constructor has no payload.
+        assert!(src.contains("Point,"), "{src}");
+    }
+
+    #[test]
+    fn enum_generates_a_c_like_enum() {
+        use crate::ir::Enum;
+
+        let enumeration = Enum {
+            name: "DayOfWeek".to_string(),
+            constructors: vec!["Monday".to_string(), "Tuesday".to_string()],
+        };
+
+        let src = generate_data_type(&DataType::Enum(enumeration)).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("pub enum DayOfWeek"), "{src}");
+        assert!(src.contains("Monday,"), "{src}");
+        // C-like enums are `Copy`.
+        assert!(src.contains("Copy"), "{src}");
+    }
+
+    #[test]
+    fn template_generates_payload_and_typed_choices() {
+        use crate::ir::{Choice, Template, TypeRef};
+
+        let template = Template {
+            name: "AppInstall".to_string(),
+            fields: vec![field("provider", DamlType::Party)],
+            choices: vec![Choice {
+                name: "Accept".to_string(),
+                consuming: true,
+                argument: DamlType::Ref(TypeRef {
+                    name: "AppInstall_Accept".to_string(),
+                    args: Vec::new(),
+                }),
+                returns: DamlType::ContractId(Box::new(DamlType::Ref(TypeRef {
+                    name: "AppInstalled".to_string(),
+                    args: Vec::new(),
+                }))),
+            }],
+            key: None,
+        };
+
+        let src = generate_template(&template).unwrap();
+        syn::parse_file(&src).unwrap();
+        // The payload struct…
+        assert!(src.contains("pub struct AppInstall"), "{src}");
+        assert!(src.contains("pub provider: rt::Party"), "{src}");
+        // …and the typed choice impl linking arg → template → return.
+        assert!(
+            src.contains("impl rt::Choice<AppInstall> for AppInstall_Accept"),
+            "{src}"
+        );
+        assert!(
+            src.contains("type Return = rt::ContractId<AppInstalled>"),
+            "{src}"
+        );
+        assert!(
+            src.contains("const NAME: &'static str = \"Accept\""),
+            "{src}"
+        );
+        assert!(src.contains("const CONSUMING: bool = true"), "{src}");
     }
 
     #[test]

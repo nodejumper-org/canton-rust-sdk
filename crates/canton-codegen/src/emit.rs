@@ -4,8 +4,18 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 
-use crate::ir::Record;
+use crate::ir::{DataType, Enum, Record, Template, Variant};
 use crate::map::rust_type;
+
+/// Emit the Rust item(s) for a named data type (record, variant, or enum).
+#[must_use]
+pub fn data_type(data_type: &DataType) -> TokenStream {
+    match data_type {
+        DataType::Record(record) => record_struct(record),
+        DataType::Variant(variant) => variant_enum(variant),
+        DataType::Enum(enumeration) => enum_type(enumeration),
+    }
+}
 
 /// Generate the `struct` for a record data type (also used for template
 /// payloads). Field names are snake-cased for Rust; the original Daml label is
@@ -33,20 +43,124 @@ pub fn record_struct(record: &Record) -> TokenStream {
     }
 }
 
+/// Emit a variant (sum) type as a Rust `enum` — one variant per constructor,
+/// carrying the constructor's payload type (or nothing for a nullary one).
+#[must_use]
+pub fn variant_enum(variant: &Variant) -> TokenStream {
+    let name = type_ident(&variant.name);
+    let generics = generics(&variant.type_params);
+    let constructors = variant.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(&ctor.name);
+        let doc = format!("The Daml `{}` constructor.", ctor.name);
+        if let Some(payload) = &ctor.payload {
+            let payload = rust_type(payload);
+            quote! {
+                #[doc = #doc]
+                #ctor_name(#payload),
+            }
+        } else {
+            quote! {
+                #[doc = #doc]
+                #ctor_name,
+            }
+        }
+    });
+
+    quote! {
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum #name #generics {
+            #(#constructors)*
+        }
+    }
+}
+
+/// Emit an enumeration as a C-like Rust `enum` (constructors carry no data).
+#[must_use]
+pub fn enum_type(enumeration: &Enum) -> TokenStream {
+    let name = type_ident(&enumeration.name);
+    let constructors = enumeration.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(ctor);
+        let doc = format!("The Daml `{ctor}` value.");
+        quote! {
+            #[doc = #doc]
+            #ctor_name,
+        }
+    });
+
+    quote! {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub enum #name {
+            #(#constructors)*
+        }
+    }
+}
+
+/// Emit a template: its payload `struct` plus a typed `rt::Choice` impl for each
+/// choice, linking the choice-argument type to the template and its return type.
+/// (The template identifier — package/module/entity — and the create/exercise
+/// command builders arrive with the runtime crate in Phase C.)
+#[must_use]
+pub fn template(template: &Template) -> TokenStream {
+    let payload = record_struct(&Record {
+        name: template.name.clone(),
+        type_params: Vec::new(),
+        fields: template.fields.clone(),
+    });
+    let self_ty = type_ident(&template.name);
+
+    let choices = template.choices.iter().map(|choice| {
+        let argument = rust_type(&choice.argument);
+        let returns = rust_type(&choice.returns);
+        let choice_name = &choice.name;
+        let consuming = choice.consuming;
+        let doc = format!(
+            "The `{}` choice on [`{}`] ({}).",
+            choice.name,
+            template.name,
+            if choice.consuming {
+                "consuming"
+            } else {
+                "non-consuming"
+            }
+        );
+        quote! {
+            #[doc = #doc]
+            impl rt::Choice<#self_ty> for #argument {
+                type Return = #returns;
+                const NAME: &'static str = #choice_name;
+                const CONSUMING: bool = #consuming;
+            }
+        }
+    });
+
+    quote! {
+        #payload
+        #(#choices)*
+    }
+}
+
 /// The generic parameter list `<A, B>` for a type's parameters, or empty tokens
 /// when the type is not generic.
 fn generics(type_params: &[String]) -> TokenStream {
     if type_params.is_empty() {
         return TokenStream::new();
     }
-    let params = type_params.iter().map(|param| type_ident(param));
+    let params = type_params.iter().map(|param| type_var_ident(param));
     quote!(<#(#params),*>)
 }
 
-/// A Rust identifier for a type name or type parameter (Daml `PascalCase`; a
-/// lowercase type variable like `a` becomes `A` for Rust convention).
+/// A Rust identifier for a Daml type or constructor **name**. Daml type names
+/// are already valid Rust identifiers, so they are used as-is (keywords
+/// escaped) — not case-converted, which would mangle names containing `_`.
 #[must_use]
 pub fn type_ident(name: &str) -> Ident {
+    ident(name)
+}
+
+/// A Rust identifier for a Daml **type variable** (`a` → `A`), upper-camel-cased
+/// to follow Rust's generic-parameter naming convention.
+#[must_use]
+pub fn type_var_ident(name: &str) -> Ident {
     ident(&name.to_upper_camel_case())
 }
 
