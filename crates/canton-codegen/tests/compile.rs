@@ -8,10 +8,10 @@
 use std::fs;
 use std::process::Command;
 
-use canton_codegen::generate_module;
 use canton_codegen::ir::{
     DamlType, DataType, Enum, Field, Module, Record, TypeRef, Variant, VariantConstructor,
 };
+use canton_codegen::{generate_crate, generate_module};
 
 fn field(label: &str, ty: DamlType) -> Field {
     Field {
@@ -21,10 +21,7 @@ fn field(label: &str, ty: DamlType) -> Field {
 }
 
 fn reference(name: &str, args: Vec<DamlType>) -> DamlType {
-    DamlType::Ref(TypeRef {
-        name: name.to_string(),
-        args,
-    })
+    DamlType::Ref(TypeRef::local(name, args))
 }
 
 #[test]
@@ -142,5 +139,69 @@ fn round_trip() {
         "generated crate failed:\n--- stdout ---\n{}\n--- stderr ---\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
+    );
+}
+
+/// The whole-DAR proof: decode a real DAR and its full dependency closure,
+/// lower it into a qualified `pub mod` tree, and **compile** the generated crate
+/// against `canton-daml`. Syntactic validity (`syn::parse`) is not enough — this
+/// is what proves cross-package references and module qualification actually
+/// type-check at scale. Gated on both env vars (needs a DAR and spawns cargo).
+#[test]
+fn generated_dar_crate_compiles_against_runtime() {
+    use canton_codegen::lower_dar;
+    use canton_lf::Dar;
+
+    if std::env::var("CODEGEN_COMPILE_TEST").is_err() {
+        eprintln!("skipping: set CODEGEN_COMPILE_TEST=1 to run (spawns cargo)");
+        return;
+    }
+    let Ok(dar_path) = std::env::var("CANTON_TEST_DAR") else {
+        eprintln!("skipping: set CANTON_TEST_DAR=/path/to/x.dar");
+        return;
+    };
+
+    let dar = Dar::open(&dar_path).expect("open DAR");
+    let (krate, errors) = lower_dar(&dar).expect("decode + lower DAR");
+    let unresolved: Vec<&_> = errors
+        .iter()
+        .filter(|error| error.0.contains("not in the DAR"))
+        .collect();
+    assert!(
+        unresolved.is_empty(),
+        "unresolved references: {unresolved:?}"
+    );
+    let generated = generate_crate(&krate).expect("generate crate");
+
+    let daml = concat!(env!("CARGO_MANIFEST_DIR"), "/../canton-daml");
+    let dir = std::env::temp_dir().join("canton-codegen-dar-check");
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("Cargo.toml"),
+        format!(
+            "[package]\nname = \"gen-dar-check\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n\
+             [dependencies]\ncanton-daml = {{ path = {daml:?} }}\n\n\
+             [workspace]\n"
+        ),
+    )
+    .unwrap();
+    fs::write(dir.join("src/lib.rs"), &generated).unwrap();
+
+    let output = Command::new(env!("CARGO"))
+        .args(["build", "--quiet"])
+        .current_dir(&dir)
+        .output()
+        .expect("failed to run cargo");
+
+    assert!(
+        output.status.success(),
+        "generated DAR crate failed to compile:\n--- stderr ---\n{}",
+        // Only the first slice of errors — the whole log can be enormous.
+        String::from_utf8_lossy(&output.stderr)
+            .lines()
+            .take(60)
+            .collect::<Vec<_>>()
+            .join("\n"),
     );
 }

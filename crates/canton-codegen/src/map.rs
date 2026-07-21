@@ -10,7 +10,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::emit::{type_ident, type_var_ident};
+use crate::emit::{type_path, type_var_ident};
 use crate::ir::{DamlType, TypeRef};
 
 /// Map a [`DamlType`] to the Rust type that represents it in generated code.
@@ -54,6 +54,10 @@ pub fn rust_type(ty: &DamlType) -> TokenStream {
             let ident = type_var_ident(name);
             quote!(#ident)
         }
+        DamlType::Boxed(inner) => {
+            let inner = rust_type(inner);
+            quote!(Box<#inner>)
+        }
     }
 }
 
@@ -72,11 +76,11 @@ fn nested_optional_inner(ty: &DamlType) -> TokenStream {
 
 /// A reference to a named data type, applying any type arguments.
 fn rust_ref(reference: &TypeRef) -> TokenStream {
-    let name = type_ident(&reference.name);
+    let path = type_path(&reference.path);
     if reference.args.is_empty() {
-        quote!(#name)
+        path
     } else {
         let args = reference.args.iter().map(rust_type);
-        quote!(#name<#(#args),*>)
+        quote!(#path<#(#args),*>)
     }
 }

@@ -40,15 +40,32 @@ pub enum DamlType {
     Ref(TypeRef),
     /// A type parameter (`a`, `b`, …) inside a generic data type.
     Var(String),
+    /// A type behind a `Box`, used to give recursive types the indirection Rust
+    /// requires (Daml allows a type to contain itself directly; Rust does not).
+    Boxed(Box<DamlType>),
 }
 
 /// A reference to a named Daml data type, with any applied type arguments.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeRef {
-    /// The data type's name (PascalCase, as in Daml).
-    pub name: String,
+    /// The Rust path to the referenced type, as segments. A local reference is a
+    /// single segment (`["Foo"]`); a qualified one carries its full path
+    /// (`["crate", "splice_amulet", "Amulet"]`), which is how cross-module and
+    /// cross-package references are disambiguated.
+    pub path: Vec<String>,
     /// Applied type arguments, if the referenced type is generic.
     pub args: Vec<DamlType>,
+}
+
+impl TypeRef {
+    /// A local (single-segment) reference to `name`, no path qualification.
+    #[must_use]
+    pub fn local(name: impl Into<String>, args: Vec<DamlType>) -> Self {
+        Self {
+            path: vec![name.into()],
+            args,
+        }
+    }
 }
 
 /// One field of a record.
@@ -81,6 +98,11 @@ pub enum DataType {
     Variant(Variant),
     /// An enumeration (constructors carrying no payload).
     Enum(Enum),
+    /// An interface **marker**: a phantom tag emitted so references to the
+    /// interface (always `ContractId<I>`) resolve. The interface itself is not
+    /// serializable and carries no data of its own; full interface codegen (its
+    /// view and choices) is reserved for a later step. The `String` is the name.
+    InterfaceMarker(String),
 }
 
 /// A variant (sum) type: named constructors, each optionally carrying a payload.
@@ -162,4 +184,32 @@ pub struct Interface {
     pub view: Option<DamlType>,
     /// The choices the interface declares.
     pub choices: Vec<Choice>,
+}
+
+/// A whole generated crate: every package in a DAR, each as its own Rust module
+/// (so cross-module and cross-package references resolve, and names from
+/// different modules cannot collide).
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Crate {
+    /// The packages, each a top-level module in the generated crate.
+    pub packages: Vec<PackageModule>,
+}
+
+/// One package rendered as a Rust module (`pub mod <name> { … }`), containing a
+/// submodule per Daml module.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackageModule {
+    /// The Rust module name for this package (derived from its name + version).
+    pub name: String,
+    /// The Daml modules of this package.
+    pub modules: Vec<NamedModule>,
+}
+
+/// A Daml module rendered as a Rust submodule.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NamedModule {
+    /// The Rust module name for this Daml module (dotted name, `.` → `_`).
+    pub name: String,
+    /// The module's declarations.
+    pub module: Module,
 }

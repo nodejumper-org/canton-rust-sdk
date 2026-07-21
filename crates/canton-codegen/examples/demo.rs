@@ -15,10 +15,7 @@ fn field(label: &str, ty: DamlType) -> Field {
 }
 
 fn reference(name: &str) -> DamlType {
-    DamlType::Ref(TypeRef {
-        name: name.to_string(),
-        args: Vec::new(),
-    })
+    DamlType::Ref(TypeRef::local(name, Vec::new()))
 }
 
 fn main() {

@@ -26,11 +26,11 @@ pub mod ir;
 pub mod lower;
 pub mod map;
 
-pub use lower::{LowerError, lower_package};
+pub use lower::{LowerError, lower_crate, lower_dar, lower_package};
 
 use proc_macro2::TokenStream;
 
-use crate::ir::{DataType, Module, Record, Template};
+use crate::ir::{Crate, DataType, Module, Record, Template};
 
 /// The header prepended to every generated module: lints appropriate for
 /// generated code, plus the `use canton_daml as rt;` alias the emitted `rt::…`
@@ -39,6 +39,14 @@ const MODULE_PREAMBLE: &str = concat!(
     "#![allow(non_camel_case_types, non_snake_case, unused_imports, dead_code, unused_variables, clippy::all)]\n",
     "//! Generated Daml bindings — do not edit by hand.\n\n",
     "use canton_daml as rt;\n\n",
+);
+
+/// The header prepended to a whole generated crate (its `lib.rs`): the same
+/// lints, but no top-level `rt` alias — each generated module aliases the
+/// runtime itself, so references resolve within their own module.
+const CRATE_PREAMBLE: &str = concat!(
+    "#![allow(non_camel_case_types, non_snake_case, unused_imports, dead_code, unused_variables, clippy::all)]\n",
+    "//! Generated Daml bindings — do not edit by hand.\n\n",
 );
 
 /// Format a stream of generated items as Rust source, first checking it is
@@ -87,6 +95,17 @@ pub fn generate_module(module: &Module) -> Result<String, syn::Error> {
     Ok(format!("{MODULE_PREAMBLE}{body}"))
 }
 
+/// Generate a whole crate's `lib.rs` from a lowered DAR: a `pub mod` tree
+/// (package → module → types) where every cross-module and cross-package
+/// reference resolves through its qualified path.
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
+pub fn generate_crate(krate: &Crate) -> Result<String, syn::Error> {
+    let body = format_items(emit::crate_items(krate))?;
+    Ok(format!("{CRATE_PREAMBLE}{body}"))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -111,10 +130,10 @@ mod tests {
                 field("amount", DamlType::Numeric(10)),
                 field(
                     "cid",
-                    DamlType::ContractId(Box::new(DamlType::Ref(TypeRef {
-                        name: "Foo".to_string(),
-                        args: Vec::new(),
-                    }))),
+                    DamlType::ContractId(Box::new(DamlType::Ref(TypeRef::local(
+                        "Foo",
+                        Vec::new(),
+                    )))),
                 ),
                 field("tags", DamlType::List(Box::new(DamlType::Text))),
                 field("note", DamlType::Optional(Box::new(DamlType::Text))),
@@ -254,14 +273,11 @@ mod tests {
             choices: vec![Choice {
                 name: "Accept".to_string(),
                 consuming: true,
-                argument: DamlType::Ref(TypeRef {
-                    name: "AppInstall_Accept".to_string(),
-                    args: Vec::new(),
-                }),
-                returns: DamlType::ContractId(Box::new(DamlType::Ref(TypeRef {
-                    name: "AppInstalled".to_string(),
-                    args: Vec::new(),
-                }))),
+                argument: DamlType::Ref(TypeRef::local("AppInstall_Accept", Vec::new())),
+                returns: DamlType::ContractId(Box::new(DamlType::Ref(TypeRef::local(
+                    "AppInstalled",
+                    Vec::new(),
+                )))),
             }],
             key: None,
         };
@@ -302,10 +318,7 @@ mod tests {
                 choices: vec![Choice {
                     name: "Accept".to_string(),
                     consuming: true,
-                    argument: DamlType::Ref(TypeRef {
-                        name: "AppInstall_Accept".to_string(),
-                        args: Vec::new(),
-                    }),
+                    argument: DamlType::Ref(TypeRef::local("AppInstall_Accept", Vec::new())),
                     returns: DamlType::Unit,
                 }],
                 key: None,

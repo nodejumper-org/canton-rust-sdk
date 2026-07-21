@@ -4,7 +4,9 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 
-use crate::ir::{DataType, Enum, Module, Record, Template, Variant};
+use crate::ir::{
+    Crate, DamlType, DataType, Enum, Module, NamedModule, PackageModule, Record, Template, Variant,
+};
 use crate::map::rust_type;
 
 /// Emit the Rust item(s) for a named data type (record, variant, or enum).
@@ -14,6 +16,21 @@ pub fn data_type(data_type: &DataType) -> TokenStream {
         DataType::Record(record) => record_items(record),
         DataType::Variant(variant) => variant_items(variant),
         DataType::Enum(enumeration) => enum_items(enumeration),
+        DataType::InterfaceMarker(name) => interface_marker(name),
+    }
+}
+
+/// Emit an interface **marker**: a phantom tag `struct` that only ever appears
+/// as the type argument of a `ContractId` (which is unconditional in its tag),
+/// so it needs no derives or codecs of its own.
+#[must_use]
+fn interface_marker(name: &str) -> TokenStream {
+    let name = type_ident(name);
+    let doc = format!("Marker for the Daml interface `{name}` (held via `ContractId`).");
+    quote! {
+        #[doc = #doc]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub struct #name;
     }
 }
 
@@ -25,6 +42,43 @@ pub fn module_items(module: &Module) -> TokenStream {
     quote! {
         #(#data_types)*
         #(#templates)*
+    }
+}
+
+/// Emit the module tree for a whole generated crate: one `pub mod` per package,
+/// one submodule per Daml module. Cross-module and cross-package references
+/// resolve through the `crate::<package>::<module>::<Type>` paths the lowering
+/// produced, and names from different modules cannot collide.
+#[must_use]
+pub fn crate_items(krate: &Crate) -> TokenStream {
+    let packages = krate.packages.iter().map(package_module);
+    quote! {
+        #(#packages)*
+    }
+}
+
+/// Emit one package as a `pub mod`, wrapping its Daml modules.
+fn package_module(package: &PackageModule) -> TokenStream {
+    let name = ident(&package.name);
+    let modules = package.modules.iter().map(named_module);
+    quote! {
+        pub mod #name {
+            #(#modules)*
+        }
+    }
+}
+
+/// Emit one Daml module as a `pub mod`, aliasing the runtime as `rt` so the
+/// module's `rt::…` references resolve locally.
+fn named_module(module: &NamedModule) -> TokenStream {
+    let name = ident(&module.name);
+    let items = module_items(&module.module);
+    quote! {
+        pub mod #name {
+            use canton_daml as rt;
+
+            #items
+        }
     }
 }
 
@@ -47,13 +101,89 @@ pub fn record_struct(record: &Record) -> TokenStream {
             pub #field_name: #ty,
         }
     });
+    let phantom = phantom_field(&record.type_params, record.fields.iter().map(|f| &f.ty));
 
     quote! {
         #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct #name #generics {
             #(#fields)*
+            #phantom
         }
+    }
+}
+
+/// A hidden `PhantomData` field binding any type parameters that a generic
+/// record declares but never uses in its fields (Daml permits such phantom
+/// parameters; Rust rejects an unused type parameter). Empty when every
+/// parameter is used. The field is `#[serde(skip)]` and ignored by the `Value`
+/// codec, so it never touches the wire form.
+fn phantom_field<'a>(
+    type_params: &'a [String],
+    field_types: impl Iterator<Item = &'a DamlType>,
+) -> TokenStream {
+    let unused = unused_params(type_params, field_types);
+    if unused.is_empty() {
+        return quote!();
+    }
+    let params = unused.iter().map(|param| type_var_ident(param));
+    quote! {
+        #[doc(hidden)]
+        #[serde(skip)]
+        pub _phantom: ::core::marker::PhantomData<(#(#params,)*)>,
+    }
+}
+
+/// The `_phantom` field initializer for a record's `FromValue`/constructor form,
+/// or empty when the record has no phantom parameters.
+fn phantom_init<'a>(
+    type_params: &'a [String],
+    field_types: impl Iterator<Item = &'a DamlType>,
+) -> TokenStream {
+    if unused_params(type_params, field_types).is_empty() {
+        quote!()
+    } else {
+        quote! { _phantom: ::core::marker::PhantomData, }
+    }
+}
+
+/// The type parameters a generic type declares but never uses in the given field
+/// types (Daml's phantom parameters).
+fn unused_params<'a>(
+    type_params: &'a [String],
+    field_types: impl Iterator<Item = &'a DamlType>,
+) -> Vec<&'a String> {
+    let mut used = std::collections::BTreeSet::new();
+    for ty in field_types {
+        collect_type_vars(ty, &mut used);
+    }
+    type_params
+        .iter()
+        .filter(|param| !used.contains(*param))
+        .collect()
+}
+
+/// Collect the names of every type variable referenced anywhere in `ty`.
+fn collect_type_vars(ty: &DamlType, out: &mut std::collections::BTreeSet<String>) {
+    match ty {
+        DamlType::Var(name) => {
+            out.insert(name.clone());
+        }
+        DamlType::ContractId(inner)
+        | DamlType::List(inner)
+        | DamlType::Optional(inner)
+        | DamlType::TextMap(inner)
+        | DamlType::Boxed(inner) => collect_type_vars(inner, out),
+        DamlType::GenMap(key, value) => {
+            collect_type_vars(key, out);
+            collect_type_vars(value, out);
+        }
+        DamlType::Ref(reference) => {
+            for arg in &reference.args {
+                collect_type_vars(arg, out);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -87,6 +217,7 @@ fn record_codecs(record: &Record) -> TokenStream {
     let (impl_generics, ty, to_where) =
         codec_header(&name, &record.type_params, &quote!(rt::ToValue));
     let (_, _, from_where) = codec_header(&name, &record.type_params, &quote!(rt::FromValue));
+    let phantom = phantom_init(&record.type_params, record.fields.iter().map(|f| &f.ty));
     quote! {
         impl #impl_generics rt::ToValue for #ty #to_where {
             fn to_value(&self) -> rt::Value {
@@ -95,7 +226,7 @@ fn record_codecs(record: &Record) -> TokenStream {
         }
         impl #impl_generics rt::FromValue for #ty #from_where {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
-                ::core::result::Result::Ok(Self { #(#from_fields)* })
+                ::core::result::Result::Ok(Self { #(#from_fields)* #phantom })
             }
         }
     }
@@ -357,6 +488,21 @@ pub fn type_var_ident(name: &str) -> Ident {
     ident(&name.to_upper_camel_case())
 }
 
+/// Render a type reference path (`["crate", "m", "Type"]` → `crate::m::Type`),
+/// keyword-escaping each named segment. The path keywords `crate` / `self` /
+/// `super` / `Self` pass through unescaped.
+#[must_use]
+pub fn type_path(segments: &[String]) -> TokenStream {
+    let parts = segments.iter().map(|segment| match segment.as_str() {
+        "crate" | "self" | "super" | "Self" => segment.parse::<TokenStream>().unwrap_or_default(),
+        other => {
+            let id = ident(other);
+            quote!(#id)
+        }
+    });
+    quote!(#(#parts)::*)
+}
+
 /// A Rust identifier for a record field: the Daml label, snake-cased, with Rust
 /// keywords escaped so labels like `type` stay valid.
 fn field_ident(label: &str) -> Ident {
@@ -369,6 +515,12 @@ fn ident(name: &str) -> Ident {
     match name {
         "crate" | "self" | "Self" | "super" => Ident::new(&format!("{name}_"), Span::call_site()),
         _ if is_keyword(name) => Ident::new_raw(name, Span::call_site()),
+        // A name that is empty or starts with a digit is not a valid Rust
+        // identifier — for example a tuple field `_1`, whose snake_case drops
+        // the leading underscore to `1`. Prefix `_` to make it valid.
+        _ if name.is_empty() || name.starts_with(|c: char| c.is_ascii_digit()) => {
+            Ident::new(&format!("_{name}"), Span::call_site())
+        }
         _ => Ident::new(name, Span::call_site()),
     }
 }

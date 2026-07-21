@@ -287,6 +287,19 @@ impl<T> FromValue for ContractId<T> {
 
 // ---- containers -----------------------------------------------------------
 
+// `Box` is transparent to the codec: recursive generated types are boxed for
+// Rust's sake, but a `Box<T>` encodes exactly as its `T`.
+impl<T: ToValue> ToValue for Box<T> {
+    fn to_value(&self) -> pb::Value {
+        T::to_value(self)
+    }
+}
+impl<T: FromValue> FromValue for Box<T> {
+    fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
+        T::from_value(value).map(Box::new)
+    }
+}
+
 impl<T: ToValue> ToValue for Option<T> {
     fn to_value(&self) -> pb::Value {
         wrap(pb::value::Sum::Optional(Box::new(pb::Optional {

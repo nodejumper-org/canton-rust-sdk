@@ -51,6 +51,20 @@ pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeE
     }
 }
 
+/// Decode **every** package in a DAR, each paired with its package id (archive
+/// hash) — the PackageMap for resolving cross-package references.
+///
+/// # Errors
+/// Returns [`DecodeError`] if any package's bytes are malformed or not LF 2.x.
+pub fn decode_all(dar: &Dar) -> Result<Vec<(String, Package)>, DecodeError> {
+    dar.package_bytes()
+        .map(|bytes| {
+            let (package, id) = decode_package(bytes)?;
+            Ok((id, package))
+        })
+        .collect()
+}
+
 /// Resolve an interned string by its `i32` index into a package's
 /// `interned_strings` table.
 #[must_use]

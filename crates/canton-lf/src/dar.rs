@@ -115,6 +115,14 @@ impl Dar {
         self.dalfs.keys().map(String::as_str)
     }
 
+    /// The raw Daml-LF bytes of **every** package in the DAR — the main package
+    /// and its full dependency closure (`daml-prim`, `daml-stdlib`, and any
+    /// other packages the DAR bundles). Decoding all of them gives the
+    /// PackageMap needed to resolve cross-package references.
+    pub fn package_bytes(&self) -> impl Iterator<Item = &[u8]> {
+        self.dalfs.values().map(Vec::as_slice)
+    }
+
     /// The number of packages (`.dalf` entries) in the DAR.
     #[must_use]
     pub fn package_count(&self) -> usize {
