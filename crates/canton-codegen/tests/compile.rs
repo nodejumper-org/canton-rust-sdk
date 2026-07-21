@@ -48,13 +48,14 @@ fn generated_module_compiles_and_round_trips_against_runtime() {
         dir.join("Cargo.toml"),
         format!(
             "[package]\nname = \"gen-check\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n\
-             [dependencies]\ncanton-daml = {{ path = {daml:?} }}\n\n\
+             [dependencies]\ncanton-daml = {{ path = {daml:?} }}\nserde_json = \"1\"\n\n\
              [workspace]\n"
         ),
     )
     .unwrap();
 
-    // The generated module plus a round-trip test appended.
+    // The generated module plus a round-trip test appended, exercising both the
+    // gRPC `Value` codec and the JSON (serde) codec on the generated type.
     let src = format!(
         "{generated}\n\
          #[test]\n\
@@ -66,6 +67,10 @@ fn generated_module_compiles_and_round_trips_against_runtime() {
          }};\n\
          let back = <Payload as rt::FromValue>::from_value(&rt::ToValue::to_value(&payload)).unwrap();\n\
          assert_eq!(back, payload);\n\
+         let json = serde_json::to_string(&payload).unwrap();\n\
+         assert!(json.contains(\"\\\"owner\\\"\"));\n\
+         let from_json: Payload = serde_json::from_str(&json).unwrap();\n\
+         assert_eq!(from_json, payload);\n\
          }}\n"
     );
     fs::write(dir.join("src/lib.rs"), src).unwrap();

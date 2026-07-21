@@ -155,6 +155,24 @@ mod tests {
     }
 
     #[test]
+    fn record_derives_the_json_codec() {
+        let record = Record {
+            name: "Payload".to_string(),
+            type_params: Vec::new(),
+            fields: vec![field("installId", DamlType::Text)],
+        };
+
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("rt::serde::Serialize"), "{src}");
+        assert!(src.contains("rt::serde::Deserialize"), "{src}");
+        assert!(src.contains("serde(crate = \"rt::serde\")"), "{src}");
+        // The JSON key is the Daml label, not the snake_cased Rust field.
+        assert!(src.contains("serde(rename = \"installId\")"), "{src}");
+        assert!(src.contains("pub install_id: String"), "{src}");
+    }
+
+    #[test]
     fn variant_generates_a_rust_enum() {
         use crate::ir::{Variant, VariantConstructor};
 

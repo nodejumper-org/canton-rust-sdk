@@ -22,6 +22,11 @@ pub use value::{FromValue, ToValue, ValueError, record, record_field};
 /// move to and from. Re-exported so generated code can name it as `rt::Value`.
 pub use canton_proto::com::daml::ledger::api::v2::Value;
 
+/// Re-exported `serde` so generated code can derive the JSON codec through the
+/// runtime (`#[derive(rt::serde::Serialize, ...)]` + `#[serde(crate = "rt::serde")]`)
+/// without depending on `serde` directly.
+pub use serde;
+
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
@@ -142,5 +147,36 @@ mod tests {
         // A Text value cannot be decoded as a Party.
         let text = "not a party".to_string().to_value();
         assert!(Party::from_value(&text).is_err());
+    }
+
+    #[test]
+    fn newtypes_use_lf_json_encoding() {
+        use serde_json::json;
+
+        // String-shaped newtypes encode as JSON strings.
+        assert_eq!(
+            serde_json::to_value(Party::new("alice::1")).unwrap(),
+            json!("alice::1")
+        );
+        assert_eq!(
+            serde_json::to_value(Numeric("1.50".to_string())).unwrap(),
+            json!("1.50")
+        );
+        let cid: ContractId<()> = ContractId::new("00abc");
+        assert_eq!(serde_json::to_value(cid).unwrap(), json!("00abc"));
+
+        // Date encodes as an ISO calendar string.
+        assert_eq!(serde_json::to_value(Date(0)).unwrap(), json!("1970-01-01"));
+        assert_eq!(serde_json::to_value(Date(1)).unwrap(), json!("1970-01-02"));
+
+        // Timestamp and Date round-trip through JSON.
+        for ts in [Timestamp(0), Timestamp(1_700_000_000_000_000)] {
+            let text = serde_json::to_string(&ts).unwrap();
+            assert_eq!(serde_json::from_str::<Timestamp>(&text).unwrap(), ts);
+        }
+        for date in [Date(0), Date(20_000), Date(-100)] {
+            let text = serde_json::to_string(&date).unwrap();
+            assert_eq!(serde_json::from_str::<Date>(&text).unwrap(), date);
+        }
     }
 }

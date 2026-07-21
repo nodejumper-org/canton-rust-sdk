@@ -39,15 +39,18 @@ pub fn record_struct(record: &Record) -> TokenStream {
     let fields = record.fields.iter().map(|field| {
         let field_name = field_ident(&field.label);
         let ty = rust_type(&field.ty);
+        let label = &field.label;
         let doc = format!("The Daml `{}` field.", field.label);
         quote! {
             #[doc = #doc]
+            #[serde(rename = #label)]
             pub #field_name: #ty,
         }
     });
 
     quote! {
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[serde(crate = "rt::serde")]
         pub struct #name #generics {
             #(#fields)*
         }

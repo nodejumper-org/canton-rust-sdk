@@ -58,6 +58,8 @@ prettyplease = { version = "0.2" }
 heck         = { version = "0.5" }
 # Daml-LF archive reader (M2): DAR is a JAR-style zip of .dalf packages
 zip          = { version = "2", default-features = false, features = ["deflate"] }
+# generated-type JSON codec (M2): Timestamp/Date render as LF-JSON ISO strings
+time         = { version = "0.3", default-features = false, features = ["formatting", "parsing", "std", "macros"] }
 
 [workspace.lints.rust]
 unsafe_code                   = "forbid"
