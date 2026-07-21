@@ -34,22 +34,26 @@ impl std::fmt::Display for LowerError {
 
 impl std::error::Error for LowerError {}
 
-/// Lower a whole package into an IR [`Module`], best-effort: every serializable
-/// record/variant/enum that lowers cleanly is included; a data type whose shape
-/// is not yet supported is skipped (so partial DARs still produce output).
+/// Lower a whole package into an IR [`Module`] plus the list of data types that
+/// could **not** be lowered (best-effort: a package with a few unsupported types
+/// still produces output, and the errors are surfaced rather than swallowed —
+/// each skipped type is a dangling reference the caller may want to know about).
 ///
 /// Templates and interfaces are not populated yet — their IR shape is reserved.
 #[must_use]
-pub fn lower_package(package: &lf::Package) -> Module {
+pub fn lower_package(package: &lf::Package) -> (Module, Vec<LowerError>) {
     let mut module = Module::default();
+    let mut errors = Vec::new();
     for lf_module in &package.modules {
         for data_type in &lf_module.data_types {
-            if let Ok(Some(lowered)) = lower_data_type(package, data_type) {
-                module.data_types.push(lowered);
+            match lower_data_type(package, data_type) {
+                Ok(Some(lowered)) => module.data_types.push(lowered),
+                Ok(None) => {}
+                Err(error) => errors.push(error),
             }
         }
     }
-    module
+    (module, errors)
 }
 
 /// Lower one `DefDataType`. Returns `Ok(None)` when it is intentionally skipped
@@ -281,8 +285,8 @@ mod tests {
         };
 
         let dar = Dar::open(&path).expect("open DAR");
-        let package = decode_main_package(&dar).expect("decode LF package");
-        let module = lower_package(&package);
+        let (package, package_id) = decode_main_package(&dar).expect("decode LF package");
+        let (module, errors) = lower_package(&package);
 
         assert!(
             !module.data_types.is_empty(),
@@ -305,10 +309,12 @@ mod tests {
             })
             .collect();
         println!(
-            "lowered {} data types from {} modules → {} bytes of Rust; e.g. {:?}",
+            "package {} — lowered {} data types from {} modules → {} bytes of Rust ({} skipped); e.g. {:?}",
+            &package_id[..12.min(package_id.len())],
             module.data_types.len(),
             package.modules.len(),
             src.len(),
+            errors.len(),
             names,
         );
     }

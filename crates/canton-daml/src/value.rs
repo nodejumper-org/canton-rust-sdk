@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use canton_proto::com::daml::ledger::api::v2 as pb;
 
-use crate::primitives::{ContractId, Date, NestedOpt, Numeric, Party, Timestamp};
+use crate::primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, Timestamp};
 
 /// An error converting a Ledger API [`Value`](pb::Value) into a typed value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -93,6 +93,68 @@ pub fn record_field<'a>(value: &'a pb::Value, label: &str) -> Result<&'a pb::Val
             .ok_or_else(|| ValueError::new(format!("record has no field `{label}`"))),
         other => Err(mismatch("Record", other)),
     }
+}
+
+// ---- enum / variant helpers (used by generated ToValue/FromValue) ----------
+
+/// A `Unit` value — a nullary variant constructor's payload.
+#[must_use]
+pub fn unit_value() -> pb::Value {
+    wrap(pb::value::Sum::Unit(()))
+}
+
+/// Build an `Enum` value from its constructor name.
+#[must_use]
+pub fn enum_value(constructor: &str) -> pb::Value {
+    wrap(pb::value::Sum::Enum(pb::Enum {
+        enum_id: None,
+        constructor: constructor.to_string(),
+    }))
+}
+
+/// The constructor name of an `Enum` value.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not an enum.
+pub fn enum_constructor(value: &pb::Value) -> Result<&str, ValueError> {
+    match sum(value)? {
+        pb::value::Sum::Enum(enumeration) => Ok(enumeration.constructor.as_str()),
+        other => Err(mismatch("Enum", other)),
+    }
+}
+
+/// Build a `Variant` value from a constructor name and its payload.
+#[must_use]
+pub fn variant_value(constructor: &str, value: pb::Value) -> pb::Value {
+    wrap(pb::value::Sum::Variant(Box::new(pb::Variant {
+        variant_id: None,
+        constructor: constructor.to_string(),
+        value: Some(Box::new(value)),
+    })))
+}
+
+/// The constructor name and payload of a `Variant` value.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not a variant or carries no payload.
+pub fn variant_parts(value: &pb::Value) -> Result<(&str, &pb::Value), ValueError> {
+    match sum(value)? {
+        pb::value::Sum::Variant(variant) => {
+            let payload = variant
+                .value
+                .as_deref()
+                .ok_or_else(|| ValueError::new("variant carries no value"))?;
+            Ok((variant.constructor.as_str(), payload))
+        }
+        other => Err(mismatch("Variant", other)),
+    }
+}
+
+/// A "no such constructor `got` for `type_name`" error, for the fall-through arm
+/// of a generated enum/variant `FromValue`.
+#[must_use]
+pub fn unexpected_constructor(type_name: &str, got: &str) -> ValueError {
+    ValueError::new(format!("`{type_name}` has no constructor `{got}`"))
 }
 
 // ---- primitives -----------------------------------------------------------
@@ -309,6 +371,46 @@ impl<V: FromValue> FromValue for BTreeMap<String, V> {
                 })
                 .collect(),
             other => Err(mismatch("TextMap", other)),
+        }
+    }
+}
+
+impl<K: ToValue, V: ToValue> ToValue for GenMap<K, V> {
+    fn to_value(&self) -> pb::Value {
+        wrap(pb::value::Sum::GenMap(pb::GenMap {
+            entries: self
+                .0
+                .iter()
+                .map(|(key, value)| pb::gen_map::Entry {
+                    key: Some(key.to_value()),
+                    value: Some(value.to_value()),
+                })
+                .collect(),
+        }))
+    }
+}
+impl<K: FromValue, V: FromValue> FromValue for GenMap<K, V> {
+    fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
+        match sum(value)? {
+            pb::value::Sum::GenMap(map) => {
+                let entries = map
+                    .entries
+                    .iter()
+                    .map(|entry| {
+                        let key = entry
+                            .key
+                            .as_ref()
+                            .ok_or_else(|| ValueError::new("GenMap entry has no key"))?;
+                        let value = entry
+                            .value
+                            .as_ref()
+                            .ok_or_else(|| ValueError::new("GenMap entry has no value"))?;
+                        Ok((K::from_value(key)?, V::from_value(value)?))
+                    })
+                    .collect::<Result<Vec<_>, ValueError>>()?;
+                Ok(GenMap(entries))
+            }
+            other => Err(mismatch("GenMap", other)),
         }
     }
 }

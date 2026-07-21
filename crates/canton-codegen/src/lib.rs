@@ -36,7 +36,7 @@ use crate::ir::{DataType, Module, Record, Template};
 /// generated code, plus the `use canton_daml as rt;` alias the emitted `rt::…`
 /// references resolve through.
 const MODULE_PREAMBLE: &str = concat!(
-    "#![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]\n",
+    "#![allow(non_camel_case_types, non_snake_case, unused_imports, dead_code, unused_variables, clippy::all)]\n",
     "//! Generated Daml bindings — do not edit by hand.\n\n",
     "use canton_daml as rt;\n\n",
 );

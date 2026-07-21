@@ -25,24 +25,28 @@ pub enum DecodeError {
     UnsupportedVersion,
 }
 
-/// Decode the DAR's **main** package into the Daml-LF 2 AST.
+/// Decode the DAR's **main** package into the Daml-LF 2 AST, together with its
+/// **package id** (the `Archive` hash — the input to SCU/PackageMap and to
+/// qualifying cross-package references).
 ///
 /// # Errors
 /// Returns [`DecodeError`] if the container or protobuf bytes are malformed, or
 /// the package is not Daml-LF 2.x.
-pub fn decode_main_package(dar: &Dar) -> Result<Package, DecodeError> {
+pub fn decode_main_package(dar: &Dar) -> Result<(Package, String), DecodeError> {
     decode_package(dar.main_package_bytes()?)
 }
 
-/// Decode a single package's `.dalf` bytes (an `Archive`) into the LF 2 AST.
+/// Decode a single package's `.dalf` bytes (an `Archive`) into the LF 2 AST and
+/// its package id (the archive hash).
 ///
 /// # Errors
 /// See [`decode_main_package`].
-pub fn decode_package(archive_bytes: &[u8]) -> Result<Package, DecodeError> {
+pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeError> {
     let archive = Archive::decode(archive_bytes)?;
+    let package_id = archive.hash;
     let payload = ArchivePayload::decode(archive.payload.as_slice())?;
     match payload.sum {
-        Some(archive_payload::Sum::DamlLf2(package)) => Ok(package),
+        Some(archive_payload::Sum::DamlLf2(package)) => Ok((package, package_id)),
         _ => Err(DecodeError::UnsupportedVersion),
     }
 }
@@ -108,7 +112,11 @@ mod tests {
         };
 
         let dar = Dar::open(&path).expect("open DAR");
-        let package = decode_main_package(&dar).expect("decode LF 2.x package");
+        let (package, package_id) = decode_main_package(&dar).expect("decode LF 2.x package");
+        assert!(
+            !package_id.is_empty(),
+            "package id (archive hash) should be set"
+        );
 
         assert!(!package.modules.is_empty(), "package should have modules");
         assert!(

@@ -12,8 +12,8 @@ use crate::map::rust_type;
 pub fn data_type(data_type: &DataType) -> TokenStream {
     match data_type {
         DataType::Record(record) => record_items(record),
-        DataType::Variant(variant) => variant_enum(variant),
-        DataType::Enum(enumeration) => enum_type(enumeration),
+        DataType::Variant(variant) => variant_items(variant),
+        DataType::Enum(enumeration) => enum_items(enumeration),
     }
 }
 
@@ -69,12 +69,9 @@ pub fn record_items(record: &Record) -> TokenStream {
 }
 
 /// Emit the `ToValue`/`FromValue` impls mapping a record to a Ledger API
-/// `Record` value (each field keyed by its Daml label). Generic records are
-/// skipped for now — their codecs need per-parameter bounds (a later increment).
+/// `Record` value (each field keyed by its Daml label). Generic records get the
+/// impls too, bounded by the trait on every type parameter.
 fn record_codecs(record: &Record) -> TokenStream {
-    if !record.type_params.is_empty() {
-        return TokenStream::new();
-    }
     let name = type_ident(&record.name);
     let to_fields = record.fields.iter().map(|field| {
         let label = &field.label;
@@ -87,18 +84,42 @@ fn record_codecs(record: &Record) -> TokenStream {
         quote! { #ident: rt::FromValue::from_value(rt::record_field(value, #label)?)?, }
     });
 
+    let (impl_generics, ty, to_where) =
+        codec_header(&name, &record.type_params, &quote!(rt::ToValue));
+    let (_, _, from_where) = codec_header(&name, &record.type_params, &quote!(rt::FromValue));
     quote! {
-        impl rt::ToValue for #name {
+        impl #impl_generics rt::ToValue for #ty #to_where {
             fn to_value(&self) -> rt::Value {
                 rt::record(::std::vec![#(#to_fields)*])
             }
         }
-        impl rt::FromValue for #name {
+        impl #impl_generics rt::FromValue for #ty #from_where {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self { #(#from_fields)* })
             }
         }
     }
+}
+
+/// The `(impl-generics, Self-type, where-clause)` for a codec `impl` on a type
+/// that may be generic: `impl <A, B> Trait for Name<A, B> where A: Trait, ...`.
+/// A non-generic type yields empty generics and no `where`.
+fn codec_header(
+    name: &Ident,
+    type_params: &[String],
+    trait_bound: &TokenStream,
+) -> (TokenStream, TokenStream, TokenStream) {
+    if type_params.is_empty() {
+        return (TokenStream::new(), quote!(#name), TokenStream::new());
+    }
+    let params = type_params
+        .iter()
+        .map(|param| type_var_ident(param))
+        .collect::<Vec<_>>();
+    let impl_generics = quote!(<#(#params),*>);
+    let ty = quote!(#name<#(#params),*>);
+    let where_clause = quote!(where #(#params: #trait_bound),*);
+    (impl_generics, ty, where_clause)
 }
 
 /// Emit a variant (sum) type as a Rust `enum` — one variant per constructor,
@@ -109,25 +130,89 @@ pub fn variant_enum(variant: &Variant) -> TokenStream {
     let generics = generics(&variant.type_params);
     let constructors = variant.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(&ctor.name);
+        let label = &ctor.name;
         let doc = format!("The Daml `{}` constructor.", ctor.name);
         if let Some(payload) = &ctor.payload {
             let payload = rust_type(payload);
             quote! {
                 #[doc = #doc]
+                #[serde(rename = #label)]
                 #ctor_name(#payload),
             }
         } else {
             quote! {
                 #[doc = #doc]
+                #[serde(rename = #label)]
                 #ctor_name,
             }
         }
     });
 
+    // The LF-JSON variant form is `{"tag": <ctor>, "value": <payload>}` —
+    // serde's adjacently-tagged representation.
     quote! {
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum #name #generics {
             #(#constructors)*
+        }
+    }
+}
+
+/// Emit a variant type together with its `ToValue`/`FromValue` codecs.
+#[must_use]
+pub fn variant_items(variant: &Variant) -> TokenStream {
+    let structure = variant_enum(variant);
+    let codecs = variant_codecs(variant);
+    quote! {
+        #structure
+        #codecs
+    }
+}
+
+/// The gRPC `Value` codecs for a variant (a proto `Variant` — constructor name
+/// plus the payload value; a nullary constructor carries `Unit`).
+fn variant_codecs(variant: &Variant) -> TokenStream {
+    let name = type_ident(&variant.name);
+    let type_name = &variant.name;
+    let to_arms = variant.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(&ctor.name);
+        let label = &ctor.name;
+        if ctor.payload.is_some() {
+            quote! { #name::#ctor_name(inner) => rt::variant_value(#label, rt::ToValue::to_value(inner)), }
+        } else {
+            quote! { #name::#ctor_name => rt::variant_value(#label, rt::unit_value()), }
+        }
+    });
+    let from_arms = variant.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(&ctor.name);
+        let label = &ctor.name;
+        if ctor.payload.is_some() {
+            quote! { #label => ::core::result::Result::Ok(#name::#ctor_name(rt::FromValue::from_value(payload)?)), }
+        } else {
+            quote! { #label => ::core::result::Result::Ok(#name::#ctor_name), }
+        }
+    });
+
+    let (impl_generics, ty, to_where) =
+        codec_header(&name, &variant.type_params, &quote!(rt::ToValue));
+    let (_, _, from_where) = codec_header(&name, &variant.type_params, &quote!(rt::FromValue));
+    quote! {
+        impl #impl_generics rt::ToValue for #ty #to_where {
+            fn to_value(&self) -> rt::Value {
+                match self {
+                    #(#to_arms)*
+                }
+            }
+        }
+        impl #impl_generics rt::FromValue for #ty #from_where {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+                let (constructor, payload) = rt::variant_parts(value)?;
+                match constructor {
+                    #(#from_arms)*
+                    other => ::core::result::Result::Err(rt::unexpected_constructor(#type_name, other)),
+                }
+            }
         }
     }
 }
@@ -138,17 +223,67 @@ pub fn enum_type(enumeration: &Enum) -> TokenStream {
     let name = type_ident(&enumeration.name);
     let constructors = enumeration.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(ctor);
+        let label = ctor;
         let doc = format!("The Daml `{ctor}` value.");
         quote! {
             #[doc = #doc]
+            #[serde(rename = #label)]
             #ctor_name,
         }
     });
 
+    // An enum's LF-JSON form is just its constructor name (a string), which is
+    // serde's default for a fieldless enum.
     quote! {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize,
+        )]
+        #[serde(crate = "rt::serde")]
         pub enum #name {
             #(#constructors)*
+        }
+    }
+}
+
+/// Emit an enum type together with its `ToValue`/`FromValue` codecs.
+#[must_use]
+pub fn enum_items(enumeration: &Enum) -> TokenStream {
+    let structure = enum_type(enumeration);
+    let codecs = enum_codecs(enumeration);
+    quote! {
+        #structure
+        #codecs
+    }
+}
+
+/// The gRPC `Value` codecs for an enum (a proto `Enum` — the constructor name).
+fn enum_codecs(enumeration: &Enum) -> TokenStream {
+    let name = type_ident(&enumeration.name);
+    let type_name = &enumeration.name;
+    let to_arms = enumeration.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(ctor);
+        let label = ctor;
+        quote! { #name::#ctor_name => #label, }
+    });
+    let from_arms = enumeration.constructors.iter().map(|ctor| {
+        let ctor_name = type_ident(ctor);
+        let label = ctor;
+        quote! { #label => ::core::result::Result::Ok(#name::#ctor_name), }
+    });
+
+    quote! {
+        impl rt::ToValue for #name {
+            fn to_value(&self) -> rt::Value {
+                rt::enum_value(match self { #(#to_arms)* })
+            }
+        }
+        impl rt::FromValue for #name {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+                match rt::enum_constructor(value)? {
+                    #(#from_arms)*
+                    other => ::core::result::Result::Err(rt::unexpected_constructor(#type_name, other)),
+                }
+            }
         }
     }
 }

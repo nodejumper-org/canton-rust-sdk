@@ -16,7 +16,10 @@ mod value;
 
 pub use choice::Choice;
 pub use primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp};
-pub use value::{FromValue, ToValue, ValueError, record, record_field};
+pub use value::{
+    FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
+    unexpected_constructor, unit_value, variant_parts, variant_value,
+};
 
 /// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
 /// move to and from. Re-exported so generated code can name it as `rt::Value`.
