@@ -61,6 +61,40 @@ fn mismatch(expected: &str, got: &pb::value::Sum) -> ValueError {
     ValueError::new(format!("expected {expected}, got {got:?}"))
 }
 
+// ---- record helpers (used by generated ToValue/FromValue) ------------------
+
+/// Build a `Record` [`Value`](pb::Value) from labelled fields. Generated
+/// `ToValue` impls call this.
+#[must_use]
+pub fn record(fields: Vec<(&str, pb::Value)>) -> pb::Value {
+    wrap(pb::value::Sum::Record(pb::Record {
+        record_id: None,
+        fields: fields
+            .into_iter()
+            .map(|(label, value)| pb::RecordField {
+                label: label.to_string(),
+                value: Some(value),
+            })
+            .collect(),
+    }))
+}
+
+/// Extract a record field by label. Generated `FromValue` impls call this.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not a record or has no such field.
+pub fn record_field<'a>(value: &'a pb::Value, label: &str) -> Result<&'a pb::Value, ValueError> {
+    match sum(value)? {
+        pb::value::Sum::Record(record) => record
+            .fields
+            .iter()
+            .find(|field| field.label == label)
+            .and_then(|field| field.value.as_ref())
+            .ok_or_else(|| ValueError::new(format!("record has no field `{label}`"))),
+        other => Err(mismatch("Record", other)),
+    }
+}
+
 // ---- primitives -----------------------------------------------------------
 
 impl ToValue for bool {

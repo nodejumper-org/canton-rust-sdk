@@ -11,7 +11,7 @@ use crate::map::rust_type;
 #[must_use]
 pub fn data_type(data_type: &DataType) -> TokenStream {
     match data_type {
-        DataType::Record(record) => record_struct(record),
+        DataType::Record(record) => record_items(record),
         DataType::Variant(variant) => variant_enum(variant),
         DataType::Enum(enumeration) => enum_type(enumeration),
     }
@@ -50,6 +50,50 @@ pub fn record_struct(record: &Record) -> TokenStream {
         #[derive(Clone, Debug, PartialEq)]
         pub struct #name #generics {
             #(#fields)*
+        }
+    }
+}
+
+/// Emit a record's `struct` together with its `ToValue`/`FromValue` codecs.
+#[must_use]
+pub fn record_items(record: &Record) -> TokenStream {
+    let structure = record_struct(record);
+    let codecs = record_codecs(record);
+    quote! {
+        #structure
+        #codecs
+    }
+}
+
+/// Emit the `ToValue`/`FromValue` impls mapping a record to a Ledger API
+/// `Record` value (each field keyed by its Daml label). Generic records are
+/// skipped for now — their codecs need per-parameter bounds (a later increment).
+fn record_codecs(record: &Record) -> TokenStream {
+    if !record.type_params.is_empty() {
+        return TokenStream::new();
+    }
+    let name = type_ident(&record.name);
+    let to_fields = record.fields.iter().map(|field| {
+        let label = &field.label;
+        let ident = field_ident(&field.label);
+        quote! { (#label, rt::ToValue::to_value(&self.#ident)), }
+    });
+    let from_fields = record.fields.iter().map(|field| {
+        let label = &field.label;
+        let ident = field_ident(&field.label);
+        quote! { #ident: rt::FromValue::from_value(rt::record_field(value, #label)?)?, }
+    });
+
+    quote! {
+        impl rt::ToValue for #name {
+            fn to_value(&self) -> rt::Value {
+                rt::record(::std::vec![#(#to_fields)*])
+            }
+        }
+        impl rt::FromValue for #name {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+                ::core::result::Result::Ok(Self { #(#from_fields)* })
+            }
         }
     }
 }
@@ -112,7 +156,7 @@ pub fn enum_type(enumeration: &Enum) -> TokenStream {
 /// command builders arrive with the runtime crate in Phase C.)
 #[must_use]
 pub fn template(template: &Template) -> TokenStream {
-    let payload = record_struct(&Record {
+    let payload = record_items(&Record {
         name: template.name.clone(),
         type_params: Vec::new(),
         fields: template.fields.clone(),

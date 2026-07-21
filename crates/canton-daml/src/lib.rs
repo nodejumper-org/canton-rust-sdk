@@ -16,7 +16,11 @@ mod value;
 
 pub use choice::Choice;
 pub use primitives::{ContractId, Date, GenMap, Numeric, Party, TextMap, Timestamp};
-pub use value::{FromValue, ToValue, ValueError};
+pub use value::{FromValue, ToValue, ValueError, record, record_field};
+
+/// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
+/// move to and from. Re-exported so generated code can name it as `rt::Value`.
+pub use canton_proto::com::daml::ledger::api::v2::Value;
 
 #[cfg(test)]
 #[allow(
@@ -28,16 +32,37 @@ pub use value::{FromValue, ToValue, ValueError};
 mod tests {
     use super::*;
 
-    // As-if-generated shapes: a payload using the runtime types, and a choice
-    // argument with its `Choice` impl. Increment 2 will have the generator emit
-    // the `ToValue`/`FromValue` for records; this proves the runtime API
-    // supports the generated shape and compiles.
+    // As-if-generated shapes: a payload using the runtime types, its
+    // `ToValue`/`FromValue` written exactly as the generator emits them (via
+    // `record` / `record_field`), and a choice argument with its `Choice` impl.
     #[derive(Clone, Debug, PartialEq)]
     struct AppInstall {
         provider: Party,
         amount: Numeric,
         tags: Vec<String>,
         note: Option<String>,
+    }
+
+    impl ToValue for AppInstall {
+        fn to_value(&self) -> Value {
+            record(vec![
+                ("provider", ToValue::to_value(&self.provider)),
+                ("amount", ToValue::to_value(&self.amount)),
+                ("tags", ToValue::to_value(&self.tags)),
+                ("note", ToValue::to_value(&self.note)),
+            ])
+        }
+    }
+
+    impl FromValue for AppInstall {
+        fn from_value(value: &Value) -> Result<Self, ValueError> {
+            Ok(Self {
+                provider: FromValue::from_value(record_field(value, "provider")?)?,
+                amount: FromValue::from_value(record_field(value, "amount")?)?,
+                tags: FromValue::from_value(record_field(value, "tags")?)?,
+                note: FromValue::from_value(record_field(value, "note")?)?,
+            })
+        }
     }
 
     struct AppInstall_Accept;
@@ -47,6 +72,22 @@ mod tests {
         type Return = ContractId<AppInstalled>;
         const NAME: &'static str = "Accept";
         const CONSUMING: bool = true;
+    }
+
+    #[test]
+    fn record_round_trips_through_value() {
+        let app = AppInstall {
+            provider: Party::new("alice::1"),
+            amount: Numeric("1.50".to_string()),
+            tags: vec!["defi".to_string(), "wallet".to_string()],
+            note: Some("hi".to_string()),
+        };
+        let back = AppInstall::from_value(&app.to_value()).unwrap();
+        assert_eq!(back, app);
+
+        // A missing field is a typed error, not a panic.
+        let empty = record(vec![]);
+        assert!(AppInstall::from_value(&empty).is_err());
     }
 
     #[test]

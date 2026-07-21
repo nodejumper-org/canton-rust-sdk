@@ -53,7 +53,7 @@ fn format_items(tokens: TokenStream) -> Result<String, syn::Error> {
 /// # Errors
 /// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
 pub fn generate_record(record: &Record) -> Result<String, syn::Error> {
-    format_items(emit::record_struct(record))
+    format_items(emit::record_items(record))
 }
 
 /// Generate formatted Rust source for a named data type (record / variant / enum).
@@ -133,6 +133,25 @@ mod tests {
         assert!(src.contains("Vec<String>"), "{src}");
         assert!(src.contains("Option<String>"), "{src}");
         assert!(src.contains("r#type: String"), "{src}");
+    }
+
+    #[test]
+    fn record_emits_value_codecs() {
+        let record = Record {
+            name: "Payload".to_string(),
+            type_params: Vec::new(),
+            fields: vec![
+                field("owner", DamlType::Party),
+                field("count", DamlType::Int64),
+            ],
+        };
+
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("impl rt::ToValue for Payload"), "{src}");
+        assert!(src.contains("impl rt::FromValue for Payload"), "{src}");
+        assert!(src.contains("rt::record("), "{src}");
+        assert!(src.contains("rt::record_field(value, \"owner\")"), "{src}");
     }
 
     #[test]
