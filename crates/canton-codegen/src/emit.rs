@@ -5,7 +5,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 
 use crate::ir::{
-    Crate, DamlType, DataType, Enum, Module, NamedModule, PackageModule, Record, Template, Variant,
+    Choice, Crate, DamlType, DataType, Enum, Interface, Module, NamedModule, PackageModule, Record,
+    Template, Variant,
 };
 use crate::map::rust_type;
 
@@ -39,9 +40,11 @@ fn interface_marker(name: &str) -> TokenStream {
 pub fn module_items(module: &Module) -> TokenStream {
     let data_types = module.data_types.iter().map(data_type);
     let templates = module.templates.iter().map(template);
+    let interfaces = module.interfaces.iter().map(interface);
     quote! {
         #(#data_types)*
         #(#templates)*
+        #(#interfaces)*
     }
 }
 
@@ -412,10 +415,9 @@ fn enum_codecs(enumeration: &Enum) -> TokenStream {
     }
 }
 
-/// Emit a template: its payload `struct` plus a typed `rt::Choice` impl for each
-/// choice, linking the choice-argument type to the template and its return type.
-/// (The template identifier — package/module/entity — and the create/exercise
-/// command builders arrive with the runtime crate in Phase C.)
+/// Emit a template: its payload `struct`, its on-ledger identity
+/// (`rt::Contract` + `rt::Template`), an `rt::WithKey` impl when it is keyed, and
+/// a typed `rt::Choice` impl per choice.
 #[must_use]
 pub fn template(template: &Template) -> TokenStream {
     let payload = record_items(&Record {
@@ -425,19 +427,13 @@ pub fn template(template: &Template) -> TokenStream {
     });
     let self_ty = type_ident(&template.name);
 
-    // The on-ledger identity: template id = package:module:entity.
-    let package_id = &template.package_id;
-    let package_name = &template.package_name;
-    let module_name = &template.module_name;
-    let entity_name = &template.name;
-    let template_impl = quote! {
-        impl rt::Template for #self_ty {
-            const PACKAGE_ID: &'static str = #package_id;
-            const PACKAGE_NAME: &'static str = #package_name;
-            const MODULE_NAME: &'static str = #module_name;
-            const ENTITY_NAME: &'static str = #entity_name;
-        }
-    };
+    let contract_impl = contract_impl(
+        &self_ty,
+        &template.package_id,
+        &template.package_name,
+        &template.module_name,
+        &template.name,
+    );
 
     // A keyed template exposes its key type so contracts can be exercised by key.
     let key_impl = template.key.as_ref().map_or_else(TokenStream::new, |key| {
@@ -449,7 +445,71 @@ pub fn template(template: &Template) -> TokenStream {
         }
     });
 
-    let choices = template.choices.iter().map(|choice| {
+    let choices = choice_impls(&self_ty, &template.name, &template.choices);
+
+    quote! {
+        #payload
+        #contract_impl
+        impl rt::Template for #self_ty {}
+        #key_impl
+        #choices
+    }
+}
+
+/// Emit an interface's impls on its marker type: its on-ledger identity
+/// (`rt::Contract` + `rt::Interface`, carrying the view type) and a typed
+/// `rt::Choice` impl per interface choice, so a `ContractId<Interface>` can be
+/// exercised without the concrete template. The marker `struct` itself is
+/// emitted from the interface's data type (`interface_marker`).
+#[must_use]
+pub fn interface(interface: &Interface) -> TokenStream {
+    let self_ty = type_ident(&interface.name);
+    let contract_impl = contract_impl(
+        &self_ty,
+        &interface.package_id,
+        &interface.package_name,
+        &interface.module_name,
+        &interface.name,
+    );
+    // The view is a record (or `Unit` for an empty view).
+    let view_ty = interface
+        .view
+        .as_ref()
+        .map_or_else(|| quote!(rt::Unit), rust_type);
+    let choices = choice_impls(&self_ty, &interface.name, &interface.choices);
+
+    quote! {
+        #contract_impl
+        impl rt::Interface for #self_ty {
+            type View = #view_ty;
+        }
+        #choices
+    }
+}
+
+/// Emit the `rt::Contract` impl carrying a template's/interface's on-ledger
+/// identity (package id + name, module, entity).
+fn contract_impl(
+    self_ty: &Ident,
+    package_id: &str,
+    package_name: &str,
+    module_name: &str,
+    entity_name: &str,
+) -> TokenStream {
+    quote! {
+        impl rt::Contract for #self_ty {
+            const PACKAGE_ID: &'static str = #package_id;
+            const PACKAGE_NAME: &'static str = #package_name;
+            const MODULE_NAME: &'static str = #module_name;
+            const ENTITY_NAME: &'static str = #entity_name;
+        }
+    }
+}
+
+/// Emit a typed `rt::Choice<Owner>` impl for each choice (shared by templates and
+/// interfaces), linking the choice-argument type to its owner and return type.
+fn choice_impls(self_ty: &Ident, owner: &str, choices: &[Choice]) -> TokenStream {
+    let impls = choices.iter().map(|choice| {
         let argument = rust_type(&choice.argument);
         let returns = rust_type(&choice.returns);
         let choice_name = &choice.name;
@@ -457,7 +517,7 @@ pub fn template(template: &Template) -> TokenStream {
         let doc = format!(
             "The `{}` choice on [`{}`] ({}).",
             choice.name,
-            template.name,
+            owner,
             if choice.consuming {
                 "consuming"
             } else {
@@ -473,13 +533,7 @@ pub fn template(template: &Template) -> TokenStream {
             }
         }
     });
-
-    quote! {
-        #payload
-        #template_impl
-        #key_impl
-        #(#choices)*
-    }
+    quote! { #(#impls)* }
 }
 
 /// The generic parameter list `<A, B>` for a type's parameters, or empty tokens

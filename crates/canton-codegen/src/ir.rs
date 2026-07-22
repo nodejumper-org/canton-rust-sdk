@@ -183,13 +183,20 @@ pub struct Module {
     pub interfaces: Vec<Interface>,
 }
 
-/// A Daml interface. Its shape is reserved in the IR — a PR reviewer named
-/// DAR-interfaces → typed Rust as a hard requirement, so the bridge pins the
-/// form now (view type + choices) even before the generator emits them.
+/// A Daml interface: its view type and choices, plus the on-ledger identity a
+/// choice exercised through the interface needs. The marker struct itself is
+/// emitted from the interface's `DataCons::Interface` data type; this adds the
+/// `Interface`/`Choice` impls on that marker.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Interface {
-    /// The interface name (PascalCase).
+    /// The interface name (PascalCase) — also the marker struct's name.
     pub name: String,
+    /// The Daml module the interface is defined in, dotted (e.g. `Splice.Api…`).
+    pub module_name: String,
+    /// The id (hash) of the package the interface is defined in.
+    pub package_id: String,
+    /// The Daml package **name**, for the `#<package-name>` id form.
+    pub package_name: String,
     /// The interface's view type (its `viewtype`), if known.
     pub view: Option<DamlType>,
     /// The choices the interface declares.

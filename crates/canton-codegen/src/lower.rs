@@ -3,12 +3,12 @@
 //!
 //! This is the one module that touches the LF AST; everything else stays
 //! decoder-agnostic. Serializable records, variants, and enums lower fully, as
-//! do **templates**: a template's payload record, its choices (argument and
-//! return types, consuming flag), its contract key type, and its on-ledger id.
-//! Interfaces lower to phantom markers for now (their view and choices are
-//! reserved). Field types cover the LF builtins, references to named types, and
-//! type variables; unsupported LF type shapes yield a [`LowerError`] rather than
-//! silently-wrong output.
+//! do **templates** (payload record, choices, contract key, on-ledger id) and
+//! **interfaces** (view type, choices, and the identity choices are exercised
+//! through — on the marker struct emitted from the interface's data type). Field
+//! types cover the LF builtins, references to named types, and type variables;
+//! unsupported LF type shapes yield a [`LowerError`] rather than silently-wrong
+//! output.
 //!
 //! # Qualified references (PackageMap)
 //!
@@ -30,8 +30,8 @@ use canton_lf::{
 };
 
 use crate::ir::{
-    Choice, Crate, DamlType, DataType, Enum, Field, Module, NamedModule, PackageModule, Record,
-    Template, TypeRef, Variant, VariantConstructor,
+    Choice, Crate, DamlType, DataType, Enum, Field, Interface, Module, NamedModule, PackageModule,
+    Record, Template, TypeRef, Variant, VariantConstructor,
 };
 
 /// An error lowering the LF AST into the IR (an unsupported or malformed shape).
@@ -97,7 +97,10 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
                 continue;
             };
             let mut ir_module = lowering.module(lf_module, &dotted, &mut errors);
-            if !ir_module.data_types.is_empty() || !ir_module.templates.is_empty() {
+            if !ir_module.data_types.is_empty()
+                || !ir_module.templates.is_empty()
+                || !ir_module.interfaces.is_empty()
+            {
                 let module_name = dotted.replace('.', "_");
                 box_self_recursion(&mut ir_module, &module_names[id.as_str()], &module_name);
                 package_module.modules.push(NamedModule {
@@ -214,7 +217,48 @@ impl Lowering<'_> {
                 Err(error) => errors.push(error),
             }
         }
+
+        for def in &lf_module.interfaces {
+            match self.interface(def, module_dotted) {
+                Ok(interface) => module.interfaces.push(interface),
+                Err(error) => errors.push(error),
+            }
+        }
         module
+    }
+
+    /// Lower one `DefInterface`: its view type and choices, plus the on-ledger
+    /// identity choices are exercised through. The marker struct is emitted from
+    /// the interface's data type; this carries the impls on it.
+    fn interface(
+        &self,
+        def: &lf::DefInterface,
+        module_dotted: &str,
+    ) -> Result<Interface, LowerError> {
+        let name = rust_name(self.package, def.tycon_interned_dname)?;
+        let choices = def
+            .choices
+            .iter()
+            .map(|choice| self.choice(choice))
+            .collect::<Result<Vec<_>, _>>()?;
+        let view = def
+            .view
+            .as_ref()
+            .map(|ty| self.type_(ty))
+            .transpose()?
+            // An interface always has a view; `Unit` means an empty view record.
+            .filter(|view| !matches!(view, DamlType::Unit));
+        Ok(Interface {
+            name,
+            module_name: module_dotted.to_string(),
+            package_id: self
+                .qualify
+                .as_ref()
+                .map_or_else(String::new, |q| q.current_id.to_string()),
+            package_name: package_name(self.package).unwrap_or_default().to_string(),
+            view,
+            choices,
+        })
     }
 
     /// Lower one `DefTemplate`: its payload fields (taken from the folded-in

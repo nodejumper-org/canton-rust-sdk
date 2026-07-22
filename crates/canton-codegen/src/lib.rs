@@ -84,6 +84,15 @@ pub fn generate_template(template: &Template) -> Result<String, syn::Error> {
     format_items(emit::template(template))
 }
 
+/// Generate formatted Rust source for an interface's impls (its `Contract` /
+/// `Interface` identity and typed choice impls) on its marker type.
+///
+/// # Errors
+/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
+pub fn generate_interface(interface: &crate::ir::Interface) -> Result<String, syn::Error> {
+    format_items(emit::interface(interface))
+}
+
 /// Generate a complete module file: the `use canton_daml as rt;` preamble plus
 /// every data type and template, ready to write to a `.rs` file in a generated
 /// crate.
@@ -341,6 +350,37 @@ mod tests {
         syn::parse_file(&src).unwrap();
         assert!(src.contains("impl rt::WithKey for Account"), "{src}");
         assert!(src.contains("type Key = AccountKey"), "{src}");
+    }
+
+    #[test]
+    fn interface_emits_identity_view_and_choice_impls() {
+        use crate::ir::{Choice, Interface, TypeRef};
+
+        let interface = Interface {
+            name: "Holding".to_string(),
+            module_name: "Splice.Api.Token.HoldingV1".to_string(),
+            package_id: "abc123".to_string(),
+            package_name: "splice-api-token-holding".to_string(),
+            view: Some(DamlType::Ref(TypeRef::local("HoldingView", Vec::new()))),
+            choices: vec![Choice {
+                name: "Transfer".to_string(),
+                consuming: true,
+                argument: DamlType::Ref(TypeRef::local("Holding_Transfer", Vec::new())),
+                returns: DamlType::Unit,
+            }],
+        };
+
+        let src = generate_interface(&interface).unwrap();
+        syn::parse_file(&src).unwrap();
+        // Identity (Contract) + the interface's view type…
+        assert!(src.contains("impl rt::Contract for Holding"), "{src}");
+        assert!(src.contains("impl rt::Interface for Holding"), "{src}");
+        assert!(src.contains("type View = HoldingView"), "{src}");
+        // …and the choice, exercisable through the interface marker.
+        assert!(
+            src.contains("impl rt::Choice<Holding> for Holding_Transfer"),
+            "{src}"
+        );
     }
 
     #[test]

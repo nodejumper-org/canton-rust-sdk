@@ -21,7 +21,7 @@ pub use commands::{create_command, exercise_by_key_command, exercise_command};
 pub use primitives::{
     ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
 };
-pub use template::{Template, WithKey};
+pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{
     FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
     unexpected_constructor, unit_value, variant_parts, variant_value,
@@ -95,15 +95,47 @@ mod tests {
         }
     }
 
-    impl Template for AppInstall {
+    impl Contract for AppInstall {
         const PACKAGE_ID: &'static str = "deadbeef";
         const PACKAGE_NAME: &'static str = "app-install";
         const MODULE_NAME: &'static str = "Licensing.AppInstall";
         const ENTITY_NAME: &'static str = "AppInstall";
     }
 
+    impl Template for AppInstall {}
+
     impl WithKey for AppInstall {
         type Key = Party;
+    }
+
+    // An interface marker + its view and one choice, as generated code emits them.
+    struct Holding;
+    struct HoldingView;
+    struct Holding_Transfer;
+
+    impl Contract for Holding {
+        const PACKAGE_ID: &'static str = "cafef00d";
+        const PACKAGE_NAME: &'static str = "splice-api-token-holding";
+        const MODULE_NAME: &'static str = "Splice.Api.Token.HoldingV1";
+        const ENTITY_NAME: &'static str = "Holding";
+    }
+    impl Interface for Holding {
+        type View = HoldingView;
+    }
+    impl FromValue for HoldingView {
+        fn from_value(_value: &Value) -> Result<Self, ValueError> {
+            Ok(HoldingView)
+        }
+    }
+    impl Choice<Holding> for Holding_Transfer {
+        type Return = ();
+        const NAME: &'static str = "Transfer";
+        const CONSUMING: bool = true;
+    }
+    impl ToValue for Holding_Transfer {
+        fn to_value(&self) -> Value {
+            record(vec![])
+        }
     }
 
     #[test]
@@ -312,6 +344,26 @@ mod tests {
                 );
             }
             _ => panic!("expected an ExerciseByKey command"),
+        }
+    }
+
+    #[test]
+    fn exercise_on_interface_builds_a_command() {
+        use canton_proto::com::daml::ledger::api::v2::command::Command as Cmd;
+
+        // A choice exercised through a `ContractId<Interface>` uses the interface
+        // id — no concrete template needed.
+        let cid: ContractId<Holding> = ContractId::new("00hold");
+        let cmd = exercise_command(&cid, &Holding_Transfer);
+        match cmd.command {
+            Some(Cmd::Exercise(e)) => {
+                assert_eq!(e.contract_id, "00hold");
+                assert_eq!(e.choice, "Transfer");
+                let id = e.template_id.unwrap();
+                assert_eq!(id.entity_name, "Holding");
+                assert_eq!(id.package_id, "#splice-api-token-holding");
+            }
+            _ => panic!("expected an Exercise command on the interface"),
         }
     }
 }

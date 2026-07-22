@@ -10,7 +10,7 @@ use canton_proto::com::daml::ledger::api::v2 as pb;
 
 use crate::choice::Choice;
 use crate::primitives::ContractId;
-use crate::template::{Template, WithKey};
+use crate::template::{Contract, Template, WithKey};
 use crate::value::ToValue;
 
 /// A `CreateCommand` for a new contract of template `T` from its payload.
@@ -23,11 +23,11 @@ pub fn create_command<T: Template>(payload: &T) -> pb::Command {
 }
 
 /// An `ExerciseCommand` exercising choice `C` (with `argument`) on the contract
-/// `contract_id` of template `T`.
+/// `contract_id` of template or interface `T`.
 #[must_use]
 pub fn exercise_command<T, C>(contract_id: &ContractId<T>, argument: &C) -> pb::Command
 where
-    T: Template,
+    T: Contract,
     C: Choice<T> + ToValue,
 {
     wrap(pb::command::Command::Exercise(pb::ExerciseCommand {
