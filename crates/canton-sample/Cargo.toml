@@ -1,0 +1,28 @@
+[package]
+name         = "canton-sample"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = { workspace = true }
+keywords     = { workspace = true }
+description  = "Reference app: typed Splice bindings + Ledger API client end to end (Canton SDK, Milestone 2 — work in progress)."
+publish      = false
+
+[[bin]]
+name = "canton-sample"
+path = "src/main.rs"
+
+[dependencies]
+canton-splice-amulet = { path = "../canton-splice-amulet" }
+canton-daml          = { workspace = true }
+canton-ledger        = { workspace = true }
+tokio                = { workspace = true, features = ["rt-multi-thread", "macros"] }
+serde_json           = { workspace = true }
+
+[lints]
+workspace = true

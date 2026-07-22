@@ -296,6 +296,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "canton-sample"
+version = "0.1.0"
+dependencies = [
+ "canton-daml",
+ "canton-ledger",
+ "canton-splice-amulet",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "canton-splice-amulet"
+version = "0.1.0"
+dependencies = [
+ "canton-daml",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
