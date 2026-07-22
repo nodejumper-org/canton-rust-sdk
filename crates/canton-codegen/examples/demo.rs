@@ -22,6 +22,8 @@ fn main() {
     // A template with a payload and one consuming choice.
     let template = Template {
         name: "AppInstall".to_string(),
+        module_name: "Licensing.AppInstall".to_string(),
+        package_id: "example".to_string(),
         fields: vec![
             field("provider", DamlType::Party),
             field("user", DamlType::Party),

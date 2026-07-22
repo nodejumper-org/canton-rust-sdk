@@ -425,6 +425,18 @@ pub fn template(template: &Template) -> TokenStream {
     });
     let self_ty = type_ident(&template.name);
 
+    // The on-ledger identity: template id = package:module:entity.
+    let package_id = &template.package_id;
+    let module_name = &template.module_name;
+    let entity_name = &template.name;
+    let template_impl = quote! {
+        impl rt::Template for #self_ty {
+            const PACKAGE_ID: &'static str = #package_id;
+            const MODULE_NAME: &'static str = #module_name;
+            const ENTITY_NAME: &'static str = #entity_name;
+        }
+    };
+
     let choices = template.choices.iter().map(|choice| {
         let argument = rust_type(&choice.argument);
         let returns = rust_type(&choice.returns);
@@ -452,6 +464,7 @@ pub fn template(template: &Template) -> TokenStream {
 
     quote! {
         #payload
+        #template_impl
         #(#choices)*
     }
 }

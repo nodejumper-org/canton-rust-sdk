@@ -2,12 +2,13 @@
 //! codegen [`ir`](crate::ir).
 //!
 //! This is the one module that touches the LF AST; everything else stays
-//! decoder-agnostic. **Records-first:** serializable records, variants, and
-//! enums lower fully (this includes template payloads, which are records).
-//! Templates-with-choices and interfaces have their IR shape reserved and lower
-//! in a later step. Field types cover the LF builtins, references to named
-//! types, and type variables; unsupported LF type shapes yield a [`LowerError`]
-//! rather than silently-wrong output.
+//! decoder-agnostic. Serializable records, variants, and enums lower fully, as
+//! do **templates**: a template's payload record, its choices (argument and
+//! return types, consuming flag), its contract key type, and its on-ledger id.
+//! Interfaces lower to phantom markers for now (their view and choices are
+//! reserved). Field types cover the LF builtins, references to named types, and
+//! type variables; unsupported LF type shapes yield a [`LowerError`] rather than
+//! silently-wrong output.
 //!
 //! # Qualified references (PackageMap)
 //!
@@ -29,8 +30,8 @@ use canton_lf::{
 };
 
 use crate::ir::{
-    Crate, DamlType, DataType, Enum, Field, Module, NamedModule, PackageModule, Record, TypeRef,
-    Variant, VariantConstructor,
+    Choice, Crate, DamlType, DataType, Enum, Field, Module, NamedModule, PackageModule, Record,
+    Template, TypeRef, Variant, VariantConstructor,
 };
 
 /// An error lowering the LF AST into the IR (an unsupported or malformed shape).
@@ -95,15 +96,8 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
                 errors.push(LowerError::new("unresolved module name"));
                 continue;
             };
-            let mut ir_module = Module::default();
-            for data_type in &lf_module.data_types {
-                match lowering.data_type(data_type) {
-                    Ok(Some(lowered)) => ir_module.data_types.push(lowered),
-                    Ok(None) => {}
-                    Err(error) => errors.push(error),
-                }
-            }
-            if !ir_module.data_types.is_empty() {
+            let mut ir_module = lowering.module(lf_module, &dotted, &mut errors);
+            if !ir_module.data_types.is_empty() || !ir_module.templates.is_empty() {
                 let module_name = dotted.replace('.', "_");
                 box_self_recursion(&mut ir_module, &module_names[id.as_str()], &module_name);
                 package_module.modules.push(NamedModule {
@@ -120,12 +114,10 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
     (krate, errors)
 }
 
-/// Lower a single package into a flat IR [`Module`] with **local** references,
-/// plus the data types that could not be lowered. Suitable for the single-module
-/// output; cross-module references stay bare names (see [`lower_crate`] for the
-/// qualified, whole-DAR form).
-///
-/// Templates and interfaces are not populated yet — their IR shape is reserved.
+/// Lower a single package's **data types** into a flat IR [`Module`] with
+/// **local** references. Templates are not lowered here — they need the
+/// qualified, whole-DAR form; use [`lower_crate`] for a crate with templates and
+/// choices. This helper backs the single-module syntax path only.
 #[must_use]
 pub fn lower_package(package: &lf::Package) -> (Module, Vec<LowerError>) {
     let lowering = Lowering {
@@ -185,6 +177,106 @@ struct Qualify<'a> {
 }
 
 impl Lowering<'_> {
+    /// Lower a whole Daml module: its data types and its templates. A template's
+    /// payload is a same-named record; it is folded into the [`Template`] (as its
+    /// `fields`) and *not* emitted as a standalone record, so the payload struct
+    /// is generated exactly once.
+    fn module(
+        &self,
+        lf_module: &lf::Module,
+        module_dotted: &str,
+        errors: &mut Vec<LowerError>,
+    ) -> Module {
+        // The names that are templates — their payload record is folded in below.
+        let template_names: std::collections::HashSet<String> = lf_module
+            .templates
+            .iter()
+            .filter_map(|def| rust_name(self.package, def.tycon_interned_dname).ok())
+            .collect();
+
+        let mut module = Module::default();
+        // Payload records held aside for their template (name → fields).
+        let mut payloads: HashMap<String, Vec<Field>> = HashMap::new();
+        for data_type in &lf_module.data_types {
+            match self.data_type(data_type) {
+                Ok(Some(DataType::Record(record))) if template_names.contains(&record.name) => {
+                    payloads.insert(record.name, record.fields);
+                }
+                Ok(Some(lowered)) => module.data_types.push(lowered),
+                Ok(None) => {}
+                Err(error) => errors.push(error),
+            }
+        }
+
+        for def in &lf_module.templates {
+            match self.template(def, module_dotted, &mut payloads) {
+                Ok(template) => module.templates.push(template),
+                Err(error) => errors.push(error),
+            }
+        }
+        module
+    }
+
+    /// Lower one `DefTemplate`: its payload fields (taken from the folded-in
+    /// record), choices, and optional contract key.
+    fn template(
+        &self,
+        def: &lf::DefTemplate,
+        module_dotted: &str,
+        payloads: &mut HashMap<String, Vec<Field>>,
+    ) -> Result<Template, LowerError> {
+        let name = rust_name(self.package, def.tycon_interned_dname)?;
+        let fields = payloads
+            .remove(&name)
+            .ok_or_else(|| LowerError::new(format!("template {name}: payload record not found")))?;
+        let choices = def
+            .choices
+            .iter()
+            .map(|choice| self.choice(choice))
+            .collect::<Result<Vec<_>, _>>()?;
+        let key = def
+            .key
+            .as_ref()
+            .and_then(|key| key.r#type.as_ref())
+            .map(|ty| self.type_(ty))
+            .transpose()?;
+        Ok(Template {
+            name,
+            module_name: module_dotted.to_string(),
+            package_id: self
+                .qualify
+                .as_ref()
+                .map_or_else(String::new, |q| q.current_id.to_string()),
+            fields,
+            choices,
+            key,
+        })
+    }
+
+    /// Lower one `TemplateChoice`: its name, consuming flag, argument type, and
+    /// return type. The controller/observer/body expressions are term-level and
+    /// intentionally not modelled (see the decoder note on `Expr`).
+    fn choice(&self, choice: &lf::TemplateChoice) -> Result<Choice, LowerError> {
+        let name = interned_str(self.package, choice.name_interned_str)
+            .ok_or_else(|| LowerError::new("unresolved choice name"))?
+            .to_string();
+        let argument = choice
+            .arg_binder
+            .as_ref()
+            .and_then(|binder| binder.r#type.as_ref())
+            .ok_or_else(|| LowerError::new(format!("choice {name}: no argument type")))?;
+        let returns = choice
+            .ret_type
+            .as_ref()
+            .ok_or_else(|| LowerError::new(format!("choice {name}: no return type")))?;
+        Ok(Choice {
+            name,
+            consuming: choice.consuming,
+            argument: self.type_(argument)?,
+            returns: self.type_(returns)?,
+        })
+    }
+
     /// Lower one `DefDataType`. `Ok(None)` when intentionally skipped
     /// (non-serializable, or an interface view marker).
     fn data_type(&self, data_type: &lf::DefDataType) -> Result<Option<DataType>, LowerError> {
@@ -285,11 +377,36 @@ impl Lowering<'_> {
     /// Lower an LF [`Type`](lf::Type) into a [`DamlType`], resolving interned
     /// types and (when qualifying) references to fully-qualified paths.
     fn type_(&self, ty: &lf::Type) -> Result<DamlType, LowerError> {
+        self.apply(ty, &[])
+    }
+
+    /// Lower `ty` applied to `extra` type arguments. This unifies the flattened
+    /// form (`Con`/`Builtin` with an `args` list) and the curried `TApp` form
+    /// (LF 2.dev): `TApp(lhs, rhs)` applies `lhs` to `rhs` prepended to `extra`,
+    /// so `((f a) b)` collapses to `f` applied to `[a, b]` regardless of shape.
+    fn apply(&self, ty: &lf::Type, extra: &[&lf::Type]) -> Result<DamlType, LowerError> {
         let Some(sum) = &ty.sum else {
             return Err(LowerError::new("empty type"));
         };
         match sum {
+            lf::r#type::Sum::Tapp(app) => {
+                let lhs = app
+                    .lhs
+                    .as_deref()
+                    .ok_or_else(|| LowerError::new("type application without a function"))?;
+                let rhs = app
+                    .rhs
+                    .as_deref()
+                    .ok_or_else(|| LowerError::new("type application without an argument"))?;
+                let mut args = Vec::with_capacity(extra.len() + 1);
+                args.push(rhs);
+                args.extend_from_slice(extra);
+                self.apply(lhs, &args)
+            }
             lf::r#type::Sum::Var(var) => {
+                if !extra.is_empty() {
+                    return Err(LowerError::new("type-variable application is unsupported"));
+                }
                 let name = interned_str(self.package, var.var_interned_str)
                     .ok_or_else(|| LowerError::new("unresolved type variable"))?
                     .to_string();
@@ -304,15 +421,20 @@ impl Lowering<'_> {
                 let args = con
                     .args
                     .iter()
+                    .chain(extra.iter().copied())
                     .map(|arg| self.type_(arg))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(DamlType::Ref(TypeRef { path, args }))
             }
-            lf::r#type::Sum::Builtin(builtin) => self.builtin(builtin.builtin, &builtin.args),
+            lf::r#type::Sum::Builtin(builtin) => {
+                let args: Vec<&lf::Type> =
+                    builtin.args.iter().chain(extra.iter().copied()).collect();
+                self.builtin(builtin.builtin, &args)
+            }
             lf::r#type::Sum::Interned(index) => {
                 let resolved = interned_type(self.package, *index)
                     .ok_or_else(|| LowerError::new("unresolved interned type"))?;
-                self.type_(resolved)
+                self.apply(resolved, extra)
             }
             lf::r#type::Sum::Nat(_) => Err(LowerError::new("unexpected bare type-level Nat")),
             lf::r#type::Sum::Forall(_) | lf::r#type::Sum::Struct(_) | lf::r#type::Sum::Syn(_) => {
@@ -375,13 +497,13 @@ impl Lowering<'_> {
         ])
     }
 
-    fn builtin(&self, builtin: i32, args: &[lf::Type]) -> Result<DamlType, LowerError> {
+    fn builtin(&self, builtin: i32, args: &[&lf::Type]) -> Result<DamlType, LowerError> {
         use lf::BuiltinType;
 
         let kind = BuiltinType::try_from(builtin)
             .map_err(|_| LowerError::new(format!("unknown builtin type {builtin}")))?;
         let arg = |index: usize| -> Result<DamlType, LowerError> {
-            let ty = args.get(index).ok_or_else(|| {
+            let ty = args.get(index).copied().ok_or_else(|| {
                 LowerError::new(format!("{kind:?} missing type argument {index}"))
             })?;
             self.type_(ty)
@@ -411,8 +533,8 @@ impl Lowering<'_> {
     }
 
     /// The scale of a `Numeric n` from its type-level `Nat` argument.
-    fn numeric_scale(&self, args: &[lf::Type]) -> Result<u8, LowerError> {
-        let mut ty = args
+    fn numeric_scale(&self, args: &[&lf::Type]) -> Result<u8, LowerError> {
+        let mut ty = *args
             .first()
             .ok_or_else(|| LowerError::new("Numeric without a scale argument"))?;
         // Follow one level of interning if the scale is stored in the type table.

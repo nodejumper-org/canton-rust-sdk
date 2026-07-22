@@ -271,6 +271,8 @@ mod tests {
 
         let template = Template {
             name: "AppInstall".to_string(),
+            module_name: "Licensing.AppInstall".to_string(),
+            package_id: "abc123".to_string(),
             fields: vec![field("provider", DamlType::Party)],
             choices: vec![Choice {
                 name: "Accept".to_string(),
@@ -303,6 +305,16 @@ mod tests {
             "{src}"
         );
         assert!(src.contains("const CONSUMING: bool = true"), "{src}");
+        // …and the on-ledger template identity.
+        assert!(src.contains("impl rt::Template for AppInstall"), "{src}");
+        assert!(
+            src.contains("const MODULE_NAME: &'static str = \"Licensing.AppInstall\""),
+            "{src}"
+        );
+        assert!(
+            src.contains("const ENTITY_NAME: &'static str = \"AppInstall\""),
+            "{src}"
+        );
     }
 
     #[test]
@@ -316,6 +328,8 @@ mod tests {
             })],
             templates: vec![Template {
                 name: "AppInstall".to_string(),
+                module_name: "Licensing.AppInstall".to_string(),
+                package_id: "abc123".to_string(),
                 fields: vec![field("provider", DamlType::Party)],
                 choices: vec![Choice {
                     name: "Accept".to_string(),

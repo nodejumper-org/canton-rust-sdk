@@ -260,6 +260,14 @@ message Type {
     repeated FieldWithType fields = 1;
   }
 
+  // Curried type application `lhs rhs` (added in LF 2.dev / SDK 3.5 to replace
+  // the flattened arg lists on `Con`/`Builtin`). `List a` may appear as
+  // `TApp(Builtin List, a)` and `Either a b` as `TApp(TApp(Con Either, a), b)`.
+  message TApp {
+    Type lhs = 1;
+    Type rhs = 2;
+  }
+
   oneof Sum {
     Var var = 1;
     Con con = 2;
@@ -271,6 +279,7 @@ message Type {
     sint64 nat = 6;
     Syn syn = 7;
     int32 interned = 8;
+    TApp tapp = 9;
   }
 
 }

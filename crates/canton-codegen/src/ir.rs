@@ -137,8 +137,14 @@ pub struct Enum {
 /// A template: its payload fields, its choices, and an optional contract key.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Template {
-    /// The template name (PascalCase).
+    /// The template name (PascalCase) — also the Rust payload struct name.
     pub name: String,
+    /// The Daml module the template is defined in, dotted (e.g. `Splice.Amulet`).
+    /// Part of the on-ledger template id.
+    pub module_name: String,
+    /// The id (hash) of the package the template is defined in. The final part
+    /// of the on-ledger template id.
+    pub package_id: String,
     /// The payload fields, in declaration order.
     pub fields: Vec<Field>,
     /// The choices exercisable on a contract of this template.

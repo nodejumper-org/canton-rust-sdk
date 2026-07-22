@@ -12,12 +12,14 @@
 
 mod choice;
 mod primitives;
+mod template;
 mod value;
 
 pub use choice::Choice;
 pub use primitives::{
     ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
 };
+pub use template::Template;
 pub use value::{
     FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
     unexpected_constructor, unit_value, variant_parts, variant_value,
