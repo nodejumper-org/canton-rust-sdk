@@ -313,10 +313,25 @@ dependencies = [
  "canton-quickstart-licensing",
  "serde_json",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
 name = "canton-splice-amulet"
+version = "0.1.0"
+dependencies = [
+ "canton-daml",
+]
+
+[[package]]
+name = "canton-splice-wallet"
+version = "0.1.0"
+dependencies = [
+ "canton-daml",
+]
+
+[[package]]
+name = "canton-splice-wallet-payments"
 version = "0.1.0"
 dependencies = [
  "canton-daml",

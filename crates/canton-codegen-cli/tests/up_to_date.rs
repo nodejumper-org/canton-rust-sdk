@@ -30,6 +30,30 @@ fn canton_quickstart_licensing_bindings_are_up_to_date() {
     );
 }
 
+#[test]
+fn canton_splice_wallet_bindings_are_up_to_date() {
+    check(
+        "CANTON_SPLICE_WALLET_DAR",
+        "splice-wallet-0.1.14.dar",
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../canton-splice-wallet/src/lib.rs"
+        ),
+    );
+}
+
+#[test]
+fn canton_splice_wallet_payments_bindings_are_up_to_date() {
+    check(
+        "CANTON_SPLICE_WALLET_PAYMENTS_DAR",
+        "splice-wallet-payments-0.1.14.dar",
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../canton-splice-wallet-payments/src/lib.rs"
+        ),
+    );
+}
+
 /// Regenerate the bindings from the DAR named by `dar_env` and compare — at the
 /// AST level, so formatting is ignored — against the committed `src/lib.rs`.
 fn check(dar_env: &str, dar_name: &str, committed_path: &str) {

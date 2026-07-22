@@ -64,10 +64,12 @@ fn wrap(command: pb::command::Command) -> pb::Command {
 }
 
 /// A record `Value` (which a template payload always is) unwrapped to the bare
-/// `Record` the Ledger API create argument expects.
+/// `Record` the Ledger API create argument expects. A template's `ToValue`
+/// always yields a `Record`; anything else is a code-generator bug, so fail
+/// loudly rather than silently submitting an empty create.
 fn into_record(value: pb::Value) -> pb::Record {
     match value.sum {
         Some(pb::value::Sum::Record(record)) => record,
-        _ => pb::Record::default(),
+        other => unreachable!("a template payload must encode as a Record, got {other:?}"),
     }
 }

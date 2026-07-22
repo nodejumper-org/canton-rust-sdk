@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status: Milestone 1 code-complete.** Every M1 deliverable is implemented and verified — 112 no-node tests (unit, in-process gRPC/WS mock servers, TLS) plus a full live suite against a Canton **3.5.7** LocalNet participant, all green under `-D warnings` on every feature combination. The remaining step before the M1 submission is the first crates.io release.
+> **Status: Milestone 1 published; Milestone 2 (type-safe codegen) code-complete.** M1 — the core Ledger API client — is implemented, verified (no-node tests + a full live suite against a Canton **3.5.7** LocalNet participant, all green under `-D warnings` on every feature combination), and released to crates.io. M2 — `canton-codegen` (DAR → typed Rust, SCU-aware), the `dpm codegen-rust` component, pre-built `canton-splice-*` bindings, and a reference app — is code-complete and verified end to end (the whole Splice DAR closure compiles; the sample's typed command submits and is read back from the ACS over gRPC and JSON). M3 is next.
 
 ## Crates
 
@@ -108,7 +108,7 @@ MSRV.
 
 ## Roadmap
 
-M1 (this milestone) is the core client. Coming next per the proposal: **M2** — type-safe code generation from DAR packages (`daml-lf-archive`-based, SCU-aware) with a `dpm codegen-rust` component and the first prebuilt `canton-splice-*` crates; **M3** — token-standard support (CIP-56 V1 + CIP-0112 V2), interactive submission with a pluggable signer, a typed PQS client, and the Ledger-Client-Standard conformance suite.
+M1 is the core client. **M2** — type-safe code generation from DAR packages, SCU-aware, with a `dpm codegen-rust` component and prebuilt `canton-splice-*` crates — is code-complete (via a native Rust LF 2.x decoder rather than the JVM `daml-lf-archive`; see `docs/adr/0008-native-lf-decoder.md`). Coming next per the proposal: **M3** — token-standard support (CIP-56 V1 + CIP-0112 V2), interactive submission with a pluggable signer, a typed PQS client, and the Ledger-Client-Standard conformance suite.
 
 ## Contributing & security
 

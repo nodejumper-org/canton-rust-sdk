@@ -9,6 +9,47 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [Unreleased]
 
+### Added — Milestone 2: type-safe codegen from DARs
+
+- **`canton-lf`** — native Rust Daml-LF reader: DAR container (zip +
+  `MANIFEST.MF`) and an LF 2.x protobuf decoder (vendored `daml_lf2.proto`),
+  including the LF 2.dev additions — the explicit package-import table and
+  curried type application (`TApp`) — used by SDK 3.5 DARs. Decodes a DAR's whole
+  dependency closure (`decode_all`).
+- **`canton-daml`** — the runtime generated code depends on (as `rt`): the Daml
+  primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, `Date`,
+  `TextMap`, `GenMap`, `NestedOpt`, `Unit`), the `ToValue`/`FromValue` gRPC
+  codecs and serde JSON conventions (LF-JSON: nested-optional list form, `Unit`
+  as `{}`, adjacently-tagged variants, …), the `Contract`/`Template`/`Interface`/
+  `WithKey`/`Choice` traits, and the `create_command`/`exercise_command`/
+  `exercise_by_key_command` builders.
+- **`canton-codegen`** — DAR → typed Rust: a decoder-agnostic IR, the documented
+  Daml-LF → Rust type mapping (see `docs/daml-lf-type-mapping.md`), and emission
+  of records, variants, enums, **templates** (payload + typed choices + on-ledger
+  id), **interfaces** (marker + view + choices), and **contract keys**, with JSON
+  and gRPC codecs. Output is a fully-qualified `pub mod` tree
+  (`crate::<package>::<module>::<Type>`) so cross-package references resolve and
+  names never collide; template ids use the SCU-friendly `#<package-name>` form.
+- **`canton-codegen-cli`** — the `dpm-codegen-rust` binary (a `dpm codegen-rust`
+  component / build-script tool) that writes a self-contained bindings crate from
+  a DAR.
+- **Pre-built bindings crates** (checked-in generated output, drift-guarded):
+  `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments`,
+  and `canton-quickstart-licensing`.
+- **`canton-sample`** — reference app: builds a typed `AppInstallRequest` from
+  the bindings, round-trips both codecs, and runs the full verification loop
+  (submit → observe transaction → query ACS) over gRPC and JSON.
+- **Verified** on a live cn-quickstart participant: the whole-DAR closure
+  compiles for all corpus DARs, and the sample's typed create commits and is read
+  back from the ACS on both transports.
+
+> **M2 release checklist (before publishing the M2 crates):** the M2 crates are
+> `publish = false`. Before release, flip them to publishable, then publish
+> `canton-daml` first; the `dpm-codegen-rust` default `--runtime-version` (`0.1`)
+> only resolves once `canton-daml` is on crates.io (until then, generated crates
+> use `--runtime-path`). Also decide the crate-version ↔ DAR-version convention
+> for the `canton-splice-*` crates.
+
 ### Added — Milestone 1: core Ledger API client, auth & PoC
 
 - **`canton`** — the SDK entry point: a thin facade (re-exports only, no

@@ -75,6 +75,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let crate_name = name.unwrap_or_else(|| default_crate_name(&dar));
     let runtime = match runtime_path {
         Some(path) => Runtime::Path(path),
+        // A version dependency only resolves once `canton-daml` is published to
+        // crates.io (it is `publish = false` during M2); until then, external
+        // users should pass `--runtime-path`. Tracked in the M2 release checklist.
         None => Runtime::Version(runtime_version.unwrap_or_else(|| "0.1".to_string())),
     };
 

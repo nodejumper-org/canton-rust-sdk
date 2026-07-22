@@ -3,17 +3,19 @@
 //!
 //! It builds a **typed** `AppInstallRequest` from the generated
 //! `canton-quickstart-licensing` bindings, round-trips it through both codecs,
-//! turns it into a Ledger API create command with `canton_daml::create_command`
-//! (which resolves the template id in the upgrade-friendly `#<package-name>`
-//! form), and — when the ledger environment variables are set — submits it to a
-//! running participant (e.g. cn-quickstart LocalNet) and reads back the
-//! committed transaction.
+//! and then runs the full milestone-2 verification loop on **both transports**:
+//! codegen → submit → observe the committed transaction → query the ACS and
+//! confirm the created contract is there, over gRPC and over JSON.
 //!
-//! Offline (no ledger) it demonstrates the codegen + codecs and always runs. Set
-//! `LEDGER_ENDPOINT`, `LEDGER_TOKEN`, and `LEDGER_PARTY` to submit for real.
+//! Offline (no ledger) it demonstrates the codegen + codecs and always runs. To
+//! run the live loop, set:
+//!   - `LEDGER_ENDPOINT`      — gRPC Ledger API (e.g. http://localhost:3901)
+//!   - `LEDGER_JSON_ENDPOINT` — JSON Ledger API (e.g. http://localhost:3975)
+//!   - `LEDGER_TOKEN`         — a bearer token for the acting party
+//!   - `LEDGER_PARTY`         — the acting party id
 
 use canton_daml as rt;
-use canton_ledger::{CantonClient, Config, Submit};
+use canton_ledger::{CantonClient, Config, JsonClient, JsonCommands, Submit};
 use canton_quickstart_licensing::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstallRequest;
 use canton_quickstart_licensing::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata;
 
@@ -21,8 +23,6 @@ type Error = Box<dyn std::error::Error>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // The party acts as both provider and user of the app-install request — the
-    // shape the cn-quickstart app-provider can submit itself.
     let party =
         std::env::var("LEDGER_PARTY").unwrap_or_else(|_| "app_provider::example".to_string());
     let request = AppInstallRequest {
@@ -35,21 +35,27 @@ async fn main() -> Result<(), Error> {
 
     demonstrate_codecs(&request)?;
 
-    // Typed payload → Ledger API `CreateCommand` (M2 codegen + command builder).
-    let command = rt::create_command(&request);
     let template_id = <AppInstallRequest as rt::Contract>::template_id();
     println!(
-        "\ncreate command → template id {}:{}:{}",
+        "\ntemplate id {}:{}:{}",
         template_id.package_id, template_id.module_name, template_id.entity_name,
     );
 
-    match ledger_config() {
-        // `Box::pin`: the submit future is large (a whole gRPC call graph).
-        Some(config) => Box::pin(submit(config, &party, command)).await?,
-        None => println!(
-            "\n(offline) set LEDGER_ENDPOINT, LEDGER_TOKEN, and LEDGER_PARTY to submit \
-             this command to a running participant."
-        ),
+    let token = std::env::var("LEDGER_TOKEN").ok();
+    let mut ran_live = false;
+    if let Ok(endpoint) = std::env::var("LEDGER_ENDPOINT") {
+        Box::pin(run_grpc(endpoint, token.clone(), &party, &request)).await?;
+        ran_live = true;
+    }
+    if let Ok(endpoint) = std::env::var("LEDGER_JSON_ENDPOINT") {
+        Box::pin(run_json(endpoint, token, &party, &request)).await?;
+        ran_live = true;
+    }
+    if !ran_live {
+        println!(
+            "\n(offline) set LEDGER_ENDPOINT and/or LEDGER_JSON_ENDPOINT (+ LEDGER_TOKEN, \
+             LEDGER_PARTY) to run the live submit → transaction → ACS loop."
+        );
     }
     Ok(())
 }
@@ -69,34 +75,106 @@ fn demonstrate_codecs(request: &AppInstallRequest) -> Result<(), Error> {
     Ok(())
 }
 
-/// The ledger connection config, if the environment provides an endpoint.
-fn ledger_config() -> Option<Config> {
-    let endpoint = std::env::var("LEDGER_ENDPOINT").ok()?;
+/// The gRPC loop: submit the typed create, observe the committed transaction,
+/// then query the ACS and confirm the created contract is present.
+async fn run_grpc(
+    endpoint: String,
+    token: Option<String>,
+    party: &str,
+    request: &AppInstallRequest,
+) -> Result<(), Error> {
+    use tokio_stream::StreamExt as _;
+
+    println!("\n=== gRPC transport ===");
     let mut config = Config::new(endpoint);
-    if let Ok(token) = std::env::var("LEDGER_TOKEN") {
+    if let Some(token) = token {
         config = config.with_token(token);
     }
-    Some(config)
+    let client = CantonClient::connect_lazy(config)?;
+
+    // codegen → submit → observe transaction.
+    let command = rt::create_command(request);
+    let tx = client
+        .submit_and_wait_for_transaction(Submit::new(party).add_command(command))
+        .await?;
+    let created = created_contract_ids(&tx.events);
+    println!(
+        "submitted — update id {}, {} event(s), offset {}; created {:?}",
+        tx.update_id,
+        tx.events.len(),
+        tx.offset,
+        created,
+    );
+
+    // query ACS → confirm the created contract is active.
+    let offset = client.ledger_end().await?;
+    let stream = client
+        .active_contracts(vec![party.to_string()], offset)
+        .await?;
+    tokio::pin!(stream);
+    let mut total = 0usize;
+    let mut found = false;
+    while let Some(active) = stream.next().await {
+        let active = active?;
+        total += 1;
+        if let Some(event) = &active.created_event
+            && created.contains(&event.contract_id)
+        {
+            found = true;
+        }
+    }
+    println!("ACS: {total} active contract(s); our create present: {found}");
+    assert!(found, "the created contract should be in the ACS");
+    Ok(())
 }
 
-/// Submit the command and read back the committed transaction.
-async fn submit(
-    config: Config,
+/// The JSON loop: the same submit → observe → ACS, over the JSON Ledger API.
+async fn run_json(
+    endpoint: String,
+    token: Option<String>,
     party: &str,
-    command: canton_ledger::proto::Command,
+    request: &AppInstallRequest,
 ) -> Result<(), Error> {
-    let client = CantonClient::connect_lazy(config)?;
-    let mut request = Submit::new(party).add_command(command);
-    // Only override the user id when asked; the default matches the token's user.
-    if let Ok(user_id) = std::env::var("LEDGER_USER") {
-        request = request.with_user_id(user_id);
+    println!("\n=== JSON transport ===");
+    let mut client = JsonClient::new(endpoint);
+    if let Some(token) = token {
+        client = client.with_token(token);
     }
-    let transaction = client.submit_and_wait_for_transaction(request).await?;
+
+    let id = <AppInstallRequest as rt::Contract>::template_id();
+    let template_id = format!("{}:{}:{}", id.package_id, id.module_name, id.entity_name);
+    // codegen → submit (the payload's LF-JSON is the create argument).
+    let arguments = serde_json::to_value(request)?;
+    let commands = JsonCommands::new(vec![party.to_string()]).add_create(template_id, arguments);
+    let response = client.submit_and_wait_for_transaction(&commands).await?;
     println!(
-        "\nsubmitted — update id {} committed with {} event(s) at offset {}",
-        transaction.update_id,
-        transaction.events.len(),
-        transaction.offset,
+        "submitted — update id {}, {} event(s), offset {}",
+        response.transaction.update_id,
+        response.transaction.events.len(),
+        response.transaction.offset,
     );
+
+    // query ACS.
+    let acs = client
+        .active_contracts(
+            vec![party.to_string()],
+            response.transaction.offset,
+            Some(200),
+        )
+        .await?;
+    println!("ACS: {} active contract(s)", acs.len());
+    assert!(!acs.is_empty(), "the ACS snapshot should be non-empty");
     Ok(())
+}
+
+/// The contract ids created by a transaction's events.
+fn created_contract_ids(events: &[canton_ledger::proto::Event]) -> Vec<String> {
+    use canton_ledger::proto::event::Event;
+    events
+        .iter()
+        .filter_map(|event| match &event.event {
+            Some(Event::Created(created)) => Some(created.contract_id.clone()),
+            _ => None,
+        })
+        .collect()
 }
