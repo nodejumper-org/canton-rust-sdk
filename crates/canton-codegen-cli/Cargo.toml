@@ -1,0 +1,27 @@
+[package]
+name         = "canton-codegen-cli"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = { workspace = true }
+keywords     = { workspace = true }
+description  = "`dpm codegen-rust` — generate a typed Rust crate from a DAR (Canton SDK, Milestone 2 — work in progress)."
+publish      = false
+
+# Invoked as `dpm codegen-rust` (dpm's git/cargo-style subcommand convention), or
+# standalone as `dpm-codegen-rust`.
+[[bin]]
+name = "dpm-codegen-rust"
+path = "src/main.rs"
+
+[dependencies]
+canton-lf      = { workspace = true }
+canton-codegen = { workspace = true }
+
+[lints]
+workspace = true

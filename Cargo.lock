@@ -206,6 +206,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "canton-codegen-cli"
+version = "0.1.0"
+dependencies = [
+ "canton-codegen",
+ "canton-lf",
+]
+
+[[package]]
 name = "canton-core"
 version = "0.1.0"
 dependencies = [
