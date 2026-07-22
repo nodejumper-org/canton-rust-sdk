@@ -211,6 +211,8 @@ version = "0.1.0"
 dependencies = [
  "canton-codegen",
  "canton-lf",
+ "prettyplease",
+ "syn",
 ]
 
 [[package]]

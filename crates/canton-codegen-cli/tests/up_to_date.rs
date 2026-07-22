@@ -25,9 +25,20 @@ fn canton_splice_amulet_bindings_are_up_to_date() {
     ));
     let committed = std::fs::read_to_string(&committed_path).expect("read committed lib.rs");
 
+    // Compare at the AST level: the committed file is formatted by the repo's
+    // rustfmt while the generator emits prettyplease, so a byte comparison would
+    // flag formatting, not drift. Normalising both through `syn` + `prettyplease`
+    // erases formatting and compares the actual generated bindings.
     assert_eq!(
-        regenerated, committed,
+        normalize(&regenerated),
+        normalize(&committed),
         "canton-splice-amulet/src/lib.rs is stale — regenerate it from the DAR \
          (see crates/canton-splice-amulet/README.md)"
     );
+}
+
+/// Reduce Rust source to a canonical form (parse + re-emit), so the comparison
+/// ignores formatting and sees only the generated API.
+fn normalize(source: &str) -> String {
+    prettyplease::unparse(&syn::parse_file(source).expect("parse generated source"))
 }

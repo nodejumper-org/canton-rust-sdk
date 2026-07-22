@@ -26,10 +26,11 @@ cargo run -p canton-codegen-cli --bin dpm-codegen-rust -- \
   --dar /path/to/splice-amulet-0.1.14.dar \
   --out crates/canton-splice-amulet \
   --name canton-splice-amulet
-# then restore the workspace-member Cargo.toml (the CLI writes a standalone one)
-git checkout crates/canton-splice-amulet/Cargo.toml
+git checkout crates/canton-splice-amulet/Cargo.toml  # CLI writes a standalone one
+cargo fmt -p canton-splice-amulet                    # match the repo's rustfmt
 ```
 
 An env-gated test in `canton-codegen-cli` (`CANTON_SPLICE_AMULET_DAR=/path/to.dar`)
-regenerates and diffs against the checked-in `src/lib.rs`, so the committed
-bindings cannot silently drift from the DAR.
+regenerates and compares against the checked-in `src/lib.rs` **at the AST level**
+(formatting-independent), so the committed bindings cannot silently drift from
+the DAR.
