@@ -125,6 +125,24 @@ fn round_trip() {
     assert!(json.contains("\"Monday\""), "enum is a bare string: {json}");
     assert!(json.contains("\"tag\":\"Circle\""), "variant is adjacently tagged: {json}");
 }
+
+#[test]
+fn nullary_variant_matches_ledger_api_json() {
+    // A nullary constructor's LF-JSON is `{"tag":<c>,"value":{}}` (Unit = `{}`),
+    // which is exactly what the JSON Ledger API sends and accepts.
+    let point = Shape::Point(rt::Unit);
+    let json = serde_json::to_string(&point).unwrap();
+    assert_eq!(json, "{\"tag\":\"Point\",\"value\":{}}", "nullary variant JSON");
+    // Round-trips through JSON…
+    let back: Shape = serde_json::from_str(&json).unwrap();
+    assert_eq!(back, point);
+    // …and parses the exact API form regardless of how we happened to emit it.
+    let from_api: Shape = serde_json::from_str("{\"tag\":\"Point\",\"value\":{}}").unwrap();
+    assert_eq!(from_api, point);
+    // gRPC `Value` round-trips too.
+    let grpc = <Shape as rt::FromValue>::from_value(&rt::ToValue::to_value(&point)).unwrap();
+    assert_eq!(grpc, point);
+}
 "#;
     fs::write(dir.join("src/lib.rs"), format!("{generated}\n{test}")).unwrap();
 

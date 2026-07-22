@@ -197,3 +197,44 @@ impl<'de, T: serde::Deserialize<'de>> serde::Deserialize<'de> for NestedOpt<T> {
         }
     }
 }
+
+/// The Daml `Unit` type. Its LF-JSON form is the **empty object** `{}` — not
+/// JSON `null`, which is what Rust's `()` serializes to — so `Unit` needs its
+/// own type with a manual serde impl. This is what a nullary variant
+/// constructor and a `Unit`-typed field map to, so their JSON matches the
+/// Ledger API's `{"tag": <ctor>, "value": {}}` form. The gRPC (`Value`) form is
+/// the proto `Unit`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Unit;
+
+impl serde::Serialize for Unit {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // An empty map serializes as `{}`.
+        use serde::ser::SerializeMap;
+        serializer.serialize_map(Some(0))?.end()
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Unit {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        /// Accepts the LF-JSON `{}` (and tolerates `null`), ignoring any content.
+        struct UnitVisitor;
+        impl<'de> serde::de::Visitor<'de> for UnitVisitor {
+            type Value = Unit;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("the empty object `{}` (Daml Unit)")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Unit, A::Error> {
+                while map
+                    .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+                    .is_some()
+                {}
+                Ok(Unit)
+            }
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Unit, E> {
+                Ok(Unit)
+            }
+        }
+        deserializer.deserialize_any(UnitVisitor)
+    }
+}

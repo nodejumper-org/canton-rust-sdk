@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use canton_proto::com::daml::ledger::api::v2 as pb;
 
-use crate::primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, Timestamp};
+use crate::primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, Timestamp, Unit};
 
 /// An error converting a Ledger API [`Value`](pb::Value) into a typed value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -210,6 +210,20 @@ impl FromValue for () {
     fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
         match sum(value)? {
             pb::value::Sum::Unit(()) => Ok(()),
+            other => Err(mismatch("Unit", other)),
+        }
+    }
+}
+
+impl ToValue for Unit {
+    fn to_value(&self) -> pb::Value {
+        unit_value()
+    }
+}
+impl FromValue for Unit {
+    fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
+        match sum(value)? {
+            pb::value::Sum::Unit(()) => Ok(Unit),
             other => Err(mismatch("Unit", other)),
         }
     }

@@ -242,8 +242,10 @@ mod tests {
         syn::parse_file(&src).unwrap();
         assert!(src.contains("pub enum Shape"), "{src}");
         assert!(src.contains("Circle(rt::Numeric)"), "{src}");
-        // A nullary constructor has no payload.
-        assert!(src.contains("Point,"), "{src}");
+        // A nullary constructor carries `rt::Unit` (LF-JSON `{}`), not nothing —
+        // so its wire form is `{"tag":"Point","value":{}}`, which the Ledger API
+        // sends and a bare unit variant would fail to parse.
+        assert!(src.contains("Point(rt::Unit)"), "{src}");
     }
 
     #[test]

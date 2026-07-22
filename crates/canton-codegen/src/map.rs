@@ -17,7 +17,7 @@ use crate::ir::{DamlType, TypeRef};
 #[must_use]
 pub fn rust_type(ty: &DamlType) -> TokenStream {
     match ty {
-        DamlType::Unit => quote!(()),
+        DamlType::Unit => quote!(rt::Unit),
         DamlType::Bool => quote!(bool),
         DamlType::Int64 => quote!(i64),
         DamlType::Numeric(_) => quote!(rt::Numeric),

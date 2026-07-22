@@ -15,7 +15,9 @@ mod primitives;
 mod value;
 
 pub use choice::Choice;
-pub use primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp};
+pub use primitives::{
+    ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
+};
 pub use value::{
     FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
     unexpected_constructor, unit_value, variant_parts, variant_value,
@@ -222,5 +224,18 @@ mod tests {
 
         let none: Option<NestedOpt<String>> = None;
         assert_ne!(none.to_value(), some_none.to_value());
+    }
+
+    #[test]
+    fn unit_is_the_empty_object_in_json() {
+        use serde_json::json;
+
+        // Daml `Unit` is LF-JSON `{}` (not `null`, which is what `()` would be).
+        assert_eq!(serde_json::to_value(Unit).unwrap(), json!({}));
+        assert_eq!(serde_json::from_str::<Unit>("{}").unwrap(), Unit);
+        // Tolerates a null too, so either shape from the API is accepted.
+        assert_eq!(serde_json::from_str::<Unit>("null").unwrap(), Unit);
+        // gRPC `Value` round-trips as the proto Unit.
+        assert_eq!(Unit::from_value(&Unit.to_value()).unwrap(), Unit);
     }
 }

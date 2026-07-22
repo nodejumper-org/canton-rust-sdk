@@ -263,19 +263,18 @@ pub fn variant_enum(variant: &Variant) -> TokenStream {
         let ctor_name = type_ident(&ctor.name);
         let label = &ctor.name;
         let doc = format!("The Daml `{}` constructor.", ctor.name);
-        if let Some(payload) = &ctor.payload {
-            let payload = rust_type(payload);
-            quote! {
-                #[doc = #doc]
-                #[serde(rename = #label)]
-                #ctor_name(#payload),
-            }
-        } else {
-            quote! {
-                #[doc = #doc]
-                #[serde(rename = #label)]
-                #ctor_name,
-            }
+        // A nullary constructor carries `Unit`, not nothing: the LF-JSON variant
+        // form always has a `value`, and a nullary one is `Unit` (`{}`). Emitting
+        // it as a bare unit variant would serialize to `{"tag":<c>}`, which the
+        // Ledger API's `{"tag":<c>,"value":{}}` neither matches nor parses.
+        let payload = ctor
+            .payload
+            .as_ref()
+            .map_or_else(|| quote!(rt::Unit), rust_type);
+        quote! {
+            #[doc = #doc]
+            #[serde(rename = #label)]
+            #ctor_name(#payload),
         }
     });
 
@@ -306,23 +305,17 @@ pub fn variant_items(variant: &Variant) -> TokenStream {
 fn variant_codecs(variant: &Variant) -> TokenStream {
     let name = type_ident(&variant.name);
     let type_name = &variant.name;
+    // Every constructor is a newtype variant (a nullary one carries `rt::Unit`),
+    // so both codecs treat the payload uniformly.
     let to_arms = variant.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(&ctor.name);
         let label = &ctor.name;
-        if ctor.payload.is_some() {
-            quote! { #name::#ctor_name(inner) => rt::variant_value(#label, rt::ToValue::to_value(inner)), }
-        } else {
-            quote! { #name::#ctor_name => rt::variant_value(#label, rt::unit_value()), }
-        }
+        quote! { #name::#ctor_name(inner) => rt::variant_value(#label, rt::ToValue::to_value(inner)), }
     });
     let from_arms = variant.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(&ctor.name);
         let label = &ctor.name;
-        if ctor.payload.is_some() {
-            quote! { #label => ::core::result::Result::Ok(#name::#ctor_name(rt::FromValue::from_value(payload)?)), }
-        } else {
-            quote! { #label => ::core::result::Result::Ok(#name::#ctor_name), }
-        }
+        quote! { #label => ::core::result::Result::Ok(#name::#ctor_name(rt::FromValue::from_value(payload)?)), }
     });
 
     let (impl_generics, ty, to_where) =
