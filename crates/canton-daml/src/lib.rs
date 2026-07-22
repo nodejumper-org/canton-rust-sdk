@@ -19,7 +19,7 @@ mod value;
 pub use choice::Choice;
 pub use commands::{create_command, exercise_by_key_command, exercise_command};
 pub use primitives::{
-    ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
+    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
 };
 pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{
@@ -237,6 +237,45 @@ mod tests {
             let text = serde_json::to_string(&date).unwrap();
             assert_eq!(serde_json::from_str::<Date>(&text).unwrap(), date);
         }
+    }
+
+    #[test]
+    fn int64_uses_the_lf_json_string_form() {
+        use serde_json::json;
+
+        // Emitted as a string (the Ledger API's encodeInt64AsString form)…
+        assert_eq!(serde_json::to_value(Int64(5)).unwrap(), json!("5"));
+        // …and accepted from either the string or the number form on input.
+        assert_eq!(serde_json::from_str::<Int64>("\"5\"").unwrap(), Int64(5));
+        assert_eq!(serde_json::from_str::<Int64>("5").unwrap(), Int64(5));
+        // A value beyond JS's safe integers still round-trips (why it's a string).
+        let big = Int64(9_007_199_254_740_993);
+        assert_eq!(
+            serde_json::from_str::<Int64>(&serde_json::to_string(&big).unwrap()).unwrap(),
+            big
+        );
+        // gRPC `Value` is a plain Int64.
+        assert_eq!(Int64::from_value(&Int64(7).to_value()).unwrap(), Int64(7));
+    }
+
+    #[test]
+    fn numeric_accepts_string_and_number_json() {
+        use serde_json::json;
+
+        // Emitted as a string…
+        assert_eq!(
+            serde_json::to_value(Numeric("1.50".to_string())).unwrap(),
+            json!("1.50")
+        );
+        // …and accepted from a string or a JSON number on input.
+        assert_eq!(
+            serde_json::from_str::<Numeric>("\"1.5\"").unwrap(),
+            Numeric("1.5".to_string())
+        );
+        assert_eq!(
+            serde_json::from_str::<Numeric>("2").unwrap(),
+            Numeric("2".to_string())
+        );
     }
 
     #[test]

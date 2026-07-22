@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 
 use canton_proto::com::daml::ledger::api::v2 as pb;
 
-use crate::primitives::{ContractId, Date, GenMap, NestedOpt, Numeric, Party, Timestamp, Unit};
+use crate::primitives::{
+    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, Party, Timestamp, Unit,
+};
 
 /// An error converting a Ledger API [`Value`](pb::Value) into a typed value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -182,6 +184,20 @@ impl FromValue for i64 {
     fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
         match sum(value)? {
             pb::value::Sum::Int64(n) => Ok(*n),
+            other => Err(mismatch("Int64", other)),
+        }
+    }
+}
+
+impl ToValue for Int64 {
+    fn to_value(&self) -> pb::Value {
+        wrap(pb::value::Sum::Int64(self.0))
+    }
+}
+impl FromValue for Int64 {
+    fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
+        match sum(value)? {
+            pb::value::Sum::Int64(n) => Ok(Int64(*n)),
             other => Err(mismatch("Int64", other)),
         }
     }

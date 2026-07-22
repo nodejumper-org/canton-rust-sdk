@@ -2748,7 +2748,7 @@ pub mod daml_stdlib_DA_Random_Types_1_0_0 {
         pub enum Minstd {
             ///The Daml `Minstd` constructor.
             #[serde(rename = "Minstd")]
-            Minstd(i64),
+            Minstd(rt::Int64),
         }
         impl rt::ToValue for Minstd {
             fn to_value(&self) -> rt::Value {
@@ -2876,16 +2876,16 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
             pub src_loc_file: String,
             ///The Daml `srcLocStartLine` field.
             #[serde(rename = "srcLocStartLine")]
-            pub src_loc_start_line: i64,
+            pub src_loc_start_line: rt::Int64,
             ///The Daml `srcLocStartCol` field.
             #[serde(rename = "srcLocStartCol")]
-            pub src_loc_start_col: i64,
+            pub src_loc_start_col: rt::Int64,
             ///The Daml `srcLocEndLine` field.
             #[serde(rename = "srcLocEndLine")]
-            pub src_loc_end_line: i64,
+            pub src_loc_end_line: rt::Int64,
             ///The Daml `srcLocEndCol` field.
             #[serde(rename = "srcLocEndCol")]
-            pub src_loc_end_col: i64,
+            pub src_loc_end_col: rt::Int64,
         }
         impl rt::ToValue for SrcLoc {
             fn to_value(&self) -> rt::Value {
@@ -2956,7 +2956,7 @@ pub mod daml_stdlib_DA_Time_Types_1_0_0 {
         pub struct RelTime {
             ///The Daml `microseconds` field.
             #[serde(rename = "microseconds")]
-            pub microseconds: i64,
+            pub microseconds: rt::Int64,
         }
         impl rt::ToValue for RelTime {
             fn to_value(&self) -> rt::Value {
@@ -3108,7 +3108,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct Round {
             ///The Daml `number` field.
             #[serde(rename = "number")]
-            pub number: i64,
+            pub number: rt::Int64,
         }
         impl rt::ToValue for Round {
             fn to_value(&self) -> rt::Value {
@@ -4829,10 +4829,10 @@ pub mod splice_amulet_0_1_14 {
         pub struct InvalidTransferReason_ITR_InsufficientTopupAmount {
             ///The Daml `requestedTopupAmount` field.
             #[serde(rename = "requestedTopupAmount")]
-            pub requested_topup_amount: i64,
+            pub requested_topup_amount: rt::Int64,
             ///The Daml `minTopupAmount` field.
             #[serde(rename = "minTopupAmount")]
-            pub min_topup_amount: i64,
+            pub min_topup_amount: rt::Int64,
         }
         impl rt::ToValue for InvalidTransferReason_ITR_InsufficientTopupAmount {
             fn to_value(&self) -> rt::Value {
@@ -5372,7 +5372,7 @@ pub mod splice_amulet_0_1_14 {
             pub round0_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
             ///The Daml `initialRound` field.
             #[serde(rename = "initialRound")]
-            pub initial_round: Option<i64>,
+            pub initial_round: Option<rt::Int64>,
         }
         impl rt::ToValue for AmuletRules_Bootstrap_Rounds {
             fn to_value(&self) -> rt::Value {
@@ -5539,10 +5539,10 @@ pub mod splice_amulet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
             ///The Daml `trafficAmount` field.
             #[serde(rename = "trafficAmount")]
-            pub traffic_amount: i64,
+            pub traffic_amount: rt::Int64,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
             pub expected_dso: Option<rt::Party>,
@@ -7066,7 +7066,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct SvRewardCoupon_DsoExpireResult {
             ///The Daml `weight` field.
             #[serde(rename = "weight")]
-            pub weight: i64,
+            pub weight: rt::Int64,
         }
         impl rt::ToValue for SvRewardCoupon_DsoExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -7797,7 +7797,7 @@ pub mod splice_amulet_0_1_14 {
             pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
             ///The Daml `weight` field.
             #[serde(rename = "weight")]
-            pub weight: i64,
+            pub weight: rt::Int64,
         }
         impl rt::ToValue for SvRewardCoupon {
             fn to_value(&self) -> rt::Value {
@@ -8390,13 +8390,13 @@ pub mod splice_amulet_0_1_14 {
             pub extra_featured_app_reward_amount: rt::Numeric,
             ///The Daml `maxNumInputs` field.
             #[serde(rename = "maxNumInputs")]
-            pub max_num_inputs: i64,
+            pub max_num_inputs: rt::Int64,
             ///The Daml `maxNumOutputs` field.
             #[serde(rename = "maxNumOutputs")]
-            pub max_num_outputs: i64,
+            pub max_num_outputs: rt::Int64,
             ///The Daml `maxNumLockHolders` field.
             #[serde(rename = "maxNumLockHolders")]
-            pub max_num_lock_holders: i64,
+            pub max_num_lock_holders: rt::Int64,
             #[doc(hidden)]
             #[serde(skip)]
             pub _phantom: ::core::marker::PhantomData<(Unit,)>,
@@ -8527,7 +8527,7 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
-            pub nonce: i64,
+            pub nonce: rt::Int64,
         }
         impl rt::ToValue for TransferCommand_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -8553,7 +8553,7 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
-            pub nonce: i64,
+            pub nonce: rt::Int64,
         }
         impl rt::ToValue for TransferCommand_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -8674,7 +8674,7 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
-            pub nonce: i64,
+            pub nonce: rt::Int64,
         }
         impl rt::ToValue for TransferCommand_SendResult {
             fn to_value(&self) -> rt::Value {
@@ -8829,7 +8829,7 @@ pub mod splice_amulet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
-            pub nonce: i64,
+            pub nonce: rt::Int64,
             ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: Option<String>,
@@ -8936,7 +8936,7 @@ pub mod splice_amulet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
-            pub nonce: i64,
+            pub nonce: rt::Int64,
             ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: Option<String>,
@@ -9022,7 +9022,7 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `nextNonce` field.
             #[serde(rename = "nextNonce")]
-            pub next_nonce: i64,
+            pub next_nonce: rt::Int64,
         }
         impl rt::ToValue for TransferCommandCounter {
             fn to_value(&self) -> rt::Value {
@@ -9522,10 +9522,10 @@ pub mod splice_amulet_0_1_14 {
             pub total_unfeatured_app_reward_coupons: rt::Numeric,
             ///The Daml `totalSvRewardWeight` field.
             #[serde(rename = "totalSvRewardWeight")]
-            pub total_sv_reward_weight: i64,
+            pub total_sv_reward_weight: rt::Int64,
             ///The Daml `optTotalValidatorFaucetCoupons` field.
             #[serde(rename = "optTotalValidatorFaucetCoupons")]
-            pub opt_total_validator_faucet_coupons: Option<i64>,
+            pub opt_total_validator_faucet_coupons: Option<rt::Int64>,
         }
         impl rt::ToValue for OpenMiningRoundSummary {
             fn to_value(&self) -> rt::Value {
@@ -10155,7 +10155,7 @@ pub mod splice_amulet_0_1_14 {
             pub last_received_for: crate::splice_amulet_0_1_14::Splice_Types::Round,
             ///The Daml `numCouponsMissed` field.
             #[serde(rename = "numCouponsMissed")]
-            pub num_coupons_missed: i64,
+            pub num_coupons_missed: rt::Int64,
         }
         impl rt::ToValue for FaucetState {
             fn to_value(&self) -> rt::Value {
@@ -10435,7 +10435,7 @@ pub mod splice_amulet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
         }
         impl rt::ToValue for ForMemberTraffic {
             fn to_value(&self) -> rt::Value {
@@ -10477,10 +10477,10 @@ pub mod splice_amulet_0_1_14 {
             pub extra_traffic_price: rt::Numeric,
             ///The Daml `readVsWriteScalingFactor` field.
             #[serde(rename = "readVsWriteScalingFactor")]
-            pub read_vs_write_scaling_factor: i64,
+            pub read_vs_write_scaling_factor: rt::Int64,
             ///The Daml `minTopupAmount` field.
             #[serde(rename = "minTopupAmount")]
-            pub min_topup_amount: i64,
+            pub min_topup_amount: rt::Int64,
         }
         impl rt::ToValue for SynchronizerFeesConfig {
             fn to_value(&self) -> rt::Value {
@@ -10531,7 +10531,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct BaseRateTrafficLimits {
             ///The Daml `burstAmount` field.
             #[serde(rename = "burstAmount")]
-            pub burst_amount: i64,
+            pub burst_amount: rt::Int64,
             ///The Daml `burstWindow` field.
             #[serde(rename = "burstWindow")]
             pub burst_window: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
@@ -10617,13 +10617,13 @@ pub mod splice_amulet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
             ///The Daml `totalPurchased` field.
             #[serde(rename = "totalPurchased")]
-            pub total_purchased: i64,
+            pub total_purchased: rt::Int64,
             ///The Daml `numPurchases` field.
             #[serde(rename = "numPurchases")]
-            pub num_purchases: i64,
+            pub num_purchases: rt::Int64,
             ///The Daml `amuletSpent` field.
             #[serde(rename = "amuletSpent")]
             pub amulet_spent: rt::Numeric,
@@ -10704,7 +10704,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct RelRound {
             ///The Daml `diff` field.
             #[serde(rename = "diff")]
-            pub diff: i64,
+            pub diff: rt::Int64,
         }
         impl rt::ToValue for RelRound {
             fn to_value(&self) -> rt::Value {
@@ -12599,7 +12599,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             AV_Text(String),
             ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
-            AV_Int(i64),
+            AV_Int(rt::Int64),
             ///The Daml `AV_Decimal` constructor.
             #[serde(rename = "AV_Decimal")]
             AV_Decimal(rt::Numeric),
@@ -13406,7 +13406,7 @@ pub mod splice_wallet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
             ///The Daml `lastPurchasedAt` field.
             #[serde(rename = "lastPurchasedAt")]
             pub last_purchased_at: rt::Timestamp,
@@ -13790,10 +13790,10 @@ pub mod splice_wallet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
             ///The Daml `trafficAmount` field.
             #[serde(rename = "trafficAmount")]
-            pub traffic_amount: i64,
+            pub traffic_amount: rt::Int64,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
@@ -15169,7 +15169,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct AmuletOperation_CO_BuyMemberTraffic {
             ///The Daml `trafficAmount` field.
             #[serde(rename = "trafficAmount")]
-            pub traffic_amount: i64,
+            pub traffic_amount: rt::Int64,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
             pub member_id: String,
@@ -15178,7 +15178,7 @@ pub mod splice_wallet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
             ///The Daml `minTopupInterval` field.
             #[serde(rename = "minTopupInterval")]
             pub min_topup_interval: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
@@ -16589,7 +16589,7 @@ pub mod splice_wallet_0_1_14 {
             pub tracking_id: String,
             ///The Daml `trafficAmount` field.
             #[serde(rename = "trafficAmount")]
-            pub traffic_amount: i64,
+            pub traffic_amount: rt::Int64,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
             pub member_id: String,
@@ -16598,7 +16598,7 @@ pub mod splice_wallet_0_1_14 {
             pub synchronizer_id: String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
-            pub migration_id: i64,
+            pub migration_id: rt::Int64,
         }
         impl rt::ToValue for BuyTrafficRequest {
             fn to_value(&self) -> rt::Value {

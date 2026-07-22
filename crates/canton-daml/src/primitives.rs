@@ -66,9 +66,92 @@ impl<T> Eq for ContractId<T> {}
 /// A fixed-scale decimal (`Numeric`), stored as its canonical decimal string —
 /// the wire representation (Daml numerics are transmitted as text to avoid
 /// binary-float rounding).
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
+///
+/// LF-JSON: **emitted as a string** (what the Ledger API produces); on input
+/// **also accepts a JSON number** (the spec allows it — high-precision values
+/// should still use the string form, since a JSON number literal is already
+/// `f64`-lossy on the wire).
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Numeric(pub String);
+
+impl serde::Serialize for Numeric {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Numeric {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct NumericVisitor;
+        impl serde::de::Visitor<'_> for NumericVisitor {
+            type Value = Numeric;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a Daml Numeric as a decimal string or a JSON number")
+            }
+            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Numeric, E> {
+                Ok(Numeric(value.to_string()))
+            }
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Numeric, E> {
+                Ok(Numeric(value.to_string()))
+            }
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Numeric, E> {
+                Ok(Numeric(value.to_string()))
+            }
+            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Numeric, E> {
+                Ok(Numeric(value.to_string()))
+            }
+        }
+        deserializer.deserialize_any(NumericVisitor)
+    }
+}
+
+/// A Daml `Int64`.
+///
+/// LF-JSON encodes `Int64` **as a string** (`encodeInt64AsString`, to survive
+/// JavaScript's 53-bit number precision), and accepts a string *or* a number on
+/// input. So this serializes as a string (matching the Ledger API's output) and
+/// deserializes from either form. The gRPC (`Value`) form is a plain `Int64`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Int64(pub i64);
+
+impl From<i64> for Int64 {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
+impl serde::Serialize for Int64 {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Int64 {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Int64Visitor;
+        impl serde::de::Visitor<'_> for Int64Visitor {
+            type Value = Int64;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("an Int64 as a JSON number or a string")
+            }
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Int64, E> {
+                Ok(Int64(value))
+            }
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Int64, E> {
+                i64::try_from(value)
+                    .map(Int64)
+                    .map_err(serde::de::Error::custom)
+            }
+            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Int64, E> {
+                value
+                    .parse::<i64>()
+                    .map(Int64)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+        deserializer.deserialize_any(Int64Visitor)
+    }
+}
 
 /// A Daml `Timestamp` — microseconds since the Unix epoch (UTC).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

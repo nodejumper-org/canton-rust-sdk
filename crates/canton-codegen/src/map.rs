@@ -19,7 +19,7 @@ pub fn rust_type(ty: &DamlType) -> TokenStream {
     match ty {
         DamlType::Unit => quote!(rt::Unit),
         DamlType::Bool => quote!(bool),
-        DamlType::Int64 => quote!(i64),
+        DamlType::Int64 => quote!(rt::Int64),
         DamlType::Numeric(_) => quote!(rt::Numeric),
         DamlType::Text => quote!(String),
         DamlType::Timestamp => quote!(rt::Timestamp),

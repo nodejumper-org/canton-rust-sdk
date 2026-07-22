@@ -2748,7 +2748,7 @@ pub mod daml_stdlib_DA_Random_Types_1_0_0 {
         pub enum Minstd {
             ///The Daml `Minstd` constructor.
             #[serde(rename = "Minstd")]
-            Minstd(i64),
+            Minstd(rt::Int64),
         }
         impl rt::ToValue for Minstd {
             fn to_value(&self) -> rt::Value {
@@ -2876,16 +2876,16 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
             pub src_loc_file: String,
             ///The Daml `srcLocStartLine` field.
             #[serde(rename = "srcLocStartLine")]
-            pub src_loc_start_line: i64,
+            pub src_loc_start_line: rt::Int64,
             ///The Daml `srcLocStartCol` field.
             #[serde(rename = "srcLocStartCol")]
-            pub src_loc_start_col: i64,
+            pub src_loc_start_col: rt::Int64,
             ///The Daml `srcLocEndLine` field.
             #[serde(rename = "srcLocEndLine")]
-            pub src_loc_end_line: i64,
+            pub src_loc_end_line: rt::Int64,
             ///The Daml `srcLocEndCol` field.
             #[serde(rename = "srcLocEndCol")]
-            pub src_loc_end_col: i64,
+            pub src_loc_end_col: rt::Int64,
         }
         impl rt::ToValue for SrcLoc {
             fn to_value(&self) -> rt::Value {
@@ -2956,7 +2956,7 @@ pub mod daml_stdlib_DA_Time_Types_1_0_0 {
         pub struct RelTime {
             ///The Daml `microseconds` field.
             #[serde(rename = "microseconds")]
-            pub microseconds: i64,
+            pub microseconds: rt::Int64,
         }
         impl rt::ToValue for RelTime {
             fn to_value(&self) -> rt::Value {
@@ -3219,7 +3219,7 @@ pub mod quickstart_licensing_0_0_1 {
             pub expires_at: rt::Timestamp,
             ///The Daml `licenseNum` field.
             #[serde(rename = "licenseNum")]
-            pub license_num: i64,
+            pub license_num: rt::Int64,
             ///The Daml `params` field.
             #[serde(rename = "params")]
             pub params: crate::quickstart_licensing_0_0_1::Licensing_License::LicenseParams,
@@ -3290,7 +3290,7 @@ pub mod quickstart_licensing_0_0_1 {
             pub user: rt::Party,
             ///The Daml `licenseNum` field.
             #[serde(rename = "licenseNum")]
-            pub license_num: i64,
+            pub license_num: rt::Int64,
             ///The Daml `licenseFeeAmount` field.
             #[serde(rename = "licenseFeeAmount")]
             pub license_fee_amount: rt::Numeric,
@@ -3547,7 +3547,7 @@ pub mod quickstart_licensing_0_0_1 {
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             ///The Daml `numLicensesCreated` field.
             #[serde(rename = "numLicensesCreated")]
-            pub num_licenses_created: i64,
+            pub num_licenses_created: rt::Int64,
         }
         impl rt::ToValue for AppInstall {
             fn to_value(&self) -> rt::Value {
@@ -4507,7 +4507,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             AV_Text(String),
             ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
-            AV_Int(i64),
+            AV_Int(rt::Int64),
             ///The Daml `AV_Decimal` constructor.
             #[serde(rename = "AV_Decimal")]
             AV_Decimal(rt::Numeric),

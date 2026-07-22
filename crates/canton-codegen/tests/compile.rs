@@ -113,8 +113,8 @@ fn round_trip() {
         owner: rt::Party::new("alice::1"),
         day: DayOfWeek::Monday,
         shape: Shape::Circle(rt::Numeric("1.5".to_string())),
-        pair: Pair { fst: 7i64, snd: "x".to_string() },
-        attrs: rt::GenMap(vec![("k".to_string(), 1i64)]),
+        pair: Pair { fst: rt::Int64(7), snd: "x".to_string() },
+        attrs: rt::GenMap(vec![("k".to_string(), rt::Int64(1))]),
         maybe: Some(rt::NestedOpt(None)),
     };
     let back = <Payload as rt::FromValue>::from_value(&rt::ToValue::to_value(&payload)).unwrap();
@@ -124,6 +124,9 @@ fn round_trip() {
     assert_eq!(from_json, payload);
     assert!(json.contains("\"Monday\""), "enum is a bare string: {json}");
     assert!(json.contains("\"tag\":\"Circle\""), "variant is adjacently tagged: {json}");
+    // Int64 is emitted as a string (the Ledger API form) and the round-trip
+    // above already re-parses that string form.
+    assert!(json.contains("\"fst\":\"7\""), "Int64 is a JSON string: {json}");
 }
 
 #[test]

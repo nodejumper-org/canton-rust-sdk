@@ -12,8 +12,8 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
 |---|---|---|---|
 | `Unit` | `rt::Unit` | `{}` (empty object) | `Unit` |
 | `Bool` | `bool` | `true` / `false` | `Bool` |
-| `Int64` | `i64` | number | `Int64` |
-| `Numeric n` | `rt::Numeric` | decimal **string** | `Numeric` (string) |
+| `Int64` | `rt::Int64` | **string** (number also accepted on input) | `Int64` |
+| `Numeric n` | `rt::Numeric` | **string** (number also accepted on input) | `Numeric` (string) |
 | `Text` | `String` | string | `Text` |
 | `Party` | `rt::Party` | string | `Party` |
 | `Timestamp` | `rt::Timestamp` | RFC 3339 string | `Timestamp` (micros) |
@@ -36,8 +36,13 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
   `Optional` nested inside another uses the LF-JSON *list* form so `Some None`
   (`[]`) stays distinct from `None` (`null`). Codegen wraps each nested layer in
   `rt::NestedOpt`; the gRPC form is an ordinary proto `Optional`.
+- **`Int64`** is LF-JSON-encoded **as a string** (`encodeInt64AsString`, to
+  survive JavaScript's 53-bit precision); it maps to `rt::Int64` (a newtype over
+  `i64`) which serialises to a string and accepts a string *or* a number on
+  input, matching the Ledger API. Its gRPC form is a plain `Int64`.
 - **`Numeric`** travels as a decimal string on both wires to avoid binary-float
-  rounding.
+  rounding; on JSON input `rt::Numeric` also accepts a number (high-precision
+  values should still use the string form).
 - **References** are always fully qualified (`crate::<package>::<module>::<Type>`),
   so cross-package/cross-module references resolve and names from different
   modules never collide. The package segment is `<name>_<version>` (Smart

@@ -19,8 +19,9 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - **`canton-daml`** — the runtime generated code depends on (as `rt`): the Daml
   primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, `Date`,
   `TextMap`, `GenMap`, `NestedOpt`, `Unit`), the `ToValue`/`FromValue` gRPC
-  codecs and serde JSON conventions (LF-JSON: nested-optional list form, `Unit`
-  as `{}`, adjacently-tagged variants, …), the `Contract`/`Template`/`Interface`/
+  codecs and serde JSON conventions (LF-JSON: `Int64` and `Numeric` as strings —
+  accepting a number on input — the nested-optional list form, `Unit` as `{}`,
+  adjacently-tagged variants, …), the `Contract`/`Template`/`Interface`/
   `WithKey`/`Choice` traits, and the `create_command`/`exercise_command`/
   `exercise_by_key_command` builders.
 - **`canton-codegen`** — DAR → typed Rust: a decoder-agnostic IR, the documented

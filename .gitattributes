@@ -1,0 +1,5 @@
+# The bindings crates' src/lib.rs is checked-in generated output (from
+# `dpm-codegen-rust`). Mark it generated so GitHub keeps it out of the language
+# stats and collapses it in PR diffs.
+crates/canton-splice-*/src/lib.rs linguist-generated=true
+crates/canton-quickstart-*/src/lib.rs linguist-generated=true
