@@ -18,11 +18,11 @@ name = "canton-sample"
 path = "src/main.rs"
 
 [dependencies]
-canton-splice-amulet = { path = "../canton-splice-amulet" }
-canton-daml          = { workspace = true }
-canton-ledger        = { workspace = true }
-tokio                = { workspace = true, features = ["rt-multi-thread", "macros"] }
-serde_json           = { workspace = true }
+canton-quickstart-licensing = { path = "../canton-quickstart-licensing" }
+canton-daml                 = { workspace = true }
+canton-ledger               = { workspace = true }
+tokio                       = { workspace = true, features = ["rt-multi-thread", "macros"] }
+serde_json                  = { workspace = true }
 
 [lints]
 workspace = true

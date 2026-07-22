@@ -298,12 +298,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "canton-quickstart-licensing"
+version = "0.1.0"
+dependencies = [
+ "canton-daml",
+]
+
+[[package]]
 name = "canton-sample"
 version = "0.1.0"
 dependencies = [
  "canton-daml",
  "canton-ledger",
- "canton-splice-amulet",
+ "canton-quickstart-licensing",
  "serde_json",
  "tokio",
 ]
