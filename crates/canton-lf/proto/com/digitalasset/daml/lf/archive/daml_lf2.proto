@@ -41,6 +41,11 @@ message SelfOrImportedPackageId {
     // this reference.
     // *Must be a valid interned package Id string*
     int32 imported_package_id_interned_str = 3;
+
+    // An index into the package's explicit import table
+    // (`Package.package_imports.imported_packages`). Emitted by newer Daml
+    // compilers (LF 2.dev / SDK 3.5+); the entry is the target package-id hash.
+    int32 package_import_id = 4;
   }
 }
 
@@ -942,4 +947,16 @@ message Package {
   // Types in the interning table are only allowed to refer to interned types
   // at smaller indices.
   repeated Type interned_types = 5;
+
+  // The explicit import table (LF 2.dev / SDK 3.5+). A `package_import_id`
+  // reference is an index into `package_imports.imported_packages`. Modelled as
+  // a plain optional field rather than the upstream `ImportsSum` oneof (tag 8 =
+  // no-imports reason, which codegen does not need); prost skips the unmodelled
+  // tag 8 as an unknown field.
+  PackageImports package_imports = 9;
+}
+
+// The explicit import table: each entry is a target package-id hash.
+message PackageImports {
+  repeated string imported_packages = 1;
 }

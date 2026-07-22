@@ -65,6 +65,17 @@ pub fn decode_all(dar: &Dar) -> Result<Vec<(String, Package)>, DecodeError> {
         .collect()
 }
 
+/// Resolve a `package_import_id` — an index into the package's explicit import
+/// table (`package_imports.imported_packages`) — to the target package's id
+/// hash. Newer LF (2.dev / SDK 3.5+) references imported packages this way
+/// instead of by an interned id string.
+#[must_use]
+pub fn imported_package_id(package: &Package, index: i32) -> Option<&str> {
+    let imports = package.package_imports.as_ref()?;
+    let i = usize::try_from(index).ok()?;
+    imports.imported_packages.get(i).map(String::as_str)
+}
+
 /// Resolve an interned string by its `i32` index into a package's
 /// `interned_strings` table.
 #[must_use]

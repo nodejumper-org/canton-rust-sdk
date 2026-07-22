@@ -17,8 +17,8 @@ mod decode;
 
 pub use dar::{Dar, DarError};
 pub use decode::{
-    DecodeError, decode_all, decode_main_package, decode_package, interned_dotted_name,
-    interned_str, interned_type, package_name, package_version,
+    DecodeError, decode_all, decode_main_package, decode_package, imported_package_id,
+    interned_dotted_name, interned_str, interned_type, package_name, package_version,
 };
 
 /// The generated Daml-LF archive types, from the vendored `.proto` files:

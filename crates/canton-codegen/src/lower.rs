@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 use canton_lf::pb::daml_lf_2 as lf;
 use canton_lf::{
-    Dar, DecodeError, decode_all, interned_dotted_name, interned_str, interned_type, package_name,
-    package_version,
+    Dar, DecodeError, decode_all, imported_package_id, interned_dotted_name, interned_str,
+    interned_type, package_name, package_version,
 };
 
 use crate::ir::{
@@ -177,7 +177,8 @@ struct Lowering<'a> {
 
 /// The context for qualifying a reference to a fully-qualified Rust path.
 struct Qualify<'a> {
-    /// package id → the package's Rust module name.
+    /// package id (archive hash) → the package's Rust module name. Resolves all
+    /// three reference forms, since each ultimately names a package by its id.
     module_names: &'a HashMap<&'a str, String>,
     /// The id of the package currently being lowered (resolves `SelfPackageId`).
     current_id: &'a str,
@@ -323,9 +324,14 @@ impl Lowering<'_> {
     }
 
     /// The Rust path segments for a type constructor reference. Local when not
-    /// qualifying; otherwise `["crate", <package>, <module>, <Type>]`, resolving
-    /// the target package (self, or an imported package by its interned id-hash).
+    /// qualifying; otherwise `["crate", <package>, <module>, <Type>]`. The target
+    /// package is resolved from the reference's package identity, which comes in
+    /// three forms: **self**, an **imported** package by its interned id-hash, or
+    /// a Smart Contract Upgrade reference that names the package (resolved to the
+    /// bundled version via the referenced module).
     fn con_path(&self, tycon: &lf::TypeConId) -> Result<Vec<String>, LowerError> {
+        use lf::self_or_imported_package_id::Sum;
+
         let type_name = rust_name(self.package, tycon.name_interned_dname)?;
         let Some(qualify) = &self.qualify else {
             return Ok(vec![type_name]);
@@ -335,28 +341,36 @@ impl Lowering<'_> {
             .module
             .as_ref()
             .ok_or_else(|| LowerError::new("type constructor without a module"))?;
+        let module_dotted =
+            interned_dotted_name(self.package, module_id.module_name_interned_dname)
+                .ok_or_else(|| LowerError::new("unresolved referenced module name"))?;
+
+        // Every reference form ultimately names a package by its id hash;
+        // resolve to that hash, then to the package's Rust module name.
         let target_id = match module_id.package_id.as_ref().and_then(|p| p.sum.as_ref()) {
             // A self reference, or an absent package id, targets this package.
-            None | Some(lf::self_or_imported_package_id::Sum::SelfPackageId(_)) => {
-                qualify.current_id
-            }
-            // An imported package is identified by its id-hash, interned here.
-            Some(lf::self_or_imported_package_id::Sum::ImportedPackageIdInternedStr(index)) => {
-                interned_str(self.package, *index)
-                    .ok_or_else(|| LowerError::new("unresolved imported package id"))?
-            }
+            None | Some(Sum::SelfPackageId(_)) => qualify.current_id.to_string(),
+            // An imported package identified by its id-hash, interned here.
+            Some(Sum::ImportedPackageIdInternedStr(index)) => interned_str(self.package, *index)
+                .ok_or_else(|| LowerError::new("unresolved imported package id"))?
+                .to_string(),
+            // Newer LF: an index into the package's explicit import table, whose
+            // entry is the target package's id hash.
+            Some(Sum::PackageImportId(index)) => imported_package_id(self.package, *index)
+                .ok_or_else(|| LowerError::new("unresolved package import id"))?
+                .to_string(),
         };
-        let package_module = qualify.module_names.get(target_id).ok_or_else(|| {
-            LowerError::new(format!("reference to package {target_id} not in the DAR"))
-        })?;
-        let module_name = interned_dotted_name(self.package, module_id.module_name_interned_dname)
-            .ok_or_else(|| LowerError::new("unresolved referenced module name"))?
-            .replace('.', "_");
+        let package_module = qualify
+            .module_names
+            .get(target_id.as_str())
+            .ok_or_else(|| {
+                LowerError::new(format!("reference to package {target_id} not in the DAR"))
+            })?;
 
         Ok(vec![
             "crate".to_string(),
             package_module.clone(),
-            module_name,
+            module_dotted.replace('.', "_"),
             type_name,
         ])
     }
