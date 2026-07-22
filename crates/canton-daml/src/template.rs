@@ -39,3 +39,12 @@ pub trait Template: ToValue + FromValue {
         }
     }
 }
+
+/// A template that declares a **contract key**. Generated code implements this
+/// on the payload struct of any keyed template, exposing the key's type so a
+/// contract can be looked up and choices exercised *by key* (see
+/// [`crate::exercise_by_key_command`]).
+pub trait WithKey: Template {
+    /// The contract key's type (a serializable Daml type).
+    type Key: ToValue;
+}

@@ -323,6 +323,49 @@ mod tests {
     }
 
     #[test]
+    fn keyed_template_emits_with_key_impl() {
+        use crate::ir::{Template, TypeRef};
+
+        let template = Template {
+            name: "Account".to_string(),
+            module_name: "Bank.Account".to_string(),
+            package_id: "abc123".to_string(),
+            package_name: "bank".to_string(),
+            fields: vec![field("owner", DamlType::Party)],
+            choices: Vec::new(),
+            // A record key (owner + number) referenced by name.
+            key: Some(DamlType::Ref(TypeRef::local("AccountKey", Vec::new()))),
+        };
+
+        let src = generate_template(&template).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(src.contains("impl rt::WithKey for Account"), "{src}");
+        assert!(src.contains("type Key = AccountKey"), "{src}");
+    }
+
+    #[test]
+    fn keyless_template_emits_no_with_key_impl() {
+        use crate::ir::Template;
+
+        let template = Template {
+            name: "Note".to_string(),
+            module_name: "M".to_string(),
+            package_id: "p".to_string(),
+            package_name: "m".to_string(),
+            fields: vec![field("text", DamlType::Text)],
+            choices: Vec::new(),
+            key: None,
+        };
+
+        let src = generate_template(&template).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(
+            !src.contains("WithKey"),
+            "keyless template has no key impl: {src}"
+        );
+    }
+
+    #[test]
     fn module_wraps_items_with_the_runtime_preamble() {
         use crate::ir::{Choice, Enum, Module, Template};
 

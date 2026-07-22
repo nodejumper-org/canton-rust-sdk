@@ -17,11 +17,11 @@ mod template;
 mod value;
 
 pub use choice::Choice;
-pub use commands::{create_command, exercise_command};
+pub use commands::{create_command, exercise_by_key_command, exercise_command};
 pub use primitives::{
     ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
 };
-pub use template::Template;
+pub use template::{Template, WithKey};
 pub use value::{
     FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
     unexpected_constructor, unit_value, variant_parts, variant_value,
@@ -100,6 +100,10 @@ mod tests {
         const PACKAGE_NAME: &'static str = "app-install";
         const MODULE_NAME: &'static str = "Licensing.AppInstall";
         const ENTITY_NAME: &'static str = "AppInstall";
+    }
+
+    impl WithKey for AppInstall {
+        type Key = Party;
     }
 
     #[test]
@@ -293,6 +297,21 @@ mod tests {
                 assert!(e.choice_argument.is_some());
             }
             _ => panic!("expected an Exercise command"),
+        }
+
+        // exercise-by-key → ExerciseByKeyCommand carrying the key as a Value.
+        let key = Party::new("alice::1");
+        let by_key = exercise_by_key_command::<AppInstall, _>(&key, &AppInstall_Accept);
+        match by_key.command {
+            Some(Cmd::ExerciseByKey(e)) => {
+                assert_eq!(e.choice, "Accept");
+                assert_eq!(e.template_id.unwrap().entity_name, "AppInstall");
+                assert!(
+                    e.contract_key.is_some(),
+                    "key becomes the contract_key value"
+                );
+            }
+            _ => panic!("expected an ExerciseByKey command"),
         }
     }
 }

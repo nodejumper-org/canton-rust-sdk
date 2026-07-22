@@ -439,6 +439,16 @@ pub fn template(template: &Template) -> TokenStream {
         }
     };
 
+    // A keyed template exposes its key type so contracts can be exercised by key.
+    let key_impl = template.key.as_ref().map_or_else(TokenStream::new, |key| {
+        let key_ty = rust_type(key);
+        quote! {
+            impl rt::WithKey for #self_ty {
+                type Key = #key_ty;
+            }
+        }
+    });
+
     let choices = template.choices.iter().map(|choice| {
         let argument = rust_type(&choice.argument);
         let returns = rust_type(&choice.returns);
@@ -467,6 +477,7 @@ pub fn template(template: &Template) -> TokenStream {
     quote! {
         #payload
         #template_impl
+        #key_impl
         #(#choices)*
     }
 }
