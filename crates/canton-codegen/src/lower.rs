@@ -247,6 +247,7 @@ impl Lowering<'_> {
                 .qualify
                 .as_ref()
                 .map_or_else(String::new, |q| q.current_id.to_string()),
+            package_name: package_name(self.package).unwrap_or_default().to_string(),
             fields,
             choices,
             key,

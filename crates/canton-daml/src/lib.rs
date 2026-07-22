@@ -11,11 +11,13 @@
 //! build-time) and from the client crates (which do the actual RPCs).
 
 mod choice;
+mod commands;
 mod primitives;
 mod template;
 mod value;
 
 pub use choice::Choice;
+pub use commands::{create_command, exercise_command};
 pub use primitives::{
     ContractId, Date, GenMap, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
 };
@@ -84,6 +86,20 @@ mod tests {
         type Return = ContractId<AppInstalled>;
         const NAME: &'static str = "Accept";
         const CONSUMING: bool = true;
+    }
+
+    // A nullary choice argument is an empty record on the wire.
+    impl ToValue for AppInstall_Accept {
+        fn to_value(&self) -> Value {
+            record(vec![])
+        }
+    }
+
+    impl Template for AppInstall {
+        const PACKAGE_ID: &'static str = "deadbeef";
+        const PACKAGE_NAME: &'static str = "app-install";
+        const MODULE_NAME: &'static str = "Licensing.AppInstall";
+        const ENTITY_NAME: &'static str = "AppInstall";
     }
 
     #[test]
@@ -239,5 +255,44 @@ mod tests {
         assert_eq!(serde_json::from_str::<Unit>("null").unwrap(), Unit);
         // gRPC `Value` round-trips as the proto Unit.
         assert_eq!(Unit::from_value(&Unit.to_value()).unwrap(), Unit);
+    }
+
+    #[test]
+    fn command_builders_produce_ledger_api_commands() {
+        use canton_proto::com::daml::ledger::api::v2::command::Command as Cmd;
+
+        let app = AppInstall {
+            provider: Party::new("alice::1"),
+            amount: Numeric("1.00".to_string()),
+            tags: vec![],
+            note: None,
+        };
+
+        // create → CreateCommand with the SCU-friendly `#<package-name>` id and
+        // the payload as its create arguments.
+        let create = create_command(&app);
+        match create.command {
+            Some(Cmd::Create(c)) => {
+                let id = c.template_id.unwrap();
+                assert_eq!(id.package_id, "#app-install");
+                assert_eq!(id.module_name, "Licensing.AppInstall");
+                assert_eq!(id.entity_name, "AppInstall");
+                assert!(c.create_arguments.is_some(), "payload becomes create args");
+            }
+            _ => panic!("expected a Create command"),
+        }
+
+        // exercise → ExerciseCommand carrying the contract id, choice name, arg.
+        let cid: ContractId<AppInstall> = ContractId::new("00cid");
+        let exercise = exercise_command(&cid, &AppInstall_Accept);
+        match exercise.command {
+            Some(Cmd::Exercise(e)) => {
+                assert_eq!(e.contract_id, "00cid");
+                assert_eq!(e.choice, "Accept");
+                assert_eq!(e.template_id.unwrap().entity_name, "AppInstall");
+                assert!(e.choice_argument.is_some());
+            }
+            _ => panic!("expected an Exercise command"),
+        }
     }
 }

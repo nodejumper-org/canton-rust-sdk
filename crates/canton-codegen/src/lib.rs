@@ -273,6 +273,7 @@ mod tests {
             name: "AppInstall".to_string(),
             module_name: "Licensing.AppInstall".to_string(),
             package_id: "abc123".to_string(),
+            package_name: "app-install".to_string(),
             fields: vec![field("provider", DamlType::Party)],
             choices: vec![Choice {
                 name: "Accept".to_string(),
@@ -315,6 +316,10 @@ mod tests {
             src.contains("const ENTITY_NAME: &'static str = \"AppInstall\""),
             "{src}"
         );
+        assert!(
+            src.contains("const PACKAGE_NAME: &'static str = \"app-install\""),
+            "{src}"
+        );
     }
 
     #[test]
@@ -330,6 +335,7 @@ mod tests {
                 name: "AppInstall".to_string(),
                 module_name: "Licensing.AppInstall".to_string(),
                 package_id: "abc123".to_string(),
+                package_name: "app-install".to_string(),
                 fields: vec![field("provider", DamlType::Party)],
                 choices: vec![Choice {
                     name: "Accept".to_string(),

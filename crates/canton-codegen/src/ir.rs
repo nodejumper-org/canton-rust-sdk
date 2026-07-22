@@ -142,9 +142,13 @@ pub struct Template {
     /// The Daml module the template is defined in, dotted (e.g. `Splice.Amulet`).
     /// Part of the on-ledger template id.
     pub module_name: String,
-    /// The id (hash) of the package the template is defined in. The final part
-    /// of the on-ledger template id.
+    /// The id (hash) of the package the template is defined in. Pins the exact
+    /// template version in an on-ledger template id.
     pub package_id: String,
+    /// The Daml package **name** (e.g. `splice-amulet`), used for the
+    /// upgrade-friendly `#<package-name>` template-id form so the participant
+    /// resolves the vetted version under Smart Contract Upgrade.
+    pub package_name: String,
     /// The payload fields, in declaration order.
     pub fields: Vec<Field>,
     /// The choices exercisable on a contract of this template.

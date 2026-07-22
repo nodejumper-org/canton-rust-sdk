@@ -427,11 +427,13 @@ pub fn template(template: &Template) -> TokenStream {
 
     // The on-ledger identity: template id = package:module:entity.
     let package_id = &template.package_id;
+    let package_name = &template.package_name;
     let module_name = &template.module_name;
     let entity_name = &template.name;
     let template_impl = quote! {
         impl rt::Template for #self_ty {
             const PACKAGE_ID: &'static str = #package_id;
+            const PACKAGE_NAME: &'static str = #package_name;
             const MODULE_NAME: &'static str = #module_name;
             const ENTITY_NAME: &'static str = #entity_name;
         }

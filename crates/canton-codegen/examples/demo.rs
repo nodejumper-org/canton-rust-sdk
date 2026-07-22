@@ -24,6 +24,7 @@ fn main() {
         name: "AppInstall".to_string(),
         module_name: "Licensing.AppInstall".to_string(),
         package_id: "example".to_string(),
+        package_name: "quickstart-licensing".to_string(),
         fields: vec![
             field("provider", DamlType::Party),
             field("user", DamlType::Party),
