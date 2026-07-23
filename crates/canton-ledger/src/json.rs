@@ -270,6 +270,26 @@ async fn read_json<T: for<'de> Deserialize<'de>>(
     serde_json::from_str::<T>(&body).map_err(Error::from)
 }
 
+/// Upgrade an `http://` base URL to `https://` when TLS is configured.
+///
+/// Both JSON lanes select TLS by URL scheme: `reqwest` for HTTP, and
+/// [`ws_url`](crate::ws) (`http`→`ws`, `https`→`wss`) for WebSocket. So a
+/// `JsonClient` given an `http://` base URL together with `with_tls` would send
+/// plaintext HTTP with the certificates unused and open a `ws://` socket. This
+/// normalises the scheme so TLS is actually applied, matching the gRPC channel
+/// builder. Detection is case-insensitive; anything not `http://` (already
+/// `https://`, or another scheme) is left unchanged.
+fn upgrade_base_url_for_tls(base_url: &str) -> String {
+    if base_url
+        .get(..7)
+        .is_some_and(|s| s.eq_ignore_ascii_case("http://"))
+    {
+        format!("https://{}", &base_url[7..])
+    } else {
+        base_url.to_string()
+    }
+}
+
 impl JsonClient {
     /// Create a JSON client for `base_url` (e.g. `http://localhost:3975`), with
     /// no authentication. A trailing slash on `base_url` is tolerated.
@@ -291,6 +311,14 @@ impl JsonClient {
     /// private/self-signed server) and/or a client identity (mutual TLS). This
     /// is a terminal builder step — call it last, after [`Self::with_token`] /
     /// [`Self::with_oidc`].
+    ///
+    /// An `http://` base URL is normalised to `https://` so TLS is never
+    /// silently downgraded: `reqwest` selects TLS from the URL scheme (not from
+    /// the configured certificates), and the WebSocket lane maps `http`→`ws` /
+    /// `https`→`wss` the same way, so an `http://` base URL with `with_tls`
+    /// would otherwise send plaintext HTTP and open a `ws://` socket with the
+    /// certificates unused. Detection is case-insensitive, mirroring the gRPC
+    /// channel builder (`canton-core`'s `resolve_endpoint`).
     ///
     /// `TlsConfig::domain_name` is not applied here: `reqwest` derives SNI
     /// from the request URL (it is a gRPC/`tonic` knob).
@@ -317,6 +345,7 @@ impl JsonClient {
         self.http = builder
             .build()
             .map_err(|e| Error::InvalidRequest(format!("building the HTTPS client failed: {e}")))?;
+        self.base_url = upgrade_base_url_for_tls(&self.base_url);
         self.tls = Some(tls.clone());
         Ok(self)
     }
@@ -757,5 +786,31 @@ mod tests {
             JsonClient::new("https://localhost:3975").with_tls(&bad),
             Err(Error::InvalidRequest(_))
         ));
+    }
+
+    #[test]
+    fn with_tls_upgrades_an_http_base_url_to_https() {
+        // The security bug: `with_tls` on an http:// base URL would otherwise
+        // send plaintext HTTP (certs unused) and open a ws:// socket. The scheme
+        // must become https so both the reqwest and WebSocket lanes use TLS.
+        let client = JsonClient::new("http://localhost:3975")
+            .with_tls(&canton_core::TlsConfig::new())
+            .unwrap();
+        assert_eq!(client.base_url, "https://localhost:3975");
+
+        // Already-https is left untouched, and the check is case-insensitive.
+        assert_eq!(
+            upgrade_base_url_for_tls("https://host:443"),
+            "https://host:443"
+        );
+        assert_eq!(
+            upgrade_base_url_for_tls("HTTP://host:80"),
+            "https://host:80"
+        );
+        // Without TLS, plain http is preserved (no normalisation on `new`).
+        assert_eq!(
+            JsonClient::new("http://localhost:3975").base_url,
+            "http://localhost:3975"
+        );
     }
 }
