@@ -147,24 +147,51 @@ async fn run_json(
     let arguments = serde_json::to_value(request)?;
     let commands = JsonCommands::new(vec![party.to_string()]).add_create(template_id, arguments);
     let response = client.submit_and_wait_for_transaction(&commands).await?;
+    let created = json_created_contract_ids(&response.transaction.events);
     println!(
-        "submitted — update id {}, {} event(s), offset {}",
+        "submitted — update id {}, {} event(s), offset {}; created {:?}",
         response.transaction.update_id,
         response.transaction.events.len(),
         response.transaction.offset,
+        created,
     );
 
-    // query ACS.
+    // Confirm our specific contract, as the gRPC lane does. The JSON ACS is a
+    // *bounded* read (a `limit`, or the node returns 413), so on a busy party our
+    // fresh contract may fall outside the window; the committed transaction is
+    // read back reliably from the bounded update range `(offset - 1, offset]`.
+    let offset = response.transaction.offset;
+    let updates = client
+        .updates(vec![party.to_string()], offset - 1, Some(offset), Some(50))
+        .await?;
+    let found = created
+        .iter()
+        .any(|id| updates.iter().any(|update| update.to_string().contains(id)));
+    println!("read back — our create present: {found}");
+    assert!(found, "the committed transaction should contain our create");
+
+    // …and the ACS snapshot is a non-empty bounded read.
     let acs = client
-        .active_contracts(
-            vec![party.to_string()],
-            response.transaction.offset,
-            Some(200),
-        )
+        .active_contracts(vec![party.to_string()], offset, Some(200))
         .await?;
     println!("ACS: {} active contract(s)", acs.len());
     assert!(!acs.is_empty(), "the ACS snapshot should be non-empty");
     Ok(())
+}
+
+/// The contract ids created by a JSON transaction's events
+/// (`{"CreatedEvent": {"contractId": …}}`).
+fn json_created_contract_ids(events: &[serde_json::Value]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| {
+            event
+                .get("CreatedEvent")?
+                .get("contractId")?
+                .as_str()
+                .map(String::from)
+        })
+        .collect()
 }
 
 /// The contract ids created by a transaction's events.
