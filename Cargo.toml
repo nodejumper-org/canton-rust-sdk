@@ -3,7 +3,7 @@ resolver = "2"
 members  = ["crates/*"]
 
 [workspace.package]
-version      = "0.1.0"
+version      = "0.1.1"
 edition      = "2024"
 rust-version = "1.88"
 license      = "Apache-2.0"
@@ -16,11 +16,11 @@ keywords     = ["canton", "grpc", "ledger", "blockchain", "daml"]
 
 [workspace.dependencies]
 # internal crates (path = local build, version = published requirement)
-canton-proto  = { path = "crates/canton-proto",  version = "0.1.0" }
-canton-core   = { path = "crates/canton-core",   version = "0.1.0" }
-canton-auth   = { path = "crates/canton-auth",   version = "0.1.0" }
-canton-ledger = { path = "crates/canton-ledger", version = "0.1.0" }
-canton-admin  = { path = "crates/canton-admin",  version = "0.1.0" }
+canton-proto  = { path = "crates/canton-proto",  version = "0.1.1" }
+canton-core   = { path = "crates/canton-core",   version = "0.1.1" }
+canton-auth   = { path = "crates/canton-auth",   version = "0.1.1" }
+canton-ledger = { path = "crates/canton-ledger", version = "0.1.1" }
+canton-admin  = { path = "crates/canton-admin",  version = "0.1.1" }
 
 # external
 tonic        = { version = "0.14", default-features = false }

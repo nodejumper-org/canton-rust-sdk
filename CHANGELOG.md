@@ -9,6 +9,36 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-22
+
+Hardening patch over 0.1.0, from an adversarial pre-release review. Each fix has
+a regression test. Semver-compatible, so `^0.1` resolves to it.
+
+### Fixed
+
+- **`canton-core` (TLS):** `Config::with_tls` no longer connects in plaintext on
+  an `http://` endpoint. `tonic` selects the TLS handshake from the URI scheme,
+  not from the presence of a `tls_config`, so TLS was silently ignored (no
+  encryption, no server-certificate verification, no client certificate for
+  mutual TLS). The scheme is now normalised to `https://` when TLS is
+  configured, case-insensitively.
+- **`canton-ledger` (JSON and WebSocket TLS):** the same normalisation on
+  `JsonClient::with_tls`. An `http://` base URL previously sent plaintext HTTP
+  with the configured certificates unused and opened a `ws://` socket; the base
+  URL is now upgraded to `https://` so both the HTTP and WebSocket lanes use TLS.
+- **`canton-ledger` (JSON updates):** the JSON update stream now requests
+  `includeReassignments`, matching the gRPC transport. **Behaviour change:** a
+  JSON update stream now surfaces the assigned/unassigned reassignment events it
+  silently dropped before.
+- **`canton-auth`:** the cached-token TTL is clamped to 30 days, so a token
+  endpoint reporting an absurd `expires_in` can no longer overflow the cache
+  deadline and panic.
+- **`canton-core` (retry):** `Error::is_retriable` now treats the whole `5xx`
+  range as retriable (plus `408` and `429`), instead of a hand-picked subset
+  that missed codes such as `501`, `507`, `509`, `511`, and `520`.
+
+## [0.1.0] - 2026-07-20
+
 ### Added — Milestone 1: core Ledger API client, auth & PoC
 
 - **`canton`** — the SDK entry point: a thin facade (re-exports only, no
