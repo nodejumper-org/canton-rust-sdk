@@ -196,7 +196,11 @@ fn updates_request(parties: &[String], begin_exclusive: i64, end_inclusive: Opti
             "includeTransactions": {
                 "eventFormat": wildcard_event_format(parties),
                 "transactionShape": "TRANSACTION_SHAPE_LEDGER_EFFECTS",
-            }
+            },
+            // Match the gRPC lane (UpdateFormat.include_reassignments) so both
+            // transports return the same event set — otherwise the JSON lane
+            // silently drops Assigned/Unassigned reassignment updates.
+            "includeReassignments": wildcard_event_format(parties),
         }
     });
     if let Some(end) = end_inclusive {
@@ -639,6 +643,26 @@ impl JsonClient {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn updates_request_matches_grpc_and_includes_reassignments() {
+        let parties = vec!["alice::1".to_string()];
+        let body = updates_request(&parties, 10, Some(20));
+        assert_eq!(body["beginExclusive"], 10);
+        assert_eq!(body["endInclusive"], 20);
+        let fmt = &body["updateFormat"];
+        // Both sub-formats present — same event set as the gRPC lane, which sets
+        // include_transactions AND include_reassignments.
+        assert!(fmt["includeTransactions"].is_object(), "{body}");
+        assert!(
+            fmt["includeReassignments"].is_object(),
+            "reassignments must be requested, or the JSON lane drops them: {body}"
+        );
+        assert_eq!(
+            fmt["includeTransactions"]["transactionShape"],
+            "TRANSACTION_SHAPE_LEDGER_EFFECTS"
+        );
+    }
 
     #[test]
     fn commands_serialize_to_the_json_api_shape() {

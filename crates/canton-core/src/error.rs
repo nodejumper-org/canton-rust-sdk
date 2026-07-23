@@ -93,7 +93,7 @@ impl Error {
                 status.code(),
                 Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
             ),
-            Error::Http { status, .. } => matches!(status, 408 | 429 | 500 | 502 | 503 | 504),
+            Error::Http { status, .. } => matches!(status, 408 | 429 | 500..=599),
             _ => false,
         }
     }
@@ -201,7 +201,11 @@ mod tests {
 
     #[test]
     fn transient_http_codes_are_retriable_but_client_codes_are_not() {
-        for status in [408, 429, 500, 502, 503, 504] {
+        // The whole 5xx range is transient (per the doc), plus 408/429 — not just
+        // a hand-picked subset. 501/509/511/520 were previously missed.
+        for status in [
+            408, 429, 500, 501, 502, 503, 504, 507, 509, 511, 520, 527, 599,
+        ] {
             assert!(
                 Error::Http {
                     status,
@@ -211,7 +215,8 @@ mod tests {
                 "http {status} should be retriable"
             );
         }
-        for status in [400, 401, 403, 404, 409] {
+        // 4xx (incl. the JSON API's 413 too-large) stay non-retriable.
+        for status in [400, 401, 403, 404, 409, 413, 422] {
             assert!(
                 !Error::Http {
                     status,

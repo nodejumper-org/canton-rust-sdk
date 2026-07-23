@@ -220,16 +220,17 @@ impl Config {
     /// Build a lazily-connected gRPC [`Channel`] for this configuration.
     ///
     /// Returns immediately; the TCP/TLS handshake happens on the first RPC. TLS
-    /// is applied when [`Config::with_tls`] was set or the endpoint is `https`.
+    /// is applied when [`Config::with_tls`] was set or the endpoint is `https`;
+    /// a `with_tls` endpoint given as `http://` is normalised to `https://` so
+    /// TLS is never silently downgraded (see [`resolve_endpoint`]).
     ///
     /// # Errors
     /// Returns [`Error::InvalidRequest`] if the endpoint URI or the TLS
     /// configuration is invalid.
     pub fn connect_channel(&self) -> Result<Channel> {
-        let mut endpoint = Endpoint::from_shared(self.endpoint.clone())
-            .map_err(|e| {
-                Error::InvalidRequest(format!("invalid endpoint uri {:?}: {e}", self.endpoint))
-            })?
+        let (uri, want_tls) = resolve_endpoint(&self.endpoint, self.tls.is_some());
+        let mut endpoint = Endpoint::from_shared(uri.clone())
+            .map_err(|e| Error::InvalidRequest(format!("invalid endpoint uri {uri:?}: {e}")))?
             .timeout(self.timeout.unwrap_or(Duration::from_secs(30)))
             .connect_timeout(Duration::from_secs(10))
             .http2_keep_alive_interval(Duration::from_secs(30))
@@ -238,12 +239,81 @@ impl Config {
             .tcp_keepalive(Some(Duration::from_secs(60)))
             .tcp_nodelay(true);
 
-        if self.tls.is_some() || self.endpoint.starts_with("https") {
+        if want_tls {
             endpoint = endpoint
                 .tls_config(build_tls(self.tls.as_ref()))
                 .map_err(|e| Error::InvalidRequest(format!("invalid TLS config: {e}")))?;
         }
 
         Ok(endpoint.connect_lazy())
+    }
+}
+
+/// Resolve the effective endpoint URI and whether TLS should be attached.
+///
+/// `tonic` gates the TLS handshake on the URI **scheme**, not on the presence of
+/// a `tls_config` — so attaching TLS to an `http://` endpoint is silently ignored
+/// and the connection runs in plaintext (no encryption, no server-cert
+/// verification, no client cert). When TLS is configured — or the endpoint is
+/// already `https` — the scheme is normalised to `https` so TLS is actually
+/// applied. Scheme detection is case-insensitive (tonic lowercases the parsed
+/// scheme, so `HTTPS://…` must be treated as `https`).
+fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
+    let is_https = endpoint
+        .get(..8)
+        .is_some_and(|s| s.eq_ignore_ascii_case("https://"));
+    let is_http = endpoint
+        .get(..7)
+        .is_some_and(|s| s.eq_ignore_ascii_case("http://"));
+    let want_tls = tls_configured || is_https;
+    if want_tls && is_http {
+        (format!("https://{}", &endpoint[7..]), true)
+    } else {
+        (endpoint.to_string(), want_tls)
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::bool_assert_comparison)]
+mod tests {
+    use super::resolve_endpoint;
+
+    #[test]
+    fn with_tls_on_http_endpoint_is_upgraded_to_https() {
+        // The security bug: `with_tls` on an http:// endpoint would otherwise
+        // connect in plaintext. It must become https so TLS is applied.
+        let (uri, tls) = resolve_endpoint("http://host:5001", true);
+        assert_eq!(uri, "https://host:5001");
+        assert_eq!(tls, true);
+    }
+
+    #[test]
+    fn https_scheme_detection_is_case_insensitive() {
+        // `HTTPS://` (no explicit with_tls) must still get TLS — tonic sees the
+        // lowercased scheme and would otherwise error on an https URI with no TLS.
+        let (uri, tls) = resolve_endpoint("HTTPS://host:443", false);
+        assert_eq!(uri, "HTTPS://host:443");
+        assert_eq!(tls, true);
+    }
+
+    #[test]
+    fn plain_http_without_tls_stays_plaintext() {
+        let (uri, tls) = resolve_endpoint("http://host:3901", false);
+        assert_eq!(uri, "http://host:3901");
+        assert_eq!(tls, false);
+    }
+
+    #[test]
+    fn https_without_explicit_tls_wants_tls() {
+        let (uri, tls) = resolve_endpoint("https://host:443", false);
+        assert_eq!(uri, "https://host:443");
+        assert_eq!(tls, true);
+    }
+
+    #[test]
+    fn uppercase_http_with_tls_is_upgraded() {
+        let (uri, tls) = resolve_endpoint("HTTP://host:5001", true);
+        assert_eq!(uri, "https://host:5001");
+        assert_eq!(tls, true);
     }
 }
