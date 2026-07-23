@@ -222,7 +222,7 @@ impl Config {
     /// Returns immediately; the TCP/TLS handshake happens on the first RPC. TLS
     /// is applied when [`Config::with_tls`] was set or the endpoint is `https`;
     /// a `with_tls` endpoint given as `http://` is normalised to `https://` so
-    /// TLS is never silently downgraded (see [`resolve_endpoint`]).
+    /// TLS is never silently downgraded (see the private `resolve_endpoint`).
     ///
     /// # Errors
     /// Returns [`Error::InvalidRequest`] if the endpoint URI or the TLS
