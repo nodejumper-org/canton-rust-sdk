@@ -182,7 +182,38 @@ mod tests {
         assert!(src.contains("impl rt::ToValue for Payload"), "{src}");
         assert!(src.contains("impl rt::FromValue for Payload"), "{src}");
         assert!(src.contains("rt::record("), "{src}");
-        assert!(src.contains("rt::record_field(value, \"owner\")"), "{src}");
+        // Fields decode by label *and* declaration index, so non-verbose
+        // (label-less) records bind positionally.
+        assert!(
+            src.contains("rt::required_field(value, 0usize, \"owner\")"),
+            "{src}"
+        );
+    }
+
+    #[test]
+    fn optional_fields_decode_as_absent_tolerant() {
+        // Canton normalizes records by dropping trailing empty-Optional fields;
+        // an Optional field must therefore decode through `optional_field` (an
+        // absent field is `None`), while required fields stay strict.
+        let record = Record {
+            name: "Payload".to_string(),
+            type_params: Vec::new(),
+            fields: vec![
+                field("owner", DamlType::Party),
+                field("note", DamlType::Optional(Box::new(DamlType::Text))),
+            ],
+        };
+
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(
+            src.contains("rt::optional_field(value, 1usize, \"note\")"),
+            "{src}"
+        );
+        assert!(
+            src.contains("rt::required_field(value, 0usize, \"owner\")"),
+            "{src}"
+        );
     }
 
     #[test]

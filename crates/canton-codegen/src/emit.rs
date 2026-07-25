@@ -204,6 +204,11 @@ pub fn record_items(record: &Record) -> TokenStream {
 /// Emit the `ToValue`/`FromValue` impls mapping a record to a Ledger API
 /// `Record` value (each field keyed by its Daml label). Generic records get the
 /// impls too, bounded by the trait on every type parameter.
+///
+/// Decoding is robust to the two shapes Canton legitimately produces: fields
+/// are located by label *or* declaration index (non-verbose output omits
+/// labels), and an absent `Optional` field decodes as `None` (normalized
+/// records omit trailing empty optionals under Smart Contract Upgrade).
 fn record_codecs(record: &Record) -> TokenStream {
     let name = type_ident(&record.name);
     let to_fields = record.fields.iter().map(|field| {
@@ -211,10 +216,15 @@ fn record_codecs(record: &Record) -> TokenStream {
         let ident = field_ident(&field.label);
         quote! { (#label, rt::ToValue::to_value(&self.#ident)), }
     });
-    let from_fields = record.fields.iter().map(|field| {
+    let from_fields = record.fields.iter().enumerate().map(|(index, field)| {
         let label = &field.label;
         let ident = field_ident(&field.label);
-        quote! { #ident: rt::FromValue::from_value(rt::record_field(value, #label)?)?, }
+        if matches!(field.ty, DamlType::Optional(_)) {
+            // Absent (normalized-away) optional fields decode as `None`.
+            quote! { #ident: rt::optional_field(value, #index, #label)?, }
+        } else {
+            quote! { #ident: rt::FromValue::from_value(rt::required_field(value, #index, #label)?)?, }
+        }
     });
 
     let (impl_generics, ty, to_where) =

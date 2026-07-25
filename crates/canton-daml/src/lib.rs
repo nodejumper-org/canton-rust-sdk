@@ -23,8 +23,9 @@ pub use primitives::{
 };
 pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{
-    FromValue, ToValue, ValueError, enum_constructor, enum_value, record, record_field,
-    unexpected_constructor, unit_value, variant_parts, variant_value,
+    AbsentField, FromValue, ToValue, ValueError, enum_constructor, enum_value, find_field,
+    optional_field, record, record_field, required_field, unexpected_constructor, unit_value,
+    variant_parts, variant_value,
 };
 
 /// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
@@ -71,10 +72,10 @@ mod tests {
     impl FromValue for AppInstall {
         fn from_value(value: &Value) -> Result<Self, ValueError> {
             Ok(Self {
-                provider: FromValue::from_value(record_field(value, "provider")?)?,
-                amount: FromValue::from_value(record_field(value, "amount")?)?,
-                tags: FromValue::from_value(record_field(value, "tags")?)?,
-                note: FromValue::from_value(record_field(value, "note")?)?,
+                provider: FromValue::from_value(required_field(value, 0, "provider")?)?,
+                amount: FromValue::from_value(required_field(value, 1, "amount")?)?,
+                tags: FromValue::from_value(required_field(value, 2, "tags")?)?,
+                note: optional_field(value, 3, "note")?,
             })
         }
     }
@@ -404,5 +405,73 @@ mod tests {
             }
             _ => panic!("expected an Exercise command on the interface"),
         }
+    }
+
+    // ---- record decode robustness (Canton wire shapes) ----------------------
+
+    /// A record value as Canton emits it: `labelled` chooses verbose (labels
+    /// present) vs non-verbose (labels empty), `take` truncates trailing fields
+    /// the way record normalization drops empty optionals.
+    fn wire_record(labelled: bool, take: usize) -> Value {
+        use canton_proto::com::daml::ledger::api::v2 as pb;
+        let sample = AppInstall {
+            provider: Party::new("p::1"),
+            amount: Numeric("1.5".to_string()),
+            tags: vec!["a".to_string()],
+            note: None,
+        };
+        let Some(pb::value::Sum::Record(mut record)) = sample.to_value().sum else {
+            panic!("record expected");
+        };
+        record.fields.truncate(take);
+        if !labelled {
+            for field in &mut record.fields {
+                field.label = String::new();
+            }
+        }
+        Value {
+            sum: Some(pb::value::Sum::Record(record)),
+        }
+    }
+
+    #[test]
+    fn decodes_verbose_records_by_label() {
+        let decoded = AppInstall::from_value(&wire_record(true, 4)).unwrap();
+        assert_eq!(decoded.provider, Party::new("p::1"));
+        assert_eq!(decoded.note, None);
+    }
+
+    #[test]
+    fn decodes_non_verbose_records_by_position() {
+        // Non-verbose output omits every label; fields bind by declaration index.
+        let decoded = AppInstall::from_value(&wire_record(false, 4)).unwrap();
+        assert_eq!(decoded.provider, Party::new("p::1"));
+        assert_eq!(decoded.tags, vec!["a".to_string()]);
+    }
+
+    #[test]
+    fn decodes_normalized_records_with_trailing_optionals_dropped() {
+        // Record normalization (Smart Contract Upgrade) drops trailing fields
+        // whose value is an empty Optional — in both verbose and non-verbose
+        // shapes the absent `note` must decode as `None`, not error.
+        for labelled in [true, false] {
+            let decoded = AppInstall::from_value(&wire_record(labelled, 3)).unwrap();
+            assert_eq!(decoded.note, None, "labelled={labelled}");
+            assert_eq!(
+                decoded.amount,
+                Numeric("1.5".to_string()),
+                "labelled={labelled}"
+            );
+        }
+    }
+
+    #[test]
+    fn missing_required_field_is_an_error_naming_the_field() {
+        // Truncating past the optional tail removes the required `tags` field.
+        let error = AppInstall::from_value(&wire_record(true, 2)).unwrap_err();
+        assert!(
+            error.message.contains("tags"),
+            "error should name the missing field: {error}"
+        );
     }
 }

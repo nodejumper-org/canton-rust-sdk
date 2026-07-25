@@ -97,6 +97,97 @@ pub fn record_field<'a>(value: &'a pb::Value, label: &str) -> Result<&'a pb::Val
     }
 }
 
+/// Locate a record field by **label or declaration position**, tolerating the
+/// two shapes Canton legitimately produces:
+///
+/// - **non-verbose** output omits labels entirely — the field is matched by its
+///   declaration `index`;
+/// - **normalized** records (Smart Contract Upgrade) omit trailing fields whose
+///   value is an empty `Optional` — the field is *absent*, which is `Ok(None)`
+///   here so an `Optional`-typed field can decode as `None`.
+///
+/// Labels win when present; position applies only to unlabelled fields, so a
+/// verbose record whose trailing fields were normalized away never mis-binds.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not a record.
+pub fn find_field<'a>(
+    value: &'a pb::Value,
+    index: usize,
+    label: &str,
+) -> Result<Option<&'a pb::Value>, ValueError> {
+    match sum(value)? {
+        pb::value::Sum::Record(record) => {
+            if let Some(field) = record
+                .fields
+                .iter()
+                .find(|field| !field.label.is_empty() && field.label == label)
+            {
+                return Ok(field.value.as_ref());
+            }
+            if let Some(field) = record.fields.get(index)
+                && field.label.is_empty()
+            {
+                return Ok(field.value.as_ref());
+            }
+            Ok(None)
+        }
+        other => Err(mismatch("Record", other)),
+    }
+}
+
+/// [`find_field`] for a field the type requires: absence is an error naming the
+/// field. Generated `FromValue` impls call this for non-`Optional` fields.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not a record or the field is absent.
+pub fn required_field<'a>(
+    value: &'a pb::Value,
+    index: usize,
+    label: &str,
+) -> Result<&'a pb::Value, ValueError> {
+    find_field(value, index, label)?
+        .ok_or_else(|| ValueError::new(format!("record has no field `{label}` (index {index})")))
+}
+
+/// Decode an `Optional`-typed record field, treating an **absent** field as
+/// `None`: Canton normalizes records by dropping trailing empty-`Optional`
+/// fields, so absence of an optional field is a legitimate wire shape, not an
+/// error. Generated `FromValue` impls call this for `Optional` fields.
+///
+/// # Errors
+/// Returns [`ValueError`] if `value` is not a record or the present field's
+/// shape does not match `T`.
+pub fn optional_field<T: FromValue + AbsentField>(
+    value: &pb::Value,
+    index: usize,
+    label: &str,
+) -> Result<T, ValueError> {
+    match find_field(value, index, label)? {
+        Some(present) => T::from_value(present),
+        None => Ok(T::absent()),
+    }
+}
+
+/// The decoded form of an **absent** optional record field (`None`).
+/// Implemented by the two Rust spellings of a Daml `Optional` field.
+pub trait AbsentField {
+    /// The value an absent field decodes to.
+    fn absent() -> Self;
+}
+
+impl<T> AbsentField for Option<T> {
+    fn absent() -> Self {
+        None
+    }
+}
+
+impl<T> AbsentField for NestedOpt<T> {
+    fn absent() -> Self {
+        NestedOpt(None)
+    }
+}
+
 // ---- enum / variant helpers (used by generated ToValue/FromValue) ----------
 
 /// A `Unit` value — a nullary variant constructor's payload.

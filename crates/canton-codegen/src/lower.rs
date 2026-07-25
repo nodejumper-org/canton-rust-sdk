@@ -96,15 +96,13 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
                 errors.push(LowerError::new("unresolved module name"));
                 continue;
             };
-            let mut ir_module = lowering.module(lf_module, &dotted, &mut errors);
+            let ir_module = lowering.module(lf_module, &dotted, &mut errors);
             if !ir_module.data_types.is_empty()
                 || !ir_module.templates.is_empty()
                 || !ir_module.interfaces.is_empty()
             {
-                let module_name = dotted.replace('.', "_");
-                box_self_recursion(&mut ir_module, &module_names[id.as_str()], &module_name);
                 package_module.modules.push(NamedModule {
-                    name: module_name,
+                    name: dotted.replace('.', "_"),
                     module: ir_module,
                 });
             }
@@ -113,6 +111,10 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
             krate.packages.push(package_module);
         }
     }
+
+    // With every package lowered, break containment cycles crate-wide (direct,
+    // Optional-wrapped, mutual, cross-module, and generic-instantiation ones).
+    box_recursion(&mut krate);
 
     (krate, errors)
 }
@@ -138,6 +140,7 @@ pub fn lower_package(package: &lf::Package) -> (Module, Vec<LowerError>) {
             }
         }
     }
+    box_recursion_local(&mut module);
     (module, errors)
 }
 
@@ -595,49 +598,192 @@ impl Lowering<'_> {
     }
 }
 
-/// Box the top-level references a data type makes to *itself*, giving directly
-/// recursive types the indirection Rust requires (Daml permits a type to contain
-/// itself directly; Rust needs a `Box`). Self-references already behind a
-/// `List` / `Optional` / map have indirection and are left alone.
-fn box_self_recursion(module: &mut Module, package_module: &str, module_name: &str) {
-    for data_type in &mut module.data_types {
+// ---- recursion breaking -----------------------------------------------------
+//
+// Daml permits arbitrarily recursive data types; Rust requires indirection on
+// every cycle. `Vec` / `BTreeMap` / `GenMap` heap-allocate and so break cycles,
+// but `Option<T>` stores `T` **inline** — `Optional` recursion (`data Tree =
+// Node { left : Optional Tree }`), mutual recursion (`A` ↔ `B`, including
+// across modules), and recursion through a generic instantiation (`Wrap T`
+// where `Wrap a` stores `a` inline) all need a `Box`, or the generated crate
+// fails to compile (E0072). `Box` is transparent to both codecs, so boxing is
+// always safe; the pass below is therefore deliberately conservative — it may
+// box an occurrence that a finer analysis could leave bare, but it can never
+// produce an infinitely-sized type.
+
+/// Break every containment cycle in the crate by boxing the reference
+/// occurrences that close one.
+///
+/// A type "inline-contains" the types its fields reach without crossing heap
+/// indirection: through `Optional`, and through the *arguments* of a named-type
+/// reference (a generic target may store its parameter inline — assumed
+/// conservatively). `List` / `TextMap` / `GenMap` / `Boxed` stop containment
+/// (heap), as does `ContractId` (a phantom-typed id, it does not contain its
+/// payload). Every reference occurrence whose target can inline-reach back to
+/// the type that holds the field is wrapped in [`DamlType::Boxed`].
+fn box_recursion(krate: &mut Crate) {
+    // Pass 1: the inline-containment graph, node = fully-qualified path key.
+    let mut edges: HashMap<String, Vec<String>> = HashMap::new();
+    for package in &krate.packages {
+        for module in &package.modules {
+            let at = |name: &str| path_key_for(&package.name, &module.name, name);
+            module_containment_edges(&module.module, &at, &mut edges);
+        }
+    }
+
+    // Pass 2: box every reference occurrence that closes a cycle back to the
+    // type holding it.
+    for package in &mut krate.packages {
+        let package_name = package.name.clone();
+        for module in &mut package.modules {
+            let module_name = module.name.clone();
+            let at = |name: &str| path_key_for(&package_name, &module_name, name);
+            module_box_cycles(&mut module.module, &at, &edges);
+        }
+    }
+}
+
+/// [`box_recursion`] for a flat single-module lowering, where references are
+/// local (single-segment) paths and the graph key is the bare type name.
+fn box_recursion_local(module: &mut Module) {
+    let at = |name: &str| name.to_string();
+    let mut edges: HashMap<String, Vec<String>> = HashMap::new();
+    module_containment_edges(module, &at, &mut edges);
+    module_box_cycles(module, &at, &edges);
+}
+
+/// Pass 1 for one module: record which reference keys each declared type
+/// inline-contains. `at` maps a declared type name to its graph key.
+fn module_containment_edges(
+    module: &Module,
+    at: &impl Fn(&str) -> String,
+    edges: &mut HashMap<String, Vec<String>>,
+) {
+    for data_type in &module.data_types {
         match data_type {
             DataType::Record(record) => {
-                let self_path = self_path(package_module, module_name, &record.name);
-                for field in &mut record.fields {
-                    box_if_self(&mut field.ty, &self_path);
+                let node = edges.entry(at(&record.name)).or_default();
+                for field in &record.fields {
+                    collect_inline_refs(&field.ty, node);
                 }
             }
             DataType::Variant(variant) => {
-                let self_path = self_path(package_module, module_name, &variant.name);
-                for constructor in &mut variant.constructors {
-                    if let Some(payload) = &mut constructor.payload {
-                        box_if_self(payload, &self_path);
+                let node = edges.entry(at(&variant.name)).or_default();
+                for constructor in &variant.constructors {
+                    if let Some(payload) = &constructor.payload {
+                        collect_inline_refs(payload, node);
                     }
                 }
             }
             DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
         }
     }
+    // Template payloads are types too (other types may reference them).
+    for template in &module.templates {
+        let node = edges.entry(at(&template.name)).or_default();
+        for field in &template.fields {
+            collect_inline_refs(&field.ty, node);
+        }
+    }
 }
 
-/// The fully-qualified path a data type refers to itself by.
-fn self_path(package_module: &str, module_name: &str, type_name: &str) -> Vec<String> {
-    vec![
-        "crate".to_string(),
-        package_module.to_string(),
-        module_name.to_string(),
-        type_name.to_string(),
-    ]
+/// Pass 2 for one module: box every cycle-closing reference occurrence.
+fn module_box_cycles(
+    module: &mut Module,
+    at: &impl Fn(&str) -> String,
+    edges: &HashMap<String, Vec<String>>,
+) {
+    for data_type in &mut module.data_types {
+        match data_type {
+            DataType::Record(record) => {
+                let holder = at(&record.name);
+                for field in &mut record.fields {
+                    box_cycle_closers(&mut field.ty, &holder, edges);
+                }
+            }
+            DataType::Variant(variant) => {
+                let holder = at(&variant.name);
+                for constructor in &mut variant.constructors {
+                    if let Some(payload) = &mut constructor.payload {
+                        box_cycle_closers(payload, &holder, edges);
+                    }
+                }
+            }
+            DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+        }
+    }
+    for template in &mut module.templates {
+        let holder = at(&template.name);
+        for field in &mut template.fields {
+            box_cycle_closers(&mut field.ty, &holder, edges);
+        }
+    }
 }
 
-/// Wrap `ty` in a `Box` if it is a direct reference to `self_path`.
-fn box_if_self(ty: &mut DamlType, self_path: &[String]) {
-    if let DamlType::Ref(reference) = ty
-        && reference.path == self_path
-    {
-        let inner = std::mem::replace(ty, DamlType::Unit);
-        *ty = DamlType::Boxed(Box::new(inner));
+/// The graph key of a type declared in (`package`, `module`) — the same shape
+/// [`Lowering::con_path`] resolves references to, joined.
+fn path_key_for(package_module: &str, module_name: &str, type_name: &str) -> String {
+    format!("crate::{package_module}::{module_name}::{type_name}")
+}
+
+/// The graph key of a reference occurrence. Local (unqualified) references have
+/// a single segment; qualified ones are `crate::pkg::module::Type`.
+fn path_key_of(reference: &TypeRef) -> String {
+    reference.path.join("::")
+}
+
+/// Collect into `out` the reference keys `ty` reaches inline (without crossing
+/// heap indirection).
+fn collect_inline_refs(ty: &DamlType, out: &mut Vec<String>) {
+    match ty {
+        DamlType::Optional(inner) => collect_inline_refs(inner, out),
+        DamlType::Ref(reference) => {
+            out.push(path_key_of(reference));
+            // A generic target may store its arguments inline (conservative).
+            for arg in &reference.args {
+                collect_inline_refs(arg, out);
+            }
+        }
+        // Heap containers / phantom ids stop inline containment; the rest of
+        // the leaf types contain no references.
+        _ => {}
+    }
+}
+
+/// True if `from` can reach `to` through the inline-containment graph.
+fn inline_reaches(edges: &HashMap<String, Vec<String>>, from: &str, to: &str) -> bool {
+    let mut stack = vec![from];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(node) = stack.pop() {
+        if node == to {
+            return true;
+        }
+        if seen.insert(node)
+            && let Some(next) = edges.get(node)
+        {
+            stack.extend(next.iter().map(String::as_str));
+        }
+    }
+    false
+}
+
+/// Box, in place, every reference occurrence inside `ty` (at an inline
+/// position) whose target inline-reaches `holder` — i.e. every occurrence that
+/// closes a containment cycle.
+fn box_cycle_closers(ty: &mut DamlType, holder: &str, edges: &HashMap<String, Vec<String>>) {
+    match ty {
+        DamlType::Optional(inner) => box_cycle_closers(inner, holder, edges),
+        DamlType::Ref(reference) => {
+            for arg in &mut reference.args {
+                box_cycle_closers(arg, holder, edges);
+            }
+            let key = path_key_of(reference);
+            if key == holder || inline_reaches(edges, &key, holder) {
+                let inner = std::mem::replace(ty, DamlType::Unit);
+                *ty = DamlType::Boxed(Box::new(inner));
+            }
+        }
+        _ => {}
     }
 }
 
@@ -664,6 +810,174 @@ fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, 
 mod tests {
     use super::*;
     use canton_lf::Dar;
+
+    // ---- recursion breaking (always-on, pure IR) ---------------------------
+
+    fn qualified(name: &str) -> DamlType {
+        DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg_1_0_0".to_string(),
+                "Mod".to_string(),
+                name.to_string(),
+            ],
+            args: vec![],
+        })
+    }
+
+    fn record(name: &str, fields: Vec<(&str, DamlType)>) -> DataType {
+        DataType::Record(Record {
+            name: name.to_string(),
+            type_params: vec![],
+            fields: fields
+                .into_iter()
+                .map(|(label, ty)| Field {
+                    label: label.to_string(),
+                    ty,
+                })
+                .collect(),
+        })
+    }
+
+    fn crate_of(data_types: Vec<DataType>) -> Crate {
+        Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        ..Module::default()
+                    },
+                }],
+            }],
+        }
+    }
+
+    fn field_ty(krate: &Crate, type_index: usize, field_index: usize) -> &DamlType {
+        match &krate.packages[0].modules[0].module.data_types[type_index] {
+            DataType::Record(record) => &record.fields[field_index].ty,
+            other => panic!("expected a record, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optional_self_recursion_is_boxed() {
+        // data Tree = Node { left : Optional Tree } — `Option<Tree>` stores the
+        // payload inline, so without a Box the generated struct is E0072.
+        let mut krate = crate_of(vec![record(
+            "Tree",
+            vec![
+                ("left", DamlType::Optional(Box::new(qualified("Tree")))),
+                ("size", DamlType::Int64),
+            ],
+        )]);
+        box_recursion(&mut krate);
+        assert_eq!(
+            field_ty(&krate, 0, 0),
+            &DamlType::Optional(Box::new(DamlType::Boxed(Box::new(qualified("Tree"))))),
+        );
+        // Non-recursive fields are untouched.
+        assert_eq!(field_ty(&krate, 0, 1), &DamlType::Int64);
+    }
+
+    #[test]
+    fn mutual_recursion_is_boxed() {
+        // data A = A { b : B }; data B = B { a : Optional A } — the cycle is
+        // A → B → A; every occurrence that closes it must be boxed.
+        let mut krate = crate_of(vec![
+            record("A", vec![("b", qualified("B"))]),
+            record(
+                "B",
+                vec![("a", DamlType::Optional(Box::new(qualified("A"))))],
+            ),
+        ]);
+        box_recursion(&mut krate);
+        assert_eq!(
+            field_ty(&krate, 0, 0),
+            &DamlType::Boxed(Box::new(qualified("B")))
+        );
+        assert_eq!(
+            field_ty(&krate, 1, 0),
+            &DamlType::Optional(Box::new(DamlType::Boxed(Box::new(qualified("A"))))),
+        );
+    }
+
+    #[test]
+    fn generic_instantiation_recursion_is_boxed() {
+        // data T = T { w : Wrap T } — Wrap may store its parameter inline, so
+        // the argument occurrence is (conservatively) boxed: Wrap<Box<T>>.
+        let wrap_of_t = DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg_1_0_0".to_string(),
+                "Mod".to_string(),
+                "Wrap".to_string(),
+            ],
+            args: vec![qualified("T")],
+        });
+        let mut krate = crate_of(vec![
+            DataType::Record(Record {
+                name: "Wrap".to_string(),
+                type_params: vec!["a".to_string()],
+                fields: vec![Field {
+                    label: "w".to_string(),
+                    ty: DamlType::Var("a".to_string()),
+                }],
+            }),
+            record("T", vec![("w", wrap_of_t)]),
+        ]);
+        box_recursion(&mut krate);
+        let DamlType::Ref(reference) = field_ty(&krate, 1, 0) else {
+            panic!("outer Wrap reference must stay a Ref");
+        };
+        assert_eq!(
+            reference.args[0],
+            DamlType::Boxed(Box::new(qualified("T"))),
+            "the recursive argument occurrence is boxed"
+        );
+    }
+
+    #[test]
+    fn heap_containers_already_break_cycles() {
+        // Vec/TextMap/GenMap heap-allocate; recursion through them needs no Box.
+        let mut krate = crate_of(vec![record(
+            "Tree",
+            vec![
+                ("children", DamlType::List(Box::new(qualified("Tree")))),
+                ("index", DamlType::TextMap(Box::new(qualified("Tree")))),
+            ],
+        )]);
+        let before = krate.clone();
+        box_recursion(&mut krate);
+        assert_eq!(krate, before, "heap-indirected recursion is left alone");
+    }
+
+    #[test]
+    fn flat_lowering_path_boxes_recursion_too() {
+        // lower_package (local references) must break cycles as well.
+        let mut module = Module {
+            data_types: vec![DataType::Record(Record {
+                name: "Tree".to_string(),
+                type_params: vec![],
+                fields: vec![Field {
+                    label: "next".to_string(),
+                    ty: DamlType::Optional(Box::new(DamlType::Ref(TypeRef::local("Tree", vec![])))),
+                }],
+            })],
+            ..Module::default()
+        };
+        box_recursion_local(&mut module);
+        let DataType::Record(record) = &module.data_types[0] else {
+            panic!("record expected");
+        };
+        assert_eq!(
+            record.fields[0].ty,
+            DamlType::Optional(Box::new(DamlType::Boxed(Box::new(DamlType::Ref(
+                TypeRef::local("Tree", vec![])
+            ))))),
+        );
+    }
 
     #[test]
     fn lowers_a_real_dar_to_a_qualified_crate() {

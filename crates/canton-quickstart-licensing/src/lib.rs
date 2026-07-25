@@ -29,7 +29,9 @@ pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
         impl rt::FromValue for ArithmeticError {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::record_field(value, "message")?)?,
+                    message: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "message",
+                    )?)?,
                 })
             }
         }
@@ -56,7 +58,9 @@ pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
         impl rt::FromValue for AssertionFailed {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::record_field(value, "message")?)?,
+                    message: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "message",
+                    )?)?,
                 })
             }
         }
@@ -83,7 +87,9 @@ pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
         impl rt::FromValue for GeneralError {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::record_field(value, "message")?)?,
+                    message: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "message",
+                    )?)?,
                 })
             }
         }
@@ -110,7 +116,9 @@ pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
         impl rt::FromValue for PreconditionFailed {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::record_field(value, "message")?)?,
+                    message: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "message",
+                    )?)?,
                 })
             }
         }
@@ -192,8 +200,8 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
                 })
             }
         }
@@ -232,9 +240,9 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
                 })
             }
         }
@@ -279,10 +287,10 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
                 })
             }
         }
@@ -333,11 +341,11 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
                 })
             }
         }
@@ -394,12 +402,12 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
                 })
             }
         }
@@ -462,13 +470,13 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
                 })
             }
         }
@@ -537,14 +545,14 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
                 })
             }
         }
@@ -620,15 +628,15 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
                 })
             }
         }
@@ -711,16 +719,16 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
                 })
             }
         }
@@ -809,17 +817,17 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
                 })
             }
         }
@@ -914,18 +922,18 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
                 })
             }
         }
@@ -1026,19 +1034,19 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
                 })
             }
         }
@@ -1145,20 +1153,20 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
                 })
             }
         }
@@ -1271,21 +1279,21 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
                 })
             }
         }
@@ -1404,22 +1412,22 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::record_field(value, "_16")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
                 })
             }
         }
@@ -1563,23 +1571,23 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::record_field(value, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::record_field(value, "_17")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
                 })
             }
         }
@@ -1769,24 +1777,24 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::record_field(value, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::record_field(value, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::record_field(value, "_18")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
                 })
             }
         }
@@ -1985,25 +1993,25 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::record_field(value, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::record_field(value, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::record_field(value, "_18")?)?,
-                    _19: rt::FromValue::from_value(rt::record_field(value, "_19")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
+                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)?,
                 })
             }
         }
@@ -2251,26 +2259,26 @@ pub mod daml_prim_DA_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::record_field(value, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::record_field(value, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::record_field(value, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::record_field(value, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::record_field(value, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::record_field(value, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::record_field(value, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::record_field(value, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::record_field(value, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::record_field(value, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::record_field(value, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::record_field(value, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::record_field(value, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::record_field(value, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::record_field(value, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::record_field(value, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::record_field(value, "_18")?)?,
-                    _19: rt::FromValue::from_value(rt::record_field(value, "_19")?)?,
-                    _20: rt::FromValue::from_value(rt::record_field(value, "_20")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
+                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)?,
+                    _20: rt::FromValue::from_value(rt::required_field(value, 19usize, "_20")?)?,
                 })
             }
         }
@@ -2300,7 +2308,7 @@ pub mod daml_prim_GHC_Tuple_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::record_field(value, "_1")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
                 })
             }
         }
@@ -2513,7 +2521,9 @@ pub mod daml_stdlib_DA_Internal_Down_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::record_field(value, "unpack")?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "unpack",
+                    )?)?,
                 })
             }
         }
@@ -2625,7 +2635,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         impl rt::FromValue for All {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    get_all: rt::FromValue::from_value(rt::record_field(value, "getAll")?)?,
+                    get_all: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "getAll",
+                    )?)?,
                 })
             }
         }
@@ -2647,7 +2659,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         impl rt::FromValue for Any {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    get_any: rt::FromValue::from_value(rt::record_field(value, "getAny")?)?,
+                    get_any: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "getAny",
+                    )?)?,
                 })
             }
         }
@@ -2672,7 +2686,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::record_field(value, "unpack")?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "unpack",
+                    )?)?,
                 })
             }
         }
@@ -2697,7 +2713,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::record_field(value, "unpack")?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "unpack",
+                    )?)?,
                 })
             }
         }
@@ -2733,8 +2751,8 @@ pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    hd: rt::FromValue::from_value(rt::record_field(value, "hd")?)?,
-                    tl: rt::FromValue::from_value(rt::record_field(value, "tl")?)?,
+                    hd: rt::FromValue::from_value(rt::required_field(value, 0usize, "hd")?)?,
+                    tl: rt::FromValue::from_value(rt::required_field(value, 1usize, "tl")?)?,
                 })
             }
         }
@@ -2798,7 +2816,9 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::record_field(value, "unpack")?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "unpack",
+                    )?)?,
                 })
             }
         }
@@ -2823,7 +2843,9 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::record_field(value, "unpack")?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "unpack",
+                    )?)?,
                 })
             }
         }
@@ -2853,7 +2875,7 @@ pub mod daml_stdlib_DA_Set_Types_1_0_0 {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    map: rt::FromValue::from_value(rt::record_field(value, "map")?)?,
+                    map: rt::FromValue::from_value(rt::required_field(value, 0usize, "map")?)?,
                 })
             }
         }
@@ -2915,32 +2937,39 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
         impl rt::FromValue for SrcLoc {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    src_loc_package: rt::FromValue::from_value(rt::record_field(
+                    src_loc_package: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "srcLocPackage",
                     )?)?,
-                    src_loc_module: rt::FromValue::from_value(rt::record_field(
+                    src_loc_module: rt::FromValue::from_value(rt::required_field(
                         value,
+                        1usize,
                         "srcLocModule",
                     )?)?,
-                    src_loc_file: rt::FromValue::from_value(rt::record_field(
+                    src_loc_file: rt::FromValue::from_value(rt::required_field(
                         value,
+                        2usize,
                         "srcLocFile",
                     )?)?,
-                    src_loc_start_line: rt::FromValue::from_value(rt::record_field(
+                    src_loc_start_line: rt::FromValue::from_value(rt::required_field(
                         value,
+                        3usize,
                         "srcLocStartLine",
                     )?)?,
-                    src_loc_start_col: rt::FromValue::from_value(rt::record_field(
+                    src_loc_start_col: rt::FromValue::from_value(rt::required_field(
                         value,
+                        4usize,
                         "srcLocStartCol",
                     )?)?,
-                    src_loc_end_line: rt::FromValue::from_value(rt::record_field(
+                    src_loc_end_line: rt::FromValue::from_value(rt::required_field(
                         value,
+                        5usize,
                         "srcLocEndLine",
                     )?)?,
-                    src_loc_end_col: rt::FromValue::from_value(rt::record_field(
+                    src_loc_end_col: rt::FromValue::from_value(rt::required_field(
                         value,
+                        6usize,
                         "srcLocEndCol",
                     )?)?,
                 })
@@ -2969,8 +2998,9 @@ pub mod daml_stdlib_DA_Time_Types_1_0_0 {
         impl rt::FromValue for RelTime {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    microseconds: rt::FromValue::from_value(rt::record_field(
+                    microseconds: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "microseconds",
                     )?)?,
                 })
@@ -3061,12 +3091,21 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for LicenseRenewalRequest_CompleteRenewal {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    allocation_cid: rt::FromValue::from_value(rt::record_field(
+                    allocation_cid: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "allocationCid",
                     )?)?,
-                    license_cid: rt::FromValue::from_value(rt::record_field(value, "licenseCid")?)?,
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    license_cid: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "licenseCid",
+                    )?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -3092,8 +3131,8 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for License_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::record_field(value, "actor")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -3153,33 +3192,44 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for License_Renew {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    request_id: rt::FromValue::from_value(rt::record_field(value, "requestId")?)?,
-                    license_fee_instrument_id: rt::FromValue::from_value(rt::record_field(
+                    request_id: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
+                        "requestId",
+                    )?)?,
+                    license_fee_instrument_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
                         "licenseFeeInstrumentId",
                     )?)?,
-                    license_fee_amount: rt::FromValue::from_value(rt::record_field(
+                    license_fee_amount: rt::FromValue::from_value(rt::required_field(
                         value,
+                        2usize,
                         "licenseFeeAmount",
                     )?)?,
-                    license_extension_duration: rt::FromValue::from_value(rt::record_field(
+                    license_extension_duration: rt::FromValue::from_value(rt::required_field(
                         value,
+                        3usize,
                         "licenseExtensionDuration",
                     )?)?,
-                    requested_at: rt::FromValue::from_value(rt::record_field(
+                    requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
+                        4usize,
                         "requestedAt",
                     )?)?,
-                    prepare_until: rt::FromValue::from_value(rt::record_field(
+                    prepare_until: rt::FromValue::from_value(rt::required_field(
                         value,
+                        5usize,
                         "prepareUntil",
                     )?)?,
-                    settle_before: rt::FromValue::from_value(rt::record_field(
+                    settle_before: rt::FromValue::from_value(rt::required_field(
                         value,
+                        6usize,
                         "settleBefore",
                     )?)?,
-                    description: rt::FromValue::from_value(rt::record_field(
+                    description: rt::FromValue::from_value(rt::required_field(
                         value,
+                        7usize,
                         "description",
                     )?)?,
                 })
@@ -3201,7 +3251,7 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for LicenseParams {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 0usize, "meta")?)?,
                 })
             }
         }
@@ -3238,11 +3288,23 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for License {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    provider: rt::FromValue::from_value(rt::record_field(value, "provider")?)?,
-                    user: rt::FromValue::from_value(rt::record_field(value, "user")?)?,
-                    expires_at: rt::FromValue::from_value(rt::record_field(value, "expiresAt")?)?,
-                    license_num: rt::FromValue::from_value(rt::record_field(value, "licenseNum")?)?,
-                    params: rt::FromValue::from_value(rt::record_field(value, "params")?)?,
+                    provider: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "provider",
+                    )?)?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
+                    expires_at: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "expiresAt",
+                    )?)?,
+                    license_num: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "licenseNum",
+                    )?)?,
+                    params: rt::FromValue::from_value(rt::required_field(
+                        value, 4usize, "params",
+                    )?)?,
                 })
             }
         }
@@ -3344,36 +3406,53 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for LicenseRenewalRequest {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    request_id: rt::FromValue::from_value(rt::record_field(value, "requestId")?)?,
-                    provider: rt::FromValue::from_value(rt::record_field(value, "provider")?)?,
-                    user: rt::FromValue::from_value(rt::record_field(value, "user")?)?,
-                    license_num: rt::FromValue::from_value(rt::record_field(value, "licenseNum")?)?,
-                    license_fee_amount: rt::FromValue::from_value(rt::record_field(
+                    request_id: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
+                        "requestId",
+                    )?)?,
+                    provider: rt::FromValue::from_value(rt::required_field(
+                        value, 1usize, "provider",
+                    )?)?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 2usize, "user")?)?,
+                    license_num: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "licenseNum",
+                    )?)?,
+                    license_fee_amount: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        4usize,
                         "licenseFeeAmount",
                     )?)?,
-                    license_fee_instrument_id: rt::FromValue::from_value(rt::record_field(
+                    license_fee_instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
+                        5usize,
                         "licenseFeeInstrumentId",
                     )?)?,
-                    license_extension_duration: rt::FromValue::from_value(rt::record_field(
+                    license_extension_duration: rt::FromValue::from_value(rt::required_field(
                         value,
+                        6usize,
                         "licenseExtensionDuration",
                     )?)?,
-                    prepare_until: rt::FromValue::from_value(rt::record_field(
+                    prepare_until: rt::FromValue::from_value(rt::required_field(
                         value,
+                        7usize,
                         "prepareUntil",
                     )?)?,
-                    settle_before: rt::FromValue::from_value(rt::record_field(
+                    settle_before: rt::FromValue::from_value(rt::required_field(
                         value,
+                        8usize,
                         "settleBefore",
                     )?)?,
-                    requested_at: rt::FromValue::from_value(rt::record_field(
+                    requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
+                        9usize,
                         "requestedAt",
                     )?)?,
-                    description: rt::FromValue::from_value(rt::record_field(
+                    description: rt::FromValue::from_value(rt::required_field(
                         value,
+                        10usize,
                         "description",
                     )?)?,
                 })
@@ -3423,7 +3502,7 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstallRequest_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 0usize, "meta")?)?,
                 })
             }
         }
@@ -3450,11 +3529,12 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstallRequest_Accept {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    install_meta: rt::FromValue::from_value(rt::record_field(
+                    install_meta: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "installMeta",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -3480,8 +3560,8 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstall_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::record_field(value, "actor")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -3500,7 +3580,9 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstall_CreateLicense {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    params: rt::FromValue::from_value(rt::record_field(value, "params")?)?,
+                    params: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "params",
+                    )?)?,
                 })
             }
         }
@@ -3527,8 +3609,16 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstall_CreateLicense_Result {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    install_id: rt::FromValue::from_value(rt::record_field(value, "installId")?)?,
-                    license_id: rt::FromValue::from_value(rt::record_field(value, "licenseId")?)?,
+                    install_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "installId",
+                    )?)?,
+                    license_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "licenseId",
+                    )?)?,
                 })
             }
         }
@@ -3565,11 +3655,14 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstall {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    provider: rt::FromValue::from_value(rt::record_field(value, "provider")?)?,
-                    user: rt::FromValue::from_value(rt::record_field(value, "user")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
-                    num_licenses_created: rt::FromValue::from_value(rt::record_field(
+                    provider: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "provider",
+                    )?)?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
+                    num_licenses_created: rt::FromValue::from_value(rt::required_field(
                         value,
+                        3usize,
                         "numLicensesCreated",
                     )?)?,
                 })
@@ -3633,9 +3726,11 @@ pub mod quickstart_licensing_0_0_1 {
         impl rt::FromValue for AppInstallRequest {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    provider: rt::FromValue::from_value(rt::record_field(value, "provider")?)?,
-                    user: rt::FromValue::from_value(rt::record_field(value, "user")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    provider: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "provider",
+                    )?)?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
                 })
             }
         }
@@ -3704,12 +3799,17 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
         impl rt::FromValue for AllocationRequestView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    settlement: rt::FromValue::from_value(rt::record_field(value, "settlement")?)?,
-                    transfer_legs: rt::FromValue::from_value(rt::record_field(
+                    settlement: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
+                        "settlement",
+                    )?)?,
+                    transfer_legs: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
                         "transferLegs",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
                 })
             }
         }
@@ -3732,7 +3832,11 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
         impl rt::FromValue for AllocationRequest_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -3758,8 +3862,12 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
         impl rt::FromValue for AllocationRequest_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::record_field(value, "actor")?)?,
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -3832,11 +3940,12 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_WithdrawResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(rt::record_field(
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "senderHoldingCids",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -3869,11 +3978,12 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_CancelResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(rt::record_field(
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "senderHoldingCids",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -3917,15 +4027,17 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_ExecuteTransferResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(rt::record_field(
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
                         "senderHoldingCids",
                     )?)?,
-                    receiver_holding_cids: rt::FromValue::from_value(rt::record_field(
+                    receiver_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
+                        1usize,
                         "receiverHoldingCids",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
                 })
             }
         }
@@ -3948,7 +4060,11 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -3971,7 +4087,11 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -3994,7 +4114,11 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Allocation_ExecuteTransfer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(rt::record_field(value, "extraArgs")?)?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)?,
                 })
             }
         }
@@ -4027,12 +4151,17 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for AllocationView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    allocation: rt::FromValue::from_value(rt::record_field(value, "allocation")?)?,
-                    holding_cids: rt::FromValue::from_value(rt::record_field(
+                    allocation: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
+                        "allocation",
+                    )?)?,
+                    holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
                         "holdingCids",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
                 })
             }
         }
@@ -4064,13 +4193,19 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for AllocationSpecification {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    settlement: rt::FromValue::from_value(rt::record_field(value, "settlement")?)?,
-                    transfer_leg_id: rt::FromValue::from_value(rt::record_field(
+                    settlement: rt::FromValue::from_value(rt::required_field(
                         value,
+                        0usize,
+                        "settlement",
+                    )?)?,
+                    transfer_leg_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
                         "transferLegId",
                     )?)?,
-                    transfer_leg: rt::FromValue::from_value(rt::record_field(
+                    transfer_leg: rt::FromValue::from_value(rt::required_field(
                         value,
+                        2usize,
                         "transferLeg",
                     )?)?,
                 })
@@ -4111,14 +4246,21 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for TransferLeg {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::record_field(value, "sender")?)?,
-                    receiver: rt::FromValue::from_value(rt::record_field(value, "receiver")?)?,
-                    amount: rt::FromValue::from_value(rt::record_field(value, "amount")?)?,
-                    instrument_id: rt::FromValue::from_value(rt::record_field(
+                    sender: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "sender",
+                    )?)?,
+                    receiver: rt::FromValue::from_value(rt::required_field(
+                        value, 1usize, "receiver",
+                    )?)?,
+                    amount: rt::FromValue::from_value(rt::required_field(
+                        value, 2usize, "amount",
+                    )?)?,
+                    instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
+                        3usize,
                         "instrumentId",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)?,
                 })
             }
         }
@@ -4162,24 +4304,30 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for SettlementInfo {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    executor: rt::FromValue::from_value(rt::record_field(value, "executor")?)?,
-                    settlement_ref: rt::FromValue::from_value(rt::record_field(
+                    executor: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "executor",
+                    )?)?,
+                    settlement_ref: rt::FromValue::from_value(rt::required_field(
                         value,
+                        1usize,
                         "settlementRef",
                     )?)?,
-                    requested_at: rt::FromValue::from_value(rt::record_field(
+                    requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
+                        2usize,
                         "requestedAt",
                     )?)?,
-                    allocate_before: rt::FromValue::from_value(rt::record_field(
+                    allocate_before: rt::FromValue::from_value(rt::required_field(
                         value,
+                        3usize,
                         "allocateBefore",
                     )?)?,
-                    settle_before: rt::FromValue::from_value(rt::record_field(
+                    settle_before: rt::FromValue::from_value(rt::required_field(
                         value,
+                        4usize,
                         "settleBefore",
                     )?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)?,
                 })
             }
         }
@@ -4208,8 +4356,8 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         impl rt::FromValue for Reference {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    id: rt::FromValue::from_value(rt::record_field(value, "id")?)?,
-                    cid: rt::FromValue::from_value(rt::record_field(value, "cid")?)?,
+                    id: rt::FromValue::from_value(rt::required_field(value, 0usize, "id")?)?,
+                    cid: rt::optional_field(value, 1usize, "cid")?,
                 })
             }
         }
@@ -4296,14 +4444,17 @@ pub mod splice_api_token_holding_v1_1_0_0 {
         impl rt::FromValue for HoldingView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::FromValue::from_value(rt::record_field(value, "owner")?)?,
-                    instrument_id: rt::FromValue::from_value(rt::record_field(
+                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)?,
+                    instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
+                        1usize,
                         "instrumentId",
                     )?)?,
-                    amount: rt::FromValue::from_value(rt::record_field(value, "amount")?)?,
-                    lock: rt::FromValue::from_value(rt::record_field(value, "lock")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    amount: rt::FromValue::from_value(rt::required_field(
+                        value, 2usize, "amount",
+                    )?)?,
+                    lock: rt::optional_field(value, 3usize, "lock")?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)?,
                 })
             }
         }
@@ -4337,13 +4488,12 @@ pub mod splice_api_token_holding_v1_1_0_0 {
         impl rt::FromValue for Lock {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    holders: rt::FromValue::from_value(rt::record_field(value, "holders")?)?,
-                    expires_at: rt::FromValue::from_value(rt::record_field(value, "expiresAt")?)?,
-                    expires_after: rt::FromValue::from_value(rt::record_field(
-                        value,
-                        "expiresAfter",
+                    holders: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "holders",
                     )?)?,
-                    context: rt::FromValue::from_value(rt::record_field(value, "context")?)?,
+                    expires_at: rt::optional_field(value, 1usize, "expiresAt")?,
+                    expires_after: rt::optional_field(value, 2usize, "expiresAfter")?,
+                    context: rt::optional_field(value, 3usize, "context")?,
                 })
             }
         }
@@ -4368,8 +4518,8 @@ pub mod splice_api_token_holding_v1_1_0_0 {
         impl rt::FromValue for InstrumentId {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(rt::record_field(value, "admin")?)?,
-                    id: rt::FromValue::from_value(rt::record_field(value, "id")?)?,
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)?,
+                    id: rt::FromValue::from_value(rt::required_field(value, 1usize, "id")?)?,
                 })
             }
         }
@@ -4416,7 +4566,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         impl rt::FromValue for ChoiceExecutionMetadata {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 0usize, "meta")?)?,
                 })
             }
         }
@@ -4441,8 +4591,10 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         impl rt::FromValue for ExtraArgs {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    context: rt::FromValue::from_value(rt::record_field(value, "context")?)?,
-                    meta: rt::FromValue::from_value(rt::record_field(value, "meta")?)?,
+                    context: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "context",
+                    )?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
                 })
             }
         }
@@ -4461,7 +4613,9 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         impl rt::FromValue for Metadata {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    values: rt::FromValue::from_value(rt::record_field(value, "values")?)?,
+                    values: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "values",
+                    )?)?,
                 })
             }
         }
@@ -4482,7 +4636,9 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         impl rt::FromValue for ChoiceContext {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    values: rt::FromValue::from_value(rt::record_field(value, "values")?)?,
+                    values: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "values",
+                    )?)?,
                 })
             }
         }
