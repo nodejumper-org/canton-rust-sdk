@@ -1,16 +1,25 @@
 //! Daml-LF archive reader and decoder.
 //!
-//! **Milestone 2, work in progress.** This crate is the codegen's front-end: it
-//! reads a `.dar` and (eventually) decodes its Daml-LF packages into the
-//! decoder-agnostic IR that `canton-codegen` turns into Rust.
+//! **Milestone 2.** This crate is the codegen's front-end: it reads a `.dar`
+//! and decodes its Daml-LF packages into the AST that `canton-codegen` lowers
+//! to IR and turns into Rust.
 //!
-//! Status:
 //! - [`Dar`] — the DAR **container** layer (zip + `MANIFEST.MF` → the raw
-//!   Daml-LF bytes of the main package and its dependencies). Done.
-//! - Daml-LF protobuf decode (LF 2.x → typed AST) and lowering to
-//!   `canton_codegen::ir` — next. Per the milestone plan this is a native Rust
-//!   decoder (no JVM), targeting the LF version Canton 3.x ships, blueprinted on
-//!   the design of fujiapple's `daml-lf` but re-vendoring the LF 2.x protobufs.
+//!   Daml-LF bytes of the main package and its dependencies).
+//! - [`decode_all`] / [`decode_main_package`] — Daml-LF protobuf decode
+//!   (LF 2.x → typed AST) with the interned-table resolvers.
+//!
+//! The decode is built **on the official `daml-lf-archive` schema**: the
+//! vendored `daml_lf.proto` / `daml_lf2.proto` under `proto/` are Digital
+//! Asset's own archive definitions (pinned to a Daml 3.3 snapshot), so the
+//! bytes→AST step is machine-generated from the authoritative source rather
+//! than hand-written. The interpretation on top (version dispatch, interning,
+//! reference resolution) is held to the official **JVM `daml-lf-archive`
+//! reader** by a conformance oracle: `tests/oracle.rs` renders the decoded
+//! type-signature surface and asserts byte-for-byte agreement with
+//! `tools/lf-oracle/LfOracle.scala`, which reads the same DAR through
+//! `com.daml:daml-lf-archive-reader` (the decoder Canton itself uses). No JVM
+//! is required to *use* the SDK or the codegen — the oracle is dev/CI-only.
 
 mod dar;
 mod decode;

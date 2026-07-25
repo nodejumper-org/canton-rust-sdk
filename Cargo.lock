@@ -279,6 +279,7 @@ dependencies = [
  "prost 0.14.4",
  "prost-build",
  "protoc-bin-vendored",
+ "serde_json",
  "thiserror 2.0.18",
  "zip",
 ]

@@ -18,6 +18,11 @@ zip       = { workspace = true }
 thiserror = { workspace = true }
 prost     = { workspace = true }
 
+[dev-dependencies]
+# The conformance oracle test renders the decoded signature surface as JSON and
+# compares it against the official JVM `daml-lf-archive` reader's output.
+serde_json = { workspace = true }
+
 [build-dependencies]
 prost-build         = { workspace = true }
 protoc-bin-vendored = { workspace = true }

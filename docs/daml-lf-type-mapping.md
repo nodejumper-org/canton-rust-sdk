@@ -82,3 +82,30 @@ are not serialisable (`Forall`, structural records, type synonyms as such,
 function/`Update`/`Any` types) are not modelled — codegen only needs the
 serialisable type skeleton. A type that cannot be lowered is skipped and
 surfaced as a `LowerError` rather than emitted incorrectly.
+
+## Conformance against the official `daml-lf-archive` reader
+
+The decode itself is machine-generated from the official `daml-lf-archive`
+protobuf schema (vendored verbatim in `canton-lf/proto/`), and the hand-written
+interpretation above it — LF version dispatch, interned-table resolution,
+package-reference resolution — is verified against the authoritative JVM
+implementation. The oracle test
+([`canton-lf/tests/oracle.rs`](../crates/canton-lf/tests/oracle.rs)) and its
+JVM twin ([`tools/lf-oracle/LfOracle.scala`](../tools/lf-oracle/LfOracle.scala),
+which reads the same DAR through `com.daml:daml-lf-archive-reader` — the decoder
+Canton itself uses) each render the DAR's full type-signature surface (every
+package: serialisable data types, templates with keys/implements/choices,
+interfaces with views) to one canonical JSON document, and the test asserts the
+two documents are equal. The JVM reader also re-computes and checks each
+archive's SHA-256, so agreement covers package-id integrity too.
+
+Run it with a JVM and [scala-cli](https://scala-cli.virtuslab.org) on `PATH`:
+
+```sh
+CANTON_LF_ORACLE_DAR=/path/to/x.dar cargo test -p canton-lf --test oracle
+```
+
+Verified across the Splice surface (splice-amulet, splice-wallet,
+splice-wallet-payments, the token-standard API DARs, quickstart-licensing):
+245 package decodings, zero disagreements. Like the other DAR-dependent suites,
+the test skips cleanly when the env var or toolchain is absent.
