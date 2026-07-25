@@ -24,3 +24,7 @@
 # OS junk.
 .DS_Store
 Thumbs.db
+
+# scala-cli build caches (tools/lf-oracle).
+.bsp/
+.scala-build/
