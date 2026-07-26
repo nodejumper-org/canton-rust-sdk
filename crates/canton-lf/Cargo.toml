@@ -10,8 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
-description  = "Daml-LF archive (DAR/DALF) reader and decoder (Canton SDK, Milestone 2 — work in progress)."
-publish      = false
+description  = "Daml-LF archive (DAR/DALF) reader and decoder for the Canton Rust SDK."
 
 [dependencies]
 zip       = { workspace = true }

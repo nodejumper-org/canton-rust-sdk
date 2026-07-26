@@ -44,12 +44,42 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   compiles for all corpus DARs, and the sample's typed create commits and is read
   back from the ACS on both transports.
 
-> **M2 release checklist (before publishing the M2 crates):** the M2 crates are
-> `publish = false`. Before release, flip them to publishable, then publish
-> `canton-daml` first; the `dpm-codegen-rust` default `--runtime-version` (`0.1`)
-> only resolves once `canton-daml` is on crates.io (until then, generated crates
-> use `--runtime-path`). Also decide the crate-version ↔ DAR-version convention
-> for the `canton-splice-*` crates.
+### Fixed — pre-release hardening (M2 quality audit)
+
+- **Recursion is now Rust-sound.** `Optional` self-recursion (`data Tree = Node
+  { left : Optional Tree }`), mutual recursion (including cross-module), and
+  recursion through a generic instantiation previously generated
+  infinitely-sized structs (E0072); a crate-wide containment-cycle breaker now
+  boxes every cycle-closing reference occurrence.
+- **Record decode matches Canton's wire shapes.** Generated `FromValue` locates
+  fields by label *or* declaration index (non-verbose output omits labels) and
+  decodes an absent trailing `Optional` field as `None` (record normalization
+  under Smart Contract Upgrade drops them).
+- **`Numeric` compares numerically**, not textually — the ledger echoes `"1.5"`
+  as `"1.5000000000"` and the two are now equal (`Eq`/`Ord`/`Hash` on the
+  canonical decimal; `Numeric::parse` validates early).
+- **Typed read path:** `Template::from_created_event` decodes a `CreatedEvent`
+  into the payload struct (with a template-identity check);
+  `ContractId::retag` re-tags an id for interface exercise.
+- **Codegen robustness on arbitrary DARs:** per-entry decompression cap
+  (zip-bomb guard), typed errors naming the offending file/package, `$`-named
+  GHC-internal types skip instead of panicking the emitter, snake-case field
+  collisions and duplicate package modules are detected, generated code spells
+  std types fully qualified so same-named Daml types cannot shadow them.
+- **CLI safety:** refuses to overwrite files it did not generate (`--force` to
+  override); validates the crate name; the generated crate's version is the
+  DAR package's version; `--runtime-path` is absolutized and TOML-escaped.
+- Always-on fixture tests: `testdata/splice-api-token-holding-v1-1.0.0.dar`
+  runs the full decode → lower → emit pipeline (plus determinism and CLI
+  contract checks) in every `cargo test`, no external setup.
+
+> **M2 release checklist:** publish in dependency order — `canton-lf` →
+> `canton-daml` → `canton-codegen` → `canton-codegen-cli` → the
+> `canton-splice-*` bindings (their crate version follows the SDK lockstep;
+> each README states the DAR version it was generated from). The
+> `dpm-codegen-rust` default `--runtime-version` (`0.1`) resolves once
+> `canton-daml` is live. `canton-sample` and `canton-quickstart-licensing`
+> stay unpublished (reference material).
 
 ## [0.1.1] - 2026-07-22
 

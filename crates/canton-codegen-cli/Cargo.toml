@@ -10,8 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
-description  = "`dpm codegen-rust` — generate a typed Rust crate from a DAR (Canton SDK, Milestone 2 — work in progress)."
-publish      = false
+description  = "dpm codegen-rust: generate a typed Rust crate of bindings from a DAR."
 
 # Invoked as `dpm codegen-rust` (dpm's git/cargo-style subcommand convention), or
 # standalone as `dpm-codegen-rust`.

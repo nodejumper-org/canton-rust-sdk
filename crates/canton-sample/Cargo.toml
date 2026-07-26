@@ -10,7 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
-description  = "Reference app: typed Splice bindings + Ledger API client end to end (Canton SDK, Milestone 2 — work in progress)."
+description  = "Reference app: typed Splice bindings + Ledger API client end to end (not published)."
 publish      = false
 
 [[bin]]

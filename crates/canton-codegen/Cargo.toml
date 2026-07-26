@@ -10,8 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
-description  = "Type-safe Rust code generation from Daml packages (Canton SDK, Milestone 2 — work in progress)."
-publish      = false
+description  = "Type-safe Rust code generation from Daml packages (DAR to Rust)."
 
 [dependencies]
 canton-lf    = { workspace = true }

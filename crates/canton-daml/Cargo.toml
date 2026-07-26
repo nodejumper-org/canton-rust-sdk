@@ -10,8 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
-description  = "Runtime types and Value codecs for canton-codegen-generated Daml bindings (Canton SDK, Milestone 2 — work in progress)."
-publish      = false
+description  = "Runtime types and Value codecs for canton-codegen-generated Daml bindings."
 
 [dependencies]
 canton-proto = { workspace = true }
