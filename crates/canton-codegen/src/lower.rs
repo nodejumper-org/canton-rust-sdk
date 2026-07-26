@@ -97,7 +97,7 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
         .collect();
     for (id, name) in &mut module_names {
         if colliding.contains(name.as_str()) {
-            *name = format!("{name}_{}", &id[..8.min(id.len())]);
+            *name = format!("{name}_{}", ident_prefix(id));
         }
     }
 
@@ -177,8 +177,19 @@ fn package_module_name(package: &lf::Package, package_id: &str) -> String {
     match (package_name(package), package_version(package)) {
         (Some(name), Some(version)) => format!("{}_{}", sanitize(name), sanitize(version)),
         (Some(name), None) => sanitize(name),
-        _ => format!("p_{}", &package_id[..8.min(package_id.len())]),
+        _ => format!("p_{}", ident_prefix(package_id)),
     }
+}
+
+/// The first 8 identifier-safe characters of a package id, for `p_<hash8>` /
+/// collision-suffix module names. Character-based (a byte slice could panic on
+/// a hostile non-ASCII id) and filtered to alphanumerics.
+fn ident_prefix(package_id: &str) -> String {
+    package_id
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .take(8)
+        .collect()
 }
 
 /// Map each non-alphanumeric character to `_` so the result is a valid Rust
