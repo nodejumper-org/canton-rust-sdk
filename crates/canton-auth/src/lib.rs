@@ -37,6 +37,24 @@ const REFRESH_SKEW: u64 = 30;
 /// missing/zero value does not collapse to a 1-second TTL that hammers the IdP.
 const DEFAULT_TTL_SECS: u64 = 300;
 
+/// Upper bound on a cached token's TTL (30 days). Caps an absurd or hostile
+/// `expires_in` so `Instant::now() + Duration::from_secs(ttl)` can never overflow
+/// (which panics); a real token re-fetches long before this.
+const MAX_TTL_SECS: u64 = 30 * 24 * 60 * 60;
+
+/// The cache TTL (seconds) for a token whose endpoint reported `expires_in`:
+/// a missing/zero value uses the default lifetime, a refresh skew is subtracted,
+/// and the result is clamped to `[1, MAX_TTL_SECS]` — the upper bound guarding
+/// against an overflow panic when computing the cache deadline.
+fn effective_ttl(expires_in: u64) -> u64 {
+    let lifetime = if expires_in == 0 {
+        DEFAULT_TTL_SECS
+    } else {
+        expires_in
+    };
+    lifetime.saturating_sub(REFRESH_SKEW).clamp(1, MAX_TTL_SECS)
+}
+
 /// Per-request bound on a token fetch: a hung IdP fails the fetch (retriable
 /// [`Error::Connection`]) instead of blocking all token consumers behind the
 /// cache lock.
@@ -245,12 +263,7 @@ impl TokenProvider {
         }
 
         let response = self.fetch().await?;
-        let lifetime = if response.expires_in == 0 {
-            DEFAULT_TTL_SECS
-        } else {
-            response.expires_in
-        };
-        let ttl = lifetime.saturating_sub(REFRESH_SKEW).max(1);
+        let ttl = effective_ttl(response.expires_in);
         let token = response.access_token;
         *guard = Some(Cached {
             token: token.clone(),
@@ -322,6 +335,35 @@ mod tests {
 
     fn sample_config() -> OidcConfig {
         OidcConfig::new("http://idp.example/token", "my-client", "TOP-SECRET-VALUE")
+    }
+
+    #[test]
+    fn effective_ttl_subtracts_skew_and_clamps() {
+        assert_eq!(effective_ttl(3600), 3600 - REFRESH_SKEW);
+        // Missing/zero expires_in uses the default lifetime.
+        assert_eq!(effective_ttl(0), DEFAULT_TTL_SECS - REFRESH_SKEW);
+        // A tiny lifetime never collapses below 1.
+        assert_eq!(effective_ttl(10), 1);
+    }
+
+    #[test]
+    fn huge_expires_in_is_clamped_and_never_overflows() {
+        // A buggy/hostile IdP reporting a giant expires_in must not panic when
+        // the cache deadline is computed.
+        for expires_in in [u64::MAX, 1_000_000_000_000_000_000] {
+            assert_eq!(
+                effective_ttl(expires_in),
+                MAX_TTL_SECS,
+                "clamped to the max"
+            );
+        }
+        // Whatever the input, the ttl is bounded and the deadline the client
+        // computes never overflows (the bug this guards against).
+        for expires_in in [0, 10, 3600, MAX_TTL_SECS + 1, u64::MAX] {
+            let ttl = effective_ttl(expires_in);
+            assert!(ttl <= MAX_TTL_SECS);
+            let _deadline = std::time::Instant::now() + std::time::Duration::from_secs(ttl);
+        }
     }
 
     #[test]
