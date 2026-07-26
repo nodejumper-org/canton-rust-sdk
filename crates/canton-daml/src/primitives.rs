@@ -21,7 +21,8 @@ impl Party {
 /// A typed contract id: a handle to a contract of template/type `T`.
 ///
 /// `T` is a compile-time tag only — it carries no runtime data (the wire form
-/// is the id string), so `ContractId` is `Clone`/`Eq` regardless of `T`.
+/// is the id string), so `ContractId` is `Clone`/`Eq`/`Hash`/`Ord` regardless
+/// of `T` (all manual impls: a derive would wrongly bound `T`).
 pub struct ContractId<T> {
     id: String,
     _marker: PhantomData<fn() -> T>,
@@ -40,6 +41,18 @@ impl<T> ContractId<T> {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.id
+    }
+
+    /// Re-tag the id as a handle to a different type `U` — the id string is
+    /// unchanged. The intended use is exercising an **interface** choice on a
+    /// contract read back as its concrete template:
+    /// `cid.retag::<Holding>()` turns a `ContractId<Amulet>` into the
+    /// `ContractId<Holding>` that `exercise_command` needs. The cast is not
+    /// checked against the template's `implements` list, so exercising a
+    /// mis-tagged id fails at the ledger, not at compile time.
+    #[must_use]
+    pub fn retag<U>(self) -> ContractId<U> {
+        ContractId::new(self.id)
     }
 }
 
@@ -63,16 +76,174 @@ impl<T> PartialEq for ContractId<T> {
 
 impl<T> Eq for ContractId<T> {}
 
-/// A fixed-scale decimal (`Numeric`), stored as its canonical decimal string —
-/// the wire representation (Daml numerics are transmitted as text to avoid
-/// binary-float rounding).
+impl<T> std::hash::Hash for ContractId<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl<T> PartialOrd for ContractId<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for ContractId<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+/// A fixed-scale decimal (`Numeric`), stored as its decimal string — the wire
+/// representation (Daml numerics are transmitted as text to avoid binary-float
+/// rounding).
+///
+/// **Comparison is numeric, not textual**: the ledger echoes values at the
+/// type's full scale (submit `"1.5"` on a `Numeric 10`, read back
+/// `"1.5000000000"`), so `==`/`Ord`/`Hash` compare the canonical decimal value
+/// — `Numeric("1.5") == Numeric("1.5000000000")`. A string that does not parse
+/// as a decimal falls back to plain string comparison (and never equals a
+/// valid decimal).
 ///
 /// LF-JSON: **emitted as a string** (what the Ledger API produces); on input
 /// **also accepts a JSON number** (the spec allows it — high-precision values
 /// should still use the string form, since a JSON number literal is already
 /// `f64`-lossy on the wire).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Numeric(pub String);
+
+impl Numeric {
+    /// Parse a decimal string (`-?digits[.digits]`; a leading `+` is accepted),
+    /// rejecting anything the ledger would reject — use this over raw
+    /// construction so a typo fails here instead of at command submission.
+    ///
+    /// # Errors
+    /// Returns the offending input when it is not a plain decimal literal.
+    pub fn parse(text: impl Into<String>) -> Result<Self, String> {
+        let text = text.into();
+        if canonical_decimal(&text).is_some() {
+            Ok(Self(text))
+        } else {
+            Err(format!(
+                "`{text}` is not a decimal literal (expected -?digits[.digits])"
+            ))
+        }
+    }
+
+    /// The canonical form used for comparison (sign-normalised, no leading or
+    /// trailing zeros), or `None` when the content is not a decimal literal.
+    fn canonical(&self) -> Option<String> {
+        canonical_decimal(&self.0)
+    }
+}
+
+/// Canonicalise a decimal literal: strip an explicit `+`, leading integer
+/// zeros, trailing fraction zeros, and normalise `-0` to `0`. `None` if the
+/// input is not `[+-]?digits[.digits]`.
+fn canonical_decimal(raw: &str) -> Option<String> {
+    let (negative, digits) = match raw.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, raw.strip_prefix('+').unwrap_or(raw)),
+    };
+    let has_dot = digits.contains('.');
+    let (int, frac) = digits.split_once('.').unwrap_or((digits, ""));
+    let valid = !int.is_empty()
+        && int.bytes().all(|b| b.is_ascii_digit())
+        // With a dot, the fraction must be present and all digits ("1." is not
+        // a decimal literal; a second dot lands in `frac` and fails here).
+        && (!has_dot || (!frac.is_empty() && frac.bytes().all(|b| b.is_ascii_digit())));
+    if !valid {
+        return None;
+    }
+    let int = int.trim_start_matches('0');
+    let int = if int.is_empty() { "0" } else { int };
+    let frac = frac.trim_end_matches('0');
+    let mut canonical = String::with_capacity(raw.len() + 1);
+    if negative && !(int == "0" && frac.is_empty()) {
+        canonical.push('-');
+    }
+    canonical.push_str(int);
+    if !frac.is_empty() {
+        canonical.push('.');
+        canonical.push_str(frac);
+    }
+    Some(canonical)
+}
+
+impl PartialEq for Numeric {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.canonical(), other.canonical()) {
+            (Some(a), Some(b)) => a == b,
+            (None, None) => self.0 == other.0,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Numeric {}
+
+impl std::hash::Hash for Numeric {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Hash the same key equality compares, so Eq and Hash agree.
+        match self.canonical() {
+            Some(canonical) => canonical.hash(state),
+            None => self.0.hash(state),
+        }
+    }
+}
+
+impl PartialOrd for Numeric {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Numeric {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+        let (Some(a), Some(b)) = (self.canonical(), other.canonical()) else {
+            // Non-decimal content: fall back to string order (valid decimals
+            // sort before invalid strings, deterministically).
+            return match (self.canonical(), other.canonical()) {
+                (Some(_), None) => Ordering::Less,
+                (None, Some(_)) => Ordering::Greater,
+                _ => self.0.cmp(&other.0),
+            };
+        };
+        let (neg_a, mag_a) = a
+            .strip_prefix('-')
+            .map_or((false, a.as_str()), |m| (true, m));
+        let (neg_b, mag_b) = b
+            .strip_prefix('-')
+            .map_or((false, b.as_str()), |m| (true, m));
+        match (neg_a, neg_b) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            (negative, _) => {
+                let ordering = magnitude_cmp(mag_a, mag_b);
+                if negative {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            }
+        }
+    }
+}
+
+/// Compare two canonical non-negative decimals numerically: integer parts by
+/// length then lexicographically, then fraction parts lexicographically
+/// (canonical fractions carry no trailing zeros, so shorter-is-prefix means
+/// smaller).
+fn magnitude_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    let (int_a, frac_a) = a.split_once('.').unwrap_or((a, ""));
+    let (int_b, frac_b) = b.split_once('.').unwrap_or((b, ""));
+    int_a
+        .len()
+        .cmp(&int_b.len())
+        .then_with(|| int_a.cmp(int_b))
+        .then_with(|| frac_a.cmp(frac_b))
+}
 
 impl serde::Serialize for Numeric {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -154,11 +325,11 @@ impl<'de> serde::Deserialize<'de> for Int64 {
 }
 
 /// A Daml `Timestamp` — microseconds since the Unix epoch (UTC).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Timestamp(pub i64);
 
 /// A Daml `Date` — days since the Unix epoch.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Date(pub i32);
 
 /// A Daml `TextMap` — a map keyed by `Text`.
@@ -210,7 +381,10 @@ impl<'de> serde::Deserialize<'de> for Timestamp {
         let datetime =
             time::OffsetDateTime::parse(&text, &time::format_description::well_known::Rfc3339)
                 .map_err(serde::de::Error::custom)?;
-        let micros = datetime.unix_timestamp_nanos() / 1_000;
+        // Euclidean division floors toward negative infinity, so sub-microsecond
+        // instants before the epoch truncate consistently (plain `/` would round
+        // them toward zero, i.e. *forward* in time).
+        let micros = datetime.unix_timestamp_nanos().div_euclid(1_000);
         Ok(Self(
             i64::try_from(micros).map_err(serde::de::Error::custom)?,
         ))

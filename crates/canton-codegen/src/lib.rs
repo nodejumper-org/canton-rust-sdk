@@ -1,25 +1,28 @@
 //! `canton-codegen` — generate typed Rust bindings from Daml packages.
 //!
-//! **Milestone 2, work in progress.** This crate turns a Daml package into
-//! idiomatic Rust: templates and records into structs, choices into typed
-//! exercise builders, with JSON and gRPC codecs on the generated types.
+//! This crate turns a DAR into idiomatic Rust: templates and records into
+//! structs, choices into typed exercise impls, interfaces into typed markers
+//! with views, with JSON and gRPC codecs on every generated type. The
+//! command-line front-end is `canton-codegen-cli` (`dpm codegen-rust`); most
+//! users drive codegen through that.
 //!
 //! # Architecture
 //!
-//! A decoder-agnostic [`ir`] (intermediate representation) sits between decoding
-//! Daml-LF and emitting Rust:
+//! A decoder-agnostic [`ir`] (intermediate representation) sits between
+//! decoding Daml-LF and emitting Rust:
 //!
 //! ```text
-//! DAR ──(decoder)──▶ ir ──(this crate)──▶ Rust source ──▶ crate
+//! DAR ──(canton-lf: decode)──▶ [`lower`] ──▶ ir ──([`emit`]/[`map`])──▶ Rust source
 //! ```
 //!
 //! The generator ([`emit`]) and the type mapping ([`map`]) consume the IR and
-//! never touch Daml-LF, so the LF-decoder choice (JVM `daml-lf-archive` vs a
-//! native Rust decoder) is isolated to the decoder module (Phase B).
+//! never touch Daml-LF; [`lower`] is the one module that reads the decoded LF
+//! AST (from `canton-lf`, which is held to the official `daml-lf-archive`
+//! reader by a conformance oracle). Every generator checks its output parses
+//! as valid Rust before returning it.
 //!
-//! Current status: Phase A — the IR, the Daml-LF → Rust type mapping, and
-//! emission of records, variants, enums, and templates (with typed choice
-//! impls); every generator verifies its output is valid Rust.
+//! The human-readable specification of the type mapping lives in
+//! `docs/daml-lf-type-mapping.md`.
 
 pub mod emit;
 pub mod ir;
@@ -158,12 +161,15 @@ mod tests {
         // Spot-check the type mapping, snake_case, and keyword escaping.
         assert!(src.contains("pub struct AppInstallRequest"), "{src}");
         assert!(src.contains("pub provider: rt::Party"), "{src}");
-        assert!(src.contains("pub install_id: String"), "{src}");
+        assert!(
+            src.contains("pub install_id: ::std::string::String"),
+            "{src}"
+        );
         assert!(src.contains("pub amount: rt::Numeric"), "{src}");
         assert!(src.contains("rt::ContractId<Foo>"), "{src}");
-        assert!(src.contains("Vec<String>"), "{src}");
-        assert!(src.contains("Option<String>"), "{src}");
-        assert!(src.contains("r#type: String"), "{src}");
+        assert!(src.contains("Vec<::std::string::String>"), "{src}");
+        assert!(src.contains("Option<::std::string::String>"), "{src}");
+        assert!(src.contains("r#type: ::std::string::String"), "{src}");
     }
 
     #[test]
@@ -233,10 +239,15 @@ mod tests {
         let src = generate_record(&record).unwrap();
         syn::parse_file(&src).unwrap();
         // A single Optional stays a plain Option.
-        assert!(src.contains("pub single: Option<String>"), "{src}");
+        assert!(
+            src.contains("pub single: ::core::option::Option<::std::string::String>"),
+            "{src}"
+        );
         // A nested Optional wraps the inner layer in rt::NestedOpt (list JSON).
         assert!(
-            src.contains("pub nested: Option<rt::NestedOpt<String>>"),
+            src.contains(
+                "pub nested: ::core::option::Option<rt::NestedOpt<::std::string::String>>"
+            ),
             "{src}"
         );
     }
@@ -256,7 +267,10 @@ mod tests {
         assert!(src.contains("serde(crate = \"rt::serde\")"), "{src}");
         // The JSON key is the Daml label, not the snake_cased Rust field.
         assert!(src.contains("serde(rename = \"installId\")"), "{src}");
-        assert!(src.contains("pub install_id: String"), "{src}");
+        assert!(
+            src.contains("pub install_id: ::std::string::String"),
+            "{src}"
+        );
     }
 
     #[test]

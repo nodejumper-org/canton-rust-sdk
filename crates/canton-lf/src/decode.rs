@@ -13,6 +13,7 @@ use crate::pb::daml_lf_dev::{Archive, ArchivePayload, archive_payload};
 
 /// An error decoding Daml-LF package bytes.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum DecodeError {
     /// Reading the DAR container failed.
     #[error(transparent)]
@@ -23,6 +24,14 @@ pub enum DecodeError {
     /// The package is not Daml-LF 2.x (this decoder only supports LF 2.x).
     #[error("unsupported Daml-LF version (only LF 2.x is supported)")]
     UnsupportedVersion,
+    /// A decode failure attributed to a specific package in the DAR.
+    #[error("package `{name}`: {source}")]
+    InPackage {
+        /// The archive path of the `.dalf` that failed to decode.
+        name: String,
+        /// The underlying failure.
+        source: Box<DecodeError>,
+    },
 }
 
 /// Decode the DAR's **main** package into the Daml-LF 2 AST, together with its
@@ -57,9 +66,12 @@ pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeE
 /// # Errors
 /// Returns [`DecodeError`] if any package's bytes are malformed or not LF 2.x.
 pub fn decode_all(dar: &Dar) -> Result<Vec<(String, Package)>, DecodeError> {
-    dar.package_bytes()
-        .map(|bytes| {
-            let (package, id) = decode_package(bytes)?;
+    dar.package_entries()
+        .map(|(name, bytes)| {
+            let (package, id) = decode_package(bytes).map_err(|error| DecodeError::InPackage {
+                name: name.to_string(),
+                source: Box::new(error),
+            })?;
             Ok((id, package))
         })
         .collect()

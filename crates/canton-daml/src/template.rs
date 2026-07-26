@@ -7,7 +7,7 @@
 
 use canton_proto::com::daml::ledger::api::v2::Identifier;
 
-use crate::value::{FromValue, ToValue};
+use crate::value::{FromValue, ToValue, ValueError};
 
 /// Something with an on-ledger identity that choices can be exercised on: a
 /// template or an interface. Its template id is `PACKAGE:MODULE:ENTITY`.
@@ -43,7 +43,45 @@ pub trait Contract {
 
 /// A Daml template: a [`Contract`] with a payload codec. Generated code
 /// implements this on each template's payload struct.
-pub trait Template: Contract + ToValue + FromValue {}
+pub trait Template: Contract + ToValue + FromValue {
+    /// Decode a `CreatedEvent` (from a transaction stream, an ACS snapshot, or
+    /// a `submit-and-wait` response) into this template's typed payload — the
+    /// typed **read** path:
+    ///
+    /// ```ignore
+    /// let install: AppInstall = AppInstall::from_created_event(&event)?;
+    /// ```
+    ///
+    /// When the event carries a template id, its module/entity are checked
+    /// first, so decoding an event of the wrong template fails with a clear
+    /// error instead of a field-shape mismatch. The package id is deliberately
+    /// **not** compared: under Smart Contract Upgrade the ledger may report any
+    /// vetted version of the package.
+    ///
+    /// # Errors
+    /// Returns [`ValueError`] if the event is a different template, carries no
+    /// payload, or its payload does not decode as `Self`.
+    fn from_created_event(
+        event: &canton_proto::com::daml::ledger::api::v2::CreatedEvent,
+    ) -> Result<Self, ValueError> {
+        if let Some(id) = &event.template_id
+            && (id.entity_name != Self::ENTITY_NAME || id.module_name != Self::MODULE_NAME)
+        {
+            return Err(ValueError::new(format!(
+                "event is {}:{}, expected {}:{}",
+                id.module_name,
+                id.entity_name,
+                Self::MODULE_NAME,
+                Self::ENTITY_NAME,
+            )));
+        }
+        let record = event
+            .create_arguments
+            .as_ref()
+            .ok_or_else(|| ValueError::new("created event carries no create_arguments payload"))?;
+        crate::value::from_record(record)
+    }
+}
 
 /// A Daml interface: a [`Contract`] identified by a marker type (held via
 /// `ContractId`), with a view type. Choices are exercised through the interface

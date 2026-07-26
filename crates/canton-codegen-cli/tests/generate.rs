@@ -26,6 +26,7 @@ fn generates_a_crate_from_a_real_dar() {
         out: out.clone(),
         crate_name: default_crate_name(&dar),
         runtime: Runtime::Path(runtime),
+        force: false,
     })
     .expect("generation succeeds");
 

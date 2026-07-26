@@ -16,7 +16,7 @@ pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
         pub struct ArithmeticError {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for ArithmeticError {
             fn to_value(&self) -> rt::Value {
@@ -45,7 +45,7 @@ pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
         pub struct AssertionFailed {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for AssertionFailed {
             fn to_value(&self) -> rt::Value {
@@ -74,7 +74,7 @@ pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
         pub struct GeneralError {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for GeneralError {
             fn to_value(&self) -> rt::Value {
@@ -103,7 +103,7 @@ pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
         pub struct PreconditionFailed {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for PreconditionFailed {
             fn to_value(&self) -> rt::Value {
@@ -2558,13 +2558,25 @@ pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
             Proposition(A),
             ///The Daml `Negation` constructor.
             #[serde(rename = "Negation")]
-            Negation(Box<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Negation(
+                ::std::boxed::Box<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
             ///The Daml `Conjunction` constructor.
             #[serde(rename = "Conjunction")]
-            Conjunction(Vec<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Conjunction(
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
             ///The Daml `Disjunction` constructor.
             #[serde(rename = "Disjunction")]
-            Disjunction(Vec<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Disjunction(
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
         }
         impl<A> rt::ToValue for Formula<A>
         where
@@ -2732,7 +2744,7 @@ pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
             pub hd: A,
             ///The Daml `tl` field.
             #[serde(rename = "tl")]
-            pub tl: Vec<A>,
+            pub tl: ::std::vec::Vec<A>,
         }
         impl<A> rt::ToValue for NonEmpty<A>
         where
@@ -2889,13 +2901,13 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
         pub struct SrcLoc {
             ///The Daml `srcLocPackage` field.
             #[serde(rename = "srcLocPackage")]
-            pub src_loc_package: String,
+            pub src_loc_package: ::std::string::String,
             ///The Daml `srcLocModule` field.
             #[serde(rename = "srcLocModule")]
-            pub src_loc_module: String,
+            pub src_loc_module: ::std::string::String,
             ///The Daml `srcLocFile` field.
             #[serde(rename = "srcLocFile")]
-            pub src_loc_file: String,
+            pub src_loc_file: ::std::string::String,
             ///The Daml `srcLocStartLine` field.
             #[serde(rename = "srcLocStartLine")]
             pub src_loc_start_line: rt::Int64,
@@ -3141,7 +3153,7 @@ pub mod quickstart_licensing_0_0_1 {
         pub struct License_Renew {
             ///The Daml `requestId` field.
             #[serde(rename = "requestId")]
-            pub request_id: String,
+            pub request_id: ::std::string::String,
             ///The Daml `licenseFeeInstrumentId` field.
             #[serde(rename = "licenseFeeInstrumentId")]
             pub license_fee_instrument_id:
@@ -3164,7 +3176,7 @@ pub mod quickstart_licensing_0_0_1 {
             pub settle_before: rt::Timestamp,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
         }
         impl rt::ToValue for License_Renew {
             fn to_value(&self) -> rt::Value {
@@ -3343,7 +3355,7 @@ pub mod quickstart_licensing_0_0_1 {
         pub struct LicenseRenewalRequest {
             ///The Daml `requestId` field.
             #[serde(rename = "requestId")]
-            pub request_id: String,
+            pub request_id: ::std::string::String,
             ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
@@ -3375,7 +3387,7 @@ pub mod quickstart_licensing_0_0_1 {
             pub requested_at: rt::Timestamp,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
         }
         impl rt::ToValue for LicenseRenewalRequest {
             fn to_value(&self) -> rt::Value {
@@ -3916,7 +3928,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_WithdrawResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -3954,7 +3966,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_CancelResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -3992,14 +4004,14 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_ExecuteTransferResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
             ///The Daml `receiverHoldingCids` field.
             #[serde(rename = "receiverHoldingCids")]
-            pub receiver_holding_cids: Vec<
+            pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -4130,7 +4142,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
             ///The Daml `holdingCids` field.
             #[serde(rename = "holdingCids")]
-            pub holding_cids: Vec<
+            pub holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -4173,7 +4185,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             pub settlement: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::SettlementInfo,
             ///The Daml `transferLegId` field.
             #[serde(rename = "transferLegId")]
-            pub transfer_leg_id: String,
+            pub transfer_leg_id: ::std::string::String,
             ///The Daml `transferLeg` field.
             #[serde(rename = "transferLeg")]
             pub transfer_leg: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::TransferLeg,
@@ -4336,10 +4348,10 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Reference {
             ///The Daml `id` field.
             #[serde(rename = "id")]
-            pub id: String,
+            pub id: ::std::string::String,
             ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: Option<
+            pub cid: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
@@ -4423,8 +4435,9 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             pub amount: rt::Numeric,
             ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock:
-                Option<crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock>,
+            pub lock: ::core::option::Option<
+                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock,
+            >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta:
@@ -4463,17 +4476,18 @@ pub mod splice_api_token_holding_v1_1_0_0 {
         pub struct Lock {
             ///The Daml `holders` field.
             #[serde(rename = "holders")]
-            pub holders: Vec<rt::Party>,
+            pub holders: ::std::vec::Vec<rt::Party>,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
-            pub expires_at: Option<rt::Timestamp>,
+            pub expires_at: ::core::option::Option<rt::Timestamp>,
             ///The Daml `expiresAfter` field.
             #[serde(rename = "expiresAfter")]
-            pub expires_after:
-                Option<crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime>,
+            pub expires_after: ::core::option::Option<
+                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            >,
             ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: Option<String>,
+            pub context: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for Lock {
             fn to_value(&self) -> rt::Value {
@@ -4505,7 +4519,7 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             pub admin: rt::Party,
             ///The Daml `id` field.
             #[serde(rename = "id")]
-            pub id: String,
+            pub id: ::std::string::String,
         }
         impl rt::ToValue for InstrumentId {
             fn to_value(&self) -> rt::Value {
@@ -4603,7 +4617,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         pub struct Metadata {
             ///The Daml `values` field.
             #[serde(rename = "values")]
-            pub values: rt::TextMap<String>,
+            pub values: rt::TextMap<::std::string::String>,
         }
         impl rt::ToValue for Metadata {
             fn to_value(&self) -> rt::Value {
@@ -4660,7 +4674,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         pub enum AnyValue {
             ///The Daml `AV_Text` constructor.
             #[serde(rename = "AV_Text")]
-            AV_Text(String),
+            AV_Text(::std::string::String),
             ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
             AV_Int(rt::Int64),
@@ -4692,7 +4706,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             ///The Daml `AV_List` constructor.
             #[serde(rename = "AV_List")]
             AV_List(
-                Vec<
+                ::std::vec::Vec<
                     crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),

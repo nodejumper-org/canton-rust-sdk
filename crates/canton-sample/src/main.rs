@@ -4,8 +4,9 @@
 //! It builds a **typed** `AppInstallRequest` from the generated
 //! `canton-quickstart-licensing` bindings, round-trips it through both codecs,
 //! and then runs the full milestone-2 verification loop on **both transports**:
-//! codegen → submit → observe the committed transaction → query the ACS and
-//! confirm the created contract is there, over gRPC and over JSON.
+//! codegen → submit → observe the committed transaction → **decode it back into
+//! the typed payload** (`from_created_event`) → query the ACS → **exercise a
+//! typed choice** on the created contract, over gRPC and over JSON.
 //!
 //! Offline (no ledger) it demonstrates the codegen + codecs and always runs. To
 //! run the live loop, set:
@@ -16,8 +17,11 @@
 
 use canton_daml as rt;
 use canton_ledger::{CantonClient, Config, JsonClient, JsonCommands, Submit};
-use canton_quickstart_licensing::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstallRequest;
+use canton_quickstart_licensing::quickstart_licensing_0_0_1::Licensing_AppInstall::{
+    AppInstallRequest, AppInstallRequest_Reject,
+};
 use canton_quickstart_licensing::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata;
+use rt::Template as _;
 
 type Error = Box<dyn std::error::Error>;
 
@@ -106,6 +110,15 @@ async fn run_grpc(
         created,
     );
 
+    // The typed READ path: decode the committed event back into the payload.
+    let created_event = first_created_event(&tx.events).ok_or("no created event")?;
+    let read_back = AppInstallRequest::from_created_event(created_event)?;
+    assert_eq!(&read_back, request, "typed read-back matches the submit");
+    println!(
+        "typed read-back — AppInstallRequest for user {}",
+        read_back.user.0
+    );
+
     // query ACS → confirm the created contract is active.
     let offset = client.ledger_end().await?;
     let stream = client
@@ -125,7 +138,39 @@ async fn run_grpc(
     }
     println!("ACS: {total} active contract(s); our create present: {found}");
     assert!(found, "the created contract should be in the ACS");
+
+    // A typed EXERCISE: reject the install request (consuming), and observe
+    // the archive in the committed transaction.
+    let contract_id: rt::ContractId<AppInstallRequest> =
+        rt::ContractId::new(created_event.contract_id.clone());
+    let reject = rt::exercise_command(
+        &contract_id,
+        &AppInstallRequest_Reject {
+            meta: Metadata {
+                values: rt::TextMap::new(),
+            },
+        },
+    );
+    let tx = client
+        .submit_and_wait_for_transaction(Submit::new(party).add_command(reject))
+        .await?;
+    println!(
+        "exercised AppInstallRequest_Reject — update id {}, {} event(s)",
+        tx.update_id,
+        tx.events.len(),
+    );
     Ok(())
+}
+
+/// The first `CreatedEvent` in a transaction's events.
+fn first_created_event(
+    events: &[canton_ledger::proto::Event],
+) -> Option<&canton_ledger::proto::CreatedEvent> {
+    use canton_ledger::proto::event::Event;
+    events.iter().find_map(|event| match &event.event {
+        Some(Event::Created(created)) => Some(created),
+        _ => None,
+    })
 }
 
 /// The JSON loop: the same submit → observe → ACS, over the JSON Ledger API.

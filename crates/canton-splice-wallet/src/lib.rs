@@ -16,7 +16,7 @@ pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
         pub struct ArithmeticError {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for ArithmeticError {
             fn to_value(&self) -> rt::Value {
@@ -45,7 +45,7 @@ pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
         pub struct AssertionFailed {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for AssertionFailed {
             fn to_value(&self) -> rt::Value {
@@ -74,7 +74,7 @@ pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
         pub struct GeneralError {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for GeneralError {
             fn to_value(&self) -> rt::Value {
@@ -103,7 +103,7 @@ pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
         pub struct PreconditionFailed {
             ///The Daml `message` field.
             #[serde(rename = "message")]
-            pub message: String,
+            pub message: ::std::string::String,
         }
         impl rt::ToValue for PreconditionFailed {
             fn to_value(&self) -> rt::Value {
@@ -2558,13 +2558,25 @@ pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
             Proposition(A),
             ///The Daml `Negation` constructor.
             #[serde(rename = "Negation")]
-            Negation(Box<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Negation(
+                ::std::boxed::Box<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
             ///The Daml `Conjunction` constructor.
             #[serde(rename = "Conjunction")]
-            Conjunction(Vec<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Conjunction(
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
             ///The Daml `Disjunction` constructor.
             #[serde(rename = "Disjunction")]
-            Disjunction(Vec<crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>>),
+            Disjunction(
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
+                >,
+            ),
         }
         impl<A> rt::ToValue for Formula<A>
         where
@@ -2732,7 +2744,7 @@ pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
             pub hd: A,
             ///The Daml `tl` field.
             #[serde(rename = "tl")]
-            pub tl: Vec<A>,
+            pub tl: ::std::vec::Vec<A>,
         }
         impl<A> rt::ToValue for NonEmpty<A>
         where
@@ -2889,13 +2901,13 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
         pub struct SrcLoc {
             ///The Daml `srcLocPackage` field.
             #[serde(rename = "srcLocPackage")]
-            pub src_loc_package: String,
+            pub src_loc_package: ::std::string::String,
             ///The Daml `srcLocModule` field.
             #[serde(rename = "srcLocModule")]
-            pub src_loc_module: String,
+            pub src_loc_module: ::std::string::String,
             ///The Daml `srcLocFile` field.
             #[serde(rename = "srcLocFile")]
-            pub src_loc_file: String,
+            pub src_loc_file: ::std::string::String,
             ///The Daml `srcLocStartLine` field.
             #[serde(rename = "srcLocStartLine")]
             pub src_loc_start_line: rt::Int64,
@@ -3223,7 +3235,7 @@ pub mod splice_amulet_0_1_14 {
             pub amulet_paid: rt::Numeric,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -3281,7 +3293,7 @@ pub mod splice_amulet_0_1_14 {
             pub result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -3343,7 +3355,8 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `newExpiresAt` field.
             #[serde(rename = "newExpiresAt")]
             pub new_expires_at: rt::Timestamp,
@@ -3382,7 +3395,8 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
@@ -3391,7 +3405,7 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: Option<String>,
+            pub description: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for TransferPreapproval_Send {
             fn to_value(&self) -> rt::Value {
@@ -3538,7 +3552,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct ExternalPartySetupProposal_Withdraw {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for ExternalPartySetupProposal_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -3559,7 +3573,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct ExternalPartySetupProposal_Reject {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for ExternalPartySetupProposal_Reject {
             fn to_value(&self) -> rt::Value {
@@ -3652,7 +3666,7 @@ pub mod splice_amulet_0_1_14 {
             pub holding_fees: rt::Numeric,
             ///The Daml `outputFees` field.
             #[serde(rename = "outputFees")]
-            pub output_fees: Vec<rt::Numeric>,
+            pub output_fees: ::std::vec::Vec<rt::Numeric>,
             ///The Daml `senderChangeFee` field.
             #[serde(rename = "senderChangeFee")]
             pub sender_change_fee: rt::Numeric,
@@ -3664,10 +3678,10 @@ pub mod splice_amulet_0_1_14 {
             pub amulet_price: rt::Numeric,
             ///The Daml `inputValidatorFaucetAmount` field.
             #[serde(rename = "inputValidatorFaucetAmount")]
-            pub input_validator_faucet_amount: Option<rt::Numeric>,
+            pub input_validator_faucet_amount: ::core::option::Option<rt::Numeric>,
             ///The Daml `inputUnclaimedActivityRecordAmount` field.
             #[serde(rename = "inputUnclaimedActivityRecordAmount")]
-            pub input_unclaimed_activity_record_amount: Option<rt::Numeric>,
+            pub input_unclaimed_activity_record_amount: ::core::option::Option<rt::Numeric>,
         }
         impl rt::ToValue for TransferSummary {
             fn to_value(&self) -> rt::Value {
@@ -3796,7 +3810,7 @@ pub mod splice_amulet_0_1_14 {
             pub amulet_paid: rt::Numeric,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -3860,7 +3874,7 @@ pub mod splice_amulet_0_1_14 {
             pub amulet_paid: rt::Numeric,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -3926,11 +3940,12 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `senderChangeAmulet` field.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet:
-                Option<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>>,
+            pub sender_change_amulet: ::core::option::Option<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -3986,14 +4001,15 @@ pub mod splice_amulet_0_1_14 {
             ///The Daml `createdAmulets` field.
             #[serde(rename = "createdAmulets")]
             pub created_amulets:
-                Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::CreatedAmulet>,
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::CreatedAmulet>,
             ///The Daml `senderChangeAmulet` field.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet:
-                Option<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>>,
+            pub sender_change_amulet: ::core::option::Option<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -4045,7 +4061,7 @@ pub mod splice_amulet_0_1_14 {
             pub amount: rt::Numeric,
             ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock: Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
+            pub lock: ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
         }
         impl rt::ToValue for TransferOutput {
             fn to_value(&self) -> rt::Value {
@@ -4089,18 +4105,18 @@ pub mod splice_amulet_0_1_14 {
             pub provider: rt::Party,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<
+            pub inputs: ::std::vec::Vec<
                 crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput,
             >,
             ///The Daml `outputs` field.
             #[serde(rename = "outputs")]
-            pub outputs: Vec<
+            pub outputs: ::std::vec::Vec<
                 crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferOutput,
             >,
             ///The Daml `beneficiaries` field.
             #[serde(rename = "beneficiaries")]
-            pub beneficiaries: Option<
-                Vec<
+            pub beneficiaries: ::core::option::Option<
+                ::std::vec::Vec<
                     crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
                 >,
             >,
@@ -4262,7 +4278,7 @@ pub mod splice_amulet_0_1_14 {
             pub dummy_unit_field: rt::Unit,
             ///The Daml `optInputValidatorFaucetCoupon` field.
             #[serde(rename = "optInputValidatorFaucetCoupon")]
-            pub opt_input_validator_faucet_coupon: Option<
+            pub opt_input_validator_faucet_coupon: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon,
                 >,
@@ -4402,7 +4418,7 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `featuredAppRight` field.
             #[serde(rename = "featuredAppRight")]
-            pub featured_app_right: Option<
+            pub featured_app_right: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
             >,
         }
@@ -4496,7 +4512,7 @@ pub mod splice_amulet_0_1_14 {
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
             ///The Daml `featuredAppRight` field.
             #[serde(rename = "featuredAppRight")]
-            pub featured_app_right: Option<
+            pub featured_app_right: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
             >,
         }
@@ -4546,7 +4562,7 @@ pub mod splice_amulet_0_1_14 {
             pub amount: rt::Numeric,
             ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock: Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
+            pub lock: ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
         }
         impl rt::ToValue for PreprocessedTransferOutput {
             fn to_value(&self) -> rt::Value {
@@ -4603,7 +4619,7 @@ pub mod splice_amulet_0_1_14 {
             pub change_to_holding_fees_rate: rt::Numeric,
             ///The Daml `totalUnclaimedActivityRecordAmount` field.
             #[serde(rename = "totalUnclaimedActivityRecordAmount")]
-            pub total_unclaimed_activity_record_amount: Option<rt::Numeric>,
+            pub total_unclaimed_activity_record_amount: ::core::option::Option<rt::Numeric>,
         }
         impl rt::ToValue for TransferInputsSummary {
             fn to_value(&self) -> rt::Value {
@@ -4701,7 +4717,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct TransferContextSummary {
             ///The Daml `featuredAppProvider` field.
             #[serde(rename = "featuredAppProvider")]
-            pub featured_app_provider: Option<rt::Party>,
+            pub featured_app_provider: ::core::option::Option<rt::Party>,
             ///The Daml `config` field.
             #[serde(rename = "config")]
             pub config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::TransferConfig<
@@ -4949,7 +4965,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct InvalidTransferReason_ITR_UnknownSynchronizer {
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
         }
         impl rt::ToValue for InvalidTransferReason_ITR_UnknownSynchronizer {
             fn to_value(&self) -> rt::Value {
@@ -5015,7 +5031,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct InvalidTransferReason_ITR_Other {
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
         }
         impl rt::ToValue for InvalidTransferReason_ITR_Other {
             fn to_value(&self) -> rt::Value {
@@ -5067,7 +5083,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_ConvertFeaturedAppActivityMarkers {
             ///The Daml `markerCids` field.
             #[serde(rename = "markerCids")]
-            pub marker_cids: Vec<
+            pub marker_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppActivityMarker,
                 >,
@@ -5254,8 +5270,9 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_MergeUnclaimedRewards {
             ///The Daml `unclaimedRewardCids` field.
             #[serde(rename = "unclaimedRewardCids")]
-            pub unclaimed_reward_cids:
-                Vec<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>>,
+            pub unclaimed_reward_cids: ::std::vec::Vec<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+            >,
         }
         impl rt::ToValue for AmuletRules_MergeUnclaimedRewards {
             fn to_value(&self) -> rt::Value {
@@ -5286,29 +5303,29 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `validatorRewardCouponCids` field.
             #[serde(rename = "validatorRewardCouponCids")]
-            pub validator_reward_coupon_cids: Vec<
+            pub validator_reward_coupon_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon,
                 >,
             >,
             ///The Daml `appCouponCids` field.
             #[serde(rename = "appCouponCids")]
-            pub app_coupon_cids: Vec<
+            pub app_coupon_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon,
                 >,
             >,
             ///The Daml `svRewardCouponCids` field.
             #[serde(rename = "svRewardCouponCids")]
-            pub sv_reward_coupon_cids: Vec<
+            pub sv_reward_coupon_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon,
                 >,
             >,
             ///The Daml `optValidatorFaucetCouponCids` field.
             #[serde(rename = "optValidatorFaucetCouponCids")]
-            pub opt_validator_faucet_coupon_cids: Option<
-                Vec<
+            pub opt_validator_faucet_coupon_cids: ::core::option::Option<
+                ::std::vec::Vec<
                     rt::ContractId<
                         crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon,
                     >,
@@ -5316,8 +5333,8 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `optValidatorLivenessActivityRecordCids` field.
             #[serde(rename = "optValidatorLivenessActivityRecordCids")]
-            pub opt_validator_liveness_activity_record_cids: Option<
-                Vec<
+            pub opt_validator_liveness_activity_record_cids: ::core::option::Option<
+                ::std::vec::Vec<
                     rt::ContractId<
                         crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
                     >,
@@ -5555,7 +5572,7 @@ pub mod splice_amulet_0_1_14 {
             pub round0_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
             ///The Daml `initialRound` field.
             #[serde(rename = "initialRound")]
-            pub initial_round: Option<rt::Int64>,
+            pub initial_round: ::core::option::Option<rt::Int64>,
         }
         impl rt::ToValue for AmuletRules_Bootstrap_Rounds {
             fn to_value(&self) -> rt::Value {
@@ -5695,7 +5712,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_MergeMemberTrafficContracts {
             ///The Daml `trafficCids` field.
             #[serde(rename = "trafficCids")]
-            pub traffic_cids: Vec<
+            pub traffic_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
                 >,
@@ -5725,7 +5742,8 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_BuyMemberTraffic {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `context` field.
             #[serde(rename = "context")]
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
@@ -5734,10 +5752,10 @@ pub mod splice_amulet_0_1_14 {
             pub provider: rt::Party,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -5746,7 +5764,7 @@ pub mod splice_amulet_0_1_14 {
             pub traffic_amount: rt::Int64,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AmuletRules_BuyMemberTraffic {
             fn to_value(&self) -> rt::Value {
@@ -5807,7 +5825,8 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
@@ -5819,7 +5838,7 @@ pub mod splice_amulet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AmuletRules_CreateTransferPreapproval {
             fn to_value(&self) -> rt::Value {
@@ -5865,7 +5884,8 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
@@ -5877,7 +5897,7 @@ pub mod splice_amulet_0_1_14 {
             pub preapproval_expires_at: rt::Timestamp,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AmuletRules_CreateExternalPartySetupProposal {
             fn to_value(&self) -> rt::Value {
@@ -5929,7 +5949,7 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AmuletRules_Transfer {
             fn to_value(&self) -> rt::Value {
@@ -5964,10 +5984,11 @@ pub mod splice_amulet_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `outputs` field.
             #[serde(rename = "outputs")]
-            pub outputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferOutput>,
+            pub outputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferOutput>,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AmuletRules_ComputeFees {
             fn to_value(&self) -> rt::Value {
@@ -6000,8 +6021,9 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_ConvertFeaturedAppActivityMarkersResult {
             ///The Daml `appRewardCouponCids` field.
             #[serde(rename = "appRewardCouponCids")]
-            pub app_reward_coupon_cids:
-                Vec<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon>>,
+            pub app_reward_coupon_cids: ::std::vec::Vec<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon>,
+            >,
         }
         impl rt::ToValue for AmuletRules_ConvertFeaturedAppActivityMarkersResult {
             fn to_value(&self) -> rt::Value {
@@ -6162,8 +6184,9 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_ClaimExpiredRewardsResult {
             ///The Daml `unclaimedRewardCid` field.
             #[serde(rename = "unclaimedRewardCid")]
-            pub unclaimed_reward_cid:
-                Option<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>>,
+            pub unclaimed_reward_cid: ::core::option::Option<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+            >,
         }
         impl rt::ToValue for AmuletRules_ClaimExpiredRewardsResult {
             fn to_value(&self) -> rt::Value {
@@ -6321,7 +6344,8 @@ pub mod splice_amulet_0_1_14 {
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
             ///The Daml `initialRound` field.
             #[serde(rename = "initialRound")]
-            pub initial_round: Option<crate::splice_amulet_0_1_14::Splice_Types::Round>,
+            pub initial_round:
+                ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Types::Round>,
         }
         impl rt::ToValue for AmuletRules_Bootstrap_RoundsResult {
             fn to_value(&self) -> rt::Value {
@@ -6383,7 +6407,7 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -6468,7 +6492,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct AmuletRules_ComputeFeesResult {
             ///The Daml `fees` field.
             #[serde(rename = "fees")]
-            pub fees: Vec<rt::Numeric>,
+            pub fees: ::std::vec::Vec<rt::Numeric>,
         }
         impl rt::ToValue for AmuletRules_ComputeFeesResult {
             fn to_value(&self) -> rt::Value {
@@ -7096,7 +7120,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct FeaturedAppRight_Withdraw {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for FeaturedAppRight_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -7572,7 +7596,7 @@ pub mod splice_amulet_0_1_14 {
             pub expire_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletExpireSummary,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -7606,7 +7630,7 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -7640,7 +7664,7 @@ pub mod splice_amulet_0_1_14 {
             >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -7672,7 +7696,7 @@ pub mod splice_amulet_0_1_14 {
             pub expire_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletExpireSummary,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: Option<
+            pub meta: ::core::option::Option<
                 crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
@@ -7862,7 +7886,7 @@ pub mod splice_amulet_0_1_14 {
             pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
             ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
-            pub beneficiary: Option<rt::Party>,
+            pub beneficiary: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for AppRewardCoupon {
             fn to_value(&self) -> rt::Value {
@@ -8202,7 +8226,7 @@ pub mod splice_amulet_0_1_14 {
             pub amount: rt::Numeric,
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
@@ -8565,22 +8589,22 @@ pub mod splice_amulet_0_1_14 {
         pub struct PackageConfig {
             ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: String,
+            pub amulet: ::std::string::String,
             ///The Daml `amuletNameService` field.
             #[serde(rename = "amuletNameService")]
-            pub amulet_name_service: String,
+            pub amulet_name_service: ::std::string::String,
             ///The Daml `dsoGovernance` field.
             #[serde(rename = "dsoGovernance")]
-            pub dso_governance: String,
+            pub dso_governance: ::std::string::String,
             ///The Daml `validatorLifecycle` field.
             #[serde(rename = "validatorLifecycle")]
-            pub validator_lifecycle: String,
+            pub validator_lifecycle: ::std::string::String,
             ///The Daml `wallet` field.
             #[serde(rename = "wallet")]
-            pub wallet: String,
+            pub wallet: ::std::string::String,
             ///The Daml `walletPayments` field.
             #[serde(rename = "walletPayments")]
-            pub wallet_payments: String,
+            pub wallet_payments: ::std::string::String,
         }
         impl rt::ToValue for PackageConfig {
             fn to_value(&self) -> rt::Value {
@@ -8660,10 +8684,10 @@ pub mod splice_amulet_0_1_14 {
             pub package_config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::PackageConfig,
             ///The Daml `transferPreapprovalFee` field.
             #[serde(rename = "transferPreapprovalFee")]
-            pub transfer_preapproval_fee: Option<rt::Numeric>,
+            pub transfer_preapproval_fee: ::core::option::Option<rt::Numeric>,
             ///The Daml `featuredAppActivityMarkerAmount` field.
             #[serde(rename = "featuredAppActivityMarkerAmount")]
-            pub featured_app_activity_marker_amount: Option<rt::Numeric>,
+            pub featured_app_activity_marker_amount: ::core::option::Option<rt::Numeric>,
         }
         impl<Unit> rt::ToValue for AmuletConfig<Unit>
         where
@@ -9125,12 +9149,12 @@ pub mod splice_amulet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<
+            pub inputs: ::std::vec::Vec<
                 crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput,
             >,
             ///The Daml `transferPreapprovalCidO` field.
             #[serde(rename = "transferPreapprovalCidO")]
-            pub transfer_preapproval_cid_o: Option<
+            pub transfer_preapproval_cid_o: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
                 >,
@@ -9230,10 +9254,10 @@ pub mod splice_amulet_0_1_14 {
             pub nonce: rt::Int64,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: Option<String>,
+            pub description: ::core::option::Option<::std::string::String>,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for ExternalPartyAmuletRules_CreateTransferCommand {
             fn to_value(&self) -> rt::Value {
@@ -9343,7 +9367,7 @@ pub mod splice_amulet_0_1_14 {
             pub nonce: rt::Int64,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: Option<String>,
+            pub description: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for TransferCommand {
             fn to_value(&self) -> rt::Value {
@@ -9488,7 +9512,8 @@ pub mod splice_amulet_0_1_14 {
             pub initial_value: A,
             ///The Daml `futureValues` field.
             #[serde(rename = "futureValues")]
-            pub future_values: Vec<crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<T, A>>,
+            pub future_values:
+                ::std::vec::Vec<crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<T, A>>,
         }
         impl<T, A> rt::ToValue for Schedule<T, A>
         where
@@ -9595,8 +9620,9 @@ pub mod splice_amulet_0_1_14 {
             pub initial_rate: rt::Numeric,
             ///The Daml `steps` field.
             #[serde(rename = "steps")]
-            pub steps:
-                Vec<crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<rt::Numeric, rt::Numeric>>,
+            pub steps: ::std::vec::Vec<
+                crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<rt::Numeric, rt::Numeric>,
+            >,
         }
         impl rt::ToValue for SteppedRate {
             fn to_value(&self) -> rt::Value {
@@ -9664,13 +9690,13 @@ pub mod splice_amulet_0_1_14 {
         pub struct TimeLock {
             ///The Daml `holders` field.
             #[serde(rename = "holders")]
-            pub holders: Vec<rt::Party>,
+            pub holders: ::std::vec::Vec<rt::Party>,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
             ///The Daml `optContext` field.
             #[serde(rename = "optContext")]
-            pub opt_context: Option<String>,
+            pub opt_context: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for TimeLock {
             fn to_value(&self) -> rt::Value {
@@ -9971,7 +9997,7 @@ pub mod splice_amulet_0_1_14 {
             pub total_sv_reward_weight: rt::Int64,
             ///The Daml `optTotalValidatorFaucetCoupons` field.
             #[serde(rename = "optTotalValidatorFaucetCoupons")]
-            pub opt_total_validator_faucet_coupons: Option<rt::Int64>,
+            pub opt_total_validator_faucet_coupons: ::core::option::Option<rt::Int64>,
         }
         impl rt::ToValue for OpenMiningRoundSummary {
             fn to_value(&self) -> rt::Value {
@@ -10049,7 +10075,7 @@ pub mod splice_amulet_0_1_14 {
             pub unfeatured_app_reward_cap: rt::Numeric,
             ///The Daml `optValidatorFaucetCap` field.
             #[serde(rename = "optValidatorFaucetCap")]
-            pub opt_validator_faucet_cap: Option<rt::Numeric>,
+            pub opt_validator_faucet_cap: ::core::option::Option<rt::Numeric>,
         }
         impl rt::ToValue for IssuanceConfig {
             fn to_value(&self) -> rt::Value {
@@ -10201,10 +10227,10 @@ pub mod splice_amulet_0_1_14 {
         pub struct ValidatorLicense_UpdateMetadata {
             ///The Daml `version` field.
             #[serde(rename = "version")]
-            pub version: String,
+            pub version: ::std::string::String,
             ///The Daml `contactPoint` field.
             #[serde(rename = "contactPoint")]
-            pub contact_point: String,
+            pub contact_point: ::std::string::String,
         }
         impl rt::ToValue for ValidatorLicense_UpdateMetadata {
             fn to_value(&self) -> rt::Value {
@@ -10233,7 +10259,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct ValidatorLicense_Cancel {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for ValidatorLicense_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -10254,7 +10280,7 @@ pub mod splice_amulet_0_1_14 {
         pub struct ValidatorLicense_Withdraw {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for ValidatorLicense_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -10332,10 +10358,10 @@ pub mod splice_amulet_0_1_14 {
             pub last_updated_at: rt::Timestamp,
             ///The Daml `version` field.
             #[serde(rename = "version")]
-            pub version: String,
+            pub version: ::std::string::String,
             ///The Daml `contactPoint` field.
             #[serde(rename = "contactPoint")]
-            pub contact_point: String,
+            pub contact_point: ::std::string::String,
         }
         impl rt::ToValue for ValidatorLicenseMetadata {
             fn to_value(&self) -> rt::Value {
@@ -10764,16 +10790,17 @@ pub mod splice_amulet_0_1_14 {
             pub dso: rt::Party,
             ///The Daml `faucetState` field.
             #[serde(rename = "faucetState")]
-            pub faucet_state:
-                Option<crate::splice_amulet_0_1_14::Splice_ValidatorLicense::FaucetState>,
+            pub faucet_state: ::core::option::Option<
+                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::FaucetState,
+            >,
             ///The Daml `metadata` field.
             #[serde(rename = "metadata")]
-            pub metadata: Option<
+            pub metadata: ::core::option::Option<
                 crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicenseMetadata,
             >,
             ///The Daml `lastActiveAt` field.
             #[serde(rename = "lastActiveAt")]
-            pub last_active_at: Option<rt::Timestamp>,
+            pub last_active_at: ::core::option::Option<rt::Timestamp>,
         }
         impl rt::ToValue for ValidatorLicense {
             fn to_value(&self) -> rt::Value {
@@ -10936,10 +10963,10 @@ pub mod splice_amulet_0_1_14 {
             pub dso: rt::Party,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -11081,11 +11108,11 @@ pub mod splice_amulet_0_1_14 {
             ///The Daml `requiredSynchronizers` field.
             #[serde(rename = "requiredSynchronizers")]
             pub required_synchronizers: crate::daml_stdlib_DA_Set_Types_1_0_0::DA_Set_Types::Set<
-                String,
+                ::std::string::String,
             >,
             ///The Daml `activeSynchronizer` field.
             #[serde(rename = "activeSynchronizer")]
-            pub active_synchronizer: String,
+            pub active_synchronizer: ::std::string::String,
             ///The Daml `fees` field.
             #[serde(rename = "fees")]
             pub fees: crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::SynchronizerFeesConfig,
@@ -11130,10 +11157,10 @@ pub mod splice_amulet_0_1_14 {
             pub dso: rt::Party,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -11291,7 +11318,7 @@ pub mod splice_amulet_0_1_14 {
             pub issuance_per_sv_reward_coupon: rt::Numeric,
             ///The Daml `optIssuancePerValidatorFaucetCoupon` field.
             #[serde(rename = "optIssuancePerValidatorFaucetCoupon")]
-            pub opt_issuance_per_validator_faucet_coupon: Option<rt::Numeric>,
+            pub opt_issuance_per_validator_faucet_coupon: ::core::option::Option<rt::Numeric>,
         }
         impl rt::ToValue for ClosedMiningRound {
             fn to_value(&self) -> rt::Value {
@@ -11393,7 +11420,7 @@ pub mod splice_amulet_0_1_14 {
             pub target_closes_at: rt::Timestamp,
             ///The Daml `optIssuancePerValidatorFaucetCoupon` field.
             #[serde(rename = "optIssuancePerValidatorFaucetCoupon")]
-            pub opt_issuance_per_validator_faucet_coupon: Option<rt::Numeric>,
+            pub opt_issuance_per_validator_faucet_coupon: ::core::option::Option<rt::Numeric>,
         }
         impl rt::ToValue for IssuingMiningRound {
             fn to_value(&self) -> rt::Value {
@@ -11694,13 +11721,13 @@ pub mod splice_amulet_0_1_14 {
             pub amount: rt::Numeric,
             ///The Daml `lockContext` field.
             #[serde(rename = "lockContext")]
-            pub lock_context: String,
+            pub lock_context: ::std::string::String,
             ///The Daml `transferBefore` field.
             #[serde(rename = "transferBefore")]
             pub transfer_before: rt::Timestamp,
             ///The Daml `transferBeforeDeadline` field.
             #[serde(rename = "transferBeforeDeadline")]
-            pub transfer_before_deadline: String,
+            pub transfer_before_deadline: ::std::string::String,
             ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
@@ -11853,7 +11880,7 @@ pub mod splice_api_featured_app_v1_1_0_0 {
         pub struct FeaturedAppRight_CreateActivityMarkerResult {
             ///The Daml `activityMarkerCids` field.
             #[serde(rename = "activityMarkerCids")]
-            pub activity_marker_cids: Vec<
+            pub activity_marker_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppActivityMarker,
                 >,
@@ -11883,7 +11910,7 @@ pub mod splice_api_featured_app_v1_1_0_0 {
         pub struct FeaturedAppRight_CreateActivityMarker {
             ///The Daml `beneficiaries` field.
             #[serde(rename = "beneficiaries")]
-            pub beneficiaries: Vec<
+            pub beneficiaries: ::std::vec::Vec<
                 crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
             >,
         }
@@ -12123,7 +12150,7 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
             pub output: crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output,
             ///The Daml `senderChangeCids` field.
             #[serde(rename = "senderChangeCids")]
-            pub sender_change_cids: Vec<
+            pub sender_change_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12203,7 +12230,7 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
             pub requested_at: rt::Timestamp,
             ///The Daml `inputHoldingCids` field.
             #[serde(rename = "inputHoldingCids")]
-            pub input_holding_cids: Vec<
+            pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12289,7 +12316,7 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
         pub struct AllocationInstruction_Update {
             ///The Daml `extraActors` field.
             #[serde(rename = "extraActors")]
-            pub extra_actors: Vec<rt::Party>,
+            pub extra_actors: ::std::vec::Vec<rt::Party>,
             ///The Daml `extraArgs` field.
             #[serde(rename = "extraArgs")]
             pub extra_args:
@@ -12351,7 +12378,7 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
         pub struct AllocationInstructionView {
             ///The Daml `originalInstructionCid` field.
             #[serde(rename = "originalInstructionCid")]
-            pub original_instruction_cid: Option<
+            pub original_instruction_cid: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
                 >,
@@ -12361,13 +12388,13 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
             pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
             ///The Daml `pendingActions` field.
             #[serde(rename = "pendingActions")]
-            pub pending_actions: rt::GenMap<rt::Party, String>,
+            pub pending_actions: rt::GenMap<rt::Party, ::std::string::String>,
             ///The Daml `requestedAt` field.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
             ///The Daml `inputHoldingCids` field.
             #[serde(rename = "inputHoldingCids")]
-            pub input_holding_cids: Vec<
+            pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12509,7 +12536,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_WithdrawResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12547,7 +12574,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_CancelResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12585,14 +12612,14 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Allocation_ExecuteTransferResult {
             ///The Daml `senderHoldingCids` field.
             #[serde(rename = "senderHoldingCids")]
-            pub sender_holding_cids: Vec<
+            pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
             ///The Daml `receiverHoldingCids` field.
             #[serde(rename = "receiverHoldingCids")]
-            pub receiver_holding_cids: Vec<
+            pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12723,7 +12750,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
             ///The Daml `holdingCids` field.
             #[serde(rename = "holdingCids")]
-            pub holding_cids: Vec<
+            pub holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -12766,7 +12793,7 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             pub settlement: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::SettlementInfo,
             ///The Daml `transferLegId` field.
             #[serde(rename = "transferLegId")]
-            pub transfer_leg_id: String,
+            pub transfer_leg_id: ::std::string::String,
             ///The Daml `transferLeg` field.
             #[serde(rename = "transferLeg")]
             pub transfer_leg: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::TransferLeg,
@@ -12929,10 +12956,10 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         pub struct Reference {
             ///The Daml `id` field.
             #[serde(rename = "id")]
-            pub id: String,
+            pub id: ::std::string::String,
             ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: Option<
+            pub cid: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
@@ -13016,8 +13043,9 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             pub amount: rt::Numeric,
             ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock:
-                Option<crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock>,
+            pub lock: ::core::option::Option<
+                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock,
+            >,
             ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta:
@@ -13056,17 +13084,18 @@ pub mod splice_api_token_holding_v1_1_0_0 {
         pub struct Lock {
             ///The Daml `holders` field.
             #[serde(rename = "holders")]
-            pub holders: Vec<rt::Party>,
+            pub holders: ::std::vec::Vec<rt::Party>,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
-            pub expires_at: Option<rt::Timestamp>,
+            pub expires_at: ::core::option::Option<rt::Timestamp>,
             ///The Daml `expiresAfter` field.
             #[serde(rename = "expiresAfter")]
-            pub expires_after:
-                Option<crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime>,
+            pub expires_after: ::core::option::Option<
+                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            >,
             ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: Option<String>,
+            pub context: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for Lock {
             fn to_value(&self) -> rt::Value {
@@ -13098,7 +13127,7 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             pub admin: rt::Party,
             ///The Daml `id` field.
             #[serde(rename = "id")]
-            pub id: String,
+            pub id: ::std::string::String,
         }
         impl rt::ToValue for InstrumentId {
             fn to_value(&self) -> rt::Value {
@@ -13196,7 +13225,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         pub struct Metadata {
             ///The Daml `values` field.
             #[serde(rename = "values")]
-            pub values: rt::TextMap<String>,
+            pub values: rt::TextMap<::std::string::String>,
         }
         impl rt::ToValue for Metadata {
             fn to_value(&self) -> rt::Value {
@@ -13253,7 +13282,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         pub enum AnyValue {
             ///The Daml `AV_Text` constructor.
             #[serde(rename = "AV_Text")]
-            AV_Text(String),
+            AV_Text(::std::string::String),
             ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
             AV_Int(rt::Int64),
@@ -13285,7 +13314,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             ///The Daml `AV_List` constructor.
             #[serde(rename = "AV_List")]
             AV_List(
-                Vec<
+                ::std::vec::Vec<
                     crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),
@@ -13508,7 +13537,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         pub struct TransferInstruction_Update {
             ///The Daml `extraActors` field.
             #[serde(rename = "extraActors")]
-            pub extra_actors: Vec<rt::Party>,
+            pub extra_actors: ::std::vec::Vec<rt::Party>,
             ///The Daml `extraArgs` field.
             #[serde(rename = "extraArgs")]
             pub extra_args:
@@ -13624,7 +13653,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         pub struct TransferInstructionView {
             ///The Daml `originalInstructionCid` field.
             #[serde(rename = "originalInstructionCid")]
-            pub original_instruction_cid: Option<
+            pub original_instruction_cid: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
                 >,
@@ -13726,7 +13755,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         pub struct TransferInstructionStatus_TransferPendingInternalWorkflow {
             ///The Daml `pendingActions` field.
             #[serde(rename = "pendingActions")]
-            pub pending_actions: rt::GenMap<rt::Party, String>,
+            pub pending_actions: rt::GenMap<rt::Party, ::std::string::String>,
         }
         impl rt::ToValue for TransferInstructionStatus_TransferPendingInternalWorkflow {
             fn to_value(&self) -> rt::Value {
@@ -13847,7 +13876,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         pub struct TransferInstructionResult_Output_TransferInstructionResult_Completed {
             ///The Daml `receiverHoldingCids` field.
             #[serde(rename = "receiverHoldingCids")]
-            pub receiver_holding_cids: Vec<
+            pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -13880,7 +13909,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
             pub output: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output,
             ///The Daml `senderChangeCids` field.
             #[serde(rename = "senderChangeCids")]
-            pub sender_change_cids: Vec<
+            pub sender_change_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -13940,7 +13969,7 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
             pub execute_before: rt::Timestamp,
             ///The Daml `inputHoldingCids` field.
             #[serde(rename = "inputHoldingCids")]
-            pub input_holding_cids: Vec<
+            pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
                     crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
                 >,
@@ -14103,10 +14132,10 @@ pub mod splice_wallet_0_1_14 {
             pub validator: rt::Party,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -14496,7 +14525,7 @@ pub mod splice_wallet_0_1_14 {
             >,
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_BuyTrafficRequest_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -14525,10 +14554,10 @@ pub mod splice_wallet_0_1_14 {
         pub struct WalletAppInstall_CreateBuyTrafficRequest {
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -14540,7 +14569,7 @@ pub mod splice_wallet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_CreateBuyTrafficRequest {
             fn to_value(&self) -> rt::Value {
@@ -14622,7 +14651,7 @@ pub mod splice_wallet_0_1_14 {
             >,
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -14652,7 +14681,7 @@ pub mod splice_wallet_0_1_14 {
             >,
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_Abort {
             fn to_value(&self) -> rt::Value {
@@ -14703,7 +14732,7 @@ pub mod splice_wallet_0_1_14 {
             >,
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -14776,13 +14805,13 @@ pub mod splice_wallet_0_1_14 {
             pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
         }
         impl rt::ToValue for WalletAppInstall_CreateTransferOffer {
             fn to_value(&self) -> rt::Value {
@@ -14914,11 +14943,13 @@ pub mod splice_wallet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `operations` field.
             #[serde(rename = "operations")]
-            pub operations:
-                Vec<crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation>,
+            pub operations: ::std::vec::Vec<
+                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation,
+            >,
         }
         impl rt::ToValue for WalletAppInstall_ExecuteBatch {
             fn to_value(&self) -> rt::Value {
@@ -15455,14 +15486,15 @@ pub mod splice_wallet_0_1_14 {
         pub struct WalletAppInstall_ExecuteBatchResult {
             ///The Daml `endUserName` field.
             #[serde(rename = "endUserName")]
-            pub end_user_name: String,
+            pub end_user_name: ::std::string::String,
             ///The Daml `outcomes` field.
             #[serde(rename = "outcomes")]
-            pub outcomes:
-                Vec<crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperationOutcome>,
+            pub outcomes: ::std::vec::Vec<
+                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperationOutcome,
+            >,
             ///The Daml `optEndUserParty` field.
             #[serde(rename = "optEndUserParty")]
-            pub opt_end_user_party: Option<rt::Party>,
+            pub opt_end_user_party: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for WalletAppInstall_ExecuteBatchResult {
             fn to_value(&self) -> rt::Value {
@@ -15526,7 +15558,7 @@ pub mod splice_wallet_0_1_14 {
             ///The Daml `COO_MergeTransferInputs` constructor.
             #[serde(rename = "COO_MergeTransferInputs")]
             COO_MergeTransferInputs(
-                Option<
+                ::core::option::Option<
                     rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
                 >,
             ),
@@ -15584,7 +15616,7 @@ pub mod splice_wallet_0_1_14 {
             ///The Daml `COO_TransferPreapprovalSend` constructor.
             #[serde(rename = "COO_TransferPreapprovalSend")]
             COO_TransferPreapprovalSend(
-                Option<
+                ::core::option::Option<
                     rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
                 >,
             ),
@@ -15971,10 +16003,10 @@ pub mod splice_wallet_0_1_14 {
             pub traffic_amount: rt::Int64,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -15983,7 +16015,7 @@ pub mod splice_wallet_0_1_14 {
             pub min_topup_interval: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
             ///The Daml `topupStateCid` field.
             #[serde(rename = "topupStateCid")]
-            pub topup_state_cid: Option<
+            pub topup_state_cid: ::core::option::Option<
                 rt::ContractId<
                     crate::splice_wallet_0_1_14::Splice_Wallet_TopUpState::ValidatorTopUpState,
                 >,
@@ -16245,7 +16277,7 @@ pub mod splice_wallet_0_1_14 {
             >,
             ///The Daml `providerFeaturedAppRightCid` field.
             #[serde(rename = "providerFeaturedAppRightCid")]
-            pub provider_featured_app_right_cid: Option<
+            pub provider_featured_app_right_cid: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
             >,
             ///The Daml `amount` field.
@@ -16253,7 +16285,7 @@ pub mod splice_wallet_0_1_14 {
             pub amount: rt::Numeric,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: Option<String>,
+            pub description: ::core::option::Option<::std::string::String>,
         }
         impl rt::ToValue for AmuletOperation_CO_TransferPreapprovalSend {
             fn to_value(&self) -> rt::Value {
@@ -16352,7 +16384,7 @@ pub mod splice_wallet_0_1_14 {
             pub validator_party: rt::Party,
             ///The Daml `endUserName` field.
             #[serde(rename = "endUserName")]
-            pub end_user_name: String,
+            pub end_user_name: ::std::string::String,
             ///The Daml `endUserParty` field.
             #[serde(rename = "endUserParty")]
             pub end_user_party: rt::Party,
@@ -16606,7 +16638,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct AcceptedTransferOffer_Abort {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for AcceptedTransferOffer_Abort {
             fn to_value(&self) -> rt::Value {
@@ -16627,7 +16659,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct AcceptedTransferOffer_Withdraw {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for AcceptedTransferOffer_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -16648,7 +16680,8 @@ pub mod splice_wallet_0_1_14 {
         pub struct AcceptedTransferOffer_Complete {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `transferContext` field.
             #[serde(rename = "transferContext")]
             pub transfer_context:
@@ -16703,8 +16736,9 @@ pub mod splice_wallet_0_1_14 {
                 crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
             ///The Daml `senderChangeAmulet` field.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet:
-                Option<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>>,
+            pub sender_change_amulet: ::core::option::Option<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            >,
         }
         impl rt::ToValue for AcceptedTransferOffer_CompleteResult {
             fn to_value(&self) -> rt::Value {
@@ -16743,7 +16777,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct TransferOfferTrackingInfo {
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
             ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
@@ -16801,7 +16835,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct TransferOffer_Withdraw {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for TransferOffer_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -17053,7 +17087,7 @@ pub mod splice_wallet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
         }
         impl rt::ToValue for AcceptedTransferOffer {
             fn to_value(&self) -> rt::Value {
@@ -17154,13 +17188,13 @@ pub mod splice_wallet_0_1_14 {
             pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
         }
         impl rt::ToValue for TransferOffer {
             fn to_value(&self) -> rt::Value {
@@ -17275,7 +17309,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct BuyTrafficRequest_Cancel {
             ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: String,
+            pub reason: ::std::string::String,
         }
         impl rt::ToValue for BuyTrafficRequest_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -17296,7 +17330,8 @@ pub mod splice_wallet_0_1_14 {
         pub struct BuyTrafficRequest_Complete {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `context` field.
             #[serde(rename = "context")]
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
@@ -17398,7 +17433,7 @@ pub mod splice_wallet_0_1_14 {
             pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
             ///The Daml `senderChangeAmulet` field.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet: Option<
+            pub sender_change_amulet: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
             >,
         }
@@ -17439,7 +17474,7 @@ pub mod splice_wallet_0_1_14 {
         pub struct BuyTrafficRequestTrackingInfo {
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
             ///The Daml `endUserParty` field.
             #[serde(rename = "endUserParty")]
             pub end_user_party: rt::Party,
@@ -17482,16 +17517,16 @@ pub mod splice_wallet_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `trackingId` field.
             #[serde(rename = "trackingId")]
-            pub tracking_id: String,
+            pub tracking_id: ::std::string::String,
             ///The Daml `trafficAmount` field.
             #[serde(rename = "trafficAmount")]
             pub traffic_amount: rt::Int64,
             ///The Daml `memberId` field.
             #[serde(rename = "memberId")]
-            pub member_id: String,
+            pub member_id: ::std::string::String,
             ///The Daml `synchronizerId` field.
             #[serde(rename = "synchronizerId")]
-            pub synchronizer_id: String,
+            pub synchronizer_id: ::std::string::String,
             ///The Daml `migrationId` field.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
@@ -17652,7 +17687,8 @@ pub mod splice_wallet_0_1_14 {
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `expiresAt` field.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
@@ -17694,7 +17730,7 @@ pub mod splice_wallet_0_1_14 {
             pub provider: rt::Party,
             ///The Daml `expectedDso` field.
             #[serde(rename = "expectedDso")]
-            pub expected_dso: Option<rt::Party>,
+            pub expected_dso: ::core::option::Option<rt::Party>,
         }
         impl rt::ToValue for TransferPreapprovalProposal {
             fn to_value(&self) -> rt::Value {
@@ -17823,7 +17859,7 @@ pub mod splice_wallet_payments_0_1_14 {
         pub struct AcceptedAppPayment_CollectResult {
             ///The Daml `receiverAmulets` field.
             #[serde(rename = "receiverAmulets")]
-            pub receiver_amulets: Vec<
+            pub receiver_amulets: ::std::vec::Vec<
                 crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
                     rt::Party,
                     rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
@@ -17913,7 +17949,8 @@ pub mod splice_wallet_payments_0_1_14 {
         pub struct AppPaymentRequest_Accept {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `context` field.
             #[serde(rename = "context")]
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
@@ -18171,8 +18208,9 @@ pub mod splice_wallet_payments_0_1_14 {
             >,
             ///The Daml `senderChangeAmulet` field.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet:
-                Option<rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>>,
+            pub sender_change_amulet: ::core::option::Option<
+                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            >,
         }
         impl rt::ToValue for AppPaymentRequest_AcceptResult {
             fn to_value(&self) -> rt::Value {
@@ -18270,7 +18308,7 @@ pub mod splice_wallet_payments_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `amuletReceiverAmounts` field.
             #[serde(rename = "amuletReceiverAmounts")]
-            pub amulet_receiver_amounts: Vec<
+            pub amulet_receiver_amounts: ::std::vec::Vec<
                 crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::ReceiverAmuletAmount,
             >,
             ///The Daml `provider` field.
@@ -18382,8 +18420,9 @@ pub mod splice_wallet_payments_0_1_14 {
             pub sender: rt::Party,
             ///The Daml `receiverAmounts` field.
             #[serde(rename = "receiverAmounts")]
-            pub receiver_amounts:
-                Vec<crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::ReceiverAmount>,
+            pub receiver_amounts: ::std::vec::Vec<
+                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::ReceiverAmount,
+            >,
             ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
@@ -18395,7 +18434,7 @@ pub mod splice_wallet_payments_0_1_14 {
             pub expires_at: rt::Timestamp,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
         }
         impl rt::ToValue for AppPaymentRequest {
             fn to_value(&self) -> rt::Value {
@@ -18495,7 +18534,7 @@ pub mod splice_wallet_payments_0_1_14 {
             pub provider: rt::Party,
             ///The Daml `receivers` field.
             #[serde(rename = "receivers")]
-            pub receivers: Vec<rt::Party>,
+            pub receivers: ::std::vec::Vec<rt::Party>,
             ///The Daml `reference` field.
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
@@ -18678,7 +18717,8 @@ pub mod splice_wallet_payments_0_1_14 {
         pub struct SubscriptionIdleState_MakePayment {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `context` field.
             #[serde(rename = "context")]
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
@@ -18834,7 +18874,8 @@ pub mod splice_wallet_payments_0_1_14 {
         pub struct SubscriptionRequest_AcceptAndMakePayment {
             ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs: Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
+            pub inputs:
+                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
             ///The Daml `context` field.
             #[serde(rename = "context")]
             pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
@@ -19065,7 +19106,7 @@ pub mod splice_wallet_payments_0_1_14 {
             >,
             ///The Daml `senderChange` field.
             #[serde(rename = "senderChange")]
-            pub sender_change: Option<
+            pub sender_change: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
             >,
         }
@@ -19320,7 +19361,7 @@ pub mod splice_wallet_payments_0_1_14 {
             >,
             ///The Daml `senderChange` field.
             #[serde(rename = "senderChange")]
-            pub sender_change: Option<
+            pub sender_change: ::core::option::Option<
                 rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
             >,
         }
@@ -19392,7 +19433,7 @@ pub mod splice_wallet_payments_0_1_14 {
             pub dso: rt::Party,
             ///The Daml `description` field.
             #[serde(rename = "description")]
-            pub description: String,
+            pub description: ::std::string::String,
         }
         impl rt::ToValue for SubscriptionData {
             fn to_value(&self) -> rt::Value {

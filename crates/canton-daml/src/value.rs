@@ -18,7 +18,7 @@ pub struct ValueError {
 }
 
 impl ValueError {
-    fn new(message: impl Into<String>) -> Self {
+    pub(crate) fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
         }
@@ -186,6 +186,20 @@ impl<T> AbsentField for NestedOpt<T> {
     fn absent() -> Self {
         NestedOpt(None)
     }
+}
+
+/// Decode a bare wire `Record` — the shape `CreatedEvent.create_arguments`
+/// carries — into a typed value. See also
+/// [`Template::from_created_event`](crate::Template::from_created_event),
+/// which wraps this with a template-identity check.
+///
+/// # Errors
+/// Returns [`ValueError`] if the record's shape does not match `T`.
+pub fn from_record<T: FromValue>(record: &pb::Record) -> Result<T, ValueError> {
+    let value = pb::Value {
+        sum: Some(pb::value::Sum::Record(record.clone())),
+    };
+    T::from_value(&value)
 }
 
 // ---- enum / variant helpers (used by generated ToValue/FromValue) ----------

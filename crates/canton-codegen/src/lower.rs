@@ -42,6 +42,12 @@ impl LowerError {
     fn new(message: impl Into<String>) -> Self {
         Self(message.into())
     }
+
+    /// Prefix the error with the context it arose in (a module or package),
+    /// so a skipped-type warning tells the user *where* to look.
+    fn in_context(self, context: &str) -> Self {
+        Self(format!("{context}: {}", self.0))
+    }
 }
 
 impl std::fmt::Display for LowerError {
@@ -71,10 +77,29 @@ pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<LowerError>), DecodeError> {
 #[must_use]
 pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError>) {
     // package id → the Rust module name that package's types live under.
-    let module_names: HashMap<&str, String> = packages
+    let mut module_names: HashMap<&str, String> = packages
         .iter()
         .map(|(id, package)| (id.as_str(), package_module_name(package, id)))
         .collect();
+
+    // Two different packages can carry the same name+version (a rebuilt package
+    // gets a new id but identical metadata); emitting two same-named `pub mod`s
+    // would not compile. Disambiguate every colliding module name with the
+    // package-id prefix — deterministic, and references resolve through the id.
+    let mut by_name: HashMap<&str, usize> = HashMap::new();
+    for name in module_names.values() {
+        *by_name.entry(name.as_str()).or_default() += 1;
+    }
+    let colliding: std::collections::HashSet<String> = by_name
+        .into_iter()
+        .filter(|(_, count)| *count > 1)
+        .map(|(name, _)| name.to_string())
+        .collect();
+    for (id, name) in &mut module_names {
+        if colliding.contains(name.as_str()) {
+            *name = format!("{name}_{}", &id[..8.min(id.len())]);
+        }
+    }
 
     let mut krate = Crate::default();
     let mut errors = Vec::new();
@@ -210,21 +235,21 @@ impl Lowering<'_> {
                 }
                 Ok(Some(lowered)) => module.data_types.push(lowered),
                 Ok(None) => {}
-                Err(error) => errors.push(error),
+                Err(error) => errors.push(error.in_context(module_dotted)),
             }
         }
 
         for def in &lf_module.templates {
             match self.template(def, module_dotted, &mut payloads) {
                 Ok(template) => module.templates.push(template),
-                Err(error) => errors.push(error),
+                Err(error) => errors.push(error.in_context(module_dotted)),
             }
         }
 
         for def in &lf_module.interfaces {
             match self.interface(def, module_dotted) {
                 Ok(interface) => module.interfaces.push(interface),
-                Err(error) => errors.push(error),
+                Err(error) => errors.push(error.in_context(module_dotted)),
             }
         }
         module
@@ -395,7 +420,7 @@ impl Lowering<'_> {
     }
 
     fn fields(&self, fields: &[lf::FieldWithType]) -> Result<Vec<Field>, LowerError> {
-        fields
+        let lowered = fields
             .iter()
             .map(|field| {
                 let label = interned_str(self.package, field.field_interned_str)
@@ -404,7 +429,22 @@ impl Lowering<'_> {
                 let ty = self.type_(field_type(field)?)?;
                 Ok(Field { label, ty })
             })
-            .collect()
+            .collect::<Result<Vec<Field>, LowerError>>()?;
+
+        // Two Daml labels can collapse onto one Rust field name (`fooBar` and
+        // `foo_bar` both snake_case to `foo_bar`); the emitted struct would not
+        // compile. Fail the type with a clear message instead.
+        let mut by_rust_name: HashMap<String, &str> = HashMap::new();
+        for field in &lowered {
+            let rust = heck::ToSnakeCase::to_snake_case(field.label.as_str());
+            if let Some(previous) = by_rust_name.insert(rust.clone(), &field.label) {
+                return Err(LowerError::new(format!(
+                    "fields `{previous}` and `{}` both map to the Rust field `{rust}`",
+                    field.label
+                )));
+            }
+        }
+        Ok(lowered)
     }
 
     fn variant_constructor(
@@ -798,11 +838,23 @@ fn field_type(field: &lf::FieldWithType) -> Result<&lf::Type, LowerError> {
 /// Resolve an interned dotted type name into a Rust-usable identifier: the Daml
 /// qualified name with `.` replaced by `_` (Daml type names are otherwise valid
 /// Rust identifiers). Definitions and references use this same mapping, so they
-/// agree.
+/// agree. A name that is not a valid Rust identifier (LF permits characters
+/// like `$` in compiler-internal names) is a [`LowerError`], not a panic in
+/// the emitter.
 fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, LowerError> {
     let dotted = interned_dotted_name(package, name_interned_dname)
         .ok_or_else(|| LowerError::new("unresolved dotted name"))?;
-    Ok(dotted.replace('.', "_"))
+    let name = dotted.replace('.', "_");
+    let valid_ident = !name.is_empty()
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+    if valid_ident {
+        Ok(name)
+    } else {
+        Err(LowerError::new(format!(
+            "`{dotted}` is not representable as a Rust identifier"
+        )))
+    }
 }
 
 #[cfg(test)]

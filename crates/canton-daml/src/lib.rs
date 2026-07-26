@@ -1,10 +1,13 @@
 //! Runtime for `canton-codegen`-generated Daml bindings.
 //!
-//! **Milestone 2, work in progress.** Generated code depends on this crate
-//! (imported as `rt`) for the Daml primitive types ([`Party`], [`ContractId`],
-//! [`Numeric`], [`Timestamp`], [`Date`], [`TextMap`], [`GenMap`]), the
-//! [`Choice`] trait, and the [`ToValue`] / [`FromValue`] codecs that move typed
-//! values to and from the Ledger API `Value` on the wire.
+//! Generated code depends on this crate (imported as `rt`) for the Daml
+//! primitive types ([`Party`], [`ContractId`], [`Numeric`], [`Timestamp`],
+//! [`Date`], [`TextMap`], [`GenMap`]), the [`Template`] / [`Interface`] /
+//! [`Choice`] traits, the command builders ([`create_command`],
+//! [`exercise_command`], [`exercise_by_key_command`]), and the [`ToValue`] /
+//! [`FromValue`] codecs that move typed values to and from the Ledger API
+//! `Value` on the wire. The typed **read** path is
+//! [`Template::from_created_event`].
 //!
 //! It contains no ledger I/O — it is the thin type/codec layer beneath the
 //! generated bindings, kept separate from the codegen tool (which is
@@ -24,8 +27,8 @@ pub use primitives::{
 pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{
     AbsentField, FromValue, ToValue, ValueError, enum_constructor, enum_value, find_field,
-    optional_field, record, record_field, required_field, unexpected_constructor, unit_value,
-    variant_parts, variant_value,
+    from_record, optional_field, record, record_field, required_field, unexpected_constructor,
+    unit_value, variant_parts, variant_value,
 };
 
 /// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
@@ -463,6 +466,107 @@ mod tests {
                 "labelled={labelled}"
             );
         }
+    }
+
+    #[test]
+    fn numeric_compares_by_value_not_by_text() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        // The ledger echoes numerics at the type's full scale: a submitted
+        // "1.5" comes back "1.5000000000" (Numeric 10) and must compare equal.
+        let submitted = Numeric("1.5".to_string());
+        let echoed = Numeric("1.5000000000".to_string());
+        assert_eq!(submitted, echoed);
+
+        let hash = |n: &Numeric| {
+            let mut hasher = DefaultHasher::new();
+            n.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(hash(&submitted), hash(&echoed), "Eq and Hash must agree");
+
+        // Sign/zero normalization and numeric (not lexicographic) order.
+        assert_eq!(Numeric("-0".to_string()), Numeric("0.00".to_string()));
+        assert_eq!(Numeric("+07.10".to_string()), Numeric("7.1".to_string()));
+        assert!(Numeric("2".to_string()) < Numeric("10".to_string()));
+        assert!(Numeric("1.45".to_string()) < Numeric("1.5".to_string()));
+        assert!(Numeric("-1.5".to_string()) < Numeric("-1.45".to_string()));
+        assert!(Numeric("-1".to_string()) < Numeric("0.1".to_string()));
+
+        // Garbage never equals a valid decimal, and parse rejects it early.
+        assert_ne!(Numeric("abc".to_string()), Numeric("1".to_string()));
+        assert!(Numeric::parse("1.5").is_ok());
+        assert!(Numeric::parse("-12.500").is_ok());
+        for bad in ["", "1.", ".5", "1.2.3", "1e5", "abc", "1,5"] {
+            assert!(Numeric::parse(bad).is_err(), "{bad:?} should be rejected");
+        }
+    }
+
+    #[test]
+    fn contract_id_retags_for_interface_exercise() {
+        use canton_proto::com::daml::ledger::api::v2::command::Command as Cmd;
+
+        // Read back as the concrete template, exercised through the interface.
+        let concrete: ContractId<AppInstall> = ContractId::new("00abc");
+        let as_interface: ContractId<Holding> = concrete.retag();
+        assert_eq!(as_interface.as_str(), "00abc");
+        let cmd = exercise_command(&as_interface, &Holding_Transfer);
+        match cmd.command {
+            Some(Cmd::Exercise(e)) => {
+                assert_eq!(
+                    e.template_id.unwrap().package_id,
+                    "#splice-api-token-holding"
+                );
+            }
+            _ => panic!("expected an interface exercise"),
+        }
+
+        // Typed ids work in hash/ordered collections.
+        let mut set = std::collections::HashSet::new();
+        set.insert(ContractId::<AppInstall>::new("00abc"));
+        assert!(set.contains(&ContractId::<AppInstall>::new("00abc")));
+    }
+
+    #[test]
+    fn from_created_event_decodes_the_typed_read_path() {
+        use canton_proto::com::daml::ledger::api::v2 as pb;
+
+        let payload = AppInstall {
+            provider: Party::new("p::1"),
+            amount: Numeric("2".to_string()),
+            tags: vec![],
+            note: None,
+        };
+        let Some(pb::value::Sum::Record(record)) = payload.to_value().sum else {
+            panic!("record expected");
+        };
+        let event = pb::CreatedEvent {
+            template_id: Some(pb::Identifier {
+                // Any package id: SCU may report any vetted version — not compared.
+                package_id: "someotherhash".to_string(),
+                module_name: AppInstall::MODULE_NAME.to_string(),
+                entity_name: AppInstall::ENTITY_NAME.to_string(),
+            }),
+            create_arguments: Some(record),
+            ..Default::default()
+        };
+
+        let decoded = AppInstall::from_created_event(&event).unwrap();
+        assert_eq!(decoded, payload);
+
+        // The wrong template is rejected with a clear identity error, not a
+        // confusing field-shape mismatch.
+        let mut wrong = event.clone();
+        wrong.template_id.as_mut().unwrap().entity_name = "SomethingElse".to_string();
+        let error = AppInstall::from_created_event(&wrong).unwrap_err();
+        assert!(error.message.contains("SomethingElse"), "{error}");
+        assert!(error.message.contains("AppInstall"), "{error}");
+
+        // No payload is a typed error.
+        let mut empty = event.clone();
+        empty.create_arguments = None;
+        assert!(AppInstall::from_created_event(&empty).is_err());
     }
 
     #[test]

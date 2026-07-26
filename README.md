@@ -16,6 +16,10 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
 | `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
+| `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
+| `canton-codegen` / `canton-codegen-cli` | DAR → typed Rust. The CLI (`dpm-codegen-rust`, also `dpm codegen-rust`) writes a complete crate from any DAR; the library is the IR + emitter behind it. |
+| `canton-lf` | Daml-LF archive reader/decoder (the codegen front-end), built on the official `daml-lf-archive` schema and held to the official JVM reader by a conformance oracle. Internal. |
+| `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments`, `canton-quickstart-licensing` | Pre-built typed bindings for the Splice protocol / quickstart DARs, regenerated per release ("DAR as a crate"). |
 
 ## Compatibility
 
@@ -91,6 +95,43 @@ println!("committed {} at offset {}", tx.update_id, tx.offset);
 ```
 
 Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_and_health.rs) (no auth) and [`submit_and_read`](crates/canton-ledger/examples/submit_and_read.rs) (OIDC auth + a create). Run with `cargo run -p canton-ledger --example version_and_health`. See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
+
+## Typed bindings from your DAR (codegen)
+
+Turn any DAR into a typed crate — templates become structs, choices become
+typed exercise impls, with JSON and gRPC codecs on everything:
+
+```sh
+cargo run -p canton-codegen-cli -- \
+  --dar path/to/my-app-0.1.0.dar \
+  --out my-app-bindings
+```
+
+The output is a self-contained crate (`Cargo.toml` + `src/lib.rs`). Add it to
+your project and submit typed commands:
+
+```rust,ignore
+use my_app_bindings::my_app_0_1_0::My_Module::{Asset, Asset_Transfer};
+use canton_daml as rt;
+use rt::Template as _;
+
+let payload = Asset { owner: rt::Party::new(party), name: "gem".into() };
+let create = rt::create_command(&payload);                       // gRPC command
+let created: Asset = Asset::from_created_event(&event)?;         // typed read
+let exercise = rt::exercise_command(&contract_id, &Asset_Transfer {
+    new_owner: rt::Party::new(other),
+});
+```
+
+Template ids use the upgrade-friendly `#package-name` form, so the participant
+resolves the version vetted under Smart Contract Upgrade (the pinned package id
+is also available as `Asset::PACKAGE_ID`). For the Splice DARs, skip codegen and
+use the pre-built `canton-splice-*` crates. The full Daml-LF → Rust type mapping
+is documented in [docs/daml-lf-type-mapping.md](docs/daml-lf-type-mapping.md);
+regeneration on a DAR version bump in
+[docs/scu-regeneration.md](docs/scu-regeneration.md). A complete runnable flow
+(typed create → read back → exercise, on gRPC and JSON) is
+[`crates/canton-sample`](crates/canton-sample/src/main.rs).
 
 ## Testing
 
