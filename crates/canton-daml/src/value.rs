@@ -65,11 +65,11 @@ fn mismatch(expected: &str, got: &pb::value::Sum) -> ValueError {
 
 // ---- record helpers (used by generated ToValue/FromValue) ------------------
 
-/// Build a `Record` [`Value`](pb::Value) from labelled fields. Generated
-/// `ToValue` impls call this.
+/// Build a bare `Record` from labelled fields. Generated `Template::to_record`
+/// impls call this; [`record`] wraps the result as a [`Value`](pb::Value).
 #[must_use]
-pub fn record(fields: Vec<(&str, pb::Value)>) -> pb::Value {
-    wrap(pb::value::Sum::Record(pb::Record {
+pub fn record_fields(fields: Vec<(&str, pb::Value)>) -> pb::Record {
+    pb::Record {
         record_id: None,
         fields: fields
             .into_iter()
@@ -78,7 +78,20 @@ pub fn record(fields: Vec<(&str, pb::Value)>) -> pb::Value {
                 value: Some(value),
             })
             .collect(),
-    }))
+    }
+}
+
+/// Build a `Record` [`Value`](pb::Value) from labelled fields. Generated
+/// `ToValue` impls call this.
+#[must_use]
+pub fn record(fields: Vec<(&str, pb::Value)>) -> pb::Value {
+    wrap(pb::value::Sum::Record(record_fields(fields)))
+}
+
+/// Wrap a bare `Record` as a [`Value`](pb::Value).
+#[must_use]
+pub fn record_value(record: pb::Record) -> pb::Value {
+    wrap(pb::value::Sum::Record(record))
 }
 
 /// Extract a record field by label. Generated `FromValue` impls call this.

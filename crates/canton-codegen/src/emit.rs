@@ -457,10 +457,23 @@ pub(crate) fn template(template: &Template) -> TokenStream {
 
     let choices = choice_impls(&self_ty, &template.name, &template.choices);
 
+    // `to_record` mirrors the payload's `ToValue`, but returns the bare
+    // `Record` a create command carries — so the runtime never has to unwrap a
+    // `Value` it merely assumes is a record.
+    let record_fields = template.fields.iter().map(|field| {
+        let label = &field.label;
+        let ident = field_ident(&field.label);
+        quote! { (#label, rt::ToValue::to_value(&self.#ident)), }
+    });
+
     quote! {
         #payload
         #contract_impl
-        impl rt::Template for #self_ty {}
+        impl rt::Template for #self_ty {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![#(#record_fields)*])
+            }
+        }
         #key_impl
         #choices
     }

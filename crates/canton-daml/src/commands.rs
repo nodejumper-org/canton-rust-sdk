@@ -18,7 +18,7 @@ use crate::value::ToValue;
 pub fn create_command<T: Template>(payload: &T) -> pb::Command {
     wrap(pb::command::Command::Create(pb::CreateCommand {
         template_id: Some(T::template_id()),
-        create_arguments: Some(into_record(payload.to_value())),
+        create_arguments: Some(payload.to_record()),
     }))
 }
 
@@ -60,16 +60,5 @@ where
 fn wrap(command: pb::command::Command) -> pb::Command {
     pb::Command {
         command: Some(command),
-    }
-}
-
-/// A record `Value` (which a template payload always is) unwrapped to the bare
-/// `Record` the Ledger API create argument expects. A template's `ToValue`
-/// always yields a `Record`; anything else is a code-generator bug, so fail
-/// loudly rather than silently submitting an empty create.
-fn into_record(value: pb::Value) -> pb::Record {
-    match value.sum {
-        Some(pb::value::Sum::Record(record)) => record,
-        other => unreachable!("a template payload must encode as a Record, got {other:?}"),
     }
 }

@@ -9,12 +9,61 @@ use std::marker::PhantomData;
     Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
 #[serde(transparent)]
-pub struct Party(pub String);
+pub struct Party(pub(crate) String);
 
 impl Party {
     /// Wrap a party-id string.
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
+    }
+
+    /// The party id.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Consume the wrapper, yielding the party id.
+    #[must_use]
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl fmt::Display for Party {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<str> for Party {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for Party {
+    type Err = std::convert::Infallible;
+    fn from_str(id: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(id))
+    }
+}
+
+impl From<String> for Party {
+    fn from(id: String) -> Self {
+        Self(id)
+    }
+}
+
+impl From<&str> for Party {
+    fn from(id: &str) -> Self {
+        Self::new(id)
+    }
+}
+
+impl From<Party> for String {
+    fn from(party: Party) -> Self {
+        party.0
     }
 }
 
@@ -110,7 +159,7 @@ impl<T> Ord for ContractId<T> {
 /// should still use the string form, since a JSON number literal is already
 /// `f64`-lossy on the wire).
 #[derive(Clone, Debug)]
-pub struct Numeric(pub String);
+pub struct Numeric(pub(crate) String);
 
 impl Numeric {
     /// Parse a decimal string (`-?digits[.digits]`; a leading `+` is accepted),
@@ -118,22 +167,80 @@ impl Numeric {
     /// construction so a typo fails here instead of at command submission.
     ///
     /// # Errors
-    /// Returns the offending input when it is not a plain decimal literal.
-    pub fn parse(text: impl Into<String>) -> Result<Self, String> {
+    /// Returns [`NumericParseError`] when the input is not a decimal literal.
+    pub fn parse(text: impl Into<String>) -> Result<Self, NumericParseError> {
         let text = text.into();
         if canonical_decimal(&text).is_some() {
             Ok(Self(text))
         } else {
-            Err(format!(
-                "`{text}` is not a decimal literal (expected -?digits[.digits])"
-            ))
+            Err(NumericParseError { input: text })
         }
+    }
+
+    /// Wrap a decimal string **without validating it** — for values that came
+    /// off the wire, where the ledger has already vouched for the format.
+    /// Prefer [`Numeric::parse`] for values a caller typed.
+    #[must_use]
+    pub fn from_wire(text: impl Into<String>) -> Self {
+        Self(text.into())
+    }
+
+    /// The decimal string, as stored (the wire form, not canonicalised).
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     /// The canonical form used for comparison (sign-normalised, no leading or
     /// trailing zeros), or `None` when the content is not a decimal literal.
     fn canonical(&self) -> Option<String> {
         canonical_decimal(&self.0)
+    }
+}
+
+/// A string that is not a Daml `Numeric` (a decimal literal).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NumericParseError {
+    input: String,
+}
+
+impl NumericParseError {
+    /// The rejected input.
+    #[must_use]
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+}
+
+impl fmt::Display for NumericParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "`{}` is not a decimal literal (expected -?digits[.digits])",
+            self.input
+        )
+    }
+}
+
+impl std::error::Error for NumericParseError {}
+
+impl std::str::FromStr for Numeric {
+    type Err = NumericParseError;
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        Self::parse(text)
+    }
+}
+
+impl fmt::Display for Numeric {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl TryFrom<&str> for Numeric {
+    type Error = NumericParseError;
+    fn try_from(text: &str) -> Result<Self, Self::Error> {
+        Self::parse(text)
     }
 }
 
@@ -291,6 +398,25 @@ impl From<i64> for Int64 {
     }
 }
 
+impl From<Int64> for i64 {
+    fn from(value: Int64) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for Int64 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::str::FromStr for Int64 {
+    type Err = std::num::ParseIntError;
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        text.parse().map(Self)
+    }
+}
+
 impl serde::Serialize for Int64 {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0.to_string())
@@ -325,21 +451,167 @@ impl<'de> serde::Deserialize<'de> for Int64 {
 }
 
 /// A Daml `Timestamp` — microseconds since the Unix epoch (UTC).
+///
+/// Convert to and from [`time::OffsetDateTime`] rather than doing epoch
+/// arithmetic by hand:
+///
+/// ```
+/// use canton_daml::Timestamp;
+/// use time::macros::datetime;
+///
+/// let at = Timestamp::from_datetime(datetime!(2026-07-31 12:00 UTC));
+/// assert_eq!(at.to_datetime().unwrap().year(), 2026);
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Timestamp(pub i64);
 
+impl Timestamp {
+    /// Microseconds since the Unix epoch.
+    #[must_use]
+    pub fn micros(self) -> i64 {
+        self.0
+    }
+
+    /// The instant as a UTC date-time, or `None` when the microsecond count is
+    /// outside the range `time` can represent.
+    #[must_use]
+    pub fn to_datetime(self) -> Option<time::OffsetDateTime> {
+        time::OffsetDateTime::from_unix_timestamp_nanos(i128::from(self.0) * 1_000).ok()
+    }
+
+    /// The timestamp for a date-time, truncated toward the past (so
+    /// sub-microsecond digits never move an instant forward).
+    #[must_use]
+    pub fn from_datetime(at: time::OffsetDateTime) -> Self {
+        let micros = at.unix_timestamp_nanos().div_euclid(1_000);
+        Self(i64::try_from(micros).unwrap_or(i64::MAX))
+    }
+}
+
+impl From<Timestamp> for i64 {
+    fn from(at: Timestamp) -> Self {
+        at.0
+    }
+}
+
 /// A Daml `Date` — days since the Unix epoch.
+///
+/// Convert to and from [`time::Date`] rather than counting days by hand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Date(pub i32);
+
+impl Date {
+    /// Days since the Unix epoch.
+    #[must_use]
+    pub fn days(self) -> i32 {
+        self.0
+    }
+
+    /// The calendar date, or `None` when the day count is outside the range
+    /// `time` can represent.
+    #[must_use]
+    pub fn to_date(self) -> Option<time::Date> {
+        UNIX_EPOCH_DATE.checked_add(time::Duration::days(i64::from(self.0)))
+    }
+
+    /// The Daml date for a calendar date.
+    #[must_use]
+    pub fn from_date(date: time::Date) -> Self {
+        Self(i32::try_from((date - UNIX_EPOCH_DATE).whole_days()).unwrap_or(i32::MAX))
+    }
+}
+
+impl From<Date> for i32 {
+    fn from(date: Date) -> Self {
+        date.0
+    }
+}
 
 /// A Daml `TextMap` — a map keyed by `Text`.
 pub type TextMap<V> = BTreeMap<String, V>;
 
-/// A Daml `GenMap` — a map with an arbitrary key type (ordered key/value pairs
-/// on the wire; the LF-JSON form is an array of `[key, value]` pairs).
-#[derive(Clone, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+/// A Daml `GenMap` — a map with an arbitrary key type (key/value pairs on the
+/// wire; the LF-JSON form is an array of `[key, value]` pairs).
+///
+/// Entry order is a wire detail, not part of the value: two maps with the same
+/// entries compare equal regardless of the order the ledger returned them in.
+#[derive(Clone, Debug, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
-pub struct GenMap<K, V>(pub Vec<(K, V)>);
+pub struct GenMap<K, V>(pub(crate) Vec<(K, V)>);
+
+impl<K, V> GenMap<K, V> {
+    /// An empty map.
+    #[must_use]
+    pub fn new() -> Self
+    where
+        Self: Default,
+    {
+        Self(Vec::new())
+    }
+
+    /// The entries, in wire order.
+    pub fn iter(&self) -> std::slice::Iter<'_, (K, V)> {
+        self.0.iter()
+    }
+
+    /// The number of entries.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether the map has no entries.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Append an entry. Daml forbids duplicate keys; this does not check for
+    /// them, so build maps from distinct keys.
+    pub fn insert(&mut self, key: K, value: V) {
+        self.0.push((key, value));
+    }
+}
+
+impl<K, V> From<Vec<(K, V)>> for GenMap<K, V> {
+    fn from(entries: Vec<(K, V)>) -> Self {
+        Self(entries)
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for GenMap<K, V> {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(entries: I) -> Self {
+        Self(entries.into_iter().collect())
+    }
+}
+
+impl<K, V> IntoIterator for GenMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = std::vec::IntoIter<(K, V)>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a GenMap<K, V> {
+    type Item = &'a (K, V);
+    type IntoIter = std::slice::Iter<'a, (K, V)>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+/// Entry order is a wire detail: equality is by entry *set*, so a map read back
+/// from the ledger in a different order still equals the one submitted.
+impl<K: PartialEq, V: PartialEq> PartialEq for GenMap<K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.len() == other.0.len()
+            && self
+                .0
+                .iter()
+                .all(|entry| other.0.iter().any(|candidate| candidate == entry))
+    }
+}
 
 /// 1970-01-01, the anchor for [`Date`]'s day count.
 const UNIX_EPOCH_DATE: time::Date = time::macros::date!(1970 - 01 - 01);
@@ -428,6 +700,24 @@ impl<T> NestedOpt<T> {
     /// Wrap an [`Option`].
     pub fn new(value: Option<T>) -> Self {
         Self(value)
+    }
+
+    /// Unwrap to the [`Option`].
+    #[must_use]
+    pub fn into_inner(self) -> Option<T> {
+        self.0
+    }
+}
+
+impl<T> From<Option<T>> for NestedOpt<T> {
+    fn from(value: Option<T>) -> Self {
+        Self(value)
+    }
+}
+
+impl<T> From<NestedOpt<T>> for Option<T> {
+    fn from(value: NestedOpt<T>) -> Self {
+        value.0
     }
 }
 

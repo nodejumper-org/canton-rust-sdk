@@ -44,6 +44,11 @@ pub trait Contract {
 /// A Daml template: a [`Contract`] with a payload codec. Generated code
 /// implements this on each template's payload struct.
 pub trait Template: Contract + ToValue + FromValue {
+    /// The payload as a Ledger API `Record` — the shape a create command
+    /// carries. A template payload is always a record, so this is total;
+    /// encoding that in the trait is what keeps `create_command` panic-free.
+    fn to_record(&self) -> canton_proto::com::daml::ledger::api::v2::Record;
+
     /// Decode a `CreatedEvent` (from a transaction stream, an ACS snapshot, or
     /// a `submit-and-wait` response) into this template's typed payload — the
     /// typed **read** path:

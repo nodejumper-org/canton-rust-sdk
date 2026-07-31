@@ -6558,7 +6558,18 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.AmuletRules";
             const ENTITY_NAME: &'static str = "AmuletRules";
         }
-        impl rt::Template for AmuletRules {}
+        impl rt::Template for AmuletRules {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    (
+                        "configSchedule",
+                        rt::ToValue::to_value(&self.config_schedule)
+                    ),
+                    ("isDevNet", rt::ToValue::to_value(&self.is_dev_net)),
+                ])
+            }
+        }
         ///The `AmuletRules_ComputeFees` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
             for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ComputeFees
@@ -6801,7 +6812,20 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.AmuletRules";
             const ENTITY_NAME: &'static str = "ExternalPartySetupProposal";
         }
-        impl rt::Template for ExternalPartySetupProposal {}
+        impl rt::Template for ExternalPartySetupProposal {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("createdAt", rt::ToValue::to_value(&self.created_at)),
+                    (
+                        "preapprovalExpiresAt",
+                        rt::ToValue::to_value(&self.preapproval_expires_at)
+                    ),
+                ])
+            }
+        }
         ///The `ExternalPartySetupProposal_Accept` choice on [`ExternalPartySetupProposal`] (consuming).
         impl rt::Choice<ExternalPartySetupProposal>
             for crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_Accept
@@ -6906,7 +6930,21 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.AmuletRules";
             const ENTITY_NAME: &'static str = "TransferPreapproval";
         }
-        impl rt::Template for TransferPreapproval {}
+        impl rt::Template for TransferPreapproval {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("validFrom", rt::ToValue::to_value(&self.valid_from)),
+                    (
+                        "lastRenewedAt",
+                        rt::ToValue::to_value(&self.last_renewed_at)
+                    ),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                ])
+            }
+        }
         ///The `TransferPreapproval_Renew` choice on [`TransferPreapproval`] (consuming).
         impl rt::Choice<TransferPreapproval>
             for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Renew
@@ -7851,7 +7889,15 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "Amulet";
         }
-        impl rt::Template for Amulet {}
+        impl rt::Template for Amulet {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("owner", rt::ToValue::to_value(&self.owner)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                ])
+            }
+        }
         ///The `Amulet_Expire` choice on [`Amulet`] (consuming).
         impl rt::Choice<Amulet> for crate::splice_amulet_0_1_14::Splice_Amulet::Amulet_Expire {
             type Return = crate::splice_amulet_0_1_14::Splice_Amulet::Amulet_ExpireResult;
@@ -7925,7 +7971,18 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "AppRewardCoupon";
         }
-        impl rt::Template for AppRewardCoupon {}
+        impl rt::Template for AppRewardCoupon {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("featured", rt::ToValue::to_value(&self.featured)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("beneficiary", rt::ToValue::to_value(&self.beneficiary)),
+                ])
+            }
+        }
         ///The `AppRewardCoupon_DsoExpire` choice on [`AppRewardCoupon`] (consuming).
         impl rt::Choice<AppRewardCoupon>
             for crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon_DsoExpire
@@ -7994,7 +8051,16 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "FeaturedAppActivityMarker";
         }
-        impl rt::Template for FeaturedAppActivityMarker {}
+        impl rt::Template for FeaturedAppActivityMarker {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("beneficiary", rt::ToValue::to_value(&self.beneficiary)),
+                    ("weight", rt::ToValue::to_value(&self.weight)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`FeaturedAppActivityMarker`] (consuming).
         impl rt::Choice<FeaturedAppActivityMarker>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -8038,7 +8104,14 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "FeaturedAppRight";
         }
-        impl rt::Template for FeaturedAppRight {}
+        impl rt::Template for FeaturedAppRight {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                ])
+            }
+        }
         ///The `FeaturedAppRight_Withdraw` choice on [`FeaturedAppRight`] (consuming).
         impl rt::Choice<FeaturedAppRight>
             for crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight_Withdraw
@@ -8099,7 +8172,14 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "LockedAmulet";
         }
-        impl rt::Template for LockedAmulet {}
+        impl rt::Template for LockedAmulet {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("amulet", rt::ToValue::to_value(&self.amulet)),
+                    ("lock", rt::ToValue::to_value(&self.lock)),
+                ])
+            }
+        }
         ///The `LockedAmulet_Unlock` choice on [`LockedAmulet`] (consuming).
         impl rt::Choice<LockedAmulet> for crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_Unlock {
             type Return = crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_UnlockResult;
@@ -8186,7 +8266,17 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "SvRewardCoupon";
         }
-        impl rt::Template for SvRewardCoupon {}
+        impl rt::Template for SvRewardCoupon {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("sv", rt::ToValue::to_value(&self.sv)),
+                    ("beneficiary", rt::ToValue::to_value(&self.beneficiary)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("weight", rt::ToValue::to_value(&self.weight)),
+                ])
+            }
+        }
         ///The `SvRewardCoupon_DsoExpire` choice on [`SvRewardCoupon`] (consuming).
         impl rt::Choice<SvRewardCoupon>
             for crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon_DsoExpire
@@ -8272,7 +8362,17 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "UnclaimedActivityRecord";
         }
-        impl rt::Template for UnclaimedActivityRecord {}
+        impl rt::Template for UnclaimedActivityRecord {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("beneficiary", rt::ToValue::to_value(&self.beneficiary)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("reason", rt::ToValue::to_value(&self.reason)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                ])
+            }
+        }
         ///The `UnclaimedActivityRecord_DsoExpire` choice on [`UnclaimedActivityRecord`] (consuming).
         impl rt::Choice<UnclaimedActivityRecord>
             for crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedActivityRecord_DsoExpire
@@ -8325,7 +8425,14 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "UnclaimedReward";
         }
-        impl rt::Template for UnclaimedReward {}
+        impl rt::Template for UnclaimedReward {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`UnclaimedReward`] (consuming).
         impl rt::Choice<UnclaimedReward>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -8379,7 +8486,16 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "ValidatorRewardCoupon";
         }
-        impl rt::Template for ValidatorRewardCoupon {}
+        impl rt::Template for ValidatorRewardCoupon {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                ])
+            }
+        }
         ///The `ValidatorRewardCoupon_DsoExpire` choice on [`ValidatorRewardCoupon`] (consuming).
         impl rt::Choice<ValidatorRewardCoupon>
             for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon_DsoExpire
@@ -8447,7 +8563,15 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Amulet";
             const ENTITY_NAME: &'static str = "ValidatorRight";
         }
-        impl rt::Template for ValidatorRight {}
+        impl rt::Template for ValidatorRight {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                ])
+            }
+        }
         ///The `ValidatorRight_ArchiveAsValidator` choice on [`ValidatorRight`] (consuming).
         impl rt::Choice<ValidatorRight>
             for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight_ArchiveAsValidator
@@ -8572,7 +8696,14 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.AmuletTransferInstruction";
             const ENTITY_NAME: &'static str = "AmuletTransferInstruction";
         }
-        impl rt::Template for AmuletTransferInstruction {}
+        impl rt::Template for AmuletTransferInstruction {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("lockedAmulet", rt::ToValue::to_value(&self.locked_amulet)),
+                    ("transfer", rt::ToValue::to_value(&self.transfer)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`AmuletTransferInstruction`] (consuming).
         impl rt::Choice<AmuletTransferInstruction>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -9325,7 +9456,11 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ExternalPartyAmuletRules";
             const ENTITY_NAME: &'static str = "ExternalPartyAmuletRules";
         }
-        impl rt::Template for ExternalPartyAmuletRules {}
+        impl rt::Template for ExternalPartyAmuletRules {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![("dso", rt::ToValue::to_value(&self.dso)),])
+            }
+        }
         ///The `ExternalPartyAmuletRules_CreateTransferCommand` choice on [`ExternalPartyAmuletRules`] (non-consuming).
         impl rt::Choice<ExternalPartyAmuletRules>
         for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::ExternalPartyAmuletRules_CreateTransferCommand {
@@ -9416,7 +9551,20 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ExternalPartyAmuletRules";
             const ENTITY_NAME: &'static str = "TransferCommand";
         }
-        impl rt::Template for TransferCommand {}
+        impl rt::Template for TransferCommand {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("delegate", rt::ToValue::to_value(&self.delegate)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("nonce", rt::ToValue::to_value(&self.nonce)),
+                    ("description", rt::ToValue::to_value(&self.description)),
+                ])
+            }
+        }
         ///The `TransferCommand_Expire` choice on [`TransferCommand`] (consuming).
         impl rt::Choice<TransferCommand>
             for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_Expire
@@ -9492,7 +9640,15 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ExternalPartyAmuletRules";
             const ENTITY_NAME: &'static str = "TransferCommandCounter";
         }
-        impl rt::Template for TransferCommandCounter {}
+        impl rt::Template for TransferCommandCounter {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("nextNonce", rt::ToValue::to_value(&self.next_nonce)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`TransferCommandCounter`] (consuming).
         impl rt::Choice<TransferCommandCounter>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -9812,7 +9968,14 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.AmuletAllocation";
             const ENTITY_NAME: &'static str = "AmuletAllocation";
         }
-        impl rt::Template for AmuletAllocation {}
+        impl rt::Template for AmuletAllocation {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("lockedAmulet", rt::ToValue::to_value(&self.locked_amulet)),
+                    ("allocation", rt::ToValue::to_value(&self.allocation)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`AmuletAllocation`] (consuming).
         impl rt::Choice<AmuletAllocation>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -10760,7 +10923,15 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ValidatorLicense";
             const ENTITY_NAME: &'static str = "ValidatorFaucetCoupon";
         }
-        impl rt::Template for ValidatorFaucetCoupon {}
+        impl rt::Template for ValidatorFaucetCoupon {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                ])
+            }
+        }
         ///The `ValidatorFaucetCoupon_DsoExpire` choice on [`ValidatorFaucetCoupon`] (consuming).
         impl rt::Choice<ValidatorFaucetCoupon>
         for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon_DsoExpire {
@@ -10839,7 +11010,18 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ValidatorLicense";
             const ENTITY_NAME: &'static str = "ValidatorLicense";
         }
-        impl rt::Template for ValidatorLicense {}
+        impl rt::Template for ValidatorLicense {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                    ("sponsor", rt::ToValue::to_value(&self.sponsor)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("faucetState", rt::ToValue::to_value(&self.faucet_state)),
+                    ("metadata", rt::ToValue::to_value(&self.metadata)),
+                    ("lastActiveAt", rt::ToValue::to_value(&self.last_active_at)),
+                ])
+            }
+        }
         ///The `ValidatorLicense_ReceiveFaucetCoupon` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
         for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_ReceiveFaucetCoupon {
@@ -10936,7 +11118,15 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.ValidatorLicense";
             const ENTITY_NAME: &'static str = "ValidatorLivenessActivityRecord";
         }
-        impl rt::Template for ValidatorLivenessActivityRecord {}
+        impl rt::Template for ValidatorLivenessActivityRecord {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`ValidatorLivenessActivityRecord`] (consuming).
         impl rt::Choice<ValidatorLivenessActivityRecord>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -11242,7 +11432,26 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.DecentralizedSynchronizer";
             const ENTITY_NAME: &'static str = "MemberTraffic";
         }
-        impl rt::Template for MemberTraffic {}
+        impl rt::Template for MemberTraffic {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("memberId", rt::ToValue::to_value(&self.member_id)),
+                    (
+                        "synchronizerId",
+                        rt::ToValue::to_value(&self.synchronizer_id)
+                    ),
+                    ("migrationId", rt::ToValue::to_value(&self.migration_id)),
+                    (
+                        "totalPurchased",
+                        rt::ToValue::to_value(&self.total_purchased)
+                    ),
+                    ("numPurchases", rt::ToValue::to_value(&self.num_purchases)),
+                    ("amuletSpent", rt::ToValue::to_value(&self.amulet_spent)),
+                    ("usdSpent", rt::ToValue::to_value(&self.usd_spent)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`MemberTraffic`] (consuming).
         impl rt::Choice<MemberTraffic>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -11382,7 +11591,34 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Round";
             const ENTITY_NAME: &'static str = "ClosedMiningRound";
         }
-        impl rt::Template for ClosedMiningRound {}
+        impl rt::Template for ClosedMiningRound {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    (
+                        "issuancePerValidatorRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_validator_reward_coupon)
+                    ),
+                    (
+                        "issuancePerFeaturedAppRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_featured_app_reward_coupon)
+                    ),
+                    (
+                        "issuancePerUnfeaturedAppRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_unfeatured_app_reward_coupon)
+                    ),
+                    (
+                        "issuancePerSvRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_sv_reward_coupon)
+                    ),
+                    (
+                        "optIssuancePerValidatorFaucetCoupon",
+                        rt::ToValue::to_value(&self.opt_issuance_per_validator_faucet_coupon)
+                    ),
+                ])
+            }
+        }
         ///The `Archive` choice on [`ClosedMiningRound`] (consuming).
         impl rt::Choice<ClosedMiningRound>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -11497,7 +11733,39 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Round";
             const ENTITY_NAME: &'static str = "IssuingMiningRound";
         }
-        impl rt::Template for IssuingMiningRound {}
+        impl rt::Template for IssuingMiningRound {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    (
+                        "issuancePerValidatorRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_validator_reward_coupon)
+                    ),
+                    (
+                        "issuancePerFeaturedAppRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_featured_app_reward_coupon)
+                    ),
+                    (
+                        "issuancePerUnfeaturedAppRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_unfeatured_app_reward_coupon)
+                    ),
+                    (
+                        "issuancePerSvRewardCoupon",
+                        rt::ToValue::to_value(&self.issuance_per_sv_reward_coupon)
+                    ),
+                    ("opensAt", rt::ToValue::to_value(&self.opens_at)),
+                    (
+                        "targetClosesAt",
+                        rt::ToValue::to_value(&self.target_closes_at)
+                    ),
+                    (
+                        "optIssuancePerValidatorFaucetCoupon",
+                        rt::ToValue::to_value(&self.opt_issuance_per_validator_faucet_coupon)
+                    ),
+                ])
+            }
+        }
         ///The `Archive` choice on [`IssuingMiningRound`] (consuming).
         impl rt::Choice<IssuingMiningRound>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -11612,7 +11880,30 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Round";
             const ENTITY_NAME: &'static str = "OpenMiningRound";
         }
-        impl rt::Template for OpenMiningRound {}
+        impl rt::Template for OpenMiningRound {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("amuletPrice", rt::ToValue::to_value(&self.amulet_price)),
+                    ("opensAt", rt::ToValue::to_value(&self.opens_at)),
+                    (
+                        "targetClosesAt",
+                        rt::ToValue::to_value(&self.target_closes_at)
+                    ),
+                    ("issuingFor", rt::ToValue::to_value(&self.issuing_for)),
+                    (
+                        "transferConfigUsd",
+                        rt::ToValue::to_value(&self.transfer_config_usd)
+                    ),
+                    (
+                        "issuanceConfig",
+                        rt::ToValue::to_value(&self.issuance_config)
+                    ),
+                    ("tickDuration", rt::ToValue::to_value(&self.tick_duration)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`OpenMiningRound`] (consuming).
         impl rt::Choice<OpenMiningRound>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -11692,7 +11983,20 @@ pub mod splice_amulet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Round";
             const ENTITY_NAME: &'static str = "SummarizingMiningRound";
         }
-        impl rt::Template for SummarizingMiningRound {}
+        impl rt::Template for SummarizingMiningRound {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("amuletPrice", rt::ToValue::to_value(&self.amulet_price)),
+                    (
+                        "issuanceConfig",
+                        rt::ToValue::to_value(&self.issuance_config)
+                    ),
+                    ("tickDuration", rt::ToValue::to_value(&self.tick_duration)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`SummarizingMiningRound`] (consuming).
         impl rt::Choice<SummarizingMiningRound>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -14198,7 +14502,24 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.TopUpState";
             const ENTITY_NAME: &'static str = "ValidatorTopUpState";
         }
-        impl rt::Template for ValidatorTopUpState {}
+        impl rt::Template for ValidatorTopUpState {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("validator", rt::ToValue::to_value(&self.validator)),
+                    ("memberId", rt::ToValue::to_value(&self.member_id)),
+                    (
+                        "synchronizerId",
+                        rt::ToValue::to_value(&self.synchronizer_id)
+                    ),
+                    ("migrationId", rt::ToValue::to_value(&self.migration_id)),
+                    (
+                        "lastPurchasedAt",
+                        rt::ToValue::to_value(&self.last_purchased_at)
+                    ),
+                ])
+            }
+        }
         ///The `Archive` choice on [`ValidatorTopUpState`] (consuming).
         impl rt::Choice<ValidatorTopUpState>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -16433,7 +16754,19 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Install";
             const ENTITY_NAME: &'static str = "WalletAppInstall";
         }
-        impl rt::Template for WalletAppInstall {}
+        impl rt::Template for WalletAppInstall {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dsoParty", rt::ToValue::to_value(&self.dso_party)),
+                    (
+                        "validatorParty",
+                        rt::ToValue::to_value(&self.validator_party)
+                    ),
+                    ("endUserName", rt::ToValue::to_value(&self.end_user_name)),
+                    ("endUserParty", rt::ToValue::to_value(&self.end_user_party)),
+                ])
+            }
+        }
         ///The `WalletAppInstall_ExecuteBatch` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
             for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_ExecuteBatch
@@ -17134,7 +17467,18 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.TransferOffer";
             const ENTITY_NAME: &'static str = "AcceptedTransferOffer";
         }
-        impl rt::Template for AcceptedTransferOffer {}
+        impl rt::Template for AcceptedTransferOffer {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("trackingId", rt::ToValue::to_value(&self.tracking_id)),
+                ])
+            }
+        }
         ///The `AcceptedTransferOffer_Complete` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
         for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Complete {
@@ -17247,7 +17591,19 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.TransferOffer";
             const ENTITY_NAME: &'static str = "TransferOffer";
         }
-        impl rt::Template for TransferOffer {}
+        impl rt::Template for TransferOffer {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("description", rt::ToValue::to_value(&self.description)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("trackingId", rt::ToValue::to_value(&self.tracking_id)),
+                ])
+            }
+        }
         ///The `TransferOffer_Accept` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
             for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_Accept
@@ -17595,7 +17951,23 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.BuyTrafficRequest";
             const ENTITY_NAME: &'static str = "BuyTrafficRequest";
         }
-        impl rt::Template for BuyTrafficRequest {}
+        impl rt::Template for BuyTrafficRequest {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("endUserParty", rt::ToValue::to_value(&self.end_user_party)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("trackingId", rt::ToValue::to_value(&self.tracking_id)),
+                    ("trafficAmount", rt::ToValue::to_value(&self.traffic_amount)),
+                    ("memberId", rt::ToValue::to_value(&self.member_id)),
+                    (
+                        "synchronizerId",
+                        rt::ToValue::to_value(&self.synchronizer_id)
+                    ),
+                    ("migrationId", rt::ToValue::to_value(&self.migration_id)),
+                ])
+            }
+        }
         ///The `BuyTrafficRequest_Complete` choice on [`BuyTrafficRequest`] (consuming).
         impl rt::Choice<BuyTrafficRequest>
         for crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Complete {
@@ -17761,7 +18133,15 @@ pub mod splice_wallet_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.TransferPreapproval";
             const ENTITY_NAME: &'static str = "TransferPreapprovalProposal";
         }
-        impl rt::Template for TransferPreapprovalProposal {}
+        impl rt::Template for TransferPreapprovalProposal {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("expectedDso", rt::ToValue::to_value(&self.expected_dso)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`TransferPreapprovalProposal`] (consuming).
         impl rt::Choice<TransferPreapprovalProposal>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -18382,7 +18762,22 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Payment";
             const ENTITY_NAME: &'static str = "AcceptedAppPayment";
         }
-        impl rt::Template for AcceptedAppPayment {}
+        impl rt::Template for AcceptedAppPayment {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    (
+                        "amuletReceiverAmounts",
+                        rt::ToValue::to_value(&self.amulet_receiver_amounts)
+                    ),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("lockedAmulet", rt::ToValue::to_value(&self.locked_amulet)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`AcceptedAppPayment`] (consuming).
         impl rt::Choice<AcceptedAppPayment>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -18486,7 +18881,21 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Payment";
             const ENTITY_NAME: &'static str = "AppPaymentRequest";
         }
-        impl rt::Template for AppPaymentRequest {}
+        impl rt::Template for AppPaymentRequest {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    (
+                        "receiverAmounts",
+                        rt::ToValue::to_value(&self.receiver_amounts)
+                    ),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("dso", rt::ToValue::to_value(&self.dso)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("description", rt::ToValue::to_value(&self.description)),
+                ])
+            }
+        }
         ///The `AppPaymentRequest_Accept` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_Accept {
@@ -18580,7 +18989,16 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Payment";
             const ENTITY_NAME: &'static str = "TerminatedAppPayment";
         }
-        impl rt::Template for TerminatedAppPayment {}
+        impl rt::Template for TerminatedAppPayment {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("receivers", rt::ToValue::to_value(&self.receivers)),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`TerminatedAppPayment`] (consuming).
         impl rt::Choice<TerminatedAppPayment>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -19513,7 +19931,17 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "Subscription";
         }
-        impl rt::Template for Subscription {}
+        impl rt::Template for Subscription {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `Subscription_Archive` choice on [`Subscription`] (consuming).
         impl rt::Choice<Subscription>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription_Archive {
@@ -19605,7 +20033,23 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "SubscriptionIdleState";
         }
-        impl rt::Template for SubscriptionIdleState {}
+        impl rt::Template for SubscriptionIdleState {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("subscription", rt::ToValue::to_value(&self.subscription)),
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("payData", rt::ToValue::to_value(&self.pay_data)),
+                    (
+                        "nextPaymentDueAt",
+                        rt::ToValue::to_value(&self.next_payment_due_at)
+                    ),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `SubscriptionIdleState_MakePayment` choice on [`SubscriptionIdleState`] (consuming).
         impl rt::Choice<SubscriptionIdleState>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_MakePayment {
@@ -19713,7 +20157,21 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "SubscriptionInitialPayment";
         }
-        impl rt::Template for SubscriptionInitialPayment {}
+        impl rt::Template for SubscriptionInitialPayment {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("payData", rt::ToValue::to_value(&self.pay_data)),
+                    ("targetAmount", rt::ToValue::to_value(&self.target_amount)),
+                    ("lockedAmulet", rt::ToValue::to_value(&self.locked_amulet)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `SubscriptionInitialPayment_Collect` choice on [`SubscriptionInitialPayment`] (consuming).
         impl rt::Choice<SubscriptionInitialPayment>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Collect {
@@ -19844,7 +20302,26 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "SubscriptionPayment";
         }
-        impl rt::Template for SubscriptionPayment {}
+        impl rt::Template for SubscriptionPayment {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("subscription", rt::ToValue::to_value(&self.subscription)),
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("payData", rt::ToValue::to_value(&self.pay_data)),
+                    (
+                        "thisPaymentDueAt",
+                        rt::ToValue::to_value(&self.this_payment_due_at)
+                    ),
+                    ("targetAmount", rt::ToValue::to_value(&self.target_amount)),
+                    ("lockedAmulet", rt::ToValue::to_value(&self.locked_amulet)),
+                    ("round", rt::ToValue::to_value(&self.round)),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `SubscriptionPayment_Collect` choice on [`SubscriptionPayment`] (consuming).
         impl rt::Choice<SubscriptionPayment>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_Collect {
@@ -19916,7 +20393,17 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "SubscriptionRequest";
         }
-        impl rt::Template for SubscriptionRequest {}
+        impl rt::Template for SubscriptionRequest {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("payData", rt::ToValue::to_value(&self.pay_data)),
+                ])
+            }
+        }
         ///The `SubscriptionRequest_AcceptAndMakePayment` choice on [`SubscriptionRequest`] (consuming).
         impl rt::Choice<SubscriptionRequest>
         for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_AcceptAndMakePayment {
@@ -19992,7 +20479,17 @@ pub mod splice_wallet_payments_0_1_14 {
             const MODULE_NAME: &'static str = "Splice.Wallet.Subscriptions";
             const ENTITY_NAME: &'static str = "TerminatedSubscription";
         }
-        impl rt::Template for TerminatedSubscription {}
+        impl rt::Template for TerminatedSubscription {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    (
+                        "subscriptionData",
+                        rt::ToValue::to_value(&self.subscription_data)
+                    ),
+                    ("reference", rt::ToValue::to_value(&self.reference)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`TerminatedSubscription`] (consuming).
         impl rt::Choice<TerminatedSubscription>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive

@@ -22,18 +22,20 @@ mod value;
 pub use choice::Choice;
 pub use commands::{create_command, exercise_by_key_command, exercise_command};
 pub use primitives::{
-    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, Party, TextMap, Timestamp, Unit,
+    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, NumericParseError, Party, TextMap,
+    Timestamp, Unit,
 };
 pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{
     AbsentField, FromValue, ToValue, ValueError, enum_constructor, enum_value, find_field,
-    from_record, optional_field, record, record_field, required_field, unexpected_constructor,
-    unit_value, variant_parts, variant_value,
+    from_record, optional_field, record, record_field, record_fields, record_value, required_field,
+    unexpected_constructor, unit_value, variant_parts, variant_value,
 };
 
-/// The Ledger API `Value` — the gRPC wire form generated `ToValue`/`FromValue`
-/// move to and from. Re-exported so generated code can name it as `rt::Value`.
-pub use canton_proto::com::daml::ledger::api::v2::Value;
+/// The Ledger API `Value` and `Record` — the gRPC wire forms generated
+/// `ToValue`/`FromValue`/`Template::to_record` move to and from. Re-exported so
+/// generated code can name them as `rt::Value` / `rt::Record`.
+pub use canton_proto::com::daml::ledger::api::v2::{Record, Value};
 
 /// Re-exported `serde` so generated code can derive the JSON codec through the
 /// runtime (`#[derive(rt::serde::Serialize, ...)]` + `#[serde(crate = "rt::serde")]`)
@@ -106,7 +108,16 @@ mod tests {
         const ENTITY_NAME: &'static str = "AppInstall";
     }
 
-    impl Template for AppInstall {}
+    impl Template for AppInstall {
+        fn to_record(&self) -> Record {
+            record_fields(vec![
+                ("provider", ToValue::to_value(&self.provider)),
+                ("amount", ToValue::to_value(&self.amount)),
+                ("tags", ToValue::to_value(&self.tags)),
+                ("note", ToValue::to_value(&self.note)),
+            ])
+        }
+    }
 
     impl WithKey for AppInstall {
         type Key = Party;

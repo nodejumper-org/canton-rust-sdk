@@ -116,7 +116,7 @@ async fn run_grpc(
     assert_eq!(&read_back, request, "typed read-back matches the submit");
     println!(
         "typed read-back — AppInstallRequest for user {}",
-        read_back.user.0
+        read_back.user
     );
 
     // query ACS → confirm the created contract is active.

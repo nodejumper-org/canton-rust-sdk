@@ -3327,7 +3327,17 @@ pub mod quickstart_licensing_0_0_1 {
             const MODULE_NAME: &'static str = "Licensing.License";
             const ENTITY_NAME: &'static str = "License";
         }
-        impl rt::Template for License {}
+        impl rt::Template for License {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("licenseNum", rt::ToValue::to_value(&self.license_num)),
+                    ("params", rt::ToValue::to_value(&self.params)),
+                ])
+            }
+        }
         ///The `Archive` choice on [`License`] (consuming).
         impl rt::Choice<License>
             for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
@@ -3477,7 +3487,32 @@ pub mod quickstart_licensing_0_0_1 {
             const MODULE_NAME: &'static str = "Licensing.License";
             const ENTITY_NAME: &'static str = "LicenseRenewalRequest";
         }
-        impl rt::Template for LicenseRenewalRequest {}
+        impl rt::Template for LicenseRenewalRequest {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("requestId", rt::ToValue::to_value(&self.request_id)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("licenseNum", rt::ToValue::to_value(&self.license_num)),
+                    (
+                        "licenseFeeAmount",
+                        rt::ToValue::to_value(&self.license_fee_amount)
+                    ),
+                    (
+                        "licenseFeeInstrumentId",
+                        rt::ToValue::to_value(&self.license_fee_instrument_id)
+                    ),
+                    (
+                        "licenseExtensionDuration",
+                        rt::ToValue::to_value(&self.license_extension_duration)
+                    ),
+                    ("prepareUntil", rt::ToValue::to_value(&self.prepare_until)),
+                    ("settleBefore", rt::ToValue::to_value(&self.settle_before)),
+                    ("requestedAt", rt::ToValue::to_value(&self.requested_at)),
+                    ("description", rt::ToValue::to_value(&self.description)),
+                ])
+            }
+        }
         ///The `LicenseRenewalRequest_CompleteRenewal` choice on [`LicenseRenewalRequest`] (non-consuming).
         impl rt::Choice<LicenseRenewalRequest>
         for crate::quickstart_licensing_0_0_1::Licensing_License::LicenseRenewalRequest_CompleteRenewal {
@@ -3687,7 +3722,19 @@ pub mod quickstart_licensing_0_0_1 {
             const MODULE_NAME: &'static str = "Licensing.AppInstall";
             const ENTITY_NAME: &'static str = "AppInstall";
         }
-        impl rt::Template for AppInstall {}
+        impl rt::Template for AppInstall {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                    (
+                        "numLicensesCreated",
+                        rt::ToValue::to_value(&self.num_licenses_created)
+                    ),
+                ])
+            }
+        }
         ///The `AppInstall_CreateLicense` choice on [`AppInstall`] (consuming).
         impl rt::Choice<AppInstall>
             for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall_CreateLicense
@@ -3753,7 +3800,15 @@ pub mod quickstart_licensing_0_0_1 {
             const MODULE_NAME: &'static str = "Licensing.AppInstall";
             const ENTITY_NAME: &'static str = "AppInstallRequest";
         }
-        impl rt::Template for AppInstallRequest {}
+        impl rt::Template for AppInstallRequest {
+            fn to_record(&self) -> rt::Record {
+                rt::record_fields(::std::vec![
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("user", rt::ToValue::to_value(&self.user)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
+            }
+        }
         ///The `AppInstallRequest_Accept` choice on [`AppInstallRequest`] (consuming).
         impl rt::Choice<AppInstallRequest>
             for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstallRequest_Accept
