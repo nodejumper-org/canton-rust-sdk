@@ -10,10 +10,24 @@
 //! | [`ledger`] | `canton-ledger` | The async Ledger API v2 client (gRPC + JSON + WebSocket) |
 //! | [`auth`] | `canton-auth` | JWT/OIDC authentication (client-credentials, caching, refresh) |
 //! | [`admin`] | `canton-admin` | Party management, user self-inspect, topology read |
+//! | [`daml`] | `canton-daml` | The runtime under generated bindings: Daml primitives, codecs, command builders |
 //!
 //! The shared foundation (`canton-core`: [`Config`], [`Error`], TLS, retry)
 //! is re-exported at the crate root — the same types `canton-ledger` itself
 //! re-exports, so both entry points name identical items.
+//!
+//! # Typed bindings
+//!
+//! [`daml`] is the runtime half of the codegen story: generated bindings
+//! depend on it (as `rt`) for [`daml::Party`], [`daml::ContractId`], the
+//! `Template`/`Choice` traits, and the command builders. It is re-exported
+//! here so a `cargo add canton` user gets a version-locked runtime without a
+//! second dependency line.
+//!
+//! Generating the bindings themselves is a **build-time** step, so the
+//! generator is deliberately *not* re-exported: install the CLI with
+//! `cargo install canton-codegen-cli`, or depend on `canton-codegen` from a
+//! build script.
 //!
 //! # Feature flags
 //!
@@ -40,6 +54,7 @@
 
 pub use canton_admin as admin;
 pub use canton_auth as auth;
+pub use canton_daml as daml;
 pub use canton_ledger as ledger;
 
 pub use canton_core::{

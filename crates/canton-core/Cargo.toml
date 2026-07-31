@@ -11,6 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Core types for the Canton Rust SDK: error model, telemetry, and the shared connection kernel (config, auth, TLS, retry)."
+include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 tonic      = { workspace = true, features = ["transport", "tls-ring", "tls-native-roots"] }

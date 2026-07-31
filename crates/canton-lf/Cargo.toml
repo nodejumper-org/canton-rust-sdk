@@ -8,9 +8,10 @@ readme       = { workspace = true }
 authors      = { workspace = true }
 repository   = { workspace = true }
 homepage     = { workspace = true }
-categories   = { workspace = true }
-keywords     = { workspace = true }
+categories   = ["parser-implementations", "encoding", "development-tools"]
+keywords     = ["canton", "daml", "daml-lf", "dar", "codegen"]
 description  = "Daml-LF archive (DAR/DALF) reader and decoder for the Canton Rust SDK."
+include      = ["src/**/*", "proto/**/*", "build.rs", "README.md", "LICENSE"]
 
 [dependencies]
 zip       = { workspace = true }

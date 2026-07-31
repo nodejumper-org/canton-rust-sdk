@@ -8,9 +8,10 @@ readme       = { workspace = true }
 authors      = { workspace = true }
 repository   = { workspace = true }
 homepage     = { workspace = true }
-categories   = { workspace = true }
-keywords     = { workspace = true }
+categories   = ["api-bindings", "encoding"]
+keywords     = ["canton", "daml", "ledger", "bindings", "codegen"]
 description  = "Runtime types and Value codecs for canton-codegen-generated Daml bindings."
+include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-proto = { workspace = true }

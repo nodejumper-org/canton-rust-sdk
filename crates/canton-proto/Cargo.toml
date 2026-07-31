@@ -8,6 +8,7 @@ readme       = { workspace = true }
 authors      = { workspace = true }
 repository   = { workspace = true }
 description  = "Generated Canton Ledger API v2 gRPC types and client stubs (internal to the SDK)."
+include      = ["src/**/*", "proto/**/*", "examples/**/*", "build.rs", "README.md", "LICENSE"]
 
 [features]
 # Generate gRPC server stubs too. Off by default (the SDK is a client); enabled

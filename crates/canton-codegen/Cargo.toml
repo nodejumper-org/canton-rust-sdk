@@ -8,9 +8,10 @@ readme       = { workspace = true }
 authors      = { workspace = true }
 repository   = { workspace = true }
 homepage     = { workspace = true }
-categories   = { workspace = true }
-keywords     = { workspace = true }
+categories   = ["development-tools", "api-bindings"]
+keywords     = ["canton", "daml", "codegen", "dar", "bindings"]
 description  = "Type-safe Rust code generation from Daml packages (DAR to Rust)."
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 thiserror    = { workspace = true }

@@ -11,12 +11,14 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "The Canton Network Rust SDK: one-stop entry point re-exporting the canton-* crate family."
+include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-core   = { workspace = true }
 canton-auth   = { workspace = true }
 canton-ledger = { workspace = true }
 canton-admin  = { workspace = true }
+canton-daml   = { workspace = true }
 
 [features]
 # Forwarded to the crates that implement them, so `canton = { features = [..] }`

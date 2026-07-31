@@ -11,6 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Async Canton Ledger API client (gRPC): commands, streaming, de-duplication, recovery."
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-proto = { workspace = true }

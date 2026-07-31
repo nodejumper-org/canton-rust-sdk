@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [Unreleased]
+## [0.2.0] - 2026-07-31
 
-### Added — Milestone 2: type-safe codegen from DARs
+All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
+the rest. The published 0.1.x API is unchanged except for additions.
+
+### Added — type-safe codegen from DARs
 
 - **`canton-lf`** — native Rust Daml-LF reader: DAR container (zip +
   `MANIFEST.MF`) and an LF 2.x protobuf decoder (vendored `daml_lf2.proto`),
@@ -73,13 +76,33 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   runs the full decode → lower → emit pipeline (plus determinism and CLI
   contract checks) in every `cargo test`, no external setup.
 
-> **M2 release checklist:** publish in dependency order — `canton-lf` →
-> `canton-daml` → `canton-codegen` → `canton-codegen-cli` → the
-> `canton-splice-*` bindings (their crate version follows the SDK lockstep;
-> each README states the DAR version it was generated from). The
-> `dpm-codegen-rust` default `--runtime-version` (`0.1`) resolves once
-> `canton-daml` is live. `canton-sample` and `canton-quickstart-licensing`
-> stay unpublished (reference material).
+### Changed
+
+- The `canton` facade re-exports the codegen runtime as [`canton::daml`], so
+  `cargo add canton` gets a version-locked runtime for generated bindings. The
+  generator stays out of the facade on purpose: it is a build-time tool
+  (`cargo install canton-codegen-cli`, or depend on `canton-codegen` from a
+  build script).
+- The codegen pipeline (`generate`, `Options`, `Runtime`, `Stats`) lives in
+  `canton-codegen`, not in the `-cli` crate, so a build script can call it
+  without pulling in a CLI. `canton-codegen-cli` is binary-only.
+- Codegen errors are typed: `GenerateError` and `CodegenError` replace
+  `Box<dyn Error>` and `syn::Error`, and `SkippedType` (with `module()` /
+  `reason()`) replaces a bare string. No `syn`/`proc-macro2` type appears in a
+  public signature.
+- `Options` uses the same consuming-builder style as M1's `Config`, and
+  `Options`/`Stats`/`Runtime` are `#[non_exhaustive]`.
+- Generated crates get a publishable `Cargo.toml` (description, no forced
+  `[workspace]` stanza) and their default name drops the DAR's version suffix,
+  so a DAR bump no longer renames the crate a caller depends on.
+- Every published crate now ships the Apache-2.0 licence text, and integration
+  tests whose fixtures live outside the package are no longer packaged.
+
+> **Publish order:** `canton-proto` → `canton-core` → `canton-auth` →
+> `canton-lf` → `canton-daml` → `canton-ledger` → `canton-admin` →
+> `canton-codegen` → `canton-codegen-cli` → `canton` → the `canton-splice-*`
+> bindings. `canton-sample` and `canton-quickstart-licensing` stay unpublished
+> (reference material).
 
 ## [0.1.1] - 2026-07-22
 
