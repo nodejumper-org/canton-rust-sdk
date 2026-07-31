@@ -197,9 +197,9 @@ fn compile_dar(dar_path: &str, target_dir: Option<&std::path::Path>) -> Result<D
     let slug = dar_slug(dar_path);
     let dar = Dar::open(dar_path).map_err(|error| format!("open DAR: {error}"))?;
     let (krate, errors) = lower_dar(&dar).map_err(|error| format!("decode+lower: {error}"))?;
-    let unresolved: Vec<&String> = errors
+    let unresolved: Vec<String> = errors
         .iter()
-        .map(|error| &error.0)
+        .map(ToString::to_string)
         .filter(|message| message.contains("not in the DAR"))
         .collect();
     if !unresolved.is_empty() {

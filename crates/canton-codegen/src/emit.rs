@@ -12,7 +12,7 @@ use crate::map::rust_type;
 
 /// Emit the Rust item(s) for a named data type (record, variant, or enum).
 #[must_use]
-pub fn data_type(data_type: &DataType) -> TokenStream {
+pub(crate) fn data_type(data_type: &DataType) -> TokenStream {
     match data_type {
         DataType::Record(record) => record_items(record),
         DataType::Variant(variant) => variant_items(variant),
@@ -37,7 +37,7 @@ fn interface_marker(name: &str) -> TokenStream {
 
 /// Emit every item of a module — its data types, then its templates.
 #[must_use]
-pub fn module_items(module: &Module) -> TokenStream {
+pub(crate) fn module_items(module: &Module) -> TokenStream {
     let data_types = module.data_types.iter().map(data_type);
     let templates = module.templates.iter().map(template);
     let interfaces = module.interfaces.iter().map(interface);
@@ -53,7 +53,7 @@ pub fn module_items(module: &Module) -> TokenStream {
 /// resolve through the `crate::<package>::<module>::<Type>` paths the lowering
 /// produced, and names from different modules cannot collide.
 #[must_use]
-pub fn crate_items(krate: &Crate) -> TokenStream {
+pub(crate) fn crate_items(krate: &Crate) -> TokenStream {
     let packages = krate.packages.iter().map(package_module);
     quote! {
         #(#packages)*
@@ -87,10 +87,10 @@ fn named_module(module: &NamedModule) -> TokenStream {
 
 /// Generate the `struct` for a record data type (also used for template
 /// payloads). Field names are snake-cased for Rust; the original Daml label is
-/// kept in a doc comment (the serde/`Value` codec that pins the wire name lands
-/// in Phase C).
+/// kept in a doc comment and pinned on the wire by the emitted codecs (the
+/// gRPC `Record` labels, and `serde(rename)` for JSON).
 #[must_use]
-pub fn record_struct(record: &Record) -> TokenStream {
+pub(crate) fn record_struct(record: &Record) -> TokenStream {
     let name = type_ident(&record.name);
     let generics = generics(&record.type_params);
     let fields = record.fields.iter().map(|field| {
@@ -192,7 +192,7 @@ fn collect_type_vars(ty: &DamlType, out: &mut std::collections::BTreeSet<String>
 
 /// Emit a record's `struct` together with its `ToValue`/`FromValue` codecs.
 #[must_use]
-pub fn record_items(record: &Record) -> TokenStream {
+pub(crate) fn record_items(record: &Record) -> TokenStream {
     let structure = record_struct(record);
     let codecs = record_codecs(record);
     quote! {
@@ -269,7 +269,7 @@ fn codec_header(
 /// Emit a variant (sum) type as a Rust `enum` — one variant per constructor,
 /// carrying the constructor's payload type (or nothing for a nullary one).
 #[must_use]
-pub fn variant_enum(variant: &Variant) -> TokenStream {
+pub(crate) fn variant_enum(variant: &Variant) -> TokenStream {
     let name = type_ident(&variant.name);
     let generics = generics(&variant.type_params);
     let constructors = variant.constructors.iter().map(|ctor| {
@@ -304,7 +304,7 @@ pub fn variant_enum(variant: &Variant) -> TokenStream {
 
 /// Emit a variant type together with its `ToValue`/`FromValue` codecs.
 #[must_use]
-pub fn variant_items(variant: &Variant) -> TokenStream {
+pub(crate) fn variant_items(variant: &Variant) -> TokenStream {
     let structure = variant_enum(variant);
     let codecs = variant_codecs(variant);
     quote! {
@@ -356,7 +356,7 @@ fn variant_codecs(variant: &Variant) -> TokenStream {
 
 /// Emit an enumeration as a C-like Rust `enum` (constructors carry no data).
 #[must_use]
-pub fn enum_type(enumeration: &Enum) -> TokenStream {
+pub(crate) fn enum_type(enumeration: &Enum) -> TokenStream {
     let name = type_ident(&enumeration.name);
     let constructors = enumeration.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(ctor);
@@ -384,7 +384,7 @@ pub fn enum_type(enumeration: &Enum) -> TokenStream {
 
 /// Emit an enum type together with its `ToValue`/`FromValue` codecs.
 #[must_use]
-pub fn enum_items(enumeration: &Enum) -> TokenStream {
+pub(crate) fn enum_items(enumeration: &Enum) -> TokenStream {
     let structure = enum_type(enumeration);
     let codecs = enum_codecs(enumeration);
     quote! {
@@ -429,7 +429,7 @@ fn enum_codecs(enumeration: &Enum) -> TokenStream {
 /// (`rt::Contract` + `rt::Template`), an `rt::WithKey` impl when it is keyed, and
 /// a typed `rt::Choice` impl per choice.
 #[must_use]
-pub fn template(template: &Template) -> TokenStream {
+pub(crate) fn template(template: &Template) -> TokenStream {
     let payload = record_items(&Record {
         name: template.name.clone(),
         type_params: Vec::new(),
@@ -472,7 +472,7 @@ pub fn template(template: &Template) -> TokenStream {
 /// exercised without the concrete template. The marker `struct` itself is
 /// emitted from the interface's data type (`interface_marker`).
 #[must_use]
-pub fn interface(interface: &Interface) -> TokenStream {
+pub(crate) fn interface(interface: &Interface) -> TokenStream {
     let self_ty = type_ident(&interface.name);
     let contract_impl = contract_impl(
         &self_ty,
@@ -560,14 +560,14 @@ fn generics(type_params: &[String]) -> TokenStream {
 /// are already valid Rust identifiers, so they are used as-is (keywords
 /// escaped) — not case-converted, which would mangle names containing `_`.
 #[must_use]
-pub fn type_ident(name: &str) -> Ident {
+pub(crate) fn type_ident(name: &str) -> Ident {
     ident(name)
 }
 
 /// A Rust identifier for a Daml **type variable** (`a` → `A`), upper-camel-cased
 /// to follow Rust's generic-parameter naming convention.
 #[must_use]
-pub fn type_var_ident(name: &str) -> Ident {
+pub(crate) fn type_var_ident(name: &str) -> Ident {
     ident(&name.to_upper_camel_case())
 }
 
@@ -575,7 +575,7 @@ pub fn type_var_ident(name: &str) -> Ident {
 /// keyword-escaping each named segment. The path keywords `crate` / `self` /
 /// `super` / `Self` pass through unescaped.
 #[must_use]
-pub fn type_path(segments: &[String]) -> TokenStream {
+pub(crate) fn type_path(segments: &[String]) -> TokenStream {
     let parts = segments.iter().map(|segment| match segment.as_str() {
         "crate" | "self" | "super" | "Self" => segment.parse::<TokenStream>().unwrap_or_default(),
         other => {

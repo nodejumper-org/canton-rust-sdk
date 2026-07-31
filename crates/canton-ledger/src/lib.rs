@@ -33,8 +33,9 @@ pub use client::CantonClient;
 pub use command::{Submit, create, exercise, identifier, record, value};
 pub use json::{JsonClient, JsonCommands, JsonSubmitResponse, JsonTransaction};
 
-/// The generated Ledger API v2 protobuf types, for the dynamic (untyped)
-/// command path until typed bindings land in Milestone 2.
+/// The generated Ledger API v2 protobuf types, for the **dynamic** (untyped)
+/// command path. For typed payloads generated from a DAR, see `canton-codegen`
+/// and the `canton-daml` runtime.
 ///
 /// **Stability:** these wire types are *protocol-stable*, not SemVer-stable —
 /// they track the vendored protos pinned to a Canton release and are exempt

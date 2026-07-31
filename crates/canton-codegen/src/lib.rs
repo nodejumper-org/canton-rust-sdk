@@ -6,32 +6,73 @@
 //! command-line front-end is `canton-codegen-cli` (`dpm codegen-rust`); most
 //! users drive codegen through that.
 //!
+//! # Usage
+//!
+//! [`lower_dar`] turns a `.dar` into the [`ir`], and [`generate_crate`] turns
+//! that into the source of a self-contained bindings crate:
+//!
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let dar = canton_lf::Dar::open("my-app-0.1.0.dar")?;
+//! let (krate, skipped) = canton_codegen::lower_dar(&dar)?;
+//! let source = canton_codegen::generate_crate(&krate)?;
+//! for skip in &skipped {
+//!     eprintln!("warning: skipped {}", skip);
+//! }
+//! std::fs::write("src/lib.rs", source)?;
+//! # Ok(()) }
+//! ```
+//!
 //! # Architecture
 //!
 //! A decoder-agnostic [`ir`] (intermediate representation) sits between
 //! decoding Daml-LF and emitting Rust:
 //!
 //! ```text
-//! DAR ──(canton-lf: decode)──▶ [`lower`] ──▶ ir ──([`emit`]/[`map`])──▶ Rust source
+//! DAR ──(canton-lf: decode)──▶ lower ──▶ ir ──(emit/map)──▶ Rust source
 //! ```
 //!
-//! The generator ([`emit`]) and the type mapping ([`map`]) consume the IR and
-//! never touch Daml-LF; [`lower`] is the one module that reads the decoded LF
-//! AST (from `canton-lf`, which is held to the official `daml-lf-archive`
-//! reader by a conformance oracle). Every generator checks its output parses
-//! as valid Rust before returning it.
+//! The generator and the type mapping consume the IR and never touch Daml-LF;
+//! lowering is the one step that reads the decoded LF AST (from `canton-lf`,
+//! which is held to the official `daml-lf-archive` reader by a conformance
+//! oracle). Every generator checks its output parses as valid Rust before
+//! returning it. The IR is public so a caller can emit something other than
+//! Rust from it, or post-process before emission; the emitter and type mapper
+//! are private (their signatures are `proc-macro2` token streams, which would
+//! otherwise become part of this crate's SemVer surface).
 //!
 //! The human-readable specification of the type mapping lives in
 //! `docs/daml-lf-type-mapping.md`.
 
-pub mod emit;
 pub mod ir;
-pub mod lower;
-pub mod map;
 
-pub use lower::{LowerError, lower_crate, lower_dar, lower_package};
+mod generate;
+
+pub(crate) mod emit;
+pub(crate) mod lower;
+pub(crate) mod map;
+
+pub use generate::{GenerateError, Options, Runtime, Stats, default_crate_name, generate};
+pub use lower::{SkippedType, lower_dar};
 
 use proc_macro2::TokenStream;
+
+/// Emitting Rust from the [`ir`] failed.
+///
+/// This means the generator produced tokens that are not valid Rust — always a
+/// bug in `canton-codegen` (or in a hand-built [`ir`]), never bad user input.
+/// The parse error is the payload; it is deliberately opaque so the `syn`
+/// dependency stays out of this crate's public API.
+#[derive(Debug)]
+pub struct CodegenError(syn::Error);
+
+impl std::fmt::Display for CodegenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "generated source is not valid Rust: {}", self.0)
+    }
+}
+
+impl std::error::Error for CodegenError {}
 
 use crate::ir::{Crate, DataType, Module, Record, Template};
 
@@ -56,25 +97,25 @@ const CRATE_PREAMBLE: &str = concat!(
 /// syntactically valid Rust.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the tokens are not valid Rust — a generator bug.
-fn format_items(tokens: TokenStream) -> Result<String, syn::Error> {
-    let file: syn::File = syn::parse2(tokens)?;
+/// Returns [`CodegenError`] if the tokens are not valid Rust — a generator bug.
+fn format_items(tokens: TokenStream) -> Result<String, CodegenError> {
+    let file: syn::File = syn::parse2(tokens).map_err(CodegenError)?;
     Ok(prettyplease::unparse(&file))
 }
 
 /// Generate formatted Rust source for a single record data type.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_record(record: &Record) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_record(record: &Record) -> Result<String, CodegenError> {
     format_items(emit::record_items(record))
 }
 
 /// Generate formatted Rust source for a named data type (record / variant / enum).
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_data_type(data_type: &DataType) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_data_type(data_type: &DataType) -> Result<String, CodegenError> {
     format_items(emit::data_type(data_type))
 }
 
@@ -82,8 +123,8 @@ pub fn generate_data_type(data_type: &DataType) -> Result<String, syn::Error> {
 /// typed choice impls.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_template(template: &Template) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_template(template: &Template) -> Result<String, CodegenError> {
     format_items(emit::template(template))
 }
 
@@ -91,8 +132,8 @@ pub fn generate_template(template: &Template) -> Result<String, syn::Error> {
 /// `Interface` identity and typed choice impls) on its marker type.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_interface(interface: &crate::ir::Interface) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_interface(interface: &crate::ir::Interface) -> Result<String, CodegenError> {
     format_items(emit::interface(interface))
 }
 
@@ -101,8 +142,8 @@ pub fn generate_interface(interface: &crate::ir::Interface) -> Result<String, sy
 /// crate.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_module(module: &Module) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_module(module: &Module) -> Result<String, CodegenError> {
     let body = format_items(emit::module_items(module))?;
     Ok(format!("{MODULE_PREAMBLE}{body}"))
 }
@@ -112,8 +153,8 @@ pub fn generate_module(module: &Module) -> Result<String, syn::Error> {
 /// reference resolves through its qualified path.
 ///
 /// # Errors
-/// Returns a [`syn::Error`] if the generated tokens are not valid Rust.
-pub fn generate_crate(krate: &Crate) -> Result<String, syn::Error> {
+/// Returns [`CodegenError`] if the generated tokens are not valid Rust.
+pub fn generate_crate(krate: &Crate) -> Result<String, CodegenError> {
     let body = format_items(emit::crate_items(krate))?;
     Ok(format!("{CRATE_PREAMBLE}{body}"))
 }

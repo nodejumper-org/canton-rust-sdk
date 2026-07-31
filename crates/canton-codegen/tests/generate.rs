@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use canton_codegen_cli::{Options, Runtime, default_crate_name, generate};
+use canton_codegen::{Options, Runtime, default_crate_name, generate};
 
 #[test]
 fn generates_a_crate_from_a_real_dar() {
@@ -21,13 +21,11 @@ fn generates_a_crate_from_a_real_dar() {
     // Depend on canton-daml by path so the generated crate builds in-tree.
     let runtime = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../canton-daml"));
 
-    let stats = generate(&Options {
-        dar: dar.clone(),
-        out: out.clone(),
-        crate_name: default_crate_name(&dar),
-        runtime: Runtime::Path(runtime),
-        force: false,
-    })
+    let stats = generate(
+        &Options::new(dar.clone(), out.clone())
+            .with_crate_name(default_crate_name(&dar))
+            .with_runtime(Runtime::Path(runtime)),
+    )
     .expect("generation succeeds");
 
     assert!(stats.packages > 0, "a DAR should yield packages");

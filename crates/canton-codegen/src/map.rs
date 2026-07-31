@@ -21,7 +21,7 @@ use crate::ir::{DamlType, TypeRef};
 /// `String` / `Option` / `Vec` / `Box` in the same module cannot silently
 /// shadow them.
 #[must_use]
-pub fn rust_type(ty: &DamlType) -> TokenStream {
+pub(crate) fn rust_type(ty: &DamlType) -> TokenStream {
     match ty {
         DamlType::Unit => quote!(rt::Unit),
         DamlType::Bool => quote!(bool),

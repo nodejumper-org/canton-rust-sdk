@@ -7,7 +7,7 @@
 //! **interfaces** (view type, choices, and the identity choices are exercised
 //! through — on the marker struct emitted from the interface's data type). Field
 //! types cover the LF builtins, references to named types, and type variables;
-//! unsupported LF type shapes yield a [`LowerError`] rather than silently-wrong
+//! unsupported LF type shapes yield a [`SkippedType`] rather than silently-wrong
 //! output.
 //!
 //! # Qualified references (PackageMap)
@@ -15,11 +15,9 @@
 //! A DAR bundles a package and its whole dependency closure. A type reference
 //! (`Con`) carries the target module *and* package (self, or an imported
 //! package identified by its id-hash). Lowering a **whole DAR**
-//! ([`lower_crate`]) resolves every reference to a fully-qualified Rust path —
+//! resolves every reference to a fully-qualified Rust path —
 //! `crate::<package>::<module>::<Type>` — so cross-module and cross-package
 //! references resolve and names from different modules can never collide.
-//! Lowering a **single package** ([`lower_package`]) keeps references local
-//! (bare type name), which is enough for the flat single-module output.
 
 use std::collections::HashMap;
 
@@ -34,37 +32,67 @@ use crate::ir::{
     Record, Template, TypeRef, Variant, VariantConstructor,
 };
 
-/// An error lowering the LF AST into the IR (an unsupported or malformed shape).
+/// A declaration that could not be lowered into the IR, and why.
+///
+/// Lowering is best-effort: an LF shape the codegen cannot represent (a type
+/// name that is not a Rust identifier, a non-serializable builtin, two fields
+/// that would collide after snake-casing) is skipped and reported here rather
+/// than failing the whole DAR or emitting something wrong. Callers surface
+/// these as warnings — see [`crate::lower_dar`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LowerError(pub String);
+pub struct SkippedType {
+    module: String,
+    reason: String,
+}
 
-impl LowerError {
-    fn new(message: impl Into<String>) -> Self {
-        Self(message.into())
+impl SkippedType {
+    fn new(reason: impl Into<String>) -> Self {
+        Self {
+            module: String::new(),
+            reason: reason.into(),
+        }
     }
 
-    /// Prefix the error with the context it arose in (a module or package),
-    /// so a skipped-type warning tells the user *where* to look.
-    fn in_context(self, context: &str) -> Self {
-        Self(format!("{context}: {}", self.0))
+    /// Attribute the skip to the Daml module it arose in, so the warning tells
+    /// the user *where* to look.
+    fn in_module(mut self, module: &str) -> Self {
+        self.module = module.to_string();
+        self
+    }
+
+    /// The dotted Daml module the skipped declaration lives in, or `""` when
+    /// the skip could not be attributed to one.
+    #[must_use]
+    pub fn module(&self) -> &str {
+        &self.module
+    }
+
+    /// Why the declaration was skipped.
+    #[must_use]
+    pub fn reason(&self) -> &str {
+        &self.reason
     }
 }
 
-impl std::fmt::Display for LowerError {
+impl std::fmt::Display for SkippedType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "lowering error: {}", self.0)
+        if self.module.is_empty() {
+            f.write_str(&self.reason)
+        } else {
+            write!(f, "{}: {}", self.module, self.reason)
+        }
     }
 }
 
-impl std::error::Error for LowerError {}
+impl std::error::Error for SkippedType {}
 
 /// Lower a whole DAR (its main package and its full dependency closure) into a
 /// [`Crate`] of qualified modules, plus the list of types that could not be
-/// lowered (best-effort — see [`lower_crate`]).
+/// lowered (best-effort: see [`SkippedType`]).
 ///
 /// # Errors
 /// Returns [`DecodeError`] if any package's bytes are malformed or not LF 2.x.
-pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<LowerError>), DecodeError> {
+pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
     Ok(lower_crate(&decode_all(dar)?))
 }
 
@@ -75,7 +103,7 @@ pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<LowerError>), DecodeError> {
 /// Best-effort: a type that cannot be lowered is skipped and its error recorded,
 /// so a package with a few unsupported types still produces output.
 #[must_use]
-pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError>) {
+pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<SkippedType>) {
     // package id → the Rust module name that package's types live under.
     let mut module_names: HashMap<&str, String> = packages
         .iter()
@@ -118,7 +146,7 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
         };
         for lf_module in &package.modules {
             let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
-                errors.push(LowerError::new("unresolved module name"));
+                errors.push(SkippedType::new("unresolved module name"));
                 continue;
             };
             let ir_module = lowering.module(lf_module, &dotted, &mut errors);
@@ -142,31 +170,6 @@ pub fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<LowerError
     box_recursion(&mut krate);
 
     (krate, errors)
-}
-
-/// Lower a single package's **data types** into a flat IR [`Module`] with
-/// **local** references. Templates are not lowered here — they need the
-/// qualified, whole-DAR form; use [`lower_crate`] for a crate with templates and
-/// choices. This helper backs the single-module syntax path only.
-#[must_use]
-pub fn lower_package(package: &lf::Package) -> (Module, Vec<LowerError>) {
-    let lowering = Lowering {
-        package,
-        qualify: None,
-    };
-    let mut module = Module::default();
-    let mut errors = Vec::new();
-    for lf_module in &package.modules {
-        for data_type in &lf_module.data_types {
-            match lowering.data_type(data_type) {
-                Ok(Some(lowered)) => module.data_types.push(lowered),
-                Ok(None) => {}
-                Err(error) => errors.push(error),
-            }
-        }
-    }
-    box_recursion_local(&mut module);
-    (module, errors)
 }
 
 /// The Rust module name a package's types live under: its `name_version` (both
@@ -227,7 +230,7 @@ impl Lowering<'_> {
         &self,
         lf_module: &lf::Module,
         module_dotted: &str,
-        errors: &mut Vec<LowerError>,
+        errors: &mut Vec<SkippedType>,
     ) -> Module {
         // The names that are templates — their payload record is folded in below.
         let template_names: std::collections::HashSet<String> = lf_module
@@ -246,21 +249,21 @@ impl Lowering<'_> {
                 }
                 Ok(Some(lowered)) => module.data_types.push(lowered),
                 Ok(None) => {}
-                Err(error) => errors.push(error.in_context(module_dotted)),
+                Err(error) => errors.push(error.in_module(module_dotted)),
             }
         }
 
         for def in &lf_module.templates {
             match self.template(def, module_dotted, &mut payloads) {
                 Ok(template) => module.templates.push(template),
-                Err(error) => errors.push(error.in_context(module_dotted)),
+                Err(error) => errors.push(error.in_module(module_dotted)),
             }
         }
 
         for def in &lf_module.interfaces {
             match self.interface(def, module_dotted) {
                 Ok(interface) => module.interfaces.push(interface),
-                Err(error) => errors.push(error.in_context(module_dotted)),
+                Err(error) => errors.push(error.in_module(module_dotted)),
             }
         }
         module
@@ -273,7 +276,7 @@ impl Lowering<'_> {
         &self,
         def: &lf::DefInterface,
         module_dotted: &str,
-    ) -> Result<Interface, LowerError> {
+    ) -> Result<Interface, SkippedType> {
         let name = rust_name(self.package, def.tycon_interned_dname)?;
         let choices = def
             .choices
@@ -307,11 +310,11 @@ impl Lowering<'_> {
         def: &lf::DefTemplate,
         module_dotted: &str,
         payloads: &mut HashMap<String, Vec<Field>>,
-    ) -> Result<Template, LowerError> {
+    ) -> Result<Template, SkippedType> {
         let name = rust_name(self.package, def.tycon_interned_dname)?;
-        let fields = payloads
-            .remove(&name)
-            .ok_or_else(|| LowerError::new(format!("template {name}: payload record not found")))?;
+        let fields = payloads.remove(&name).ok_or_else(|| {
+            SkippedType::new(format!("template {name}: payload record not found"))
+        })?;
         let choices = def
             .choices
             .iter()
@@ -340,19 +343,19 @@ impl Lowering<'_> {
     /// Lower one `TemplateChoice`: its name, consuming flag, argument type, and
     /// return type. The controller/observer/body expressions are term-level and
     /// intentionally not modelled (see the decoder note on `Expr`).
-    fn choice(&self, choice: &lf::TemplateChoice) -> Result<Choice, LowerError> {
+    fn choice(&self, choice: &lf::TemplateChoice) -> Result<Choice, SkippedType> {
         let name = interned_str(self.package, choice.name_interned_str)
-            .ok_or_else(|| LowerError::new("unresolved choice name"))?
+            .ok_or_else(|| SkippedType::new("unresolved choice name"))?
             .to_string();
         let argument = choice
             .arg_binder
             .as_ref()
             .and_then(|binder| binder.r#type.as_ref())
-            .ok_or_else(|| LowerError::new(format!("choice {name}: no argument type")))?;
+            .ok_or_else(|| SkippedType::new(format!("choice {name}: no argument type")))?;
         let returns = choice
             .ret_type
             .as_ref()
-            .ok_or_else(|| LowerError::new(format!("choice {name}: no return type")))?;
+            .ok_or_else(|| SkippedType::new(format!("choice {name}: no return type")))?;
         Ok(Choice {
             name,
             consuming: choice.consuming,
@@ -363,7 +366,7 @@ impl Lowering<'_> {
 
     /// Lower one `DefDataType`. `Ok(None)` when intentionally skipped
     /// (non-serializable, or an interface view marker).
-    fn data_type(&self, data_type: &lf::DefDataType) -> Result<Option<DataType>, LowerError> {
+    fn data_type(&self, data_type: &lf::DefDataType) -> Result<Option<DataType>, SkippedType> {
         let name = rust_name(self.package, data_type.name_interned_dname)?;
 
         // An interface is not serializable, but references to it (always
@@ -384,12 +387,12 @@ impl Lowering<'_> {
             .map(|param| {
                 interned_str(self.package, param.var_interned_str)
                     .map(str::to_string)
-                    .ok_or_else(|| LowerError::new("unresolved type parameter"))
+                    .ok_or_else(|| SkippedType::new("unresolved type parameter"))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         let Some(data_cons) = &data_type.data_cons else {
-            return Err(LowerError::new(format!("{name}: no data constructor")));
+            return Err(SkippedType::new(format!("{name}: no data constructor")));
         };
 
         match data_cons {
@@ -420,7 +423,7 @@ impl Lowering<'_> {
                     .map(|&index| {
                         interned_str(self.package, index)
                             .map(str::to_string)
-                            .ok_or_else(|| LowerError::new("unresolved enum constructor"))
+                            .ok_or_else(|| SkippedType::new("unresolved enum constructor"))
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Some(DataType::Enum(Enum { name, constructors })))
@@ -430,17 +433,17 @@ impl Lowering<'_> {
         }
     }
 
-    fn fields(&self, fields: &[lf::FieldWithType]) -> Result<Vec<Field>, LowerError> {
+    fn fields(&self, fields: &[lf::FieldWithType]) -> Result<Vec<Field>, SkippedType> {
         let lowered = fields
             .iter()
             .map(|field| {
                 let label = interned_str(self.package, field.field_interned_str)
-                    .ok_or_else(|| LowerError::new("unresolved field label"))?
+                    .ok_or_else(|| SkippedType::new("unresolved field label"))?
                     .to_string();
                 let ty = self.type_(field_type(field)?)?;
                 Ok(Field { label, ty })
             })
-            .collect::<Result<Vec<Field>, LowerError>>()?;
+            .collect::<Result<Vec<Field>, SkippedType>>()?;
 
         // Two Daml labels can collapse onto one Rust field name (`fooBar` and
         // `foo_bar` both snake_case to `foo_bar`); the emitted struct would not
@@ -449,7 +452,7 @@ impl Lowering<'_> {
         for field in &lowered {
             let rust = heck::ToSnakeCase::to_snake_case(field.label.as_str());
             if let Some(previous) = by_rust_name.insert(rust.clone(), &field.label) {
-                return Err(LowerError::new(format!(
+                return Err(SkippedType::new(format!(
                     "fields `{previous}` and `{}` both map to the Rust field `{rust}`",
                     field.label
                 )));
@@ -461,9 +464,9 @@ impl Lowering<'_> {
     fn variant_constructor(
         &self,
         field: &lf::FieldWithType,
-    ) -> Result<VariantConstructor, LowerError> {
+    ) -> Result<VariantConstructor, SkippedType> {
         let name = interned_str(self.package, field.field_interned_str)
-            .ok_or_else(|| LowerError::new("unresolved variant constructor"))?
+            .ok_or_else(|| SkippedType::new("unresolved variant constructor"))?
             .to_string();
         // A `Unit` payload is a nullary constructor.
         let payload = match self.type_(field_type(field)?)? {
@@ -475,7 +478,7 @@ impl Lowering<'_> {
 
     /// Lower an LF [`Type`](lf::Type) into a [`DamlType`], resolving interned
     /// types and (when qualifying) references to fully-qualified paths.
-    fn type_(&self, ty: &lf::Type) -> Result<DamlType, LowerError> {
+    fn type_(&self, ty: &lf::Type) -> Result<DamlType, SkippedType> {
         self.apply(ty, &[])
     }
 
@@ -483,20 +486,20 @@ impl Lowering<'_> {
     /// form (`Con`/`Builtin` with an `args` list) and the curried `TApp` form
     /// (LF 2.dev): `TApp(lhs, rhs)` applies `lhs` to `rhs` prepended to `extra`,
     /// so `((f a) b)` collapses to `f` applied to `[a, b]` regardless of shape.
-    fn apply(&self, ty: &lf::Type, extra: &[&lf::Type]) -> Result<DamlType, LowerError> {
+    fn apply(&self, ty: &lf::Type, extra: &[&lf::Type]) -> Result<DamlType, SkippedType> {
         let Some(sum) = &ty.sum else {
-            return Err(LowerError::new("empty type"));
+            return Err(SkippedType::new("empty type"));
         };
         match sum {
             lf::r#type::Sum::Tapp(app) => {
                 let lhs = app
                     .lhs
                     .as_deref()
-                    .ok_or_else(|| LowerError::new("type application without a function"))?;
+                    .ok_or_else(|| SkippedType::new("type application without a function"))?;
                 let rhs = app
                     .rhs
                     .as_deref()
-                    .ok_or_else(|| LowerError::new("type application without an argument"))?;
+                    .ok_or_else(|| SkippedType::new("type application without an argument"))?;
                 let mut args = Vec::with_capacity(extra.len() + 1);
                 args.push(rhs);
                 args.extend_from_slice(extra);
@@ -504,10 +507,10 @@ impl Lowering<'_> {
             }
             lf::r#type::Sum::Var(var) => {
                 if !extra.is_empty() {
-                    return Err(LowerError::new("type-variable application is unsupported"));
+                    return Err(SkippedType::new("type-variable application is unsupported"));
                 }
                 let name = interned_str(self.package, var.var_interned_str)
-                    .ok_or_else(|| LowerError::new("unresolved type variable"))?
+                    .ok_or_else(|| SkippedType::new("unresolved type variable"))?
                     .to_string();
                 Ok(DamlType::Var(name))
             }
@@ -515,7 +518,7 @@ impl Lowering<'_> {
                 let tycon = con
                     .tycon
                     .as_ref()
-                    .ok_or_else(|| LowerError::new("type constructor without a name"))?;
+                    .ok_or_else(|| SkippedType::new("type constructor without a name"))?;
                 let path = self.con_path(tycon)?;
                 let args = con
                     .args
@@ -532,12 +535,12 @@ impl Lowering<'_> {
             }
             lf::r#type::Sum::Interned(index) => {
                 let resolved = interned_type(self.package, *index)
-                    .ok_or_else(|| LowerError::new("unresolved interned type"))?;
+                    .ok_or_else(|| SkippedType::new("unresolved interned type"))?;
                 self.apply(resolved, extra)
             }
-            lf::r#type::Sum::Nat(_) => Err(LowerError::new("unexpected bare type-level Nat")),
+            lf::r#type::Sum::Nat(_) => Err(SkippedType::new("unexpected bare type-level Nat")),
             lf::r#type::Sum::Forall(_) | lf::r#type::Sum::Struct(_) | lf::r#type::Sum::Syn(_) => {
-                Err(LowerError::new(
+                Err(SkippedType::new(
                     "unsupported LF type (forall / struct / syn)",
                 ))
             }
@@ -550,7 +553,7 @@ impl Lowering<'_> {
     /// three forms: **self**, an **imported** package by its interned id-hash, or
     /// a Smart Contract Upgrade reference that names the package (resolved to the
     /// bundled version via the referenced module).
-    fn con_path(&self, tycon: &lf::TypeConId) -> Result<Vec<String>, LowerError> {
+    fn con_path(&self, tycon: &lf::TypeConId) -> Result<Vec<String>, SkippedType> {
         use lf::self_or_imported_package_id::Sum;
 
         let type_name = rust_name(self.package, tycon.name_interned_dname)?;
@@ -561,10 +564,10 @@ impl Lowering<'_> {
         let module_id = tycon
             .module
             .as_ref()
-            .ok_or_else(|| LowerError::new("type constructor without a module"))?;
+            .ok_or_else(|| SkippedType::new("type constructor without a module"))?;
         let module_dotted =
             interned_dotted_name(self.package, module_id.module_name_interned_dname)
-                .ok_or_else(|| LowerError::new("unresolved referenced module name"))?;
+                .ok_or_else(|| SkippedType::new("unresolved referenced module name"))?;
 
         // Every reference form ultimately names a package by its id hash;
         // resolve to that hash, then to the package's Rust module name.
@@ -573,19 +576,19 @@ impl Lowering<'_> {
             None | Some(Sum::SelfPackageId(_)) => qualify.current_id.to_string(),
             // An imported package identified by its id-hash, interned here.
             Some(Sum::ImportedPackageIdInternedStr(index)) => interned_str(self.package, *index)
-                .ok_or_else(|| LowerError::new("unresolved imported package id"))?
+                .ok_or_else(|| SkippedType::new("unresolved imported package id"))?
                 .to_string(),
             // Newer LF: an index into the package's explicit import table, whose
             // entry is the target package's id hash.
             Some(Sum::PackageImportId(index)) => imported_package_id(self.package, *index)
-                .ok_or_else(|| LowerError::new("unresolved package import id"))?
+                .ok_or_else(|| SkippedType::new("unresolved package import id"))?
                 .to_string(),
         };
         let package_module = qualify
             .module_names
             .get(target_id.as_str())
             .ok_or_else(|| {
-                LowerError::new(format!("reference to package {target_id} not in the DAR"))
+                SkippedType::new(format!("reference to package {target_id} not in the DAR"))
             })?;
 
         Ok(vec![
@@ -596,14 +599,14 @@ impl Lowering<'_> {
         ])
     }
 
-    fn builtin(&self, builtin: i32, args: &[&lf::Type]) -> Result<DamlType, LowerError> {
+    fn builtin(&self, builtin: i32, args: &[&lf::Type]) -> Result<DamlType, SkippedType> {
         use lf::BuiltinType;
 
         let kind = BuiltinType::try_from(builtin)
-            .map_err(|_| LowerError::new(format!("unknown builtin type {builtin}")))?;
-        let arg = |index: usize| -> Result<DamlType, LowerError> {
+            .map_err(|_| SkippedType::new(format!("unknown builtin type {builtin}")))?;
+        let arg = |index: usize| -> Result<DamlType, SkippedType> {
             let ty = args.get(index).copied().ok_or_else(|| {
-                LowerError::new(format!("{kind:?} missing type argument {index}"))
+                SkippedType::new(format!("{kind:?} missing type argument {index}"))
             })?;
             self.type_(ty)
         };
@@ -623,7 +626,7 @@ impl Lowering<'_> {
             BuiltinType::Textmap => DamlType::TextMap(Box::new(arg(0)?)),
             BuiltinType::Genmap => DamlType::GenMap(Box::new(arg(0)?), Box::new(arg(1)?)),
             other => {
-                return Err(LowerError::new(format!(
+                return Err(SkippedType::new(format!(
                     "builtin type {other:?} is not representable in codegen"
                 )));
             }
@@ -632,19 +635,19 @@ impl Lowering<'_> {
     }
 
     /// The scale of a `Numeric n` from its type-level `Nat` argument.
-    fn numeric_scale(&self, args: &[&lf::Type]) -> Result<u8, LowerError> {
+    fn numeric_scale(&self, args: &[&lf::Type]) -> Result<u8, SkippedType> {
         let mut ty = *args
             .first()
-            .ok_or_else(|| LowerError::new("Numeric without a scale argument"))?;
+            .ok_or_else(|| SkippedType::new("Numeric without a scale argument"))?;
         // Follow one level of interning if the scale is stored in the type table.
         if let Some(lf::r#type::Sum::Interned(index)) = &ty.sum {
             ty = interned_type(self.package, *index)
-                .ok_or_else(|| LowerError::new("unresolved Numeric scale"))?;
+                .ok_or_else(|| SkippedType::new("unresolved Numeric scale"))?;
         }
         match &ty.sum {
             Some(lf::r#type::Sum::Nat(scale)) => u8::try_from(*scale)
-                .map_err(|_| LowerError::new(format!("Numeric scale {scale} out of range"))),
-            _ => Err(LowerError::new("Numeric scale is not a type-level Nat")),
+                .map_err(|_| SkippedType::new(format!("Numeric scale {scale} out of range"))),
+            _ => Err(SkippedType::new("Numeric scale is not a type-level Nat")),
         }
     }
 }
@@ -692,15 +695,6 @@ fn box_recursion(krate: &mut Crate) {
             module_box_cycles(&mut module.module, &at, &edges);
         }
     }
-}
-
-/// [`box_recursion`] for a flat single-module lowering, where references are
-/// local (single-segment) paths and the graph key is the bare type name.
-fn box_recursion_local(module: &mut Module) {
-    let at = |name: &str| name.to_string();
-    let mut edges: HashMap<String, Vec<String>> = HashMap::new();
-    module_containment_edges(module, &at, &mut edges);
-    module_box_cycles(module, &at, &edges);
 }
 
 /// Pass 1 for one module: record which reference keys each declared type
@@ -839,22 +833,22 @@ fn box_cycle_closers(ty: &mut DamlType, holder: &str, edges: &HashMap<String, Ve
 }
 
 /// The `Type` of a field, or an error if absent.
-fn field_type(field: &lf::FieldWithType) -> Result<&lf::Type, LowerError> {
+fn field_type(field: &lf::FieldWithType) -> Result<&lf::Type, SkippedType> {
     field
         .r#type
         .as_ref()
-        .ok_or_else(|| LowerError::new("field without a type"))
+        .ok_or_else(|| SkippedType::new("field without a type"))
 }
 
 /// Resolve an interned dotted type name into a Rust-usable identifier: the Daml
 /// qualified name with `.` replaced by `_` (Daml type names are otherwise valid
 /// Rust identifiers). Definitions and references use this same mapping, so they
 /// agree. A name that is not a valid Rust identifier (LF permits characters
-/// like `$` in compiler-internal names) is a [`LowerError`], not a panic in
+/// like `$` in compiler-internal names) is a [`SkippedType`], not a panic in
 /// the emitter.
-fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, LowerError> {
+fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, SkippedType> {
     let dotted = interned_dotted_name(package, name_interned_dname)
-        .ok_or_else(|| LowerError::new("unresolved dotted name"))?;
+        .ok_or_else(|| SkippedType::new("unresolved dotted name"))?;
     let name = dotted.replace('.', "_");
     let valid_ident = !name.is_empty()
         && !name.starts_with(|c: char| c.is_ascii_digit())
@@ -862,7 +856,7 @@ fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, 
     if valid_ident {
         Ok(name)
     } else {
-        Err(LowerError::new(format!(
+        Err(SkippedType::new(format!(
             "`{dotted}` is not representable as a Rust identifier"
         )))
     }
@@ -1017,32 +1011,6 @@ mod tests {
     }
 
     #[test]
-    fn flat_lowering_path_boxes_recursion_too() {
-        // lower_package (local references) must break cycles as well.
-        let mut module = Module {
-            data_types: vec![DataType::Record(Record {
-                name: "Tree".to_string(),
-                type_params: vec![],
-                fields: vec![Field {
-                    label: "next".to_string(),
-                    ty: DamlType::Optional(Box::new(DamlType::Ref(TypeRef::local("Tree", vec![])))),
-                }],
-            })],
-            ..Module::default()
-        };
-        box_recursion_local(&mut module);
-        let DataType::Record(record) = &module.data_types[0] else {
-            panic!("record expected");
-        };
-        assert_eq!(
-            record.fields[0].ty,
-            DamlType::Optional(Box::new(DamlType::Boxed(Box::new(DamlType::Ref(
-                TypeRef::local("Tree", vec![])
-            ))))),
-        );
-    }
-
-    #[test]
     fn lowers_a_real_dar_to_a_qualified_crate() {
         // Env-gated: point at a real .dar (e.g. one from cn-quickstart).
         let Ok(path) = std::env::var("CANTON_TEST_DAR") else {
@@ -1061,9 +1029,9 @@ mod tests {
         // Every reference must resolve to a package present in the DAR closure —
         // if the imported-package-id interning were wrong, this would surface as
         // a "reference to package … not in the DAR" error.
-        let unresolved: Vec<&LowerError> = errors
+        let unresolved: Vec<&SkippedType> = errors
             .iter()
-            .filter(|error| error.0.contains("not in the DAR"))
+            .filter(|error| error.reason().contains("not in the DAR"))
             .collect();
         assert!(
             unresolved.is_empty(),

@@ -1,8 +1,9 @@
 //! Daml-LF archive reader and decoder.
 //!
-//! **Milestone 2.** This crate is the codegen's front-end: it reads a `.dar`
-//! and decodes its Daml-LF packages into the AST that `canton-codegen` lowers
-//! to IR and turns into Rust.
+//! The codegen front-end of the Canton Rust SDK: it reads a `.dar` and decodes
+//! its Daml-LF packages into the AST that `canton-codegen` lowers to IR and
+//! turns into Rust. Most users never call this crate directly — they run
+//! `canton-codegen-cli` (`dpm codegen-rust`).
 //!
 //! - [`Dar`] — the DAR **container** layer (zip + `MANIFEST.MF` → the raw
 //!   Daml-LF bytes of the main package and its dependencies).

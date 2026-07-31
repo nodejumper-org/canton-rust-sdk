@@ -11,8 +11,8 @@
 
 use std::path::{Path, PathBuf};
 
+use canton_codegen::{GenerateError, Options, Runtime, generate};
 use canton_codegen::{generate_crate, lower_dar};
-use canton_codegen_cli::{Options, Runtime, generate};
 use canton_lf::Dar;
 
 fn fixture() -> PathBuf {
@@ -41,8 +41,10 @@ fn fixture_dar_lowers_and_generates_valid_rust() {
     let unexpected: Vec<_> = errors
         .iter()
         .filter(|error| {
-            !(error.0.starts_with("GHC.")
-                && error.0.contains("not representable as a Rust identifier"))
+            !(error.module().starts_with("GHC.")
+                && error
+                    .reason()
+                    .contains("not representable as a Rust identifier"))
         })
         .collect();
     assert!(
@@ -86,16 +88,12 @@ fn generation_is_deterministic() {
 #[test]
 fn cli_generate_writes_a_versioned_marked_crate_and_respects_clobber_rules() {
     let out = scratch("cli");
-    let opts = Options {
-        dar: fixture(),
-        out: out.clone(),
-        crate_name: "holding-bindings".to_string(),
-        runtime: Runtime::Path(PathBuf::from(concat!(
+    let opts = Options::new(fixture(), out.clone())
+        .with_crate_name("holding-bindings")
+        .with_runtime(Runtime::Path(PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../canton-daml"
-        ))),
-        force: false,
-    };
+        ))));
 
     let stats = generate(&opts).expect("generation succeeds");
     assert!(stats.packages >= 20 && stats.items > 0);
@@ -114,13 +112,12 @@ fn cli_generate_writes_a_versioned_marked_crate_and_respects_clobber_rules() {
     generate(&opts).expect("regenerating over own output succeeds");
     // …but a foreign file is refused without --force.
     std::fs::write(out.join("src/lib.rs"), "fn user_wrote_this() {}").unwrap();
-    let error = generate(&opts).unwrap_err().to_string();
-    assert!(error.contains("--force"), "{error}");
-    generate(&Options {
-        force: true,
-        ..opts
-    })
-    .expect("--force overwrites");
+    let error = generate(&opts).unwrap_err();
+    assert!(
+        matches!(&error, GenerateError::WouldClobber { path } if path.ends_with("lib.rs")),
+        "expected WouldClobber, got {error:?}"
+    );
+    generate(&opts.clone().with_force(true)).expect("force overwrites");
 
     std::fs::remove_dir_all(&out).ok();
 }
@@ -132,18 +129,17 @@ fn cli_rejects_a_non_dar_input_with_a_clear_error() {
     std::fs::create_dir_all(&out).unwrap();
     std::fs::write(&not_a_dar, "plain text, not a zip").unwrap();
 
-    let error = generate(&Options {
-        dar: not_a_dar.clone(),
-        out: out.join("bindings"),
-        crate_name: "x".to_string(),
-        runtime: Runtime::Version("0.1".to_string()),
-        force: false,
-    })
-    .unwrap_err()
-    .to_string();
-    // Names the offending path and says what was expected.
-    assert!(error.contains("fake.dar"), "{error}");
-    assert!(error.contains("daml build"), "{error}");
+    let error =
+        generate(&Options::new(not_a_dar.clone(), out.join("bindings")).with_crate_name("x"))
+            .unwrap_err();
+    // A typed variant naming the offending path — callers can match on this
+    // instead of scraping the message.
+    let GenerateError::ReadDar { path, source } = &error else {
+        panic!("expected ReadDar, got {error:?}");
+    };
+    assert_eq!(path, &not_a_dar);
+    // …and the cause says what was expected.
+    assert!(source.to_string().contains("daml build"), "{source}");
     assert!(Path::new(&not_a_dar).exists());
 
     std::fs::remove_dir_all(&out).ok();

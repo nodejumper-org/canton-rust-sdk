@@ -78,7 +78,7 @@ fn main() {
     emit(generate_data_type(&enumeration));
 }
 
-fn emit(result: Result<String, syn::Error>) {
+fn emit(result: Result<String, canton_codegen::CodegenError>) {
     match result {
         Ok(src) => print!("{src}"),
         Err(e) => eprintln!("codegen error: {e}"),

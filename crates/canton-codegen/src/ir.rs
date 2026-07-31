@@ -1,9 +1,10 @@
 //! A decoder-agnostic intermediate representation (IR) of Daml types.
 //!
-//! The IR is the seam between "decode Daml-LF" (Phase B — JVM `daml-lf-archive`
-//! or a native decoder) and "emit Rust" (this crate's generator). Neither side
-//! knows about the other: a decoder produces this IR, the generator consumes it.
-//! That keeps the pivotal LF-decoder decision isolated to one module.
+//! The IR is the seam between "decode Daml-LF" (`canton-lf`) and "emit Rust"
+//! (this crate's generator). Neither side knows about the other: a decoder
+//! produces this IR, the generator consumes it — so the LF-decoder choice stays
+//! isolated to lowering, the one step that reads the LF AST
+//! ([`lower_dar`](crate::lower_dar)).
 
 /// A Daml type — a primitive, a container, or a reference to a named data type.
 ///

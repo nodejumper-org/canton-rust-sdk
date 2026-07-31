@@ -12,15 +12,17 @@ categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "dpm codegen-rust: generate a typed Rust crate of bindings from a DAR."
 
-# Invoked as `dpm codegen-rust` (dpm's git/cargo-style subcommand convention), or
-# standalone as `dpm-codegen-rust`.
+# A binary-only crate: the codegen pipeline itself is the `canton-codegen`
+# library (so a build script can call it without pulling in a CLI).
+# Invoked as `dpm codegen-rust` (dpm's git/cargo-style subcommand convention),
+# or standalone as `dpm-codegen-rust`.
 [[bin]]
 name = "dpm-codegen-rust"
 path = "src/main.rs"
 
 [dependencies]
-canton-lf      = { workspace = true }
 canton-codegen = { workspace = true }
+thiserror      = { workspace = true }
 
 [dev-dependencies]
 # The up-to-date drift guard compares regenerated vs committed bindings at the

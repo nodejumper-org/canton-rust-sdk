@@ -203,6 +203,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -210,9 +211,9 @@ name = "canton-codegen-cli"
 version = "0.1.1"
 dependencies = [
  "canton-codegen",
- "canton-lf",
  "prettyplease",
  "syn",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
