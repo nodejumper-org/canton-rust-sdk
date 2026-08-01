@@ -10,6 +10,7 @@
 ///
 /// This is the type a record field, choice argument, or contract key can take.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DamlType {
     /// The `Unit` type `()`.
     Unit,
@@ -92,6 +93,7 @@ pub struct Record {
 
 /// A named data type declared in a module: a record, a variant, or an enum.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DataType {
     /// A record (product) type.
     Record(Record),
@@ -101,8 +103,8 @@ pub enum DataType {
     Enum(Enum),
     /// An interface **marker**: a phantom tag emitted so references to the
     /// interface (always `ContractId<I>`) resolve. The interface itself is not
-    /// serializable and carries no data of its own; full interface codegen (its
-    /// view and choices) is reserved for a later step. The `String` is the name.
+    /// serializable and carries no data of its own — its view and choices are
+    /// emitted separately, from [`Interface`]. The `String` is the name.
     InterfaceMarker(String),
 }
 
@@ -179,8 +181,9 @@ pub struct Module {
     pub data_types: Vec<DataType>,
     /// The templates.
     pub templates: Vec<Template>,
-    /// The interfaces. The IR reserves their shape (view + choices) so the
-    /// AST→IR bridge fixes it now; full codegen of interfaces lands later.
+    /// The interfaces: their view type and choices, emitted as impls on the
+    /// marker struct that the corresponding [`DataType::InterfaceMarker`]
+    /// declares.
     pub interfaces: Vec<Interface>,
 }
 

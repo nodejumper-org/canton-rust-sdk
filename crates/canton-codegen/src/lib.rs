@@ -52,6 +52,11 @@ pub(crate) mod emit;
 pub(crate) mod lower;
 pub(crate) mod map;
 
+/// The Daml-LF reader this crate is built on, re-exported because its types
+/// (`Dar`, `DarError`, `DecodeError`) appear in the signatures below — so a
+/// caller never has to add `canton-lf` separately and match its version.
+pub use canton_lf;
+
 pub use generate::{GenerateError, Options, Runtime, Stats, default_crate_name, generate};
 pub use lower::{SkippedType, lower_dar};
 

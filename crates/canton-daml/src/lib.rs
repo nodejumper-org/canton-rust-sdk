@@ -513,6 +513,101 @@ mod tests {
     }
 
     #[test]
+    fn genmap_is_constructible_for_real_daml_key_types() {
+        // Regression: a derived `Default` bounded `K: Default, V: Default`, so
+        // `GenMap::<Party, Numeric>::new()` did not compile — no Daml primitive
+        // implements Default.
+        let mut map: GenMap<Party, Numeric> = GenMap::new();
+        assert!(map.is_empty());
+        map.insert(Party::new("alice::1"), Numeric::from_wire("1.5"));
+        assert_eq!(map.len(), 1);
+        assert_eq!(GenMap::<Party, Numeric>::default().len(), 0);
+
+        // The collection surface behaves like a collection.
+        let collected: GenMap<Party, Int64> =
+            [(Party::new("a::1"), Int64(1))].into_iter().collect();
+        assert_eq!(collected.iter().count(), 1);
+        assert_eq!((&collected).into_iter().count(), 1);
+        assert_eq!(collected.into_iter().count(), 1);
+    }
+
+    #[test]
+    fn genmap_equality_is_order_insensitive_and_symmetric() {
+        let a = Party::new("a::1");
+        let b = Party::new("b::1");
+
+        // Order is a wire detail.
+        let submitted: GenMap<Party, Int64> =
+            vec![(a.clone(), Int64(1)), (b.clone(), Int64(2))].into();
+        let echoed: GenMap<Party, Int64> =
+            vec![(b.clone(), Int64(2)), (a.clone(), Int64(1))].into();
+        assert_eq!(submitted, echoed);
+
+        // Regression: equality must be a multiset comparison. With a repeated
+        // entry, "every entry of self occurs in other" made `[a, a] == [a, b]`
+        // true while the reverse was false — a broken PartialEq contract.
+        let twice: GenMap<Party, Int64> = vec![(a.clone(), Int64(1)), (a.clone(), Int64(1))].into();
+        let mixed: GenMap<Party, Int64> = vec![(a.clone(), Int64(1)), (b, Int64(2))].into();
+        assert_ne!(twice, mixed);
+        assert_ne!(mixed, twice, "equality must be symmetric");
+        assert_eq!(twice, twice.clone());
+    }
+
+    #[test]
+    fn timestamp_and_date_convert_through_time_without_saturating() {
+        use time::macros::{date, datetime};
+
+        let at = Timestamp::from_datetime(datetime!(2026-07-31 12:00:00 UTC)).unwrap();
+        assert_eq!(
+            at.to_datetime().unwrap(),
+            datetime!(2026-07-31 12:00:00 UTC)
+        );
+        assert_eq!(Timestamp(at.micros()), at);
+
+        // Sub-microsecond digits floor toward the past on both sides of the
+        // epoch — they must never move an instant forward.
+        let before_epoch = datetime!(1969-12-31 23:59:59.999_999_5 UTC);
+        let floored = Timestamp::from_datetime(before_epoch).unwrap();
+        assert!(floored.to_datetime().unwrap() <= before_epoch);
+
+        // Regression: an out-of-range instant used to come back as i64::MAX —
+        // a far-future timestamp silently standing in for an underflow. It is
+        // `None` now. With `time`'s default features every representable
+        // OffsetDateTime fits in i64 microseconds, so the out-of-range case is
+        // only reachable when something in the dependency graph enables
+        // `time/large-dates` (years to ±999_999) — which feature unification
+        // can do without this crate asking. Hence the fallible signature; the
+        // property asserted here is that conversion never fabricates a value.
+        let extreme = time::OffsetDateTime::new_utc(date!(9999 - 12 - 31), time::Time::MIDNIGHT);
+        let converted = Timestamp::from_datetime(extreme).expect("in range for default `time`");
+        assert_eq!(converted.to_datetime().unwrap(), extreme);
+
+        let day = Date::from_date(date!(2026 - 07 - 31)).unwrap();
+        assert_eq!(day.to_date().unwrap(), date!(2026 - 07 - 31));
+        assert_eq!(Date::from_date(date!(1970 - 01 - 01)).unwrap().days(), 0);
+    }
+
+    #[test]
+    fn numeric_parsing_is_strict_for_callers_and_lenient_on_the_wire() {
+        use std::str::FromStr as _;
+
+        // Caller input is validated…
+        assert_eq!(Numeric::from_str("1.5").unwrap().as_str(), "1.5");
+        assert_eq!(Numeric::try_from("-0.25").unwrap().to_string(), "-0.25");
+        let error = Numeric::from_str("twelve").unwrap_err();
+        assert_eq!(error.input(), "twelve");
+
+        // …while a value the ledger vouched for is taken as-is.
+        let wire = Numeric::from_wire("1.5000000000");
+        assert_eq!(wire, Numeric::from_str("1.5").unwrap());
+
+        // `42.` is a legal spelling of `42` and must stay inside canonical
+        // comparison rather than degrading to string equality.
+        assert_eq!(Numeric::from_wire("42."), Numeric::from_wire("42"));
+        assert_eq!(Numeric::from_wire("42."), Numeric::from_wire("42.000"));
+    }
+
+    #[test]
     fn value_errors_carry_a_path_and_flow_into_the_sdk_error() {
         // A decode failure deep in a payload names where it happened…
         let error = ValueError::new("expected Text")
@@ -569,7 +664,10 @@ mod tests {
         assert_ne!(Numeric("abc".to_string()), Numeric("1".to_string()));
         assert!(Numeric::parse("1.5").is_ok());
         assert!(Numeric::parse("-12.500").is_ok());
-        for bad in ["", "1.", ".5", "1.2.3", "1e5", "abc", "1,5"] {
+        // `1.` is a legal spelling of `1` (see canonical_decimal); the rest
+        // are not decimal literals.
+        assert!(Numeric::parse("1.").is_ok());
+        for bad in ["", ".5", "1.2.3", "1e5", "abc", "1,5"] {
             assert!(Numeric::parse(bad).is_err(), "{bad:?} should be rejected");
         }
     }

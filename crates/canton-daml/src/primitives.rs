@@ -158,6 +158,15 @@ impl<T> Ord for ContractId<T> {
 /// **also accepts a JSON number** (the spec allows it — high-precision values
 /// should still use the string form, since a JSON number literal is already
 /// `f64`-lossy on the wire).
+///
+/// **Validation is asymmetric on purpose.** [`Numeric::parse`] / [`str::parse`]
+/// reject anything that is not a decimal literal, so a caller's typo fails at
+/// construction. Values arriving from the ledger — deserialization and the gRPC
+/// codec — are taken as-is via [`Numeric::from_wire`]: the participant is the
+/// authority on the format, and rejecting an unfamiliar-but-harmless spelling
+/// would break decoding of a payload the ledger considers valid. A value that
+/// is not a decimal literal simply falls out of canonical comparison and never
+/// equals a valid one.
 #[derive(Clone, Debug)]
 pub struct Numeric(pub(crate) String);
 
@@ -252,13 +261,12 @@ fn canonical_decimal(raw: &str) -> Option<String> {
         Some(rest) => (true, rest),
         None => (false, raw.strip_prefix('+').unwrap_or(raw)),
     };
-    let has_dot = digits.contains('.');
     let (int, frac) = digits.split_once('.').unwrap_or((digits, ""));
+    // A trailing dot with no digits (`42.`) is a legal spelling of `42`; a
+    // second dot lands in `frac` and fails the digit check below.
     let valid = !int.is_empty()
         && int.bytes().all(|b| b.is_ascii_digit())
-        // With a dot, the fraction must be present and all digits ("1." is not
-        // a decimal literal; a second dot lands in `frac` and fails here).
-        && (!has_dot || (!frac.is_empty() && frac.bytes().all(|b| b.is_ascii_digit())));
+        && frac.bytes().all(|b| b.is_ascii_digit());
     if !valid {
         return None;
     }
@@ -459,7 +467,7 @@ impl<'de> serde::Deserialize<'de> for Int64 {
 /// use canton_daml::Timestamp;
 /// use time::macros::datetime;
 ///
-/// let at = Timestamp::from_datetime(datetime!(2026-07-31 12:00 UTC));
+/// let at = Timestamp::from_datetime(datetime!(2026-07-31 12:00 UTC)).unwrap();
 /// assert_eq!(at.to_datetime().unwrap().year(), 2026);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -480,11 +488,14 @@ impl Timestamp {
     }
 
     /// The timestamp for a date-time, truncated toward the past (so
-    /// sub-microsecond digits never move an instant forward).
+    /// sub-microsecond digits never move an instant forward), or `None` when
+    /// the instant is outside the microsecond range a Daml `Timestamp` can
+    /// hold. Never saturates: a silent clamp would turn an out-of-range instant
+    /// into a plausible-looking wrong one.
     #[must_use]
-    pub fn from_datetime(at: time::OffsetDateTime) -> Self {
+    pub fn from_datetime(at: time::OffsetDateTime) -> Option<Self> {
         let micros = at.unix_timestamp_nanos().div_euclid(1_000);
-        Self(i64::try_from(micros).unwrap_or(i64::MAX))
+        i64::try_from(micros).ok().map(Self)
     }
 }
 
@@ -514,10 +525,13 @@ impl Date {
         UNIX_EPOCH_DATE.checked_add(time::Duration::days(i64::from(self.0)))
     }
 
-    /// The Daml date for a calendar date.
+    /// The Daml date for a calendar date, or `None` when the day count is
+    /// outside the range a Daml `Date` can hold.
     #[must_use]
-    pub fn from_date(date: time::Date) -> Self {
-        Self(i32::try_from((date - UNIX_EPOCH_DATE).whole_days()).unwrap_or(i32::MAX))
+    pub fn from_date(date: time::Date) -> Option<Self> {
+        i32::try_from((date - UNIX_EPOCH_DATE).whole_days())
+            .ok()
+            .map(Self)
     }
 }
 
@@ -535,17 +549,24 @@ pub type TextMap<V> = BTreeMap<String, V>;
 ///
 /// Entry order is a wire detail, not part of the value: two maps with the same
 /// entries compare equal regardless of the order the ledger returned them in.
-#[derive(Clone, Debug, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct GenMap<K, V>(pub(crate) Vec<(K, V)>);
+
+// Hand-written so the bound is on nothing: an empty map exists for every key
+// and value type. `#[derive(Default)]` would require `K: Default, V: Default`,
+// which no Daml primitive satisfies — `GenMap::<Party, Numeric>::new()` would
+// not compile.
+impl<K, V> Default for GenMap<K, V> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
 
 impl<K, V> GenMap<K, V> {
     /// An empty map.
     #[must_use]
-    pub fn new() -> Self
-    where
-        Self: Default,
-    {
+    pub fn new() -> Self {
         Self(Vec::new())
     }
 
@@ -601,15 +622,30 @@ impl<'a, K, V> IntoIterator for &'a GenMap<K, V> {
     }
 }
 
-/// Entry order is a wire detail: equality is by entry *set*, so a map read back
-/// from the ledger in a different order still equals the one submitted.
+/// Entry order is a wire detail: equality compares the entries as a *multiset*,
+/// so a map read back from the ledger in a different order still equals the one
+/// submitted — while a repeated entry still has to appear the same number of
+/// times on both sides (a plain "every entry occurs in the other" test would be
+/// asymmetric: `[a, a]` would equal `[a, b]` but not the reverse).
 impl<K: PartialEq, V: PartialEq> PartialEq for GenMap<K, V> {
     fn eq(&self, other: &Self) -> bool {
-        self.0.len() == other.0.len()
-            && self
+        if self.0.len() != other.0.len() {
+            return false;
+        }
+        // O(n²), but a GenMap is a handful of entries and `K` is only
+        // `PartialEq` — there is no ordering or hashing to exploit.
+        let mut matched = vec![false; other.0.len()];
+        self.0.iter().all(|entry| {
+            other
                 .0
                 .iter()
-                .all(|entry| other.0.iter().any(|candidate| candidate == entry))
+                .enumerate()
+                .position(|(index, candidate)| !matched[index] && candidate == entry)
+                .is_some_and(|index| {
+                    matched[index] = true;
+                    true
+                })
+        })
     }
 }
 

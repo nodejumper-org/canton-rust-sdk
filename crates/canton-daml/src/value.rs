@@ -433,7 +433,7 @@ impl ToValue for Numeric {
 impl FromValue for Numeric {
     fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
         match sum(value)? {
-            pb::value::Sum::Numeric(n) => Ok(Numeric(n.clone())),
+            pb::value::Sum::Numeric(n) => Ok(Numeric::from_wire(n.clone())),
             other => Err(mismatch("Numeric", other)),
         }
     }
