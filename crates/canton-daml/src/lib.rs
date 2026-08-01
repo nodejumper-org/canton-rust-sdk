@@ -22,7 +22,7 @@
 //! ```rust,ignore
 //! use canton_daml as rt;
 //! use rt::Template as _; // brings `from_created_event` into scope
-//! use my_bindings::my_app_1_0_0::My_Module::{Asset, Asset_Transfer};
+//! use my_bindings::my_app::My_Module::{Asset, Asset_Transfer};
 //!
 //! // A typed payload, built from the runtime's Daml primitives.
 //! let asset = Asset {

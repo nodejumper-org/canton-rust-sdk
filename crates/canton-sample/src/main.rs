@@ -17,10 +17,10 @@
 
 use canton_daml as rt;
 use canton_ledger::{CantonClient, Config, JsonClient, JsonCommands, Submit};
-use canton_quickstart_licensing::quickstart_licensing_0_0_1::Licensing_AppInstall::{
+use canton_quickstart_licensing::quickstart_licensing::Licensing_AppInstall::{
     AppInstallRequest, AppInstallRequest_Reject,
 };
-use canton_quickstart_licensing::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata;
+use canton_quickstart_licensing::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata;
 use rt::Template as _;
 
 // The whole app runs on the SDK's own error type: the ledger client, the typed

@@ -45,8 +45,11 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
   values should still use the string form).
 - **References** are always fully qualified (`crate::<package>::<module>::<Type>`),
   so cross-package/cross-module references resolve and names from different
-  modules never collide. The package segment is `<name>_<version>` (Smart
-  Contract Upgrade keeps versions distinct).
+  modules never collide. The package segment is the package **name**; the
+  version is appended only to separate two packages that would otherwise share a
+  module name, which is how a DAR bundling two versions under Smart Contract
+  Upgrade keeps them distinct (see
+  [docs/scu-regeneration.md](scu-regeneration.md)).
 - **Recursion.** Daml permits a type to contain itself directly; Rust needs
   indirection, so a direct self-reference is wrapped in `Box`.
 

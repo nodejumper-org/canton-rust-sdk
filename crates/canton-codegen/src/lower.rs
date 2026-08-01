@@ -104,30 +104,7 @@ pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
 /// so a package with a few unsupported types still produces output.
 #[must_use]
 pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<SkippedType>) {
-    // package id → the Rust module name that package's types live under.
-    let mut module_names: HashMap<&str, String> = packages
-        .iter()
-        .map(|(id, package)| (id.as_str(), package_module_name(package, id)))
-        .collect();
-
-    // Two different packages can carry the same name+version (a rebuilt package
-    // gets a new id but identical metadata); emitting two same-named `pub mod`s
-    // would not compile. Disambiguate every colliding module name with the
-    // package-id prefix — deterministic, and references resolve through the id.
-    let mut by_name: HashMap<&str, usize> = HashMap::new();
-    for name in module_names.values() {
-        *by_name.entry(name.as_str()).or_default() += 1;
-    }
-    let colliding: std::collections::HashSet<String> = by_name
-        .into_iter()
-        .filter(|(_, count)| *count > 1)
-        .map(|(name, _)| name.to_string())
-        .collect();
-    for (id, name) in &mut module_names {
-        if colliding.contains(name.as_str()) {
-            *name = format!("{name}_{}", ident_prefix(id));
-        }
-    }
+    let module_names = package_module_names(packages);
 
     let mut krate = Crate::default();
     let mut errors = Vec::new();
@@ -606,16 +583,63 @@ fn collect_all_refs(ty: &DamlType, out: &mut Vec<String>) {
     }
 }
 
-/// The Rust module name a package's types live under: its `name_version` (both
-/// sanitised to identifier-safe characters), or `p_<hash8>` when metadata is
-/// missing. Version is included so a DAR bundling two versions of one package
-/// (Smart Contract Upgrade) gets two distinct modules.
-fn package_module_name(package: &lf::Package, package_id: &str) -> String {
-    match (package_name(package), package_version(package)) {
-        (Some(name), Some(version)) => format!("{}_{}", sanitize(name), sanitize(version)),
-        (Some(name), None) => sanitize(name),
-        _ => format!("p_{}", ident_prefix(package_id)),
+/// The Rust module name each package's types live under, keyed by package id.
+///
+/// The name alone (`splice_amulet`), **not** name-and-version: under Smart
+/// Contract Upgrade the participant resolves which vetted version a command
+/// targets, so a routine DAR bump should not rename every path a caller
+/// imports. The version is appended only where it is doing work — when one DAR
+/// genuinely bundles two versions of the same package — and the package-id
+/// prefix only if even that is ambiguous.
+fn package_module_names(packages: &[(String, lf::Package)]) -> HashMap<&str, String> {
+    let mut names: HashMap<&str, String> = packages
+        .iter()
+        .map(|(id, package)| {
+            let base =
+                package_name(package).map_or_else(|| format!("p_{}", ident_prefix(id)), sanitize);
+            (id.as_str(), base)
+        })
+        .collect();
+
+    // One pass per disambiguation step: add the version where the bare name
+    // repeats, then the id prefix where even that repeats (a rebuilt package
+    // keeps its metadata but gets a new id).
+    // An empty or metadata-less version is no disambiguator — several packages
+    // carry `version: ""`, and using it would collapse them all onto one name.
+    let versioned = |id: &str| {
+        packages
+            .iter()
+            .find(|(candidate, _)| candidate == id)
+            .and_then(|(_, package)| package_version(package))
+            .map(sanitize)
+            .filter(|version| !version.is_empty())
+    };
+    for step in 0..2 {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for name in names.values() {
+            *counts.entry(name.clone()).or_default() += 1;
+        }
+        let ambiguous: std::collections::HashSet<String> = counts
+            .into_iter()
+            .filter(|(_, count)| *count > 1)
+            .map(|(name, _)| name)
+            .collect();
+        if ambiguous.is_empty() {
+            break;
+        }
+        for (id, name) in &mut names {
+            if !ambiguous.contains(name.as_str()) {
+                continue;
+            }
+            let suffix = if step == 0 {
+                versioned(id).unwrap_or_else(|| ident_prefix(id))
+            } else {
+                ident_prefix(id)
+            };
+            *name = format!("{name}_{suffix}");
+        }
     }
+    names
 }
 
 /// The first 8 identifier-safe characters of a package id, for `p_<hash8>` /
@@ -1524,6 +1548,83 @@ mod tests {
             .flat_map(|m| m.module.templates.iter().map(|t| t.name.as_str()))
             .collect();
         assert!(!emitted.contains(&"Foo_Bar"), "emitted: {emitted:?}");
+    }
+
+    /// A package carrying just the metadata `package_module_names` reads.
+    fn named_package(name: &str, version: Option<&str>) -> lf::Package {
+        lf::Package {
+            interned_strings: vec![name.to_string(), version.unwrap_or_default().to_string()],
+            metadata: Some(lf::PackageMetadata {
+                name_interned_str: 0,
+                version_interned_str: 1,
+                upgraded_package_id: None,
+            }),
+            ..lf::Package::default()
+        }
+    }
+
+    fn module_names(packages: &[(&str, lf::Package)]) -> Vec<String> {
+        let owned: Vec<(String, lf::Package)> = packages
+            .iter()
+            .map(|(id, package)| ((*id).to_string(), package.clone()))
+            .collect();
+        let names = package_module_names(&owned);
+        // Report in the caller's order, not the map's.
+        owned
+            .iter()
+            .map(|(id, _)| names[id.as_str()].clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_package_module_is_named_after_the_package_alone() {
+        // The DAR's own version is not in the path: bumping the package must not
+        // rename every type a consumer imports. See docs/scu-regeneration.md.
+        assert_eq!(
+            module_names(&[
+                ("aaa", named_package("quickstart-licensing", Some("0.0.1"))),
+                ("bbb", named_package("splice-amulet", Some("0.1.14"))),
+            ]),
+            ["quickstart_licensing", "splice_amulet"],
+        );
+    }
+
+    #[test]
+    fn two_versions_of_one_package_are_separated_by_version() {
+        // The SCU shape: one DAR bundling v1 and v2 of the same package. Both
+        // must be reachable, so here — and only here — the version is the
+        // disambiguator.
+        assert_eq!(
+            module_names(&[
+                ("aaa", named_package("my-app", Some("1.0.0"))),
+                ("bbb", named_package("my-app", Some("2.0.0"))),
+                ("ccc", named_package("other", Some("1.0.0"))),
+            ]),
+            ["my_app_1_0_0", "my_app_2_0_0", "other"],
+        );
+    }
+
+    #[test]
+    fn packages_alike_down_to_the_version_fall_back_to_the_id() {
+        // A rebuilt package keeps its metadata but gets a new id; and several
+        // real packages (daml-prim, …) carry `version: ""`, which would collapse
+        // them all onto one name if it were used as a suffix.
+        assert_eq!(
+            module_names(&[
+                ("aaaaaaaaaaaa", named_package("my-app", Some("1.0.0"))),
+                ("bbbbbbbbbbbb", named_package("my-app", Some("1.0.0"))),
+                ("cccccccccccc", named_package("no-version", Some(""))),
+                ("dddddddddddd", named_package("no-version", None)),
+                ("eeeeeeeeeeee", lf::Package::default()),
+            ]),
+            [
+                "my_app_1_0_0_aaaaaaaa",
+                "my_app_1_0_0_bbbbbbbb",
+                "no_version_cccccccc",
+                "no_version_dddddddd",
+                "p_eeeeeeee",
+            ],
+        );
     }
 
     #[test]

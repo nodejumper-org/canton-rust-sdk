@@ -126,7 +126,7 @@ The output is a self-contained crate (`Cargo.toml` + `src/lib.rs`). Add it to
 your project and submit typed commands:
 
 ```rust,ignore
-use my_app_bindings::my_app_0_1_0::My_Module::{Asset, Asset_Transfer};
+use my_app_bindings::my_app::My_Module::{Asset, Asset_Transfer};
 use canton_daml as rt;
 use rt::Template as _;
 

@@ -13,42 +13,41 @@
 //!
 //! # Packages in this crate
 //!
-//! - [`daml_prim_DA_Exception_ArithmeticError_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_AssertionFailed_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_GeneralError_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_PreconditionFailed_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Types_1_0_0`] — 1 Daml module
-//! - [`daml_prim_GHC_Tuple_1_0_0`] — 1 Daml module
-//! - [`daml_prim_GHC_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Date_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Internal_Down_1_0_0`] — 1 Daml module
-//! - [`ghc_stdlib_DA_Internal_Template_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Logic_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Monoid_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_NonEmpty_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Random_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Semigroup_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Set_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Stack_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Time_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Validation_Types_1_0_0`] — 1 Daml module
-//! - [`splice_amulet_0_1_14`] — 17 Daml modules
-//! - [`splice_api_featured_app_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_allocation_instruction_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_allocation_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_holding_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_metadata_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_transfer_instruction_v1_1_0_0`] — 1 Daml module
-//! - [`splice_wallet_0_1_14`] — 5 Daml modules
-//! - [`splice_wallet_payments_0_1_14`] — 2 Daml modules
+//! - [`daml_prim_DA_Exception_ArithmeticError`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_AssertionFailed`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_GeneralError`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_PreconditionFailed`] — 1 Daml module
+//! - [`daml_prim_DA_Types`] — 1 Daml module
+//! - [`daml_prim_GHC_Tuple`] — 1 Daml module
+//! - [`daml_prim_GHC_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Date_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Internal_Down`] — 1 Daml module
+//! - [`ghc_stdlib_DA_Internal_Template`] — 1 Daml module
+//! - [`daml_stdlib_DA_Logic_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Monoid_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_NonEmpty_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Random_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Semigroup_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Set_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Stack_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Time_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Validation_Types`] — 1 Daml module
+//! - [`splice_amulet`] — 17 Daml modules
+//! - [`splice_api_featured_app_v1`] — 1 Daml module
+//! - [`splice_api_token_allocation_instruction_v1`] — 1 Daml module
+//! - [`splice_api_token_allocation_v1`] — 1 Daml module
+//! - [`splice_api_token_holding_v1`] — 1 Daml module
+//! - [`splice_api_token_metadata_v1`] — 1 Daml module
+//! - [`splice_api_token_transfer_instruction_v1`] — 1 Daml module
+//! - [`splice_wallet`] — 5 Daml modules
+//! - [`splice_wallet_payments`] — 2 Daml modules
 
-pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
+pub mod daml_prim_DA_Exception_ArithmeticError {
     pub mod DA_Exception_ArithmeticError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ArithmeticError {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -71,13 +70,12 @@ pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
+pub mod daml_prim_DA_Exception_AssertionFailed {
     pub mod DA_Exception_AssertionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AssertionFailed {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -100,13 +98,12 @@ pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
+pub mod daml_prim_DA_Exception_GeneralError {
     pub mod DA_Exception_GeneralError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct GeneralError {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -129,13 +126,12 @@ pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
+pub mod daml_prim_DA_Exception_PreconditionFailed {
     pub mod DA_Exception_PreconditionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PreconditionFailed {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -158,16 +154,14 @@ pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Types_1_0_0 {
+pub mod daml_prim_DA_Types {
     pub mod DA_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Either<A, B> {
-            ///The Daml `Left` constructor.
             #[serde(rename = "Left")]
             Left(A),
-            ///The Daml `Right` constructor.
             #[serde(rename = "Right")]
             Right(B),
         }
@@ -205,13 +199,11 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple2<T1, T2> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
         }
@@ -239,16 +231,13 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple3<T1, T2, T3> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
         }
@@ -280,19 +269,15 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple4<T1, T2, T3, T4> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
         }
@@ -328,22 +313,17 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple5<T1, T2, T3, T4, T5> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
         }
@@ -383,25 +363,19 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple6<T1, T2, T3, T4, T5, T6> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
         }
@@ -445,28 +419,21 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple7<T1, T2, T3, T4, T5, T6, T7> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
         }
@@ -514,31 +481,23 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
         }
@@ -590,34 +549,25 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
         }
@@ -674,37 +624,27 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
         }
@@ -766,40 +706,29 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
         }
@@ -865,43 +794,31 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
         }
@@ -971,46 +888,33 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
         }
@@ -1084,49 +988,35 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
         }
@@ -1204,52 +1094,37 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
         }
@@ -1331,55 +1206,39 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
         }
@@ -1465,7 +1324,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple17<
             T1,
@@ -1486,55 +1345,38 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T16,
             T17,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
         }
@@ -1625,7 +1467,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple18<
             T1,
@@ -1647,58 +1489,40 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T17,
             T18,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
         }
@@ -1832,7 +1656,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple19<
             T1,
@@ -1855,61 +1679,42 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T18,
             T19,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
-            ///The Daml `_19` field.
             #[serde(rename = "_19")]
             pub _19: T19,
         }
@@ -2049,7 +1854,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple20<
             T1,
@@ -2073,64 +1878,44 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T19,
             T20,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
-            ///The Daml `_19` field.
             #[serde(rename = "_19")]
             pub _19: T19,
-            ///The Daml `_20` field.
             #[serde(rename = "_20")]
             pub _20: T20,
         }
@@ -2318,13 +2103,12 @@ pub mod daml_prim_DA_Types_1_0_0 {
         }
     }
 }
-pub mod daml_prim_GHC_Tuple_1_0_0 {
+pub mod daml_prim_GHC_Tuple {
     pub mod GHC_Tuple {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Unit<A> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: A,
         }
@@ -2348,7 +2132,7 @@ pub mod daml_prim_GHC_Tuple_1_0_0 {
         }
     }
 }
-pub mod daml_prim_GHC_Types_1_0_0 {
+pub mod daml_prim_GHC_Types {
     pub mod GHC_Types {
         use canton_daml as rt;
         #[derive(
@@ -2356,13 +2140,10 @@ pub mod daml_prim_GHC_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Ordering {
-            ///The Daml `LT` value.
             #[serde(rename = "LT")]
             LT,
-            ///The Daml `EQ` value.
             #[serde(rename = "EQ")]
             EQ,
-            ///The Daml `GT` value.
             #[serde(rename = "GT")]
             GT,
         }
@@ -2389,7 +2170,7 @@ pub mod daml_prim_GHC_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Date_Types_1_0_0 {
+pub mod daml_stdlib_DA_Date_Types {
     pub mod DA_Date_Types {
         use canton_daml as rt;
         #[derive(
@@ -2397,25 +2178,18 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum DayOfWeek {
-            ///The Daml `Monday` value.
             #[serde(rename = "Monday")]
             Monday,
-            ///The Daml `Tuesday` value.
             #[serde(rename = "Tuesday")]
             Tuesday,
-            ///The Daml `Wednesday` value.
             #[serde(rename = "Wednesday")]
             Wednesday,
-            ///The Daml `Thursday` value.
             #[serde(rename = "Thursday")]
             Thursday,
-            ///The Daml `Friday` value.
             #[serde(rename = "Friday")]
             Friday,
-            ///The Daml `Saturday` value.
             #[serde(rename = "Saturday")]
             Saturday,
-            ///The Daml `Sunday` value.
             #[serde(rename = "Sunday")]
             Sunday,
         }
@@ -2453,40 +2227,28 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Month {
-            ///The Daml `Jan` value.
             #[serde(rename = "Jan")]
             Jan,
-            ///The Daml `Feb` value.
             #[serde(rename = "Feb")]
             Feb,
-            ///The Daml `Mar` value.
             #[serde(rename = "Mar")]
             Mar,
-            ///The Daml `Apr` value.
             #[serde(rename = "Apr")]
             Apr,
-            ///The Daml `May` value.
             #[serde(rename = "May")]
             May,
-            ///The Daml `Jun` value.
             #[serde(rename = "Jun")]
             Jun,
-            ///The Daml `Jul` value.
             #[serde(rename = "Jul")]
             Jul,
-            ///The Daml `Aug` value.
             #[serde(rename = "Aug")]
             Aug,
-            ///The Daml `Sep` value.
             #[serde(rename = "Sep")]
             Sep,
-            ///The Daml `Oct` value.
             #[serde(rename = "Oct")]
             Oct,
-            ///The Daml `Nov` value.
             #[serde(rename = "Nov")]
             Nov,
-            ///The Daml `Dec` value.
             #[serde(rename = "Dec")]
             Dec,
         }
@@ -2531,13 +2293,12 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Internal_Down_1_0_0 {
+pub mod daml_stdlib_DA_Internal_Down {
     pub mod DA_Internal_Down {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Down<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2563,10 +2324,10 @@ pub mod daml_stdlib_DA_Internal_Down_1_0_0 {
         }
     }
 }
-pub mod ghc_stdlib_DA_Internal_Template_1_0_0 {
+pub mod ghc_stdlib_DA_Internal_Template {
     pub mod DA_Internal_Template {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Archive {}
         impl rt::ToValue for Archive {
@@ -2581,35 +2342,25 @@ pub mod ghc_stdlib_DA_Internal_Template_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
+pub mod daml_stdlib_DA_Logic_Types {
     pub mod DA_Logic_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Formula<A> {
-            ///The Daml `Proposition` constructor.
             #[serde(rename = "Proposition")]
             Proposition(A),
-            ///The Daml `Negation` constructor.
             #[serde(rename = "Negation")]
             Negation(
-                ::std::boxed::Box<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::boxed::Box<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
-            ///The Daml `Conjunction` constructor.
             #[serde(rename = "Conjunction")]
             Conjunction(
-                ::std::vec::Vec<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
-            ///The Daml `Disjunction` constructor.
             #[serde(rename = "Disjunction")]
             Disjunction(
-                ::std::vec::Vec<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
         }
         impl<A> rt::ToValue for Formula<A>
@@ -2660,13 +2411,13 @@ pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
+pub mod daml_stdlib_DA_Monoid_Types {
     pub mod DA_Monoid_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct All {
-            ///The Daml `getAll` field.
+            ///Daml field `getAll`.
             #[serde(rename = "getAll")]
             pub get_all: bool,
         }
@@ -2687,10 +2438,10 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Any {
-            ///The Daml `getAny` field.
+            ///Daml field `getAny`.
             #[serde(rename = "getAny")]
             pub get_any: bool,
         }
@@ -2711,10 +2462,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Sum<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2738,10 +2488,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Product<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2767,16 +2516,14 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
+pub mod daml_stdlib_DA_NonEmpty_Types {
     pub mod DA_NonEmpty_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct NonEmpty<A> {
-            ///The Daml `hd` field.
             #[serde(rename = "hd")]
             pub hd: A,
-            ///The Daml `tl` field.
             #[serde(rename = "tl")]
             pub tl: ::std::vec::Vec<A>,
         }
@@ -2804,13 +2551,12 @@ pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Random_Types_1_0_0 {
+pub mod daml_stdlib_DA_Random_Types {
     pub mod DA_Random_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Minstd {
-            ///The Daml `Minstd` constructor.
             #[serde(rename = "Minstd")]
             Minstd(rt::Int64),
         }
@@ -2838,13 +2584,12 @@ pub mod daml_stdlib_DA_Random_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
+pub mod daml_stdlib_DA_Semigroup_Types {
     pub mod DA_Semigroup_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Min<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2868,10 +2613,9 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Max<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2897,13 +2641,12 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Set_Types_1_0_0 {
+pub mod daml_stdlib_DA_Set_Types {
     pub mod DA_Set_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Set<K> {
-            ///The Daml `map` field.
             #[serde(rename = "map")]
             pub map: rt::GenMap<K, rt::Unit>,
         }
@@ -2927,31 +2670,31 @@ pub mod daml_stdlib_DA_Set_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
+pub mod daml_stdlib_DA_Stack_Types {
     pub mod DA_Stack_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SrcLoc {
-            ///The Daml `srcLocPackage` field.
+            ///Daml field `srcLocPackage`.
             #[serde(rename = "srcLocPackage")]
             pub src_loc_package: ::std::string::String,
-            ///The Daml `srcLocModule` field.
+            ///Daml field `srcLocModule`.
             #[serde(rename = "srcLocModule")]
             pub src_loc_module: ::std::string::String,
-            ///The Daml `srcLocFile` field.
+            ///Daml field `srcLocFile`.
             #[serde(rename = "srcLocFile")]
             pub src_loc_file: ::std::string::String,
-            ///The Daml `srcLocStartLine` field.
+            ///Daml field `srcLocStartLine`.
             #[serde(rename = "srcLocStartLine")]
             pub src_loc_start_line: rt::Int64,
-            ///The Daml `srcLocStartCol` field.
+            ///Daml field `srcLocStartCol`.
             #[serde(rename = "srcLocStartCol")]
             pub src_loc_start_col: rt::Int64,
-            ///The Daml `srcLocEndLine` field.
+            ///Daml field `srcLocEndLine`.
             #[serde(rename = "srcLocEndLine")]
             pub src_loc_end_line: rt::Int64,
-            ///The Daml `srcLocEndCol` field.
+            ///Daml field `srcLocEndCol`.
             #[serde(rename = "srcLocEndCol")]
             pub src_loc_end_col: rt::Int64,
         }
@@ -3023,13 +2766,12 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Time_Types_1_0_0 {
+pub mod daml_stdlib_DA_Time_Types {
     pub mod DA_Time_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RelTime {
-            ///The Daml `microseconds` field.
             #[serde(rename = "microseconds")]
             pub microseconds: rt::Int64,
         }
@@ -3054,16 +2796,14 @@ pub mod daml_stdlib_DA_Time_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Validation_Types_1_0_0 {
+pub mod daml_stdlib_DA_Validation_Types {
     pub mod DA_Validation_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Validation<Errs, A> {
-            ///The Daml `Errors` constructor.
             #[serde(rename = "Errors")]
-            Errors(crate::daml_stdlib_DA_NonEmpty_Types_1_0_0::DA_NonEmpty_Types::NonEmpty<Errs>),
-            ///The Daml `Success` constructor.
+            Errors(crate::daml_stdlib_DA_NonEmpty_Types::DA_NonEmpty_Types::NonEmpty<Errs>),
             #[serde(rename = "Success")]
             Success(A),
         }
@@ -3105,16 +2845,14 @@ pub mod daml_stdlib_DA_Validation_Types_1_0_0 {
         }
     }
 }
-pub mod splice_amulet_0_1_14 {
+pub mod splice_amulet {
     pub mod Splice_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ForOwner {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
         }
@@ -3134,15 +2872,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ForRound {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
+            pub round: crate::splice_amulet::Splice_Types::Round,
         }
         impl rt::ToValue for ForRound {
             fn to_value(&self) -> rt::Value {
@@ -3160,10 +2896,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ForDso {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
         }
@@ -3179,10 +2914,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Round {
-            ///The Daml `number` field.
             #[serde(rename = "number")]
             pub number: rt::Int64,
         }
@@ -3208,7 +2942,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum TransferPreapproval_CancelResult {
-            ///The Daml `TransferPreapproval_CancelResult` value.
             #[serde(rename = "TransferPreapproval_CancelResult")]
             TransferPreapproval_CancelResult,
         }
@@ -3234,7 +2967,7 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_ExpireResult {}
         impl rt::ToValue for TransferPreapproval_ExpireResult {
@@ -3247,30 +2980,26 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_RenewResult {
-            ///The Daml `transferPreapprovalCid` field.
+            ///Daml field `transferPreapprovalCid`.
             #[serde(rename = "transferPreapprovalCid")]
-            pub transfer_preapproval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
-            ///The Daml `transferResult` field.
+            pub transfer_preapproval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
+            ///Daml field `transferResult`.
             #[serde(rename = "transferResult")]
-            pub transfer_result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `receiver` field.
+            pub transfer_result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `amuletPaid` field.
+            ///Daml field `amuletPaid`.
             #[serde(rename = "amuletPaid")]
             pub amulet_paid: rt::Numeric,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for TransferPreapproval_RenewResult {
@@ -3319,16 +3048,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_SendResult {
-            ///The Daml `result` field.
             #[serde(rename = "result")]
-            pub result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `meta` field.
+            pub result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for TransferPreapproval_SendResult {
@@ -3349,10 +3076,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_Cancel {
-            ///The Daml `p` field.
             #[serde(rename = "p")]
             pub p: rt::Party,
         }
@@ -3368,7 +3094,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_Expire {}
         impl rt::ToValue for TransferPreapproval_Expire {
@@ -3381,17 +3107,14 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_Renew {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `newExpiresAt` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
+            ///Daml field `newExpiresAt`.
             #[serde(rename = "newExpiresAt")]
             pub new_expires_at: rt::Timestamp,
         }
@@ -3421,23 +3144,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_Send {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `amount` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::core::option::Option<::std::string::String>,
         }
@@ -3471,10 +3188,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval_Fetch {
-            ///The Daml `p` field.
             #[serde(rename = "p")]
             pub p: rt::Party,
         }
@@ -3490,10 +3206,10 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_WithdrawResult {
-            ///The Daml `dummyArg` field.
+            ///Daml field `dummyArg`.
             #[serde(rename = "dummyArg")]
             pub dummy_arg: rt::Unit,
         }
@@ -3514,10 +3230,10 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_RejectResult {
-            ///The Daml `dummyArg` field.
+            ///Daml field `dummyArg`.
             #[serde(rename = "dummyArg")]
             pub dummy_arg: rt::Unit,
         }
@@ -3538,18 +3254,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_AcceptResult {
-            ///The Daml `validatorRightCid` field.
+            ///Daml field `validatorRightCid`.
             #[serde(rename = "validatorRightCid")]
             pub validator_right_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight>,
-            ///The Daml `transferPreapprovalCid` field.
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::ValidatorRight>,
+            ///Daml field `transferPreapprovalCid`.
             #[serde(rename = "transferPreapprovalCid")]
-            pub transfer_preapproval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
+            pub transfer_preapproval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
         }
         impl rt::ToValue for ExternalPartySetupProposal_AcceptResult {
             fn to_value(&self) -> rt::Value {
@@ -3581,10 +3296,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_Withdraw {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -3602,10 +3316,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_Reject {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -3623,7 +3336,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal_Accept {}
         impl rt::ToValue for ExternalPartySetupProposal_Accept {
@@ -3636,13 +3349,13 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BalanceChange {
-            ///The Daml `changeToInitialAmountAsOfRoundZero` field.
+            ///Daml field `changeToInitialAmountAsOfRoundZero`.
             #[serde(rename = "changeToInitialAmountAsOfRoundZero")]
             pub change_to_initial_amount_as_of_round_zero: rt::Numeric,
-            ///The Daml `changeToHoldingFeesRate` field.
+            ///Daml field `changeToHoldingFeesRate`.
             #[serde(rename = "changeToHoldingFeesRate")]
             pub change_to_holding_fees_rate: rt::Numeric,
         }
@@ -3674,46 +3387,44 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferSummary {
-            ///The Daml `inputAppRewardAmount` field.
+            ///Daml field `inputAppRewardAmount`.
             #[serde(rename = "inputAppRewardAmount")]
             pub input_app_reward_amount: rt::Numeric,
-            ///The Daml `inputValidatorRewardAmount` field.
+            ///Daml field `inputValidatorRewardAmount`.
             #[serde(rename = "inputValidatorRewardAmount")]
             pub input_validator_reward_amount: rt::Numeric,
-            ///The Daml `inputSvRewardAmount` field.
+            ///Daml field `inputSvRewardAmount`.
             #[serde(rename = "inputSvRewardAmount")]
             pub input_sv_reward_amount: rt::Numeric,
-            ///The Daml `inputAmuletAmount` field.
+            ///Daml field `inputAmuletAmount`.
             #[serde(rename = "inputAmuletAmount")]
             pub input_amulet_amount: rt::Numeric,
-            ///The Daml `balanceChanges` field.
+            ///Daml field `balanceChanges`.
             #[serde(rename = "balanceChanges")]
-            pub balance_changes: rt::GenMap<
-                rt::Party,
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::BalanceChange,
-            >,
-            ///The Daml `holdingFees` field.
+            pub balance_changes:
+                rt::GenMap<rt::Party, crate::splice_amulet::Splice_AmuletRules::BalanceChange>,
+            ///Daml field `holdingFees`.
             #[serde(rename = "holdingFees")]
             pub holding_fees: rt::Numeric,
-            ///The Daml `outputFees` field.
+            ///Daml field `outputFees`.
             #[serde(rename = "outputFees")]
             pub output_fees: ::std::vec::Vec<rt::Numeric>,
-            ///The Daml `senderChangeFee` field.
+            ///Daml field `senderChangeFee`.
             #[serde(rename = "senderChangeFee")]
             pub sender_change_fee: rt::Numeric,
-            ///The Daml `senderChangeAmount` field.
+            ///Daml field `senderChangeAmount`.
             #[serde(rename = "senderChangeAmount")]
             pub sender_change_amount: rt::Numeric,
-            ///The Daml `amuletPrice` field.
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `inputValidatorFaucetAmount` field.
+            ///Daml field `inputValidatorFaucetAmount`.
             #[serde(rename = "inputValidatorFaucetAmount")]
             pub input_validator_faucet_amount: ::core::option::Option<rt::Numeric>,
-            ///The Daml `inputUnclaimedActivityRecordAmount` field.
+            ///Daml field `inputUnclaimedActivityRecordAmount`.
             #[serde(rename = "inputUnclaimedActivityRecordAmount")]
             pub input_unclaimed_activity_record_amount: ::core::option::Option<rt::Numeric>,
         }
@@ -3828,24 +3539,22 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_CreateTransferPreapprovalResult {
-            ///The Daml `transferPreapprovalCid` field.
+            ///Daml field `transferPreapprovalCid`.
             #[serde(rename = "transferPreapprovalCid")]
-            pub transfer_preapproval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
-            ///The Daml `transferResult` field.
+            pub transfer_preapproval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
+            ///Daml field `transferResult`.
             #[serde(rename = "transferResult")]
-            pub transfer_result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `amuletPaid` field.
+            pub transfer_result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
+            ///Daml field `amuletPaid`.
             #[serde(rename = "amuletPaid")]
             pub amulet_paid: rt::Numeric,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for AmuletRules_CreateTransferPreapprovalResult {
@@ -3886,30 +3595,27 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_CreateExternalPartySetupProposalResult {
-            ///The Daml `proposalCid` field.
+            ///Daml field `proposalCid`.
             #[serde(rename = "proposalCid")]
             pub proposal_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal,
+                crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal,
             >,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `transferResult` field.
+            ///Daml field `transferResult`.
             #[serde(rename = "transferResult")]
-            pub transfer_result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `amuletPaid` field.
+            pub transfer_result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
+            ///Daml field `amuletPaid`.
             #[serde(rename = "amuletPaid")]
             pub amulet_paid: rt::Numeric,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for AmuletRules_CreateExternalPartySetupProposalResult {
@@ -3955,32 +3661,28 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_BuyMemberTrafficResult {
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `summary` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "summary")]
-            pub summary: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferSummary,
-            ///The Daml `amuletPaid` field.
+            pub summary: crate::splice_amulet::Splice_AmuletRules::TransferSummary,
+            ///Daml field `amuletPaid`.
             #[serde(rename = "amuletPaid")]
             pub amulet_paid: rt::Numeric,
-            ///The Daml `purchasedTraffic` field.
+            ///Daml field `purchasedTraffic`.
             #[serde(rename = "purchasedTraffic")]
             pub purchased_traffic: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
             >,
-            ///The Daml `senderChangeAmulet` field.
+            ///Daml field `senderChangeAmulet`.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            >,
-            ///The Daml `meta` field.
+            pub sender_change_amulet:
+                ::core::option::Option<rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>>,
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for AmuletRules_BuyMemberTrafficResult {
@@ -4023,28 +3725,24 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferResult {
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `summary` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "summary")]
-            pub summary: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferSummary,
-            ///The Daml `createdAmulets` field.
+            pub summary: crate::splice_amulet::Splice_AmuletRules::TransferSummary,
+            ///Daml field `createdAmulets`.
             #[serde(rename = "createdAmulets")]
             pub created_amulets:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::CreatedAmulet>,
-            ///The Daml `senderChangeAmulet` field.
+                ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::CreatedAmulet>,
+            ///Daml field `senderChangeAmulet`.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            >,
-            ///The Daml `meta` field.
+            pub sender_change_amulet:
+                ::core::option::Option<rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>>,
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for TransferResult {
@@ -4081,21 +3779,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOutput {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `receiverFeeRatio` field.
+            ///Daml field `receiverFeeRatio`.
             #[serde(rename = "receiverFeeRatio")]
             pub receiver_fee_ratio: rt::Numeric,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock: ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
+            pub lock: ::core::option::Option<crate::splice_amulet::Splice_Expiry::TimeLock>,
         }
         impl rt::ToValue for TransferOutput {
             fn to_value(&self) -> rt::Value {
@@ -4128,30 +3823,25 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Transfer {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
             pub inputs: ::std::vec::Vec<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput,
+                crate::splice_amulet::Splice_AmuletRules::TransferInput,
             >,
-            ///The Daml `outputs` field.
             #[serde(rename = "outputs")]
             pub outputs: ::std::vec::Vec<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferOutput,
+                crate::splice_amulet::Splice_AmuletRules::TransferOutput,
             >,
-            ///The Daml `beneficiaries` field.
             #[serde(rename = "beneficiaries")]
             pub beneficiaries: ::core::option::Option<
                 ::std::vec::Vec<
-                    crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
+                    crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
                 >,
             >,
         }
@@ -4185,53 +3875,36 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum TransferInput {
-            ///The Daml `InputAppRewardCoupon` constructor.
             #[serde(rename = "InputAppRewardCoupon")]
             InputAppRewardCoupon(
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::AppRewardCoupon>,
             ),
-            ///The Daml `InputValidatorRewardCoupon` constructor.
             #[serde(rename = "InputValidatorRewardCoupon")]
             InputValidatorRewardCoupon(
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon>,
             ),
-            ///The Daml `InputSvRewardCoupon` constructor.
             #[serde(rename = "InputSvRewardCoupon")]
             InputSvRewardCoupon(
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::SvRewardCoupon>,
             ),
-            ///The Daml `InputAmulet` constructor.
             #[serde(rename = "InputAmulet")]
-            InputAmulet(
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            ),
-            ///The Daml `ExtTransferInput` constructor.
+            InputAmulet(rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>),
             #[serde(rename = "ExtTransferInput")]
             ExtTransferInput(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput_ExtTransferInput,
+                crate::splice_amulet::Splice_AmuletRules::TransferInput_ExtTransferInput,
             ),
-            ///The Daml `InputValidatorLivenessActivityRecord` constructor.
             #[serde(rename = "InputValidatorLivenessActivityRecord")]
             InputValidatorLivenessActivityRecord(
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
+                    crate::splice_amulet::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
                 >,
             ),
-            ///The Daml `InputUnclaimedActivityRecord` constructor.
             #[serde(rename = "InputUnclaimedActivityRecord")]
             InputUnclaimedActivityRecord(
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedActivityRecord,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::UnclaimedActivityRecord>,
             ),
         }
         impl rt::ToValue for TransferInput {
@@ -4304,17 +3977,17 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInput_ExtTransferInput {
-            ///The Daml `dummyUnitField` field.
+            ///Daml field `dummyUnitField`.
             #[serde(rename = "dummyUnitField")]
             pub dummy_unit_field: rt::Unit,
-            ///The Daml `optInputValidatorFaucetCoupon` field.
+            ///Daml field `optInputValidatorFaucetCoupon`.
             #[serde(rename = "optInputValidatorFaucetCoupon")]
             pub opt_input_validator_faucet_coupon: ::core::option::Option<
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon,
+                    crate::splice_amulet::Splice_ValidatorLicense::ValidatorFaucetCoupon,
                 >,
             >,
         }
@@ -4348,23 +4021,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum CreatedAmulet {
-            ///The Daml `TransferResultAmulet` constructor.
             #[serde(rename = "TransferResultAmulet")]
-            TransferResultAmulet(
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            ),
-            ///The Daml `TransferResultLockedAmulet` constructor.
+            TransferResultAmulet(rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>),
             #[serde(rename = "TransferResultLockedAmulet")]
             TransferResultLockedAmulet(
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::LockedAmulet>,
             ),
-            ///The Daml `ExtCreatedAmulet` constructor.
             #[serde(rename = "ExtCreatedAmulet")]
             ExtCreatedAmulet(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::CreatedAmulet_ExtCreatedAmulet,
+                crate::splice_amulet::Splice_AmuletRules::CreatedAmulet_ExtCreatedAmulet,
             ),
         }
         impl rt::ToValue for CreatedAmulet {
@@ -4405,10 +4073,10 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct CreatedAmulet_ExtCreatedAmulet {
-            ///The Daml `dummyUnitField` field.
+            ///Daml field `dummyUnitField`.
             #[serde(rename = "dummyUnitField")]
             pub dummy_unit_field: rt::Unit,
         }
@@ -4431,29 +4099,29 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferContext {
-            ///The Daml `openMiningRound` field.
+            ///Daml field `openMiningRound`.
             #[serde(rename = "openMiningRound")]
             pub open_mining_round:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
-            ///The Daml `issuingMiningRounds` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
+            ///Daml field `issuingMiningRounds`.
             #[serde(rename = "issuingMiningRounds")]
             pub issuing_mining_rounds: rt::GenMap<
-                crate::splice_amulet_0_1_14::Splice_Types::Round,
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::IssuingMiningRound>,
+                crate::splice_amulet::Splice_Types::Round,
+                rt::ContractId<crate::splice_amulet::Splice_Round::IssuingMiningRound>,
             >,
-            ///The Daml `validatorRights` field.
+            ///Daml field `validatorRights`.
             #[serde(rename = "validatorRights")]
             pub validator_rights: rt::GenMap<
                 rt::Party,
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::ValidatorRight>,
             >,
-            ///The Daml `featuredAppRight` field.
+            ///Daml field `featuredAppRight`.
             #[serde(rename = "featuredAppRight")]
             pub featured_app_right: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
             >,
         }
         impl rt::ToValue for TransferContext {
@@ -4500,16 +4168,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PaymentTransferContext {
-            ///The Daml `amuletRules` field.
+            ///Daml field `amuletRules`.
             #[serde(rename = "amuletRules")]
-            pub amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
-            ///The Daml `context` field.
+            pub amulet_rules: rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
+            pub context: crate::splice_amulet::Splice_AmuletRules::TransferContext,
         }
         impl rt::ToValue for PaymentTransferContext {
             fn to_value(&self) -> rt::Value {
@@ -4533,21 +4199,20 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppTransferContext {
-            ///The Daml `amuletRules` field.
+            ///Daml field `amuletRules`.
             #[serde(rename = "amuletRules")]
-            pub amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
-            ///The Daml `openMiningRound` field.
+            pub amulet_rules: rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
+            ///Daml field `openMiningRound`.
             #[serde(rename = "openMiningRound")]
             pub open_mining_round:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
-            ///The Daml `featuredAppRight` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
+            ///Daml field `featuredAppRight`.
             #[serde(rename = "featuredAppRight")]
             pub featured_app_right: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
             >,
         }
         impl rt::ToValue for AppTransferContext {
@@ -4582,21 +4247,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PreprocessedTransferOutput {
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
-            ///The Daml `outputFee` field.
+            ///Daml field `outputFee`.
             #[serde(rename = "outputFee")]
             pub output_fee: rt::Numeric,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `lock` field.
             #[serde(rename = "lock")]
-            pub lock: ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock>,
+            pub lock: ::core::option::Option<crate::splice_amulet::Splice_Expiry::TimeLock>,
         }
         impl rt::ToValue for PreprocessedTransferOutput {
             fn to_value(&self) -> rt::Value {
@@ -4624,34 +4286,34 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInputsSummary {
-            ///The Daml `totalAmuletAmount` field.
+            ///Daml field `totalAmuletAmount`.
             #[serde(rename = "totalAmuletAmount")]
             pub total_amulet_amount: rt::Numeric,
-            ///The Daml `totalAppRewardAmount` field.
+            ///Daml field `totalAppRewardAmount`.
             #[serde(rename = "totalAppRewardAmount")]
             pub total_app_reward_amount: rt::Numeric,
-            ///The Daml `totalValidatorRewardAmount` field.
+            ///Daml field `totalValidatorRewardAmount`.
             #[serde(rename = "totalValidatorRewardAmount")]
             pub total_validator_reward_amount: rt::Numeric,
-            ///The Daml `totalValidatorFaucetAmount` field.
+            ///Daml field `totalValidatorFaucetAmount`.
             #[serde(rename = "totalValidatorFaucetAmount")]
             pub total_validator_faucet_amount: rt::Numeric,
-            ///The Daml `totalSvRewardAmount` field.
+            ///Daml field `totalSvRewardAmount`.
             #[serde(rename = "totalSvRewardAmount")]
             pub total_sv_reward_amount: rt::Numeric,
-            ///The Daml `totalHoldingFees` field.
+            ///Daml field `totalHoldingFees`.
             #[serde(rename = "totalHoldingFees")]
             pub total_holding_fees: rt::Numeric,
-            ///The Daml `amountArchivedAsOfRoundZero` field.
+            ///Daml field `amountArchivedAsOfRoundZero`.
             #[serde(rename = "amountArchivedAsOfRoundZero")]
             pub amount_archived_as_of_round_zero: rt::Numeric,
-            ///The Daml `changeToHoldingFeesRate` field.
+            ///Daml field `changeToHoldingFeesRate`.
             #[serde(rename = "changeToHoldingFeesRate")]
             pub change_to_holding_fees_rate: rt::Numeric,
-            ///The Daml `totalUnclaimedActivityRecordAmount` field.
+            ///Daml field `totalUnclaimedActivityRecordAmount`.
             #[serde(rename = "totalUnclaimedActivityRecordAmount")]
             pub total_unclaimed_activity_record_amount: ::core::option::Option<rt::Numeric>,
         }
@@ -4746,31 +4408,30 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferContextSummary {
-            ///The Daml `featuredAppProvider` field.
+            ///Daml field `featuredAppProvider`.
             #[serde(rename = "featuredAppProvider")]
             pub featured_app_provider: ::core::option::Option<rt::Party>,
-            ///The Daml `config` field.
             #[serde(rename = "config")]
-            pub config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::TransferConfig<
-                crate::splice_amulet_0_1_14::Splice_Amulet::Amulet,
+            pub config: crate::splice_amulet::Splice_AmuletConfig::TransferConfig<
+                crate::splice_amulet::Splice_Amulet::Amulet,
             >,
-            ///The Daml `openRound` field.
+            ///Daml field `openRound`.
             #[serde(rename = "openRound")]
-            pub open_round: crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound,
-            ///The Daml `issuingMiningRounds` field.
+            pub open_round: crate::splice_amulet::Splice_Round::OpenMiningRound,
+            ///Daml field `issuingMiningRounds`.
             #[serde(rename = "issuingMiningRounds")]
             pub issuing_mining_rounds: rt::GenMap<
-                crate::splice_amulet_0_1_14::Splice_Types::Round,
-                crate::splice_amulet_0_1_14::Splice_Round::IssuingMiningRound,
+                crate::splice_amulet::Splice_Types::Round,
+                crate::splice_amulet::Splice_Round::IssuingMiningRound,
             >,
-            ///The Daml `validatorRights` field.
+            ///Daml field `validatorRights`.
             #[serde(rename = "validatorRights")]
             pub validator_rights: rt::GenMap<
                 rt::Party,
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::ValidatorRight>,
             >,
         }
         impl rt::ToValue for TransferContextSummary {
@@ -4822,13 +4483,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RewardsIssuanceConfig {
-            ///The Daml `issueAppRewards` field.
+            ///Daml field `issueAppRewards`.
             #[serde(rename = "issueAppRewards")]
             pub issue_app_rewards: bool,
-            ///The Daml `issueValidatorRewards` field.
+            ///Daml field `issueValidatorRewards`.
             #[serde(rename = "issueValidatorRewards")]
             pub issue_validator_rewards: bool,
         }
@@ -4862,12 +4523,11 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransfer {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason,
+            pub reason: crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason,
         }
         impl rt::ToValue for InvalidTransfer {
             fn to_value(&self) -> rt::Value {
@@ -4883,33 +4543,28 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum InvalidTransferReason {
-            ///The Daml `ITR_InsufficientFunds` constructor.
             #[serde(rename = "ITR_InsufficientFunds")]
             ITR_InsufficientFunds(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason_ITR_InsufficientFunds,
+                crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason_ITR_InsufficientFunds,
             ),
-            ///The Daml `ITR_UnknownSynchronizer` constructor.
             #[serde(rename = "ITR_UnknownSynchronizer")]
             ITR_UnknownSynchronizer(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason_ITR_UnknownSynchronizer,
+                crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason_ITR_UnknownSynchronizer,
             ),
-            ///The Daml `ITR_InsufficientTopupAmount` constructor.
             #[serde(rename = "ITR_InsufficientTopupAmount")]
             ITR_InsufficientTopupAmount(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason_ITR_InsufficientTopupAmount,
+                crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason_ITR_InsufficientTopupAmount,
             ),
-            ///The Daml `ITR_Other` constructor.
             #[serde(rename = "ITR_Other")]
             ITR_Other(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason_ITR_Other,
+                crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason_ITR_Other,
             ),
-            ///The Daml `ExtInvalidTransferReason` constructor.
             #[serde(rename = "ExtInvalidTransferReason")]
             ExtInvalidTransferReason(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason_ExtInvalidTransferReason,
+                crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason_ExtInvalidTransferReason,
             ),
         }
         impl rt::ToValue for InvalidTransferReason {
@@ -4968,10 +4623,10 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransferReason_ITR_InsufficientFunds {
-            ///The Daml `missingAmount` field.
+            ///Daml field `missingAmount`.
             #[serde(rename = "missingAmount")]
             pub missing_amount: rt::Numeric,
         }
@@ -4994,10 +4649,10 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransferReason_ITR_UnknownSynchronizer {
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
         }
@@ -5020,13 +4675,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransferReason_ITR_InsufficientTopupAmount {
-            ///The Daml `requestedTopupAmount` field.
+            ///Daml field `requestedTopupAmount`.
             #[serde(rename = "requestedTopupAmount")]
             pub requested_topup_amount: rt::Int64,
-            ///The Daml `minTopupAmount` field.
+            ///Daml field `minTopupAmount`.
             #[serde(rename = "minTopupAmount")]
             pub min_topup_amount: rt::Int64,
         }
@@ -5060,10 +4715,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransferReason_ITR_Other {
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::std::string::String,
         }
@@ -5086,10 +4740,10 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InvalidTransferReason_ExtInvalidTransferReason {
-            ///The Daml `dummyUnitField` field.
+            ///Daml field `dummyUnitField`.
             #[serde(rename = "dummyUnitField")]
             pub dummy_unit_field: rt::Unit,
         }
@@ -5112,20 +4766,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ConvertFeaturedAppActivityMarkers {
-            ///The Daml `markerCids` field.
+            ///Daml field `markerCids`.
             #[serde(rename = "markerCids")]
             pub marker_cids: ::std::vec::Vec<
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppActivityMarker,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppActivityMarker>,
             >,
-            ///The Daml `openMiningRoundCid` field.
+            ///Daml field `openMiningRoundCid`.
             #[serde(rename = "openMiningRoundCid")]
             pub open_mining_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for AmuletRules_ConvertFeaturedAppActivityMarkers {
             fn to_value(&self) -> rt::Value {
@@ -5154,15 +4806,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_UpdateFutureAmuletConfigSchedule {
-            ///The Daml `scheduleItem` field.
+            ///Daml field `scheduleItem`.
             #[serde(rename = "scheduleItem")]
-            pub schedule_item: crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
+            pub schedule_item: crate::daml_prim_DA_Types::DA_Types::Tuple2<
                 rt::Timestamp,
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::AmuletConfig<
-                    crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
+                crate::splice_amulet::Splice_AmuletConfig::AmuletConfig<
+                    crate::splice_amulet::Splice_AmuletConfig::USD,
                 >,
             >,
         }
@@ -5185,10 +4837,10 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_RemoveFutureAmuletConfigSchedule {
-            ///The Daml `scheduleTime` field.
+            ///Daml field `scheduleTime`.
             #[serde(rename = "scheduleTime")]
             pub schedule_time: rt::Timestamp,
         }
@@ -5211,15 +4863,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_AddFutureAmuletConfigSchedule {
-            ///The Daml `newScheduleItem` field.
+            ///Daml field `newScheduleItem`.
             #[serde(rename = "newScheduleItem")]
-            pub new_schedule_item: crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
+            pub new_schedule_item: crate::daml_prim_DA_Types::DA_Types::Tuple2<
                 rt::Timestamp,
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::AmuletConfig<
-                    crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
+                crate::splice_amulet::Splice_AmuletConfig::AmuletConfig<
+                    crate::splice_amulet::Splice_AmuletConfig::USD,
                 >,
             >,
         }
@@ -5242,18 +4894,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_SetConfig {
-            ///The Daml `newConfig` field.
+            ///Daml field `newConfig`.
             #[serde(rename = "newConfig")]
-            pub new_config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::AmuletConfig<
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
+            pub new_config: crate::splice_amulet::Splice_AmuletConfig::AmuletConfig<
+                crate::splice_amulet::Splice_AmuletConfig::USD,
             >,
-            ///The Daml `baseConfig` field.
+            ///Daml field `baseConfig`.
             #[serde(rename = "baseConfig")]
-            pub base_config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::AmuletConfig<
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
+            pub base_config: crate::splice_amulet::Splice_AmuletConfig::AmuletConfig<
+                crate::splice_amulet::Splice_AmuletConfig::USD,
             >,
         }
         impl rt::ToValue for AmuletRules_SetConfig {
@@ -5280,10 +4932,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_Fetch {
-            ///The Daml `p` field.
             #[serde(rename = "p")]
             pub p: rt::Party,
         }
@@ -5299,13 +4950,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MergeUnclaimedRewards {
-            ///The Daml `unclaimedRewardCids` field.
+            ///Daml field `unclaimedRewardCids`.
             #[serde(rename = "unclaimedRewardCids")]
             pub unclaimed_reward_cids: ::std::vec::Vec<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::UnclaimedReward>,
             >,
         }
         impl rt::ToValue for AmuletRules_MergeUnclaimedRewards {
@@ -5327,50 +4978,46 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ClaimExpiredRewards {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound,
+                crate::splice_amulet::Splice_Round::ClosedMiningRound,
             >,
-            ///The Daml `validatorRewardCouponCids` field.
+            ///Daml field `validatorRewardCouponCids`.
             #[serde(rename = "validatorRewardCouponCids")]
             pub validator_reward_coupon_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon,
+                    crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon,
                 >,
             >,
-            ///The Daml `appCouponCids` field.
+            ///Daml field `appCouponCids`.
             #[serde(rename = "appCouponCids")]
             pub app_coupon_cids: ::std::vec::Vec<
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::AppRewardCoupon>,
             >,
-            ///The Daml `svRewardCouponCids` field.
+            ///Daml field `svRewardCouponCids`.
             #[serde(rename = "svRewardCouponCids")]
             pub sv_reward_coupon_cids: ::std::vec::Vec<
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::SvRewardCoupon>,
             >,
-            ///The Daml `optValidatorFaucetCouponCids` field.
+            ///Daml field `optValidatorFaucetCouponCids`.
             #[serde(rename = "optValidatorFaucetCouponCids")]
             pub opt_validator_faucet_coupon_cids: ::core::option::Option<
                 ::std::vec::Vec<
                     rt::ContractId<
-                        crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon,
+                        crate::splice_amulet::Splice_ValidatorLicense::ValidatorFaucetCoupon,
                     >,
                 >,
             >,
-            ///The Daml `optValidatorLivenessActivityRecordCids` field.
+            ///Daml field `optValidatorLivenessActivityRecordCids`.
             #[serde(rename = "optValidatorLivenessActivityRecordCids")]
             pub opt_validator_liveness_activity_record_cids: ::core::option::Option<
                 ::std::vec::Vec<
                     rt::ContractId<
-                        crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
+                        crate::splice_amulet::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
                     >,
                 >,
             >,
@@ -5441,13 +5088,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MiningRound_Archive {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for AmuletRules_MiningRound_Archive {
             fn to_value(&self) -> rt::Value {
@@ -5468,13 +5115,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MiningRound_Close {
-            ///The Daml `issuingRoundCid` field.
+            ///Daml field `issuingRoundCid`.
             #[serde(rename = "issuingRoundCid")]
             pub issuing_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::IssuingMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::IssuingMiningRound>,
         }
         impl rt::ToValue for AmuletRules_MiningRound_Close {
             fn to_value(&self) -> rt::Value {
@@ -5495,16 +5142,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MiningRound_StartIssuing {
-            ///The Daml `miningRoundCid` field.
+            ///Daml field `miningRoundCid`.
             #[serde(rename = "miningRoundCid")]
             pub mining_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::SummarizingMiningRound>,
-            ///The Daml `summary` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::SummarizingMiningRound>,
             #[serde(rename = "summary")]
-            pub summary: crate::splice_amulet_0_1_14::Splice_Issuance::OpenMiningRoundSummary,
+            pub summary: crate::splice_amulet::Splice_Issuance::OpenMiningRoundSummary,
         }
         impl rt::ToValue for AmuletRules_MiningRound_StartIssuing {
             fn to_value(&self) -> rt::Value {
@@ -5531,24 +5177,24 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_AdvanceOpenMiningRounds {
-            ///The Daml `amuletPrice` field.
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `roundToArchiveCid` field.
+            ///Daml field `roundToArchiveCid`.
             #[serde(rename = "roundToArchiveCid")]
             pub round_to_archive_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
-            ///The Daml `middleRoundCid` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
+            ///Daml field `middleRoundCid`.
             #[serde(rename = "middleRoundCid")]
             pub middle_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
-            ///The Daml `latestRoundCid` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
+            ///Daml field `latestRoundCid`.
             #[serde(rename = "latestRoundCid")]
             pub latest_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for AmuletRules_AdvanceOpenMiningRounds {
             fn to_value(&self) -> rt::Value {
@@ -5595,16 +5241,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_Bootstrap_Rounds {
-            ///The Daml `amuletPrice` field.
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `round0Duration` field.
+            ///Daml field `round0Duration`.
             #[serde(rename = "round0Duration")]
-            pub round0_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `initialRound` field.
+            pub round0_duration: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `initialRound`.
             #[serde(rename = "initialRound")]
             pub initial_round: ::core::option::Option<rt::Int64>,
         }
@@ -5637,10 +5283,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_DevNet_FeatureApp {
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
         }
@@ -5661,19 +5306,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_DevNet_Tap {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `openRound` field.
+            ///Daml field `openRound`.
             #[serde(rename = "openRound")]
-            pub open_round:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for AmuletRules_DevNet_Tap {
             fn to_value(&self) -> rt::Value {
@@ -5701,19 +5343,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_Mint {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `openRound` field.
+            ///Daml field `openRound`.
             #[serde(rename = "openRound")]
-            pub open_round:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for AmuletRules_Mint {
             fn to_value(&self) -> rt::Value {
@@ -5741,14 +5380,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MergeMemberTrafficContracts {
-            ///The Daml `trafficCids` field.
+            ///Daml field `trafficCids`.
             #[serde(rename = "trafficCids")]
             pub traffic_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                    crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
                 >,
             >,
         }
@@ -5771,32 +5410,28 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_BuyMemberTraffic {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `context` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
-            ///The Daml `provider` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::TransferContext,
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
-            ///The Daml `trafficAmount` field.
+            ///Daml field `trafficAmount`.
             #[serde(rename = "trafficAmount")]
             pub traffic_amount: rt::Int64,
-            ///The Daml `expectedDso` field.
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -5851,26 +5486,21 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_CreateTransferPreapproval {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `receiver` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `expectedDso` field.
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -5910,26 +5540,21 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_CreateExternalPartySetupProposal {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `user` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `preapprovalExpiresAt` field.
+            ///Daml field `preapprovalExpiresAt`.
             #[serde(rename = "preapprovalExpiresAt")]
             pub preapproval_expires_at: rt::Timestamp,
-            ///The Daml `expectedDso` field.
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -5972,16 +5597,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_Transfer {
-            ///The Daml `transfer` field.
             #[serde(rename = "transfer")]
-            pub transfer: crate::splice_amulet_0_1_14::Splice_AmuletRules::Transfer,
-            ///The Daml `context` field.
+            pub transfer: crate::splice_amulet::Splice_AmuletRules::Transfer,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
-            ///The Daml `expectedDso` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::TransferContext,
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -6007,20 +5630,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ComputeFees {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferContext,
-            ///The Daml `sender` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::TransferContext,
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `outputs` field.
             #[serde(rename = "outputs")]
-            pub outputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferOutput>,
-            ///The Daml `expectedDso` field.
+            pub outputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferOutput>,
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -6050,13 +5669,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ConvertFeaturedAppActivityMarkersResult {
-            ///The Daml `appRewardCouponCids` field.
+            ///Daml field `appRewardCouponCids`.
             #[serde(rename = "appRewardCouponCids")]
             pub app_reward_coupon_cids: ::std::vec::Vec<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::AppRewardCoupon>,
             >,
         }
         impl rt::ToValue for AmuletRules_ConvertFeaturedAppActivityMarkersResult {
@@ -6078,13 +5697,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_UpdateFutureAmuletConfigScheduleResult {
-            ///The Daml `newAmuletRules` field.
+            ///Daml field `newAmuletRules`.
             #[serde(rename = "newAmuletRules")]
             pub new_amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
         }
         impl rt::ToValue for AmuletRules_UpdateFutureAmuletConfigScheduleResult {
             fn to_value(&self) -> rt::Value {
@@ -6105,13 +5724,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_RemoveFutureAmuletConfigScheduleResult {
-            ///The Daml `newAmuletRules` field.
+            ///Daml field `newAmuletRules`.
             #[serde(rename = "newAmuletRules")]
             pub new_amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
         }
         impl rt::ToValue for AmuletRules_RemoveFutureAmuletConfigScheduleResult {
             fn to_value(&self) -> rt::Value {
@@ -6132,13 +5751,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_AddFutureAmuletConfigScheduleResult {
-            ///The Daml `newAmuletRules` field.
+            ///Daml field `newAmuletRules`.
             #[serde(rename = "newAmuletRules")]
             pub new_amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
         }
         impl rt::ToValue for AmuletRules_AddFutureAmuletConfigScheduleResult {
             fn to_value(&self) -> rt::Value {
@@ -6159,13 +5778,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_SetConfigResult {
-            ///The Daml `newAmuletRules` field.
+            ///Daml field `newAmuletRules`.
             #[serde(rename = "newAmuletRules")]
             pub new_amulet_rules:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
         }
         impl rt::ToValue for AmuletRules_SetConfigResult {
             fn to_value(&self) -> rt::Value {
@@ -6186,13 +5805,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MergeUnclaimedRewardsResult {
-            ///The Daml `unclaimedRewardCid` field.
+            ///Daml field `unclaimedRewardCid`.
             #[serde(rename = "unclaimedRewardCid")]
             pub unclaimed_reward_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::UnclaimedReward>,
         }
         impl rt::ToValue for AmuletRules_MergeUnclaimedRewardsResult {
             fn to_value(&self) -> rt::Value {
@@ -6213,13 +5832,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ClaimExpiredRewardsResult {
-            ///The Daml `unclaimedRewardCid` field.
+            ///Daml field `unclaimedRewardCid`.
             #[serde(rename = "unclaimedRewardCid")]
             pub unclaimed_reward_cid: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::UnclaimedReward>,
             >,
         }
         impl rt::ToValue for AmuletRules_ClaimExpiredRewardsResult {
@@ -6242,7 +5861,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum AmuletRules_MiningRound_ArchiveResult {
-            ///The Daml `AmuletRules_MiningRound_ArchiveResult` value.
             #[serde(rename = "AmuletRules_MiningRound_ArchiveResult")]
             AmuletRules_MiningRound_ArchiveResult,
         }
@@ -6276,13 +5894,13 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MiningRound_CloseResult {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for AmuletRules_MiningRound_CloseResult {
             fn to_value(&self) -> rt::Value {
@@ -6303,13 +5921,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MiningRound_StartIssuingResult {
-            ///The Daml `issuingRoundCid` field.
+            ///Daml field `issuingRoundCid`.
             #[serde(rename = "issuingRoundCid")]
             pub issuing_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::IssuingMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::IssuingMiningRound>,
         }
         impl rt::ToValue for AmuletRules_MiningRound_StartIssuingResult {
             fn to_value(&self) -> rt::Value {
@@ -6330,17 +5948,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_AdvanceOpenMiningRoundsResult {
-            ///The Daml `summarizingRoundCid` field.
+            ///Daml field `summarizingRoundCid`.
             #[serde(rename = "summarizingRoundCid")]
             pub summarizing_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::SummarizingMiningRound>,
-            ///The Daml `openRoundCid` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::SummarizingMiningRound>,
+            ///Daml field `openRoundCid`.
             #[serde(rename = "openRoundCid")]
-            pub open_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for AmuletRules_AdvanceOpenMiningRoundsResult {
             fn to_value(&self) -> rt::Value {
@@ -6369,17 +5986,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_Bootstrap_RoundsResult {
-            ///The Daml `openMiningRoundCid` field.
+            ///Daml field `openMiningRoundCid`.
             #[serde(rename = "openMiningRoundCid")]
             pub open_mining_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
-            ///The Daml `initialRound` field.
+                rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
+            ///Daml field `initialRound`.
             #[serde(rename = "initialRound")]
-            pub initial_round:
-                ::core::option::Option<crate::splice_amulet_0_1_14::Splice_Types::Round>,
+            pub initial_round: ::core::option::Option<crate::splice_amulet::Splice_Types::Round>,
         }
         impl rt::ToValue for AmuletRules_Bootstrap_RoundsResult {
             fn to_value(&self) -> rt::Value {
@@ -6404,13 +6020,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_DevNet_FeatureAppResult {
-            ///The Daml `featuredAppRightCid` field.
+            ///Daml field `featuredAppRightCid`.
             #[serde(rename = "featuredAppRightCid")]
             pub featured_app_right_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
         }
         impl rt::ToValue for AmuletRules_DevNet_FeatureAppResult {
             fn to_value(&self) -> rt::Value {
@@ -6431,18 +6047,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_DevNet_TapResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for AmuletRules_DevNet_TapResult {
@@ -6465,13 +6080,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MintResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for AmuletRules_MintResult {
@@ -6493,13 +6108,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_MergeMemberTrafficContractsResult {
-            ///The Daml `mergedTrafficCid` field.
+            ///Daml field `mergedTrafficCid`.
             #[serde(rename = "mergedTrafficCid")]
             pub merged_traffic_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
             >,
         }
         impl rt::ToValue for AmuletRules_MergeMemberTrafficContractsResult {
@@ -6521,10 +6136,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules_ComputeFeesResult {
-            ///The Daml `fees` field.
             #[serde(rename = "fees")]
             pub fees: ::std::vec::Vec<rt::Numeric>,
         }
@@ -6540,21 +6154,51 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.AmuletRules:AmuletRules`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.AmuletRules:AmuletRules`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AmuletRules_ComputeFees` — non-consuming
+        ///- `AmuletRules_Transfer` — non-consuming
+        ///- `AmuletRules_CreateExternalPartySetupProposal` — non-consuming
+        ///- `AmuletRules_CreateTransferPreapproval` — non-consuming
+        ///- `AmuletRules_BuyMemberTraffic` — non-consuming
+        ///- `AmuletRules_MergeMemberTrafficContracts` — non-consuming
+        ///- `AmuletRules_Mint` — non-consuming
+        ///- `AmuletRules_DevNet_Tap` — non-consuming
+        ///- `AmuletRules_DevNet_FeatureApp` — non-consuming
+        ///- `AmuletRules_Bootstrap_Rounds` — non-consuming
+        ///- `AmuletRules_AdvanceOpenMiningRounds` — non-consuming
+        ///- `AmuletRules_MiningRound_StartIssuing` — non-consuming
+        ///- `AmuletRules_MiningRound_Close` — non-consuming
+        ///- `AmuletRules_MiningRound_Archive` — non-consuming
+        ///- `AmuletRules_ClaimExpiredRewards` — non-consuming
+        ///- `AmuletRules_MergeUnclaimedRewards` — non-consuming
+        ///- `AmuletRules_SetConfig` — consuming
+        ///- `AmuletRules_ConvertFeaturedAppActivityMarkers` — non-consuming
+        ///- `Archive` — consuming
+        ///- `AmuletRules_Fetch` — non-consuming
+        ///- `AmuletRules_AddFutureAmuletConfigSchedule` — consuming
+        ///- `AmuletRules_RemoveFutureAmuletConfigSchedule` — consuming
+        ///- `AmuletRules_UpdateFutureAmuletConfigSchedule` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletRules {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `configSchedule` field.
+            ///Daml field `configSchedule`.
             #[serde(rename = "configSchedule")]
-            pub config_schedule: crate::splice_amulet_0_1_14::Splice_Schedule::Schedule<
+            pub config_schedule: crate::splice_amulet::Splice_Schedule::Schedule<
                 rt::Timestamp,
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::AmuletConfig<
-                    crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
+                crate::splice_amulet::Splice_AmuletConfig::AmuletConfig<
+                    crate::splice_amulet::Splice_AmuletConfig::USD,
                 >,
             >,
-            ///The Daml `isDevNet` field.
+            ///Daml field `isDevNet`.
             #[serde(rename = "isDevNet")]
             pub is_dev_net: bool,
         }
@@ -6605,200 +6249,206 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         ///The `AmuletRules_ComputeFees` choice on [`AmuletRules`] (non-consuming).
-        impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ComputeFees
-        {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ComputeFeesResult;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_ComputeFees {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_ComputeFeesResult;
             const NAME: &'static str = "AmuletRules_ComputeFees";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_Transfer` choice on [`AmuletRules`] (non-consuming).
-        impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_Transfer
-        {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_Transfer {
+            type Return = crate::splice_amulet::Splice_AmuletRules::TransferResult;
             const NAME: &'static str = "AmuletRules_Transfer";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_CreateExternalPartySetupProposal` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_CreateExternalPartySetupProposal {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_CreateExternalPartySetupProposalResult;
+        for crate::splice_amulet::Splice_AmuletRules::AmuletRules_CreateExternalPartySetupProposal {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_CreateExternalPartySetupProposalResult;
             const NAME: &'static str = "AmuletRules_CreateExternalPartySetupProposal";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_CreateTransferPreapproval` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_CreateTransferPreapproval {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_CreateTransferPreapprovalResult;
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_CreateTransferPreapproval
+        {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_CreateTransferPreapprovalResult;
             const NAME: &'static str = "AmuletRules_CreateTransferPreapproval";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_BuyMemberTraffic` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_BuyMemberTraffic
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_BuyMemberTraffic
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_BuyMemberTrafficResult;
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_BuyMemberTrafficResult;
             const NAME: &'static str = "AmuletRules_BuyMemberTraffic";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_MergeMemberTrafficContracts` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MergeMemberTrafficContracts {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MergeMemberTrafficContractsResult;
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_MergeMemberTrafficContracts
+        {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_MergeMemberTrafficContractsResult;
             const NAME: &'static str = "AmuletRules_MergeMemberTrafficContracts";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_Mint` choice on [`AmuletRules`] (non-consuming).
-        impl rt::Choice<AmuletRules> for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_Mint {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MintResult;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_Mint {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_MintResult;
             const NAME: &'static str = "AmuletRules_Mint";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_DevNet_Tap` choice on [`AmuletRules`] (non-consuming).
-        impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_DevNet_Tap
-        {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_DevNet_TapResult;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_DevNet_Tap {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_DevNet_TapResult;
             const NAME: &'static str = "AmuletRules_DevNet_Tap";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_DevNet_FeatureApp` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_DevNet_FeatureApp
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_DevNet_FeatureApp
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_DevNet_FeatureAppResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_DevNet_FeatureAppResult;
             const NAME: &'static str = "AmuletRules_DevNet_FeatureApp";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_Bootstrap_Rounds` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_Bootstrap_Rounds
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_Bootstrap_Rounds
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_Bootstrap_RoundsResult;
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_Bootstrap_RoundsResult;
             const NAME: &'static str = "AmuletRules_Bootstrap_Rounds";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_AdvanceOpenMiningRounds` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_AdvanceOpenMiningRounds
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_AdvanceOpenMiningRounds
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_AdvanceOpenMiningRoundsResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_AdvanceOpenMiningRoundsResult;
             const NAME: &'static str = "AmuletRules_AdvanceOpenMiningRounds";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_MiningRound_StartIssuing` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_StartIssuing {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_StartIssuingResult;
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_StartIssuing
+        {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_StartIssuingResult;
             const NAME: &'static str = "AmuletRules_MiningRound_StartIssuing";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_MiningRound_Close` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_Close
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_Close
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_CloseResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_CloseResult;
             const NAME: &'static str = "AmuletRules_MiningRound_Close";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_MiningRound_Archive` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_Archive
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_Archive
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MiningRound_ArchiveResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_MiningRound_ArchiveResult;
             const NAME: &'static str = "AmuletRules_MiningRound_Archive";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_ClaimExpiredRewards` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ClaimExpiredRewards
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_ClaimExpiredRewards
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ClaimExpiredRewardsResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_ClaimExpiredRewardsResult;
             const NAME: &'static str = "AmuletRules_ClaimExpiredRewards";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_MergeUnclaimedRewards` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MergeUnclaimedRewards
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_MergeUnclaimedRewards
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_MergeUnclaimedRewardsResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::AmuletRules_MergeUnclaimedRewardsResult;
             const NAME: &'static str = "AmuletRules_MergeUnclaimedRewards";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_SetConfig` choice on [`AmuletRules`] (consuming).
-        impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_SetConfig
-        {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_SetConfigResult;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_SetConfig {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_SetConfigResult;
             const NAME: &'static str = "AmuletRules_SetConfig";
             const CONSUMING: bool = true;
         }
         ///The `AmuletRules_ConvertFeaturedAppActivityMarkers` choice on [`AmuletRules`] (non-consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ConvertFeaturedAppActivityMarkers {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_ConvertFeaturedAppActivityMarkersResult;
+        for crate::splice_amulet::Splice_AmuletRules::AmuletRules_ConvertFeaturedAppActivityMarkers {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_ConvertFeaturedAppActivityMarkersResult;
             const NAME: &'static str = "AmuletRules_ConvertFeaturedAppActivityMarkers";
             const CONSUMING: bool = false;
         }
         ///The `Archive` choice on [`AmuletRules`] (consuming).
         impl rt::Choice<AmuletRules>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
         ///The `AmuletRules_Fetch` choice on [`AmuletRules`] (non-consuming).
-        impl rt::Choice<AmuletRules>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_Fetch
-        {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules;
+        impl rt::Choice<AmuletRules> for crate::splice_amulet::Splice_AmuletRules::AmuletRules_Fetch {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules;
             const NAME: &'static str = "AmuletRules_Fetch";
             const CONSUMING: bool = false;
         }
         ///The `AmuletRules_AddFutureAmuletConfigSchedule` choice on [`AmuletRules`] (consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_AddFutureAmuletConfigSchedule {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_AddFutureAmuletConfigScheduleResult;
+            for crate::splice_amulet::Splice_AmuletRules::AmuletRules_AddFutureAmuletConfigSchedule
+        {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_AddFutureAmuletConfigScheduleResult;
             const NAME: &'static str = "AmuletRules_AddFutureAmuletConfigSchedule";
             const CONSUMING: bool = true;
         }
         ///The `AmuletRules_RemoveFutureAmuletConfigSchedule` choice on [`AmuletRules`] (consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_RemoveFutureAmuletConfigSchedule {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_RemoveFutureAmuletConfigScheduleResult;
+        for crate::splice_amulet::Splice_AmuletRules::AmuletRules_RemoveFutureAmuletConfigSchedule {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_RemoveFutureAmuletConfigScheduleResult;
             const NAME: &'static str = "AmuletRules_RemoveFutureAmuletConfigSchedule";
             const CONSUMING: bool = true;
         }
         ///The `AmuletRules_UpdateFutureAmuletConfigSchedule` choice on [`AmuletRules`] (consuming).
         impl rt::Choice<AmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_UpdateFutureAmuletConfigSchedule {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules_UpdateFutureAmuletConfigScheduleResult;
+        for crate::splice_amulet::Splice_AmuletRules::AmuletRules_UpdateFutureAmuletConfigSchedule {
+            type Return = crate::splice_amulet::Splice_AmuletRules::AmuletRules_UpdateFutureAmuletConfigScheduleResult;
             const NAME: &'static str = "AmuletRules_UpdateFutureAmuletConfigSchedule";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.AmuletRules:ExternalPartySetupProposal`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.AmuletRules:ExternalPartySetupProposal`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ExternalPartySetupProposal_Accept` — consuming
+        ///- `Archive` — consuming
+        ///- `ExternalPartySetupProposal_Reject` — consuming
+        ///- `ExternalPartySetupProposal_Withdraw` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartySetupProposal {
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `createdAt` field.
+            ///Daml field `createdAt`.
             #[serde(rename = "createdAt")]
             pub created_at: rt::Timestamp,
-            ///The Daml `preapprovalExpiresAt` field.
+            ///Daml field `preapprovalExpiresAt`.
             #[serde(rename = "preapprovalExpiresAt")]
             pub preapproval_expires_at: rt::Timestamp,
         }
@@ -6862,15 +6512,16 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ExternalPartySetupProposal_Accept` choice on [`ExternalPartySetupProposal`] (consuming).
         impl rt::Choice<ExternalPartySetupProposal>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_Accept
+            for crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_Accept
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_AcceptResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_AcceptResult;
             const NAME: &'static str = "ExternalPartySetupProposal_Accept";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`ExternalPartySetupProposal`] (consuming).
         impl rt::Choice<ExternalPartySetupProposal>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -6878,39 +6529,52 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ExternalPartySetupProposal_Reject` choice on [`ExternalPartySetupProposal`] (consuming).
         impl rt::Choice<ExternalPartySetupProposal>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_Reject
+            for crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_Reject
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_RejectResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_RejectResult;
             const NAME: &'static str = "ExternalPartySetupProposal_Reject";
             const CONSUMING: bool = true;
         }
         ///The `ExternalPartySetupProposal_Withdraw` choice on [`ExternalPartySetupProposal`] (consuming).
         impl rt::Choice<ExternalPartySetupProposal>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_Withdraw
+            for crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_Withdraw
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal_WithdrawResult;
+            type Return =
+                crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal_WithdrawResult;
             const NAME: &'static str = "ExternalPartySetupProposal_Withdraw";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.AmuletRules:TransferPreapproval`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.AmuletRules:TransferPreapproval`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `TransferPreapproval_Renew` — consuming
+        ///- `TransferPreapproval_Send` — non-consuming
+        ///- `TransferPreapproval_Expire` — consuming
+        ///- `TransferPreapproval_Cancel` — consuming
+        ///- `Archive` — consuming
+        ///- `TransferPreapproval_Fetch` — non-consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapproval {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `validFrom` field.
+            ///Daml field `validFrom`.
             #[serde(rename = "validFrom")]
             pub valid_from: rt::Timestamp,
-            ///The Daml `lastRenewedAt` field.
+            ///Daml field `lastRenewedAt`.
             #[serde(rename = "lastRenewedAt")]
             pub last_renewed_at: rt::Timestamp,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
         }
@@ -6981,43 +6645,41 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `TransferPreapproval_Renew` choice on [`TransferPreapproval`] (consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Renew
+            for crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_Renew
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_RenewResult;
+            type Return = crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_RenewResult;
             const NAME: &'static str = "TransferPreapproval_Renew";
             const CONSUMING: bool = true;
         }
         ///The `TransferPreapproval_Send` choice on [`TransferPreapproval`] (non-consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Send
+            for crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_Send
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_SendResult;
+            type Return = crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_SendResult;
             const NAME: &'static str = "TransferPreapproval_Send";
             const CONSUMING: bool = false;
         }
         ///The `TransferPreapproval_Expire` choice on [`TransferPreapproval`] (consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Expire
+            for crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_Expire
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_ExpireResult;
+                crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_ExpireResult;
             const NAME: &'static str = "TransferPreapproval_Expire";
             const CONSUMING: bool = true;
         }
         ///The `TransferPreapproval_Cancel` choice on [`TransferPreapproval`] (consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Cancel
+            for crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_Cancel
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_CancelResult;
+                crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_CancelResult;
             const NAME: &'static str = "TransferPreapproval_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`TransferPreapproval`] (consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -7025,16 +6687,16 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `TransferPreapproval_Fetch` choice on [`TransferPreapproval`] (non-consuming).
         impl rt::Choice<TransferPreapproval>
-            for crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval_Fetch
+            for crate::splice_amulet::Splice_AmuletRules::TransferPreapproval_Fetch
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval;
+            type Return = crate::splice_amulet::Splice_AmuletRules::TransferPreapproval;
             const NAME: &'static str = "TransferPreapproval_Fetch";
             const CONSUMING: bool = false;
         }
     }
     pub mod Splice_Amulet {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct UnclaimedActivityRecord_DsoExpire {}
         impl rt::ToValue for UnclaimedActivityRecord_DsoExpire {
@@ -7047,7 +6709,7 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SvRewardCoupon_ArchiveAsBeneficiary {}
         impl rt::ToValue for SvRewardCoupon_ArchiveAsBeneficiary {
@@ -7060,13 +6722,13 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SvRewardCoupon_DsoExpire {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for SvRewardCoupon_DsoExpire {
             fn to_value(&self) -> rt::Value {
@@ -7087,16 +6749,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRewardCoupon_ArchiveAsValidator {
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `rightCid` field.
+            ///Daml field `rightCid`.
             #[serde(rename = "rightCid")]
-            pub right_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight>,
+            pub right_cid: rt::ContractId<crate::splice_amulet::Splice_Amulet::ValidatorRight>,
         }
         impl rt::ToValue for ValidatorRewardCoupon_ArchiveAsValidator {
             fn to_value(&self) -> rt::Value {
@@ -7120,13 +6780,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRewardCoupon_DsoExpire {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for ValidatorRewardCoupon_DsoExpire {
             fn to_value(&self) -> rt::Value {
@@ -7147,13 +6807,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppRewardCoupon_DsoExpire {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for AppRewardCoupon_DsoExpire {
             fn to_value(&self) -> rt::Value {
@@ -7174,7 +6834,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRight_Cancel {}
         impl rt::ToValue for FeaturedAppRight_Cancel {
@@ -7187,10 +6847,9 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRight_Withdraw {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -7208,7 +6867,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRight_ArchiveAsUser {}
         impl rt::ToValue for ValidatorRight_ArchiveAsUser {
@@ -7221,7 +6880,7 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRight_ArchiveAsValidator {}
         impl rt::ToValue for ValidatorRight_ArchiveAsValidator {
@@ -7234,13 +6893,12 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_ExpireAmulet {
-            ///The Daml `roundCid` field.
+            ///Daml field `roundCid`.
             #[serde(rename = "roundCid")]
-            pub round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for LockedAmulet_ExpireAmulet {
             fn to_value(&self) -> rt::Value {
@@ -7259,13 +6917,12 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_OwnerExpireLock {
-            ///The Daml `openRoundCid` field.
+            ///Daml field `openRoundCid`.
             #[serde(rename = "openRoundCid")]
-            pub open_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for LockedAmulet_OwnerExpireLock {
             fn to_value(&self) -> rt::Value {
@@ -7286,13 +6943,12 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_Unlock {
-            ///The Daml `openRoundCid` field.
+            ///Daml field `openRoundCid`.
             #[serde(rename = "openRoundCid")]
-            pub open_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for LockedAmulet_Unlock {
             fn to_value(&self) -> rt::Value {
@@ -7313,13 +6969,12 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Amulet_Expire {
-            ///The Daml `roundCid` field.
+            ///Daml field `roundCid`.
             #[serde(rename = "roundCid")]
-            pub round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for Amulet_Expire {
             fn to_value(&self) -> rt::Value {
@@ -7338,13 +6993,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct UnclaimedActivityRecord_DsoExpireResult {
-            ///The Daml `unclaimedRewardCid` field.
+            ///Daml field `unclaimedRewardCid`.
             #[serde(rename = "unclaimedRewardCid")]
             pub unclaimed_reward_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedReward>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::UnclaimedReward>,
         }
         impl rt::ToValue for UnclaimedActivityRecord_DsoExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -7370,7 +7025,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum UnclaimedActivityRecord_ArchiveAsBeneficiaryResult {
-            ///The Daml `UnclaimedActivityRecord_ArchiveAsBeneficiaryResult` value.
             #[serde(rename = "UnclaimedActivityRecord_ArchiveAsBeneficiaryResult")]
             UnclaimedActivityRecord_ArchiveAsBeneficiaryResult,
         }
@@ -7409,7 +7063,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum SvRewardCoupon_ArchiveAsBeneficiaryResult {
-            ///The Daml `SvRewardCoupon_ArchiveAsBeneficiaryResult` value.
             #[serde(rename = "SvRewardCoupon_ArchiveAsBeneficiaryResult")]
             SvRewardCoupon_ArchiveAsBeneficiaryResult,
         }
@@ -7443,10 +7096,9 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SvRewardCoupon_DsoExpireResult {
-            ///The Daml `weight` field.
             #[serde(rename = "weight")]
             pub weight: rt::Int64,
         }
@@ -7464,7 +7116,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRewardCoupon_ArchiveAsValidatorResult {}
         impl rt::ToValue for ValidatorRewardCoupon_ArchiveAsValidatorResult {
@@ -7477,10 +7129,9 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRewardCoupon_DsoExpireResult {
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
         }
@@ -7498,13 +7149,11 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppRewardCoupon_DsoExpireResult {
-            ///The Daml `featured` field.
             #[serde(rename = "featured")]
             pub featured: bool,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
         }
@@ -7533,7 +7182,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum FeaturedAppRight_CancelResult {
-            ///The Daml `FeaturedAppRight_CancelResult` value.
             #[serde(rename = "FeaturedAppRight_CancelResult")]
             FeaturedAppRight_CancelResult,
         }
@@ -7564,7 +7212,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum FeaturedAppRight_WithdrawResult {
-            ///The Daml `FeaturedAppRight_WithdrawResult` value.
             #[serde(rename = "FeaturedAppRight_WithdrawResult")]
             FeaturedAppRight_WithdrawResult,
         }
@@ -7595,7 +7242,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorRight_ArchiveAsUserResult {
-            ///The Daml `ValidatorRight_ArchiveAsUserResult` value.
             #[serde(rename = "ValidatorRight_ArchiveAsUserResult")]
             ValidatorRight_ArchiveAsUserResult,
         }
@@ -7626,7 +7272,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorRight_ArchiveAsValidatorResult {
-            ///The Daml `ValidatorRight_ArchiveAsValidatorResult` value.
             #[serde(rename = "ValidatorRight_ArchiveAsValidatorResult")]
             ValidatorRight_ArchiveAsValidatorResult,
         }
@@ -7660,16 +7305,15 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_ExpireAmuletResult {
-            ///The Daml `expireSum` field.
+            ///Daml field `expireSum`.
             #[serde(rename = "expireSum")]
-            pub expire_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletExpireSummary,
-            ///The Daml `meta` field.
+            pub expire_sum: crate::splice_amulet::Splice_Amulet::AmuletExpireSummary,
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for LockedAmulet_ExpireAmuletResult {
@@ -7692,18 +7336,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_OwnerExpireLockResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for LockedAmulet_OwnerExpireLockResult {
@@ -7726,18 +7369,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet_UnlockResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for LockedAmulet_UnlockResult {
@@ -7760,16 +7402,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Amulet_ExpireResult {
-            ///The Daml `expireSum` field.
+            ///Daml field `expireSum`.
             #[serde(rename = "expireSum")]
-            pub expire_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletExpireSummary,
-            ///The Daml `meta` field.
+            pub expire_sum: crate::splice_amulet::Splice_Amulet::AmuletExpireSummary,
             #[serde(rename = "meta")]
             pub meta: ::core::option::Option<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             >,
         }
         impl rt::ToValue for Amulet_ExpireResult {
@@ -7792,18 +7433,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletCreateSummary<AmuletContractId> {
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
             pub amulet: AmuletContractId,
-            ///The Daml `amuletPrice` field.
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
+            pub round: crate::splice_amulet::Splice_Types::Round,
         }
         impl<AmuletContractId> rt::ToValue for AmuletCreateSummary<AmuletContractId>
         where
@@ -7835,19 +7474,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletExpireSummary {
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `changeToInitialAmountAsOfRoundZero` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `changeToInitialAmountAsOfRoundZero`.
             #[serde(rename = "changeToInitialAmountAsOfRoundZero")]
             pub change_to_initial_amount_as_of_round_zero: rt::Numeric,
-            ///The Daml `changeToHoldingFeesRate` field.
+            ///Daml field `changeToHoldingFeesRate`.
             #[serde(rename = "changeToHoldingFeesRate")]
             pub change_to_holding_fees_rate: rt::Numeric,
         }
@@ -7883,18 +7520,25 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:Amulet`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:Amulet`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Amulet_Expire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Amulet {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
-            pub amount: crate::splice_amulet_0_1_14::Splice_Fees::ExpiringAmount,
+            pub amount: crate::splice_amulet::Splice_Fees::ExpiringAmount,
         }
         impl rt::ToValue for Amulet {
             fn to_value(&self) -> rt::Value {
@@ -7933,38 +7577,40 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         ///The `Amulet_Expire` choice on [`Amulet`] (consuming).
-        impl rt::Choice<Amulet> for crate::splice_amulet_0_1_14::Splice_Amulet::Amulet_Expire {
-            type Return = crate::splice_amulet_0_1_14::Splice_Amulet::Amulet_ExpireResult;
+        impl rt::Choice<Amulet> for crate::splice_amulet::Splice_Amulet::Amulet_Expire {
+            type Return = crate::splice_amulet::Splice_Amulet::Amulet_ExpireResult;
             const NAME: &'static str = "Amulet_Expire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`Amulet`] (consuming).
-        impl rt::Choice<Amulet>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
-        {
+        impl rt::Choice<Amulet> for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:AppRewardCoupon`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:AppRewardCoupon`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AppRewardCoupon_DsoExpire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppRewardCoupon {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `featured` field.
             #[serde(rename = "featured")]
             pub featured: bool,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `beneficiary` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "beneficiary")]
             pub beneficiary: ::core::option::Option<rt::Party>,
         }
@@ -8019,34 +7665,38 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `AppRewardCoupon_DsoExpire` choice on [`AppRewardCoupon`] (consuming).
         impl rt::Choice<AppRewardCoupon>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon_DsoExpire
+            for crate::splice_amulet::Splice_Amulet::AppRewardCoupon_DsoExpire
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::AppRewardCoupon_DsoExpireResult;
+            type Return = crate::splice_amulet::Splice_Amulet::AppRewardCoupon_DsoExpireResult;
             const NAME: &'static str = "AppRewardCoupon_DsoExpire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`AppRewardCoupon`] (consuming).
         impl rt::Choice<AppRewardCoupon>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:FeaturedAppActivityMarker`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:FeaturedAppActivityMarker`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppActivityMarker {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
             pub beneficiary: rt::Party,
-            ///The Daml `weight` field.
             #[serde(rename = "weight")]
             pub weight: rt::Numeric,
         }
@@ -8097,19 +7747,28 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`FeaturedAppActivityMarker`] (consuming).
         impl rt::Choice<FeaturedAppActivityMarker>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:FeaturedAppRight`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:FeaturedAppRight`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `FeaturedAppRight_Withdraw` — consuming
+        ///- `FeaturedAppRight_Cancel` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRight {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
         }
@@ -8148,38 +7807,45 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `FeaturedAppRight_Withdraw` choice on [`FeaturedAppRight`] (consuming).
         impl rt::Choice<FeaturedAppRight>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight_Withdraw
+            for crate::splice_amulet::Splice_Amulet::FeaturedAppRight_Withdraw
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight_WithdrawResult;
+            type Return = crate::splice_amulet::Splice_Amulet::FeaturedAppRight_WithdrawResult;
             const NAME: &'static str = "FeaturedAppRight_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `FeaturedAppRight_Cancel` choice on [`FeaturedAppRight`] (consuming).
-        impl rt::Choice<FeaturedAppRight>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight_Cancel
-        {
-            type Return = crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight_CancelResult;
+        impl rt::Choice<FeaturedAppRight> for crate::splice_amulet::Splice_Amulet::FeaturedAppRight_Cancel {
+            type Return = crate::splice_amulet::Splice_Amulet::FeaturedAppRight_CancelResult;
             const NAME: &'static str = "FeaturedAppRight_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`FeaturedAppRight`] (consuming).
         impl rt::Choice<FeaturedAppRight>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:LockedAmulet`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:LockedAmulet`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `LockedAmulet_Unlock` — consuming
+        ///- `LockedAmulet_OwnerExpireLock` — consuming
+        ///- `LockedAmulet_ExpireAmulet` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LockedAmulet {
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: crate::splice_amulet_0_1_14::Splice_Amulet::Amulet,
-            ///The Daml `lock` field.
+            pub amulet: crate::splice_amulet::Splice_Amulet::Amulet,
             #[serde(rename = "lock")]
-            pub lock: crate::splice_amulet_0_1_14::Splice_Expiry::TimeLock,
+            pub lock: crate::splice_amulet::Splice_Expiry::TimeLock,
         }
         impl rt::ToValue for LockedAmulet {
             fn to_value(&self) -> rt::Value {
@@ -8215,53 +7881,55 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         ///The `LockedAmulet_Unlock` choice on [`LockedAmulet`] (consuming).
-        impl rt::Choice<LockedAmulet> for crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_Unlock {
-            type Return = crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_UnlockResult;
+        impl rt::Choice<LockedAmulet> for crate::splice_amulet::Splice_Amulet::LockedAmulet_Unlock {
+            type Return = crate::splice_amulet::Splice_Amulet::LockedAmulet_UnlockResult;
             const NAME: &'static str = "LockedAmulet_Unlock";
             const CONSUMING: bool = true;
         }
         ///The `LockedAmulet_OwnerExpireLock` choice on [`LockedAmulet`] (consuming).
         impl rt::Choice<LockedAmulet>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_OwnerExpireLock
+            for crate::splice_amulet::Splice_Amulet::LockedAmulet_OwnerExpireLock
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_OwnerExpireLockResult;
+            type Return = crate::splice_amulet::Splice_Amulet::LockedAmulet_OwnerExpireLockResult;
             const NAME: &'static str = "LockedAmulet_OwnerExpireLock";
             const CONSUMING: bool = true;
         }
         ///The `LockedAmulet_ExpireAmulet` choice on [`LockedAmulet`] (consuming).
-        impl rt::Choice<LockedAmulet>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_ExpireAmulet
-        {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet_ExpireAmuletResult;
+        impl rt::Choice<LockedAmulet> for crate::splice_amulet::Splice_Amulet::LockedAmulet_ExpireAmulet {
+            type Return = crate::splice_amulet::Splice_Amulet::LockedAmulet_ExpireAmuletResult;
             const NAME: &'static str = "LockedAmulet_ExpireAmulet";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`LockedAmulet`] (consuming).
         impl rt::Choice<LockedAmulet>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:SvRewardCoupon`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:SvRewardCoupon`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `SvRewardCoupon_DsoExpire` — consuming
+        ///- `SvRewardCoupon_ArchiveAsBeneficiary` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SvRewardCoupon {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `sv` field.
             #[serde(rename = "sv")]
             pub sv: rt::Party,
-            ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
             pub beneficiary: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `weight` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "weight")]
             pub weight: rt::Int64,
         }
@@ -8312,46 +7980,50 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         ///The `SvRewardCoupon_DsoExpire` choice on [`SvRewardCoupon`] (consuming).
-        impl rt::Choice<SvRewardCoupon>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon_DsoExpire
-        {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon_DsoExpireResult;
+        impl rt::Choice<SvRewardCoupon> for crate::splice_amulet::Splice_Amulet::SvRewardCoupon_DsoExpire {
+            type Return = crate::splice_amulet::Splice_Amulet::SvRewardCoupon_DsoExpireResult;
             const NAME: &'static str = "SvRewardCoupon_DsoExpire";
             const CONSUMING: bool = true;
         }
         ///The `SvRewardCoupon_ArchiveAsBeneficiary` choice on [`SvRewardCoupon`] (consuming).
         impl rt::Choice<SvRewardCoupon>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon_ArchiveAsBeneficiary
+            for crate::splice_amulet::Splice_Amulet::SvRewardCoupon_ArchiveAsBeneficiary
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_Amulet::SvRewardCoupon_ArchiveAsBeneficiaryResult;
+            type Return =
+                crate::splice_amulet::Splice_Amulet::SvRewardCoupon_ArchiveAsBeneficiaryResult;
             const NAME: &'static str = "SvRewardCoupon_ArchiveAsBeneficiary";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`SvRewardCoupon`] (consuming).
         impl rt::Choice<SvRewardCoupon>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:UnclaimedActivityRecord`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:UnclaimedActivityRecord`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `UnclaimedActivityRecord_DsoExpire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct UnclaimedActivityRecord {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
             pub beneficiary: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
         }
@@ -8409,28 +8081,35 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `UnclaimedActivityRecord_DsoExpire` choice on [`UnclaimedActivityRecord`] (consuming).
         impl rt::Choice<UnclaimedActivityRecord>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedActivityRecord_DsoExpire
+            for crate::splice_amulet::Splice_Amulet::UnclaimedActivityRecord_DsoExpire
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::UnclaimedActivityRecord_DsoExpireResult;
+                crate::splice_amulet::Splice_Amulet::UnclaimedActivityRecord_DsoExpireResult;
             const NAME: &'static str = "UnclaimedActivityRecord_DsoExpire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`UnclaimedActivityRecord`] (consuming).
         impl rt::Choice<UnclaimedActivityRecord>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:UnclaimedReward`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:UnclaimedReward`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct UnclaimedReward {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
         }
@@ -8469,27 +8148,34 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`UnclaimedReward`] (consuming).
         impl rt::Choice<UnclaimedReward>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:ValidatorRewardCoupon`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:ValidatorRewardCoupon`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ValidatorRewardCoupon_DsoExpire` — consuming
+        ///- `ValidatorRewardCoupon_ArchiveAsValidator` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRewardCoupon {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
+            pub round: crate::splice_amulet::Splice_Types::Round,
         }
         impl rt::ToValue for ValidatorRewardCoupon {
             fn to_value(&self) -> rt::Value {
@@ -8532,39 +8218,48 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ValidatorRewardCoupon_DsoExpire` choice on [`ValidatorRewardCoupon`] (consuming).
         impl rt::Choice<ValidatorRewardCoupon>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon_DsoExpire
+            for crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon_DsoExpire
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon_DsoExpireResult;
+                crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon_DsoExpireResult;
             const NAME: &'static str = "ValidatorRewardCoupon_DsoExpire";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorRewardCoupon_ArchiveAsValidator` choice on [`ValidatorRewardCoupon`] (consuming).
         impl rt::Choice<ValidatorRewardCoupon>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon_ArchiveAsValidator
+            for crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon_ArchiveAsValidator
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRewardCoupon_ArchiveAsValidatorResult;
+            type Return =
+                crate::splice_amulet::Splice_Amulet::ValidatorRewardCoupon_ArchiveAsValidatorResult;
             const NAME: &'static str = "ValidatorRewardCoupon_ArchiveAsValidator";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`ValidatorRewardCoupon`] (consuming).
         impl rt::Choice<ValidatorRewardCoupon>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Amulet:ValidatorRight`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Amulet:ValidatorRight`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ValidatorRight_ArchiveAsValidator` — consuming
+        ///- `ValidatorRight_ArchiveAsUser` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorRight {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
         }
@@ -8608,25 +8303,24 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ValidatorRight_ArchiveAsValidator` choice on [`ValidatorRight`] (consuming).
         impl rt::Choice<ValidatorRight>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight_ArchiveAsValidator
+            for crate::splice_amulet::Splice_Amulet::ValidatorRight_ArchiveAsValidator
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight_ArchiveAsValidatorResult;
+                crate::splice_amulet::Splice_Amulet::ValidatorRight_ArchiveAsValidatorResult;
             const NAME: &'static str = "ValidatorRight_ArchiveAsValidator";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorRight_ArchiveAsUser` choice on [`ValidatorRight`] (consuming).
         impl rt::Choice<ValidatorRight>
-            for crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight_ArchiveAsUser
+            for crate::splice_amulet::Splice_Amulet::ValidatorRight_ArchiveAsUser
         {
-            type Return =
-                crate::splice_amulet_0_1_14::Splice_Amulet::ValidatorRight_ArchiveAsUserResult;
+            type Return = crate::splice_amulet::Splice_Amulet::ValidatorRight_ArchiveAsUserResult;
             const NAME: &'static str = "ValidatorRight_ArchiveAsUser";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`ValidatorRight`] (consuming).
         impl rt::Choice<ValidatorRight>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -8640,22 +8334,16 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum TxKind {
-            ///The Daml `TxKind_Transfer` value.
             #[serde(rename = "TxKind_Transfer")]
             TxKind_Transfer,
-            ///The Daml `TxKind_Unlock` value.
             #[serde(rename = "TxKind_Unlock")]
             TxKind_Unlock,
-            ///The Daml `TxKind_MergeSplit` value.
             #[serde(rename = "TxKind_MergeSplit")]
             TxKind_MergeSplit,
-            ///The Daml `TxKind_Burn` value.
             #[serde(rename = "TxKind_Burn")]
             TxKind_Burn,
-            ///The Daml `TxKind_Mint` value.
             #[serde(rename = "TxKind_Mint")]
             TxKind_Mint,
-            ///The Daml `TxKind_ExpireDust` value.
             #[serde(rename = "TxKind_ExpireDust")]
             TxKind_ExpireDust,
         }
@@ -8689,17 +8377,25 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_AmuletTransferInstruction {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.AmuletTransferInstruction:AmuletTransferInstruction`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.AmuletTransferInstruction:AmuletTransferInstruction`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletTransferInstruction {
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
             pub locked_amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet,
+                crate::splice_amulet::Splice_Amulet::LockedAmulet,
             >,
-            ///The Daml `transfer` field.
             #[serde(rename = "transfer")]
-            pub transfer: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::Transfer,
+            pub transfer: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::Transfer,
         }
         impl rt::ToValue for AmuletTransferInstruction {
             fn to_value(&self) -> rt::Value {
@@ -8740,7 +8436,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`AmuletTransferInstruction`] (consuming).
         impl rt::Choice<AmuletTransferInstruction>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -8749,25 +8445,23 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_AmuletConfig {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PackageConfig {
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
             pub amulet: ::std::string::String,
-            ///The Daml `amuletNameService` field.
+            ///Daml field `amuletNameService`.
             #[serde(rename = "amuletNameService")]
             pub amulet_name_service: ::std::string::String,
-            ///The Daml `dsoGovernance` field.
+            ///Daml field `dsoGovernance`.
             #[serde(rename = "dsoGovernance")]
             pub dso_governance: ::std::string::String,
-            ///The Daml `validatorLifecycle` field.
+            ///Daml field `validatorLifecycle`.
             #[serde(rename = "validatorLifecycle")]
             pub validator_lifecycle: ::std::string::String,
-            ///The Daml `wallet` field.
             #[serde(rename = "wallet")]
             pub wallet: ::std::string::String,
-            ///The Daml `walletPayments` field.
+            ///Daml field `walletPayments`.
             #[serde(rename = "walletPayments")]
             pub wallet_payments: ::std::string::String,
         }
@@ -8824,33 +8518,33 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletConfig<Unit> {
-            ///The Daml `transferConfig` field.
+            ///Daml field `transferConfig`.
             #[serde(rename = "transferConfig")]
-            pub transfer_config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::TransferConfig<
+            pub transfer_config: crate::splice_amulet::Splice_AmuletConfig::TransferConfig<
                 Unit,
             >,
-            ///The Daml `issuanceCurve` field.
+            ///Daml field `issuanceCurve`.
             #[serde(rename = "issuanceCurve")]
-            pub issuance_curve: crate::splice_amulet_0_1_14::Splice_Schedule::Schedule<
-                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-                crate::splice_amulet_0_1_14::Splice_Issuance::IssuanceConfig,
+            pub issuance_curve: crate::splice_amulet::Splice_Schedule::Schedule<
+                crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+                crate::splice_amulet::Splice_Issuance::IssuanceConfig,
             >,
-            ///The Daml `decentralizedSynchronizer` field.
+            ///Daml field `decentralizedSynchronizer`.
             #[serde(rename = "decentralizedSynchronizer")]
-            pub decentralized_synchronizer: crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::AmuletDecentralizedSynchronizerConfig,
-            ///The Daml `tickDuration` field.
+            pub decentralized_synchronizer: crate::splice_amulet::Splice_DecentralizedSynchronizer::AmuletDecentralizedSynchronizerConfig,
+            ///Daml field `tickDuration`.
             #[serde(rename = "tickDuration")]
-            pub tick_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `packageConfig` field.
+            pub tick_duration: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `packageConfig`.
             #[serde(rename = "packageConfig")]
-            pub package_config: crate::splice_amulet_0_1_14::Splice_AmuletConfig::PackageConfig,
-            ///The Daml `transferPreapprovalFee` field.
+            pub package_config: crate::splice_amulet::Splice_AmuletConfig::PackageConfig,
+            ///Daml field `transferPreapprovalFee`.
             #[serde(rename = "transferPreapprovalFee")]
             pub transfer_preapproval_fee: ::core::option::Option<rt::Numeric>,
-            ///The Daml `featuredAppActivityMarkerAmount` field.
+            ///Daml field `featuredAppActivityMarkerAmount`.
             #[serde(rename = "featuredAppActivityMarkerAmount")]
             pub featured_app_activity_marker_amount: ::core::option::Option<rt::Numeric>,
         }
@@ -8926,31 +8620,31 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferConfig<Unit> {
-            ///The Daml `createFee` field.
+            ///Daml field `createFee`.
             #[serde(rename = "createFee")]
-            pub create_fee: crate::splice_amulet_0_1_14::Splice_Fees::FixedFee,
-            ///The Daml `holdingFee` field.
+            pub create_fee: crate::splice_amulet::Splice_Fees::FixedFee,
+            ///Daml field `holdingFee`.
             #[serde(rename = "holdingFee")]
-            pub holding_fee: crate::splice_amulet_0_1_14::Splice_Fees::RatePerRound,
-            ///The Daml `transferFee` field.
+            pub holding_fee: crate::splice_amulet::Splice_Fees::RatePerRound,
+            ///Daml field `transferFee`.
             #[serde(rename = "transferFee")]
-            pub transfer_fee: crate::splice_amulet_0_1_14::Splice_Fees::SteppedRate,
-            ///The Daml `lockHolderFee` field.
+            pub transfer_fee: crate::splice_amulet::Splice_Fees::SteppedRate,
+            ///Daml field `lockHolderFee`.
             #[serde(rename = "lockHolderFee")]
-            pub lock_holder_fee: crate::splice_amulet_0_1_14::Splice_Fees::FixedFee,
-            ///The Daml `extraFeaturedAppRewardAmount` field.
+            pub lock_holder_fee: crate::splice_amulet::Splice_Fees::FixedFee,
+            ///Daml field `extraFeaturedAppRewardAmount`.
             #[serde(rename = "extraFeaturedAppRewardAmount")]
             pub extra_featured_app_reward_amount: rt::Numeric,
-            ///The Daml `maxNumInputs` field.
+            ///Daml field `maxNumInputs`.
             #[serde(rename = "maxNumInputs")]
             pub max_num_inputs: rt::Int64,
-            ///The Daml `maxNumOutputs` field.
+            ///Daml field `maxNumOutputs`.
             #[serde(rename = "maxNumOutputs")]
             pub max_num_outputs: rt::Int64,
-            ///The Daml `maxNumLockHolders` field.
+            ///Daml field `maxNumLockHolders`.
             #[serde(rename = "maxNumLockHolders")]
             pub max_num_lock_holders: rt::Int64,
             #[doc(hidden)]
@@ -9039,7 +8733,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum USD {
-            ///The Daml `USD` value.
             #[serde(rename = "USD")]
             USD,
         }
@@ -9063,7 +8756,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Amulet {
-            ///The Daml `Amulet` value.
             #[serde(rename = "Amulet")]
             Amulet,
         }
@@ -9087,13 +8779,11 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_ExternalPartyAmuletRules {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_ExpireResult {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
             pub nonce: rt::Int64,
         }
@@ -9115,13 +8805,11 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_WithdrawResult {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
             pub nonce: rt::Int64,
         }
@@ -9143,18 +8831,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum TransferCommandResult {
-            ///The Daml `TransferCommandResultFailure` constructor.
             #[serde(rename = "TransferCommandResultFailure")]
             TransferCommandResultFailure(
-                crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommandResult_TransferCommandResultFailure,
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommandResult_TransferCommandResultFailure,
             ),
-            ///The Daml `TransferCommandResultSuccess` constructor.
             #[serde(rename = "TransferCommandResultSuccess")]
             TransferCommandResultSuccess(
-                crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommandResult_TransferCommandResultSuccess,
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommandResult_TransferCommandResultSuccess,
             ),
         }
         impl rt::ToValue for TransferCommandResult {
@@ -9196,12 +8882,11 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommandResult_TransferCommandResultFailure {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
-            pub reason: crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason,
+            pub reason: crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason,
         }
         impl rt::ToValue for TransferCommandResult_TransferCommandResultFailure {
             fn to_value(&self) -> rt::Value {
@@ -9217,12 +8902,11 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommandResult_TransferCommandResultSuccess {
-            ///The Daml `result` field.
             #[serde(rename = "result")]
-            pub result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
+            pub result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
         }
         impl rt::ToValue for TransferCommandResult_TransferCommandResultSuccess {
             fn to_value(&self) -> rt::Value {
@@ -9238,17 +8922,14 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_SendResult {
-            ///The Daml `result` field.
             #[serde(rename = "result")]
             pub result:
-                crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommandResult,
-            ///The Daml `sender` field.
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommandResult,
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
             pub nonce: rt::Int64,
         }
@@ -9274,10 +8955,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_Expire {
-            ///The Daml `p` field.
             #[serde(rename = "p")]
             pub p: rt::Party,
         }
@@ -9293,7 +8973,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_Withdraw {}
         impl rt::ToValue for TransferCommand_Withdraw {
@@ -9306,28 +8986,22 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand_Send {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs: ::std::vec::Vec<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput,
-            >,
-            ///The Daml `transferPreapprovalCidO` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
+            ///Daml field `transferPreapprovalCidO`.
             #[serde(rename = "transferPreapprovalCidO")]
             pub transfer_preapproval_cid_o: ::core::option::Option<
-                rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-                >,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
             >,
-            ///The Daml `transferCounterCid` field.
+            ///Daml field `transferCounterCid`.
             #[serde(rename = "transferCounterCid")]
             pub transfer_counter_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommandCounter,
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommandCounter,
             >,
         }
         impl rt::ToValue for TransferCommand_Send {
@@ -9368,13 +9042,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartyAmuletRules_CreateTransferCommandResult {
-            ///The Daml `transferCommandCid` field.
+            ///Daml field `transferCommandCid`.
             #[serde(rename = "transferCommandCid")]
             pub transfer_command_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand,
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand,
             >,
         }
         impl rt::ToValue for ExternalPartyAmuletRules_CreateTransferCommandResult {
@@ -9396,31 +9070,25 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartyAmuletRules_CreateTransferCommand {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `delegate` field.
             #[serde(rename = "delegate")]
             pub delegate: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
             pub nonce: rt::Int64,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::core::option::Option<::std::string::String>,
-            ///The Daml `expectedDso` field.
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -9464,10 +9132,19 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ExternalPartyAmuletRules:ExternalPartyAmuletRules`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ExternalPartyAmuletRules:ExternalPartyAmuletRules`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ExternalPartyAmuletRules_CreateTransferCommand` — non-consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExternalPartyAmuletRules {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
         }
@@ -9497,44 +9174,49 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ExternalPartyAmuletRules_CreateTransferCommand` choice on [`ExternalPartyAmuletRules`] (non-consuming).
         impl rt::Choice<ExternalPartyAmuletRules>
-        for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::ExternalPartyAmuletRules_CreateTransferCommand {
-            type Return = crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::ExternalPartyAmuletRules_CreateTransferCommandResult;
+        for crate::splice_amulet::Splice_ExternalPartyAmuletRules::ExternalPartyAmuletRules_CreateTransferCommand {
+            type Return = crate::splice_amulet::Splice_ExternalPartyAmuletRules::ExternalPartyAmuletRules_CreateTransferCommandResult;
             const NAME: &'static str = "ExternalPartyAmuletRules_CreateTransferCommand";
             const CONSUMING: bool = false;
         }
         ///The `Archive` choice on [`ExternalPartyAmuletRules`] (consuming).
         impl rt::Choice<ExternalPartyAmuletRules>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ExternalPartyAmuletRules:TransferCommand`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ExternalPartyAmuletRules:TransferCommand`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `TransferCommand_Expire` — consuming
+        ///- `TransferCommand_Send` — consuming
+        ///- `Archive` — consuming
+        ///- `TransferCommand_Withdraw` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommand {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `delegate` field.
             #[serde(rename = "delegate")]
             pub delegate: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `nonce` field.
             #[serde(rename = "nonce")]
             pub nonce: rt::Int64,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::core::option::Option<::std::string::String>,
         }
@@ -9601,23 +9283,25 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `TransferCommand_Expire` choice on [`TransferCommand`] (consuming).
         impl rt::Choice<TransferCommand>
-            for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_Expire
+            for crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_Expire
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_ExpireResult;
+            type Return =
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_ExpireResult;
             const NAME: &'static str = "TransferCommand_Expire";
             const CONSUMING: bool = true;
         }
         ///The `TransferCommand_Send` choice on [`TransferCommand`] (consuming).
         impl rt::Choice<TransferCommand>
-            for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_Send
+            for crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_Send
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_SendResult;
+            type Return =
+                crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_SendResult;
             const NAME: &'static str = "TransferCommand_Send";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`TransferCommand`] (consuming).
         impl rt::Choice<TransferCommand>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -9625,21 +9309,29 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `TransferCommand_Withdraw` choice on [`TransferCommand`] (consuming).
         impl rt::Choice<TransferCommand>
-        for crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_Withdraw {
-            type Return = crate::splice_amulet_0_1_14::Splice_ExternalPartyAmuletRules::TransferCommand_WithdrawResult;
+            for crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_Withdraw
+        {
+            type Return = crate::splice_amulet::Splice_ExternalPartyAmuletRules::TransferCommand_WithdrawResult;
             const NAME: &'static str = "TransferCommand_Withdraw";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ExternalPartyAmuletRules:TransferCommandCounter`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ExternalPartyAmuletRules:TransferCommandCounter`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferCommandCounter {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `nextNonce` field.
+            ///Daml field `nextNonce`.
             #[serde(rename = "nextNonce")]
             pub next_nonce: rt::Int64,
         }
@@ -9685,7 +9377,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`TransferCommandCounter`] (consuming).
         impl rt::Choice<TransferCommandCounter>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -9694,16 +9386,15 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Schedule {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Schedule<T, A> {
-            ///The Daml `initialValue` field.
+            ///Daml field `initialValue`.
             #[serde(rename = "initialValue")]
             pub initial_value: A,
-            ///The Daml `futureValues` field.
+            ///Daml field `futureValues`.
             #[serde(rename = "futureValues")]
-            pub future_values:
-                ::std::vec::Vec<crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<T, A>>,
+            pub future_values: ::std::vec::Vec<crate::daml_prim_DA_Types::DA_Types::Tuple2<T, A>>,
         }
         impl<T, A> rt::ToValue for Schedule<T, A>
         where
@@ -9740,10 +9431,9 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Fees {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RatePerDay {
-            ///The Daml `rate` field.
             #[serde(rename = "rate")]
             pub rate: rt::Numeric,
         }
@@ -9759,18 +9449,18 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExpiringAmount {
-            ///The Daml `initialAmount` field.
+            ///Daml field `initialAmount`.
             #[serde(rename = "initialAmount")]
             pub initial_amount: rt::Numeric,
-            ///The Daml `createdAt` field.
+            ///Daml field `createdAt`.
             #[serde(rename = "createdAt")]
-            pub created_at: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `ratePerRound` field.
+            pub created_at: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `ratePerRound`.
             #[serde(rename = "ratePerRound")]
-            pub rate_per_round: crate::splice_amulet_0_1_14::Splice_Fees::RatePerRound,
+            pub rate_per_round: crate::splice_amulet::Splice_Fees::RatePerRound,
         }
         impl rt::ToValue for ExpiringAmount {
             fn to_value(&self) -> rt::Value {
@@ -9802,16 +9492,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SteppedRate {
-            ///The Daml `initialRate` field.
+            ///Daml field `initialRate`.
             #[serde(rename = "initialRate")]
             pub initial_rate: rt::Numeric,
-            ///The Daml `steps` field.
             #[serde(rename = "steps")]
             pub steps: ::std::vec::Vec<
-                crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<rt::Numeric, rt::Numeric>,
+                crate::daml_prim_DA_Types::DA_Types::Tuple2<rt::Numeric, rt::Numeric>,
             >,
         }
         impl rt::ToValue for SteppedRate {
@@ -9834,10 +9523,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FixedFee {
-            ///The Daml `fee` field.
             #[serde(rename = "fee")]
             pub fee: rt::Numeric,
         }
@@ -9853,10 +9541,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RatePerRound {
-            ///The Daml `rate` field.
             #[serde(rename = "rate")]
             pub rate: rt::Numeric,
         }
@@ -9875,16 +9562,15 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Expiry {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TimeLock {
-            ///The Daml `holders` field.
             #[serde(rename = "holders")]
             pub holders: ::std::vec::Vec<rt::Party>,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `optContext` field.
+            ///Daml field `optContext`.
             #[serde(rename = "optContext")]
             pub opt_context: ::core::option::Option<::std::string::String>,
         }
@@ -9912,13 +9598,11 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum BoundedSet<A> {
-            ///The Daml `Singleton` constructor.
             #[serde(rename = "Singleton")]
             Singleton(A),
-            ///The Daml `AfterMaxBound` constructor.
             #[serde(rename = "AfterMaxBound")]
             AfterMaxBound(rt::Unit),
         }
@@ -9959,17 +9643,25 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_AmuletAllocation {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.AmuletAllocation:AmuletAllocation`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.AmuletAllocation:AmuletAllocation`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletAllocation {
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
             pub locked_amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet,
+                crate::splice_amulet::Splice_Amulet::LockedAmulet,
             >,
-            ///The Daml `allocation` field.
             #[serde(rename = "allocation")]
-            pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
+            pub allocation: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationSpecification,
         }
         impl rt::ToValue for AmuletAllocation {
             fn to_value(&self) -> rt::Value {
@@ -10012,7 +9704,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`AmuletAllocation`] (consuming).
         impl rt::Choice<AmuletAllocation>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -10021,16 +9713,16 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Issuance {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct IssuanceTranche {
-            ///The Daml `rewardsToIssue` field.
+            ///Daml field `rewardsToIssue`.
             #[serde(rename = "rewardsToIssue")]
             pub rewards_to_issue: rt::Numeric,
-            ///The Daml `issuancePerCoupon` field.
+            ///Daml field `issuancePerCoupon`.
             #[serde(rename = "issuancePerCoupon")]
             pub issuance_per_coupon: rt::Numeric,
-            ///The Daml `unclaimedRewards` field.
+            ///Daml field `unclaimedRewards`.
             #[serde(rename = "unclaimedRewards")]
             pub unclaimed_rewards: rt::Numeric,
         }
@@ -10073,31 +9765,31 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct IssuingRoundParameters {
-            ///The Daml `issuancePerValidatorRewardCoupon` field.
+            ///Daml field `issuancePerValidatorRewardCoupon`.
             #[serde(rename = "issuancePerValidatorRewardCoupon")]
             pub issuance_per_validator_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerFeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerFeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerFeaturedAppRewardCoupon")]
             pub issuance_per_featured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerUnfeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerUnfeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerUnfeaturedAppRewardCoupon")]
             pub issuance_per_unfeatured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerSvRewardCoupon` field.
+            ///Daml field `issuancePerSvRewardCoupon`.
             #[serde(rename = "issuancePerSvRewardCoupon")]
             pub issuance_per_sv_reward_coupon: rt::Numeric,
-            ///The Daml `unclaimedAppRewards` field.
+            ///Daml field `unclaimedAppRewards`.
             #[serde(rename = "unclaimedAppRewards")]
             pub unclaimed_app_rewards: rt::Numeric,
-            ///The Daml `unclaimedValidatorRewards` field.
+            ///Daml field `unclaimedValidatorRewards`.
             #[serde(rename = "unclaimedValidatorRewards")]
             pub unclaimed_validator_rewards: rt::Numeric,
-            ///The Daml `unclaimedSvRewards` field.
+            ///Daml field `unclaimedSvRewards`.
             #[serde(rename = "unclaimedSvRewards")]
             pub unclaimed_sv_rewards: rt::Numeric,
-            ///The Daml `issuancePerValidatorFaucetCoupon` field.
+            ///Daml field `issuancePerValidatorFaucetCoupon`.
             #[serde(rename = "issuancePerValidatorFaucetCoupon")]
             pub issuance_per_validator_faucet_coupon: rt::Numeric,
         }
@@ -10177,22 +9869,22 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct OpenMiningRoundSummary {
-            ///The Daml `totalValidatorRewardCoupons` field.
+            ///Daml field `totalValidatorRewardCoupons`.
             #[serde(rename = "totalValidatorRewardCoupons")]
             pub total_validator_reward_coupons: rt::Numeric,
-            ///The Daml `totalFeaturedAppRewardCoupons` field.
+            ///Daml field `totalFeaturedAppRewardCoupons`.
             #[serde(rename = "totalFeaturedAppRewardCoupons")]
             pub total_featured_app_reward_coupons: rt::Numeric,
-            ///The Daml `totalUnfeaturedAppRewardCoupons` field.
+            ///Daml field `totalUnfeaturedAppRewardCoupons`.
             #[serde(rename = "totalUnfeaturedAppRewardCoupons")]
             pub total_unfeatured_app_reward_coupons: rt::Numeric,
-            ///The Daml `totalSvRewardWeight` field.
+            ///Daml field `totalSvRewardWeight`.
             #[serde(rename = "totalSvRewardWeight")]
             pub total_sv_reward_weight: rt::Int64,
-            ///The Daml `optTotalValidatorFaucetCoupons` field.
+            ///Daml field `optTotalValidatorFaucetCoupons`.
             #[serde(rename = "optTotalValidatorFaucetCoupons")]
             pub opt_total_validator_faucet_coupons: ::core::option::Option<rt::Int64>,
         }
@@ -10249,28 +9941,28 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct IssuanceConfig {
-            ///The Daml `amuletToIssuePerYear` field.
+            ///Daml field `amuletToIssuePerYear`.
             #[serde(rename = "amuletToIssuePerYear")]
             pub amulet_to_issue_per_year: rt::Numeric,
-            ///The Daml `validatorRewardPercentage` field.
+            ///Daml field `validatorRewardPercentage`.
             #[serde(rename = "validatorRewardPercentage")]
             pub validator_reward_percentage: rt::Numeric,
-            ///The Daml `appRewardPercentage` field.
+            ///Daml field `appRewardPercentage`.
             #[serde(rename = "appRewardPercentage")]
             pub app_reward_percentage: rt::Numeric,
-            ///The Daml `validatorRewardCap` field.
+            ///Daml field `validatorRewardCap`.
             #[serde(rename = "validatorRewardCap")]
             pub validator_reward_cap: rt::Numeric,
-            ///The Daml `featuredAppRewardCap` field.
+            ///Daml field `featuredAppRewardCap`.
             #[serde(rename = "featuredAppRewardCap")]
             pub featured_app_reward_cap: rt::Numeric,
-            ///The Daml `unfeaturedAppRewardCap` field.
+            ///Daml field `unfeaturedAppRewardCap`.
             #[serde(rename = "unfeaturedAppRewardCap")]
             pub unfeatured_app_reward_cap: rt::Numeric,
-            ///The Daml `optValidatorFaucetCap` field.
+            ///Daml field `optValidatorFaucetCap`.
             #[serde(rename = "optValidatorFaucetCap")]
             pub opt_validator_faucet_cap: ::core::option::Option<rt::Numeric>,
         }
@@ -10352,13 +10044,13 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_ValidatorLicense {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLivenessActivityRecord_DsoExpire {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for ValidatorLivenessActivityRecord_DsoExpire {
             fn to_value(&self) -> rt::Value {
@@ -10379,13 +10071,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorFaucetCoupon_DsoExpire {
-            ///The Daml `closedRoundCid` field.
+            ///Daml field `closedRoundCid`.
             #[serde(rename = "closedRoundCid")]
             pub closed_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::ClosedMiningRound>,
+                rt::ContractId<crate::splice_amulet::Splice_Round::ClosedMiningRound>,
         }
         impl rt::ToValue for ValidatorFaucetCoupon_DsoExpire {
             fn to_value(&self) -> rt::Value {
@@ -10406,7 +10098,7 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_ReportActive {}
         impl rt::ToValue for ValidatorLicense_ReportActive {
@@ -10419,13 +10111,12 @@ pub mod splice_amulet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_UpdateMetadata {
-            ///The Daml `version` field.
             #[serde(rename = "version")]
             pub version: ::std::string::String,
-            ///The Daml `contactPoint` field.
+            ///Daml field `contactPoint`.
             #[serde(rename = "contactPoint")]
             pub contact_point: ::std::string::String,
         }
@@ -10451,10 +10142,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_Cancel {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -10472,10 +10162,9 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_Withdraw {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -10493,13 +10182,12 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_RecordValidatorLivenessActivity {
-            ///The Daml `openRoundCid` field.
+            ///Daml field `openRoundCid`.
             #[serde(rename = "openRoundCid")]
-            pub open_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for ValidatorLicense_RecordValidatorLivenessActivity {
             fn to_value(&self) -> rt::Value {
@@ -10520,13 +10208,12 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_ReceiveFaucetCoupon {
-            ///The Daml `openRoundCid` field.
+            ///Daml field `openRoundCid`.
             #[serde(rename = "openRoundCid")]
-            pub open_round_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound>,
+            pub open_round_cid: rt::ContractId<crate::splice_amulet::Splice_Round::OpenMiningRound>,
         }
         impl rt::ToValue for ValidatorLicense_ReceiveFaucetCoupon {
             fn to_value(&self) -> rt::Value {
@@ -10547,16 +10234,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicenseMetadata {
-            ///The Daml `lastUpdatedAt` field.
+            ///Daml field `lastUpdatedAt`.
             #[serde(rename = "lastUpdatedAt")]
             pub last_updated_at: rt::Timestamp,
-            ///The Daml `version` field.
             #[serde(rename = "version")]
             pub version: ::std::string::String,
-            ///The Daml `contactPoint` field.
+            ///Daml field `contactPoint`.
             #[serde(rename = "contactPoint")]
             pub contact_point: ::std::string::String,
         }
@@ -10596,7 +10282,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorLivenessActivityRecord_DsoExpireResult {
-            ///The Daml `ValidatorLivenessActivityRecord_DsoExpireResult` value.
             #[serde(rename = "ValidatorLivenessActivityRecord_DsoExpireResult")]
             ValidatorLivenessActivityRecord_DsoExpireResult,
         }
@@ -10635,7 +10320,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorFaucetCoupon_DsoExpireResult {
-            ///The Daml `ValidatorFaucetCoupon_DsoExpireResult` value.
             #[serde(rename = "ValidatorFaucetCoupon_DsoExpireResult")]
             ValidatorFaucetCoupon_DsoExpireResult,
         }
@@ -10669,14 +10353,13 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_ReportActiveResult {
-            ///The Daml `licenseCid` field.
+            ///Daml field `licenseCid`.
             #[serde(rename = "licenseCid")]
-            pub license_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense,
-            >,
+            pub license_cid:
+                rt::ContractId<crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense>,
         }
         impl rt::ToValue for ValidatorLicense_ReportActiveResult {
             fn to_value(&self) -> rt::Value {
@@ -10697,14 +10380,13 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_UpdateMetadataResult {
-            ///The Daml `licenseCid` field.
+            ///Daml field `licenseCid`.
             #[serde(rename = "licenseCid")]
-            pub license_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense,
-            >,
+            pub license_cid:
+                rt::ContractId<crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense>,
         }
         impl rt::ToValue for ValidatorLicense_UpdateMetadataResult {
             fn to_value(&self) -> rt::Value {
@@ -10730,7 +10412,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorLicense_CancelResult {
-            ///The Daml `ValidatorLicense_CancelResult` value.
             #[serde(rename = "ValidatorLicense_CancelResult")]
             ValidatorLicense_CancelResult,
         }
@@ -10761,7 +10442,6 @@ pub mod splice_amulet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum ValidatorLicense_WithdrawResult {
-            ///The Daml `ValidatorLicense_WithdrawResult` value.
             #[serde(rename = "ValidatorLicense_WithdrawResult")]
             ValidatorLicense_WithdrawResult,
         }
@@ -10787,18 +10467,17 @@ pub mod splice_amulet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_RecordValidatorLivenessActivityResult {
-            ///The Daml `licenseCid` field.
+            ///Daml field `licenseCid`.
             #[serde(rename = "licenseCid")]
-            pub license_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense,
-            >,
-            ///The Daml `couponCid` field.
+            pub license_cid:
+                rt::ContractId<crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense>,
+            ///Daml field `couponCid`.
             #[serde(rename = "couponCid")]
             pub coupon_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorLivenessActivityRecord,
             >,
         }
         impl rt::ToValue for ValidatorLicense_RecordValidatorLivenessActivityResult {
@@ -10825,18 +10504,17 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense_ReceiveFaucetCouponResult {
-            ///The Daml `licenseCid` field.
+            ///Daml field `licenseCid`.
             #[serde(rename = "licenseCid")]
-            pub license_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense,
-            >,
-            ///The Daml `couponCid` field.
+            pub license_cid:
+                rt::ContractId<crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense>,
+            ///Daml field `couponCid`.
             #[serde(rename = "couponCid")]
             pub coupon_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon,
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorFaucetCoupon,
             >,
         }
         impl rt::ToValue for ValidatorLicense_ReceiveFaucetCouponResult {
@@ -10863,16 +10541,16 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FaucetState {
-            ///The Daml `firstReceivedFor` field.
+            ///Daml field `firstReceivedFor`.
             #[serde(rename = "firstReceivedFor")]
-            pub first_received_for: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `lastReceivedFor` field.
+            pub first_received_for: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `lastReceivedFor`.
             #[serde(rename = "lastReceivedFor")]
-            pub last_received_for: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `numCouponsMissed` field.
+            pub last_received_for: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `numCouponsMissed`.
             #[serde(rename = "numCouponsMissed")]
             pub num_coupons_missed: rt::Int64,
         }
@@ -10915,18 +10593,25 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ValidatorLicense:ValidatorFaucetCoupon`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ValidatorLicense:ValidatorFaucetCoupon`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ValidatorFaucetCoupon_DsoExpire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorFaucetCoupon {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
+            pub round: crate::splice_amulet::Splice_Types::Round,
         }
         impl rt::ToValue for ValidatorFaucetCoupon {
             fn to_value(&self) -> rt::Value {
@@ -10968,42 +10653,53 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ValidatorFaucetCoupon_DsoExpire` choice on [`ValidatorFaucetCoupon`] (consuming).
         impl rt::Choice<ValidatorFaucetCoupon>
-        for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon_DsoExpire {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorFaucetCoupon_DsoExpireResult;
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorFaucetCoupon_DsoExpire
+        {
+            type Return = crate::splice_amulet::Splice_ValidatorLicense::ValidatorFaucetCoupon_DsoExpireResult;
             const NAME: &'static str = "ValidatorFaucetCoupon_DsoExpire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`ValidatorFaucetCoupon`] (consuming).
         impl rt::Choice<ValidatorFaucetCoupon>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ValidatorLicense:ValidatorLicense`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ValidatorLicense:ValidatorLicense`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `ValidatorLicense_ReceiveFaucetCoupon` — consuming
+        ///- `ValidatorLicense_RecordValidatorLivenessActivity` — consuming
+        ///- `ValidatorLicense_Withdraw` — consuming
+        ///- `ValidatorLicense_Cancel` — consuming
+        ///- `ValidatorLicense_UpdateMetadata` — consuming
+        ///- `ValidatorLicense_ReportActive` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLicense {
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `sponsor` field.
             #[serde(rename = "sponsor")]
             pub sponsor: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `faucetState` field.
+            ///Daml field `faucetState`.
             #[serde(rename = "faucetState")]
-            pub faucet_state: ::core::option::Option<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::FaucetState,
-            >,
-            ///The Daml `metadata` field.
+            pub faucet_state:
+                ::core::option::Option<crate::splice_amulet::Splice_ValidatorLicense::FaucetState>,
             #[serde(rename = "metadata")]
             pub metadata: ::core::option::Option<
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicenseMetadata,
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicenseMetadata,
             >,
-            ///The Daml `lastActiveAt` field.
+            ///Daml field `lastActiveAt`.
             #[serde(rename = "lastActiveAt")]
             pub last_active_at: ::core::option::Option<rt::Timestamp>,
         }
@@ -11058,70 +10754,81 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ValidatorLicense_ReceiveFaucetCoupon` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-        for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_ReceiveFaucetCoupon {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_ReceiveFaucetCouponResult;
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_ReceiveFaucetCoupon
+        {
+            type Return = crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_ReceiveFaucetCouponResult;
             const NAME: &'static str = "ValidatorLicense_ReceiveFaucetCoupon";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorLicense_RecordValidatorLivenessActivity` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-        for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_RecordValidatorLivenessActivity {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_RecordValidatorLivenessActivityResult;
+        for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_RecordValidatorLivenessActivity {
+            type Return = crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_RecordValidatorLivenessActivityResult;
             const NAME: &'static str = "ValidatorLicense_RecordValidatorLivenessActivity";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorLicense_Withdraw` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-            for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_Withdraw
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_Withdraw
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_WithdrawResult;
+            type Return =
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_WithdrawResult;
             const NAME: &'static str = "ValidatorLicense_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorLicense_Cancel` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-            for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_Cancel
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_Cancel
         {
             type Return =
-                crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_CancelResult;
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_CancelResult;
             const NAME: &'static str = "ValidatorLicense_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorLicense_UpdateMetadata` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-        for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_UpdateMetadata {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_UpdateMetadataResult;
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_UpdateMetadata
+        {
+            type Return = crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_UpdateMetadataResult;
             const NAME: &'static str = "ValidatorLicense_UpdateMetadata";
             const CONSUMING: bool = true;
         }
         ///The `ValidatorLicense_ReportActive` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-            for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_ReportActive
+            for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_ReportActive
         {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLicense_ReportActiveResult;
+            type Return =
+                crate::splice_amulet::Splice_ValidatorLicense::ValidatorLicense_ReportActiveResult;
             const NAME: &'static str = "ValidatorLicense_ReportActive";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`ValidatorLicense`] (consuming).
         impl rt::Choice<ValidatorLicense>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.ValidatorLicense:ValidatorLivenessActivityRecord`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.ValidatorLicense:ValidatorLivenessActivityRecord`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        ///- `ValidatorLivenessActivityRecord_DsoExpire` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorLivenessActivityRecord {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
+            pub round: crate::splice_amulet::Splice_Types::Round,
         }
         impl rt::ToValue for ValidatorLivenessActivityRecord {
             fn to_value(&self) -> rt::Value {
@@ -11163,7 +10870,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`ValidatorLivenessActivityRecord`] (consuming).
         impl rt::Choice<ValidatorLivenessActivityRecord>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -11171,27 +10878,26 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `ValidatorLivenessActivityRecord_DsoExpire` choice on [`ValidatorLivenessActivityRecord`] (consuming).
         impl rt::Choice<ValidatorLivenessActivityRecord>
-        for crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord_DsoExpire {
-            type Return = crate::splice_amulet_0_1_14::Splice_ValidatorLicense::ValidatorLivenessActivityRecord_DsoExpireResult;
+        for crate::splice_amulet::Splice_ValidatorLicense::ValidatorLivenessActivityRecord_DsoExpire {
+            type Return = crate::splice_amulet::Splice_ValidatorLicense::ValidatorLivenessActivityRecord_DsoExpireResult;
             const NAME: &'static str = "ValidatorLivenessActivityRecord_DsoExpire";
             const CONSUMING: bool = true;
         }
     }
     pub mod Splice_DecentralizedSynchronizer {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ForMemberTraffic {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
         }
@@ -11228,19 +10934,20 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SynchronizerFeesConfig {
-            ///The Daml `baseRateTrafficLimits` field.
+            ///Daml field `baseRateTrafficLimits`.
             #[serde(rename = "baseRateTrafficLimits")]
-            pub base_rate_traffic_limits: crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::BaseRateTrafficLimits,
-            ///The Daml `extraTrafficPrice` field.
+            pub base_rate_traffic_limits:
+                crate::splice_amulet::Splice_DecentralizedSynchronizer::BaseRateTrafficLimits,
+            ///Daml field `extraTrafficPrice`.
             #[serde(rename = "extraTrafficPrice")]
             pub extra_traffic_price: rt::Numeric,
-            ///The Daml `readVsWriteScalingFactor` field.
+            ///Daml field `readVsWriteScalingFactor`.
             #[serde(rename = "readVsWriteScalingFactor")]
             pub read_vs_write_scaling_factor: rt::Int64,
-            ///The Daml `minTopupAmount` field.
+            ///Daml field `minTopupAmount`.
             #[serde(rename = "minTopupAmount")]
             pub min_topup_amount: rt::Int64,
         }
@@ -11292,15 +10999,15 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BaseRateTrafficLimits {
-            ///The Daml `burstAmount` field.
+            ///Daml field `burstAmount`.
             #[serde(rename = "burstAmount")]
             pub burst_amount: rt::Int64,
-            ///The Daml `burstWindow` field.
+            ///Daml field `burstWindow`.
             #[serde(rename = "burstWindow")]
-            pub burst_window: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            pub burst_window: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
         }
         impl rt::ToValue for BaseRateTrafficLimits {
             fn to_value(&self) -> rt::Value {
@@ -11326,20 +11033,19 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletDecentralizedSynchronizerConfig {
-            ///The Daml `requiredSynchronizers` field.
+            ///Daml field `requiredSynchronizers`.
             #[serde(rename = "requiredSynchronizers")]
-            pub required_synchronizers: crate::daml_stdlib_DA_Set_Types_1_0_0::DA_Set_Types::Set<
-                ::std::string::String,
-            >,
-            ///The Daml `activeSynchronizer` field.
+            pub required_synchronizers:
+                crate::daml_stdlib_DA_Set_Types::DA_Set_Types::Set<::std::string::String>,
+            ///Daml field `activeSynchronizer`.
             #[serde(rename = "activeSynchronizer")]
             pub active_synchronizer: ::std::string::String,
-            ///The Daml `fees` field.
             #[serde(rename = "fees")]
-            pub fees: crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::SynchronizerFeesConfig,
+            pub fees:
+                crate::splice_amulet::Splice_DecentralizedSynchronizer::SynchronizerFeesConfig,
         }
         impl rt::ToValue for AmuletDecentralizedSynchronizerConfig {
             fn to_value(&self) -> rt::Value {
@@ -11373,31 +11079,39 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.DecentralizedSynchronizer:MemberTraffic`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.DecentralizedSynchronizer:MemberTraffic`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct MemberTraffic {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
-            ///The Daml `totalPurchased` field.
+            ///Daml field `totalPurchased`.
             #[serde(rename = "totalPurchased")]
             pub total_purchased: rt::Int64,
-            ///The Daml `numPurchases` field.
+            ///Daml field `numPurchases`.
             #[serde(rename = "numPurchases")]
             pub num_purchases: rt::Int64,
-            ///The Daml `amuletSpent` field.
+            ///Daml field `amuletSpent`.
             #[serde(rename = "amuletSpent")]
             pub amulet_spent: rt::Numeric,
-            ///The Daml `usdSpent` field.
+            ///Daml field `usdSpent`.
             #[serde(rename = "usdSpent")]
             pub usd_spent: rt::Numeric,
         }
@@ -11488,7 +11202,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`MemberTraffic`] (consuming).
         impl rt::Choice<MemberTraffic>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -11497,10 +11211,9 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_RelRound {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RelRound {
-            ///The Daml `diff` field.
             #[serde(rename = "diff")]
             pub diff: rt::Int64,
         }
@@ -11519,10 +11232,9 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Round {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct OpenMiningRound_Fetch {
-            ///The Daml `p` field.
             #[serde(rename = "p")]
             pub p: rt::Party,
         }
@@ -11538,28 +11250,35 @@ pub mod splice_amulet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Round:ClosedMiningRound`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Round:ClosedMiningRound`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ClosedMiningRound {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `issuancePerValidatorRewardCoupon` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `issuancePerValidatorRewardCoupon`.
             #[serde(rename = "issuancePerValidatorRewardCoupon")]
             pub issuance_per_validator_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerFeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerFeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerFeaturedAppRewardCoupon")]
             pub issuance_per_featured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerUnfeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerUnfeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerUnfeaturedAppRewardCoupon")]
             pub issuance_per_unfeatured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerSvRewardCoupon` field.
+            ///Daml field `issuancePerSvRewardCoupon`.
             #[serde(rename = "issuancePerSvRewardCoupon")]
             pub issuance_per_sv_reward_coupon: rt::Numeric,
-            ///The Daml `optIssuancePerValidatorFaucetCoupon` field.
+            ///Daml field `optIssuancePerValidatorFaucetCoupon`.
             #[serde(rename = "optIssuancePerValidatorFaucetCoupon")]
             pub opt_issuance_per_validator_faucet_coupon: ::core::option::Option<rt::Numeric>,
         }
@@ -11655,40 +11374,47 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`ClosedMiningRound`] (consuming).
         impl rt::Choice<ClosedMiningRound>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Round:IssuingMiningRound`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Round:IssuingMiningRound`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct IssuingMiningRound {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `issuancePerValidatorRewardCoupon` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `issuancePerValidatorRewardCoupon`.
             #[serde(rename = "issuancePerValidatorRewardCoupon")]
             pub issuance_per_validator_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerFeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerFeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerFeaturedAppRewardCoupon")]
             pub issuance_per_featured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerUnfeaturedAppRewardCoupon` field.
+            ///Daml field `issuancePerUnfeaturedAppRewardCoupon`.
             #[serde(rename = "issuancePerUnfeaturedAppRewardCoupon")]
             pub issuance_per_unfeatured_app_reward_coupon: rt::Numeric,
-            ///The Daml `issuancePerSvRewardCoupon` field.
+            ///Daml field `issuancePerSvRewardCoupon`.
             #[serde(rename = "issuancePerSvRewardCoupon")]
             pub issuance_per_sv_reward_coupon: rt::Numeric,
-            ///The Daml `opensAt` field.
+            ///Daml field `opensAt`.
             #[serde(rename = "opensAt")]
             pub opens_at: rt::Timestamp,
-            ///The Daml `targetClosesAt` field.
+            ///Daml field `targetClosesAt`.
             #[serde(rename = "targetClosesAt")]
             pub target_closes_at: rt::Timestamp,
-            ///The Daml `optIssuancePerValidatorFaucetCoupon` field.
+            ///Daml field `optIssuancePerValidatorFaucetCoupon`.
             #[serde(rename = "optIssuancePerValidatorFaucetCoupon")]
             pub opt_issuance_per_validator_faucet_coupon: ::core::option::Option<rt::Numeric>,
         }
@@ -11802,45 +11528,52 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`IssuingMiningRound`] (consuming).
         impl rt::Choice<IssuingMiningRound>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Round:OpenMiningRound`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Round:OpenMiningRound`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        ///- `OpenMiningRound_Fetch` — non-consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct OpenMiningRound {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `amuletPrice` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `opensAt` field.
+            ///Daml field `opensAt`.
             #[serde(rename = "opensAt")]
             pub opens_at: rt::Timestamp,
-            ///The Daml `targetClosesAt` field.
+            ///Daml field `targetClosesAt`.
             #[serde(rename = "targetClosesAt")]
             pub target_closes_at: rt::Timestamp,
-            ///The Daml `issuingFor` field.
+            ///Daml field `issuingFor`.
             #[serde(rename = "issuingFor")]
-            pub issuing_for: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `transferConfigUsd` field.
+            pub issuing_for: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `transferConfigUsd`.
             #[serde(rename = "transferConfigUsd")]
-            pub transfer_config_usd:
-                crate::splice_amulet_0_1_14::Splice_AmuletConfig::TransferConfig<
-                    crate::splice_amulet_0_1_14::Splice_AmuletConfig::USD,
-                >,
-            ///The Daml `issuanceConfig` field.
+            pub transfer_config_usd: crate::splice_amulet::Splice_AmuletConfig::TransferConfig<
+                crate::splice_amulet::Splice_AmuletConfig::USD,
+            >,
+            ///Daml field `issuanceConfig`.
             #[serde(rename = "issuanceConfig")]
-            pub issuance_config: crate::splice_amulet_0_1_14::Splice_Issuance::IssuanceConfig,
-            ///The Daml `tickDuration` field.
+            pub issuance_config: crate::splice_amulet::Splice_Issuance::IssuanceConfig,
+            ///Daml field `tickDuration`.
             #[serde(rename = "tickDuration")]
-            pub tick_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            pub tick_duration: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
         }
         impl rt::ToValue for OpenMiningRound {
             fn to_value(&self) -> rt::Value {
@@ -11940,38 +11673,43 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`OpenMiningRound`] (consuming).
         impl rt::Choice<OpenMiningRound>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
         ///The `OpenMiningRound_Fetch` choice on [`OpenMiningRound`] (non-consuming).
-        impl rt::Choice<OpenMiningRound>
-            for crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound_Fetch
-        {
-            type Return = crate::splice_amulet_0_1_14::Splice_Round::OpenMiningRound;
+        impl rt::Choice<OpenMiningRound> for crate::splice_amulet::Splice_Round::OpenMiningRound_Fetch {
+            type Return = crate::splice_amulet::Splice_Round::OpenMiningRound;
             const NAME: &'static str = "OpenMiningRound_Fetch";
             const CONSUMING: bool = false;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Round:SummarizingMiningRound`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-amulet:Splice.Round:SummarizingMiningRound`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SummarizingMiningRound {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `round` field.
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `amuletPrice` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
+            ///Daml field `amuletPrice`.
             #[serde(rename = "amuletPrice")]
             pub amulet_price: rt::Numeric,
-            ///The Daml `issuanceConfig` field.
+            ///Daml field `issuanceConfig`.
             #[serde(rename = "issuanceConfig")]
-            pub issuance_config: crate::splice_amulet_0_1_14::Splice_Issuance::IssuanceConfig,
-            ///The Daml `tickDuration` field.
+            pub issuance_config: crate::splice_amulet::Splice_Issuance::IssuanceConfig,
+            ///Daml field `tickDuration`.
             #[serde(rename = "tickDuration")]
-            pub tick_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            pub tick_duration: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
         }
         impl rt::ToValue for SummarizingMiningRound {
             fn to_value(&self) -> rt::Value {
@@ -12033,7 +11771,7 @@ pub mod splice_amulet_0_1_14 {
         }
         ///The `Archive` choice on [`SummarizingMiningRound`] (consuming).
         impl rt::Choice<SummarizingMiningRound>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -12042,34 +11780,29 @@ pub mod splice_amulet_0_1_14 {
     }
     pub mod Splice_Amulet_TwoStepTransfer {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TwoStepTransfer {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `lockContext` field.
+            ///Daml field `lockContext`.
             #[serde(rename = "lockContext")]
             pub lock_context: ::std::string::String,
-            ///The Daml `transferBefore` field.
+            ///Daml field `transferBefore`.
             #[serde(rename = "transferBefore")]
             pub transfer_before: rt::Timestamp,
-            ///The Daml `transferBeforeDeadline` field.
+            ///Daml field `transferBeforeDeadline`.
             #[serde(rename = "transferBeforeDeadline")]
             pub transfer_before_deadline: ::std::string::String,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `allowFeaturing` field.
+            ///Daml field `allowFeaturing`.
             #[serde(rename = "allowFeaturing")]
             pub allow_featuring: bool,
         }
@@ -12138,22 +11871,18 @@ pub mod splice_amulet_0_1_14 {
         }
     }
 }
-pub mod splice_api_featured_app_v1_1_0_0 {
+pub mod splice_api_featured_app_v1 {
     pub mod Splice_Api_FeaturedAppRightV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppActivityMarkerView {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
             pub beneficiary: rt::Party,
-            ///The Daml `weight` field.
             #[serde(rename = "weight")]
             pub weight: rt::Numeric,
         }
@@ -12185,13 +11914,11 @@ pub mod splice_api_featured_app_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRightView {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
         }
@@ -12213,14 +11940,14 @@ pub mod splice_api_featured_app_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRight_CreateActivityMarkerResult {
-            ///The Daml `activityMarkerCids` field.
+            ///Daml field `activityMarkerCids`.
             #[serde(rename = "activityMarkerCids")]
             pub activity_marker_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppActivityMarker,
+                    crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::FeaturedAppActivityMarker,
                 >,
             >,
         }
@@ -12243,13 +11970,12 @@ pub mod splice_api_featured_app_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct FeaturedAppRight_CreateActivityMarker {
-            ///The Daml `beneficiaries` field.
             #[serde(rename = "beneficiaries")]
             pub beneficiaries: ::std::vec::Vec<
-                crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
+                crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::AppRewardBeneficiary,
             >,
         }
         impl rt::ToValue for FeaturedAppRight_CreateActivityMarker {
@@ -12271,13 +11997,11 @@ pub mod splice_api_featured_app_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppRewardBeneficiary {
-            ///The Daml `beneficiary` field.
             #[serde(rename = "beneficiary")]
             pub beneficiary: rt::Party,
-            ///The Daml `weight` field.
             #[serde(rename = "weight")]
             pub weight: rt::Numeric,
         }
@@ -12317,11 +12041,11 @@ pub mod splice_api_featured_app_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "FeaturedAppActivityMarker";
         }
         impl rt::Interface for FeaturedAppActivityMarker {
-            type View = crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppActivityMarkerView;
+            type View = crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::FeaturedAppActivityMarkerView;
         }
         ///The `Archive` choice on [`FeaturedAppActivityMarker`] (consuming).
         impl rt::Choice<FeaturedAppActivityMarker>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -12335,11 +12059,11 @@ pub mod splice_api_featured_app_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "FeaturedAppRight";
         }
         impl rt::Interface for FeaturedAppRight {
-            type View = crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppRightView;
+            type View = crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::FeaturedAppRightView;
         }
         ///The `Archive` choice on [`FeaturedAppRight`] (consuming).
         impl rt::Choice<FeaturedAppRight>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -12347,30 +12071,27 @@ pub mod splice_api_featured_app_v1_1_0_0 {
         }
         ///The `FeaturedAppRight_CreateActivityMarker` choice on [`FeaturedAppRight`] (non-consuming).
         impl rt::Choice<FeaturedAppRight>
-        for crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppRight_CreateActivityMarker {
-            type Return = crate::splice_api_featured_app_v1_1_0_0::Splice_Api_FeaturedAppRightV1::FeaturedAppRight_CreateActivityMarkerResult;
+        for crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::FeaturedAppRight_CreateActivityMarker {
+            type Return = crate::splice_api_featured_app_v1::Splice_Api_FeaturedAppRightV1::FeaturedAppRight_CreateActivityMarkerResult;
             const NAME: &'static str = "FeaturedAppRight_CreateActivityMarker";
             const CONSUMING: bool = false;
         }
     }
 }
-pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
+pub mod splice_api_token_allocation_instruction_v1 {
     pub mod Splice_Api_Token_AllocationInstructionV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AllocationInstructionResult_Output {
-            ///The Daml `AllocationInstructionResult_Pending` constructor.
             #[serde(rename = "AllocationInstructionResult_Pending")]
             AllocationInstructionResult_Pending(
-                crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output_AllocationInstructionResult_Pending,
+                crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output_AllocationInstructionResult_Pending,
             ),
-            ///The Daml `AllocationInstructionResult_Completed` constructor.
             #[serde(rename = "AllocationInstructionResult_Completed")]
             AllocationInstructionResult_Completed(
-                crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output_AllocationInstructionResult_Completed,
+                crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output_AllocationInstructionResult_Completed,
             ),
-            ///The Daml `AllocationInstructionResult_Failed` constructor.
             #[serde(rename = "AllocationInstructionResult_Failed")]
             AllocationInstructionResult_Failed(rt::Unit),
         }
@@ -12424,13 +12145,13 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
-            ///The Daml `allocationInstructionCid` field.
+            ///Daml field `allocationInstructionCid`.
             #[serde(rename = "allocationInstructionCid")]
             pub allocation_instruction_cid: rt::ContractId<
-                crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
+                crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
             >,
         }
         impl rt::ToValue for AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
@@ -12452,13 +12173,13 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
-            ///The Daml `allocationCid` field.
+            ///Daml field `allocationCid`.
             #[serde(rename = "allocationCid")]
             pub allocation_cid: rt::ContractId<
-                crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation,
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation,
             >,
         }
         impl rt::ToValue for AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
@@ -12480,22 +12201,20 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult {
-            ///The Daml `output` field.
             #[serde(rename = "output")]
-            pub output: crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output,
-            ///The Daml `senderChangeCids` field.
+            pub output: crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult_Output,
+            ///Daml field `senderChangeCids`.
             #[serde(rename = "senderChangeCids")]
             pub sender_change_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationInstructionResult {
             fn to_value(&self) -> rt::Value {
@@ -12524,13 +12243,12 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactory_PublicFetch {
-            ///The Daml `expectedAdmin` field.
+            ///Daml field `expectedAdmin`.
             #[serde(rename = "expectedAdmin")]
             pub expected_admin: rt::Party,
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -12554,28 +12272,27 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactory_Allocate {
-            ///The Daml `expectedAdmin` field.
+            ///Daml field `expectedAdmin`.
             #[serde(rename = "expectedAdmin")]
             pub expected_admin: rt::Party,
-            ///The Daml `allocation` field.
             #[serde(rename = "allocation")]
-            pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
-            ///The Daml `requestedAt` field.
+            pub allocation: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationSpecification,
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `inputHoldingCids` field.
+            ///Daml field `inputHoldingCids`.
             #[serde(rename = "inputHoldingCids")]
             pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
-            pub extra_args: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+            pub extra_args: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for AllocationFactory_Allocate {
             fn to_value(&self) -> rt::Value {
@@ -12622,16 +12339,13 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactoryView {
-            ///The Daml `admin` field.
             #[serde(rename = "admin")]
             pub admin: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationFactoryView {
             fn to_value(&self) -> rt::Value {
@@ -12649,16 +12363,16 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstruction_Update {
-            ///The Daml `extraActors` field.
+            ///Daml field `extraActors`.
             #[serde(rename = "extraActors")]
             pub extra_actors: ::std::vec::Vec<rt::Party>,
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for AllocationInstruction_Update {
             fn to_value(&self) -> rt::Value {
@@ -12684,13 +12398,13 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstruction_Withdraw {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for AllocationInstruction_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -12711,35 +12425,33 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionView {
-            ///The Daml `originalInstructionCid` field.
+            ///Daml field `originalInstructionCid`.
             #[serde(rename = "originalInstructionCid")]
             pub original_instruction_cid: ::core::option::Option<
                 rt::ContractId<
-                    crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
+                    crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
                 >,
             >,
-            ///The Daml `allocation` field.
             #[serde(rename = "allocation")]
-            pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
-            ///The Daml `pendingActions` field.
+            pub allocation: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationSpecification,
+            ///Daml field `pendingActions`.
             #[serde(rename = "pendingActions")]
             pub pending_actions: rt::GenMap<rt::Party, ::std::string::String>,
-            ///The Daml `requestedAt` field.
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `inputHoldingCids` field.
+            ///Daml field `inputHoldingCids`.
             #[serde(rename = "inputHoldingCids")]
             pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationInstructionView {
             fn to_value(&self) -> rt::Value {
@@ -12808,11 +12520,11 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "AllocationFactory";
         }
         impl rt::Interface for AllocationFactory {
-            type View = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactoryView;
+            type View = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactoryView;
         }
         ///The `Archive` choice on [`AllocationFactory`] (consuming).
         impl rt::Choice<AllocationFactory>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -12820,15 +12532,15 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
         }
         ///The `AllocationFactory_Allocate` choice on [`AllocationFactory`] (non-consuming).
         impl rt::Choice<AllocationFactory>
-        for crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_Allocate {
-            type Return = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
+        for crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_Allocate {
+            type Return = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
             const NAME: &'static str = "AllocationFactory_Allocate";
             const CONSUMING: bool = false;
         }
         ///The `AllocationFactory_PublicFetch` choice on [`AllocationFactory`] (non-consuming).
         impl rt::Choice<AllocationFactory>
-        for crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_PublicFetch {
-            type Return = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactoryView;
+        for crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_PublicFetch {
+            type Return = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactoryView;
             const NAME: &'static str = "AllocationFactory_PublicFetch";
             const CONSUMING: bool = false;
         }
@@ -12840,11 +12552,11 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "AllocationInstruction";
         }
         impl rt::Interface for AllocationInstruction {
-            type View = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionView;
+            type View = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionView;
         }
         ///The `Archive` choice on [`AllocationInstruction`] (consuming).
         impl rt::Choice<AllocationInstruction>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -12852,37 +12564,35 @@ pub mod splice_api_token_allocation_instruction_v1_1_0_0 {
         }
         ///The `AllocationInstruction_Withdraw` choice on [`AllocationInstruction`] (consuming).
         impl rt::Choice<AllocationInstruction>
-        for crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction_Withdraw {
-            type Return = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
+        for crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction_Withdraw {
+            type Return = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
             const NAME: &'static str = "AllocationInstruction_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `AllocationInstruction_Update` choice on [`AllocationInstruction`] (consuming).
         impl rt::Choice<AllocationInstruction>
-        for crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction_Update {
-            type Return = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
+        for crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction_Update {
+            type Return = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
             const NAME: &'static str = "AllocationInstruction_Update";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_allocation_v1_1_0_0 {
+pub mod splice_api_token_allocation_v1 {
     pub mod Splice_Api_Token_AllocationV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_WithdrawResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -12907,20 +12617,18 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_CancelResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_CancelResult {
             fn to_value(&self) -> rt::Value {
@@ -12945,27 +12653,25 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransferResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `receiverHoldingCids` field.
+            ///Daml field `receiverHoldingCids`.
             #[serde(rename = "receiverHoldingCids")]
             pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_ExecuteTransferResult {
             fn to_value(&self) -> rt::Value {
@@ -12999,13 +12705,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Withdraw {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -13026,13 +12732,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Cancel {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -13053,13 +12759,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransfer {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_ExecuteTransfer {
             fn to_value(&self) -> rt::Value {
@@ -13080,22 +12786,20 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationView {
-            ///The Daml `allocation` field.
             #[serde(rename = "allocation")]
-            pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
-            ///The Daml `holdingCids` field.
+            pub allocation: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationSpecification,
+            ///Daml field `holdingCids`.
             #[serde(rename = "holdingCids")]
             pub holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationView {
             fn to_value(&self) -> rt::Value {
@@ -13123,18 +12827,17 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationSpecification {
-            ///The Daml `settlement` field.
             #[serde(rename = "settlement")]
-            pub settlement: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::SettlementInfo,
-            ///The Daml `transferLegId` field.
+            pub settlement: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::SettlementInfo,
+            ///Daml field `transferLegId`.
             #[serde(rename = "transferLegId")]
             pub transfer_leg_id: ::std::string::String,
-            ///The Daml `transferLeg` field.
+            ///Daml field `transferLeg`.
             #[serde(rename = "transferLeg")]
-            pub transfer_leg: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::TransferLeg,
+            pub transfer_leg: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::TransferLeg,
         }
         impl rt::ToValue for AllocationSpecification {
             fn to_value(&self) -> rt::Value {
@@ -13169,26 +12872,21 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferLeg {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `instrumentId` field.
+            ///Daml field `instrumentId`.
             #[serde(rename = "instrumentId")]
             pub instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `meta` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for TransferLeg {
             fn to_value(&self) -> rt::Value {
@@ -13222,27 +12920,26 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SettlementInfo {
-            ///The Daml `executor` field.
             #[serde(rename = "executor")]
             pub executor: rt::Party,
-            ///The Daml `settlementRef` field.
+            ///Daml field `settlementRef`.
             #[serde(rename = "settlementRef")]
-            pub settlement_ref: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Reference,
-            ///The Daml `requestedAt` field.
+            pub settlement_ref:
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Reference,
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `allocateBefore` field.
+            ///Daml field `allocateBefore`.
             #[serde(rename = "allocateBefore")]
             pub allocate_before: rt::Timestamp,
-            ///The Daml `settleBefore` field.
+            ///Daml field `settleBefore`.
             #[serde(rename = "settleBefore")]
             pub settle_before: rt::Timestamp,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for SettlementInfo {
             fn to_value(&self) -> rt::Value {
@@ -13289,17 +12986,15 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Reference {
-            ///The Daml `id` field.
             #[serde(rename = "id")]
             pub id: ::std::string::String,
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: ::core::option::Option<
                 rt::ContractId<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
             >,
         }
@@ -13330,11 +13025,11 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "Allocation";
         }
         impl rt::Interface for Allocation {
-            type View = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationView;
+            type View = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationView;
         }
         ///The `Archive` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -13342,52 +13037,47 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         }
         ///The `Allocation_Withdraw` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_Withdraw {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_Withdraw {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
             const NAME: &'static str = "Allocation_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `Allocation_Cancel` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_Cancel {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_CancelResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_Cancel {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_CancelResult;
             const NAME: &'static str = "Allocation_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `Allocation_ExecuteTransfer` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransfer {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransferResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransfer {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransferResult;
             const NAME: &'static str = "Allocation_ExecuteTransfer";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_holding_v1_1_0_0 {
+pub mod splice_api_token_holding_v1 {
     pub mod Splice_Api_Token_HoldingV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct HoldingView {
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
-            ///The Daml `instrumentId` field.
+            ///Daml field `instrumentId`.
             #[serde(rename = "instrumentId")]
             pub instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `amount` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `lock` field.
             #[serde(rename = "lock")]
             pub lock: ::core::option::Option<
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock,
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Lock,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for HoldingView {
             fn to_value(&self) -> rt::Value {
@@ -13417,21 +13107,18 @@ pub mod splice_api_token_holding_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Lock {
-            ///The Daml `holders` field.
             #[serde(rename = "holders")]
             pub holders: ::std::vec::Vec<rt::Party>,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: ::core::option::Option<rt::Timestamp>,
-            ///The Daml `expiresAfter` field.
+            ///Daml field `expiresAfter`.
             #[serde(rename = "expiresAfter")]
-            pub expires_after: ::core::option::Option<
-                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            >,
-            ///The Daml `context` field.
+            pub expires_after:
+                ::core::option::Option<crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime>,
             #[serde(rename = "context")]
             pub context: ::core::option::Option<::std::string::String>,
         }
@@ -13457,13 +13144,11 @@ pub mod splice_api_token_holding_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InstrumentId {
-            ///The Daml `admin` field.
             #[serde(rename = "admin")]
             pub admin: rt::Party,
-            ///The Daml `id` field.
             #[serde(rename = "id")]
             pub id: ::std::string::String,
         }
@@ -13494,29 +13179,24 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "Holding";
         }
         impl rt::Interface for Holding {
-            type View =
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::HoldingView;
+            type View = crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::HoldingView;
         }
         ///The `Archive` choice on [`Holding`] (consuming).
-        impl rt::Choice<Holding>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
-        {
+        impl rt::Choice<Holding> for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_metadata_v1_1_0_0 {
+pub mod splice_api_token_metadata_v1 {
     pub mod Splice_Api_Token_MetadataV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ChoiceExecutionMetadata {
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for ChoiceExecutionMetadata {
             fn to_value(&self) -> rt::Value {
@@ -13530,15 +13210,14 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExtraArgs {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ChoiceContext,
-            ///The Daml `meta` field.
+            pub context:
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ChoiceContext,
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for ExtraArgs {
             fn to_value(&self) -> rt::Value {
@@ -13558,10 +13237,9 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Metadata {
-            ///The Daml `values` field.
             #[serde(rename = "values")]
             pub values: rt::TextMap<::std::string::String>,
         }
@@ -13579,13 +13257,12 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ChoiceContext {
-            ///The Daml `values` field.
             #[serde(rename = "values")]
             pub values: rt::TextMap<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
             >,
         }
         impl rt::ToValue for ChoiceContext {
@@ -13602,7 +13279,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AnyContractView {}
         impl rt::ToValue for AnyContractView {
@@ -13615,52 +13292,41 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AnyValue {
-            ///The Daml `AV_Text` constructor.
             #[serde(rename = "AV_Text")]
             AV_Text(::std::string::String),
-            ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
             AV_Int(rt::Int64),
-            ///The Daml `AV_Decimal` constructor.
             #[serde(rename = "AV_Decimal")]
             AV_Decimal(rt::Numeric),
-            ///The Daml `AV_Bool` constructor.
             #[serde(rename = "AV_Bool")]
             AV_Bool(bool),
-            ///The Daml `AV_Date` constructor.
             #[serde(rename = "AV_Date")]
             AV_Date(rt::Date),
-            ///The Daml `AV_Time` constructor.
             #[serde(rename = "AV_Time")]
             AV_Time(rt::Timestamp),
-            ///The Daml `AV_RelTime` constructor.
             #[serde(rename = "AV_RelTime")]
-            AV_RelTime(crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime),
-            ///The Daml `AV_Party` constructor.
+            AV_RelTime(crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime),
             #[serde(rename = "AV_Party")]
             AV_Party(rt::Party),
-            ///The Daml `AV_ContractId` constructor.
             #[serde(rename = "AV_ContractId")]
             AV_ContractId(
                 rt::ContractId<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
             ),
-            ///The Daml `AV_List` constructor.
             #[serde(rename = "AV_List")]
             AV_List(
                 ::std::vec::Vec<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),
-            ///The Daml `AV_Map` constructor.
             #[serde(rename = "AV_Map")]
             AV_Map(
                 rt::TextMap<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),
         }
@@ -13757,11 +13423,12 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "AnyContract";
         }
         impl rt::Interface for AnyContract {
-            type View = crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContractView;
+            type View =
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContractView;
         }
         ///The `Archive` choice on [`AnyContract`] (consuming).
         impl rt::Choice<AnyContract>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -13769,19 +13436,16 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
         }
     }
 }
-pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
+pub mod splice_api_token_transfer_instruction_v1 {
     pub mod Splice_Api_Token_TransferInstructionV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferFactoryView {
-            ///The Daml `admin` field.
             #[serde(rename = "admin")]
             pub admin: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for TransferFactoryView {
             fn to_value(&self) -> rt::Value {
@@ -13799,13 +13463,12 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferFactory_PublicFetch {
-            ///The Daml `expectedAdmin` field.
+            ///Daml field `expectedAdmin`.
             #[serde(rename = "expectedAdmin")]
             pub expected_admin: rt::Party,
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -13829,18 +13492,17 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferFactory_Transfer {
-            ///The Daml `expectedAdmin` field.
+            ///Daml field `expectedAdmin`.
             #[serde(rename = "expectedAdmin")]
             pub expected_admin: rt::Party,
-            ///The Daml `transfer` field.
             #[serde(rename = "transfer")]
-            pub transfer: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::Transfer,
-            ///The Daml `extraArgs` field.
+            pub transfer: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::Transfer,
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
-            pub extra_args: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+            pub extra_args: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for TransferFactory_Transfer {
             fn to_value(&self) -> rt::Value {
@@ -13870,16 +13532,16 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstruction_Update {
-            ///The Daml `extraActors` field.
+            ///Daml field `extraActors`.
             #[serde(rename = "extraActors")]
             pub extra_actors: ::std::vec::Vec<rt::Party>,
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for TransferInstruction_Update {
             fn to_value(&self) -> rt::Value {
@@ -13905,13 +13567,13 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstruction_Withdraw {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for TransferInstruction_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -13932,13 +13594,13 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstruction_Reject {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for TransferInstruction_Reject {
             fn to_value(&self) -> rt::Value {
@@ -13959,13 +13621,13 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstruction_Accept {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for TransferInstruction_Accept {
             fn to_value(&self) -> rt::Value {
@@ -13986,25 +13648,22 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstructionView {
-            ///The Daml `originalInstructionCid` field.
+            ///Daml field `originalInstructionCid`.
             #[serde(rename = "originalInstructionCid")]
             pub original_instruction_cid: ::core::option::Option<
                 rt::ContractId<
-                    crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
+                    crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
                 >,
             >,
-            ///The Daml `transfer` field.
             #[serde(rename = "transfer")]
-            pub transfer: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::Transfer,
-            ///The Daml `status` field.
+            pub transfer: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::Transfer,
             #[serde(rename = "status")]
-            pub status: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionStatus,
-            ///The Daml `meta` field.
+            pub status: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionStatus,
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for TransferInstructionView {
             fn to_value(&self) -> rt::Value {
@@ -14037,16 +13696,14 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum TransferInstructionStatus {
-            ///The Daml `TransferPendingReceiverAcceptance` constructor.
             #[serde(rename = "TransferPendingReceiverAcceptance")]
             TransferPendingReceiverAcceptance(rt::Unit),
-            ///The Daml `TransferPendingInternalWorkflow` constructor.
             #[serde(rename = "TransferPendingInternalWorkflow")]
             TransferPendingInternalWorkflow(
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionStatus_TransferPendingInternalWorkflow,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionStatus_TransferPendingInternalWorkflow,
             ),
         }
         impl rt::ToValue for TransferInstructionStatus {
@@ -14088,10 +13745,10 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstructionStatus_TransferPendingInternalWorkflow {
-            ///The Daml `pendingActions` field.
+            ///Daml field `pendingActions`.
             #[serde(rename = "pendingActions")]
             pub pending_actions: rt::GenMap<rt::Party, ::std::string::String>,
         }
@@ -14114,20 +13771,17 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum TransferInstructionResult_Output {
-            ///The Daml `TransferInstructionResult_Pending` constructor.
             #[serde(rename = "TransferInstructionResult_Pending")]
             TransferInstructionResult_Pending(
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output_TransferInstructionResult_Pending,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output_TransferInstructionResult_Pending,
             ),
-            ///The Daml `TransferInstructionResult_Completed` constructor.
             #[serde(rename = "TransferInstructionResult_Completed")]
             TransferInstructionResult_Completed(
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output_TransferInstructionResult_Completed,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output_TransferInstructionResult_Completed,
             ),
-            ///The Daml `TransferInstructionResult_Failed` constructor.
             #[serde(rename = "TransferInstructionResult_Failed")]
             TransferInstructionResult_Failed(rt::Unit),
         }
@@ -14181,13 +13835,13 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstructionResult_Output_TransferInstructionResult_Pending {
-            ///The Daml `transferInstructionCid` field.
+            ///Daml field `transferInstructionCid`.
             #[serde(rename = "transferInstructionCid")]
             pub transfer_instruction_cid: rt::ContractId<
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
             >,
         }
         impl rt::ToValue for TransferInstructionResult_Output_TransferInstructionResult_Pending {
@@ -14209,14 +13863,14 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstructionResult_Output_TransferInstructionResult_Completed {
-            ///The Daml `receiverHoldingCids` field.
+            ///Daml field `receiverHoldingCids`.
             #[serde(rename = "receiverHoldingCids")]
             pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
         }
@@ -14239,22 +13893,20 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferInstructionResult {
-            ///The Daml `output` field.
             #[serde(rename = "output")]
-            pub output: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output,
-            ///The Daml `senderChangeCids` field.
+            pub output: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult_Output,
+            ///Daml field `senderChangeCids`.
             #[serde(rename = "senderChangeCids")]
             pub sender_change_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for TransferInstructionResult {
             fn to_value(&self) -> rt::Value {
@@ -14283,39 +13935,34 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Transfer {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `instrumentId` field.
+            ///Daml field `instrumentId`.
             #[serde(rename = "instrumentId")]
             pub instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `requestedAt` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `executeBefore` field.
+            ///Daml field `executeBefore`.
             #[serde(rename = "executeBefore")]
             pub execute_before: rt::Timestamp,
-            ///The Daml `inputHoldingCids` field.
+            ///Daml field `inputHoldingCids`.
             #[serde(rename = "inputHoldingCids")]
             pub input_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Transfer {
             fn to_value(&self) -> rt::Value {
@@ -14384,11 +14031,11 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "TransferFactory";
         }
         impl rt::Interface for TransferFactory {
-            type View = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactoryView;
+            type View = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactoryView;
         }
         ///The `Archive` choice on [`TransferFactory`] (consuming).
         impl rt::Choice<TransferFactory>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -14396,15 +14043,15 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         }
         ///The `TransferFactory_Transfer` choice on [`TransferFactory`] (non-consuming).
         impl rt::Choice<TransferFactory>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactory_Transfer {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactory_Transfer {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "TransferFactory_Transfer";
             const CONSUMING: bool = false;
         }
         ///The `TransferFactory_PublicFetch` choice on [`TransferFactory`] (non-consuming).
         impl rt::Choice<TransferFactory>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactory_PublicFetch {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactoryView;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactory_PublicFetch {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactoryView;
             const NAME: &'static str = "TransferFactory_PublicFetch";
             const CONSUMING: bool = false;
         }
@@ -14416,11 +14063,11 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "TransferInstruction";
         }
         impl rt::Interface for TransferInstruction {
-            type View = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionView;
+            type View = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionView;
         }
         ///The `Archive` choice on [`TransferInstruction`] (consuming).
         impl rt::Choice<TransferInstruction>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -14428,56 +14075,63 @@ pub mod splice_api_token_transfer_instruction_v1_1_0_0 {
         }
         ///The `TransferInstruction_Accept` choice on [`TransferInstruction`] (consuming).
         impl rt::Choice<TransferInstruction>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Accept {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Accept {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "TransferInstruction_Accept";
             const CONSUMING: bool = true;
         }
         ///The `TransferInstruction_Reject` choice on [`TransferInstruction`] (consuming).
         impl rt::Choice<TransferInstruction>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Reject {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Reject {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "TransferInstruction_Reject";
             const CONSUMING: bool = true;
         }
         ///The `TransferInstruction_Withdraw` choice on [`TransferInstruction`] (consuming).
         impl rt::Choice<TransferInstruction>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Withdraw {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Withdraw {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "TransferInstruction_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `TransferInstruction_Update` choice on [`TransferInstruction`] (consuming).
         impl rt::Choice<TransferInstruction>
-        for crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Update {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Update {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "TransferInstruction_Update";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_wallet_0_1_14 {
+pub mod splice_wallet {
     pub mod Splice_Wallet_TopUpState {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.TopUpState:ValidatorTopUpState`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.TopUpState:ValidatorTopUpState`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ValidatorTopUpState {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
-            ///The Daml `lastPurchasedAt` field.
+            ///Daml field `lastPurchasedAt`.
             #[serde(rename = "lastPurchasedAt")]
             pub last_purchased_at: rt::Timestamp,
         }
@@ -14556,7 +14210,7 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `Archive` choice on [`ValidatorTopUpState`] (consuming).
         impl rt::Choice<ValidatorTopUpState>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -14565,17 +14219,17 @@ pub mod splice_wallet_0_1_14 {
     }
     pub mod Splice_Wallet_Install {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_Allocation_Withdraw {
-            ///The Daml `allocationCid` field.
+            ///Daml field `allocationCid`.
             #[serde(rename = "allocationCid")]
             pub allocation_cid: rt::ContractId<
-                crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation,
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation,
             >,
-            ///The Daml `withdrawArg` field.
+            ///Daml field `withdrawArg`.
             #[serde(rename = "withdrawArg")]
-            pub withdraw_arg: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_Withdraw,
+            pub withdraw_arg: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_Withdraw,
         }
         impl rt::ToValue for WalletAppInstall_Allocation_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -14601,17 +14255,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AllocationFactory_Allocate {
-            ///The Daml `allocationFactory` field.
+            ///Daml field `allocationFactory`.
             #[serde(rename = "allocationFactory")]
             pub allocation_factory: rt::ContractId<
-                crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactory,
+                crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactory,
             >,
-            ///The Daml `allocateArg` field.
+            ///Daml field `allocateArg`.
             #[serde(rename = "allocateArg")]
-            pub allocate_arg: crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_Allocate,
+            pub allocate_arg: crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationFactory_Allocate,
         }
         impl rt::ToValue for WalletAppInstall_AllocationFactory_Allocate {
             fn to_value(&self) -> rt::Value {
@@ -14640,17 +14294,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferInstruction_Withdraw {
-            ///The Daml `transferInstructionCid` field.
+            ///Daml field `transferInstructionCid`.
             #[serde(rename = "transferInstructionCid")]
             pub transfer_instruction_cid: rt::ContractId<
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
             >,
-            ///The Daml `withdrawArg` field.
+            ///Daml field `withdrawArg`.
             #[serde(rename = "withdrawArg")]
-            pub withdraw_arg: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Withdraw,
+            pub withdraw_arg: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Withdraw,
         }
         impl rt::ToValue for WalletAppInstall_TransferInstruction_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -14679,17 +14333,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferInstruction_Reject {
-            ///The Daml `transferInstructionCid` field.
+            ///Daml field `transferInstructionCid`.
             #[serde(rename = "transferInstructionCid")]
             pub transfer_instruction_cid: rt::ContractId<
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
             >,
-            ///The Daml `rejectArg` field.
+            ///Daml field `rejectArg`.
             #[serde(rename = "rejectArg")]
-            pub reject_arg: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Reject,
+            pub reject_arg: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Reject,
         }
         impl rt::ToValue for WalletAppInstall_TransferInstruction_Reject {
             fn to_value(&self) -> rt::Value {
@@ -14718,17 +14372,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferInstruction_Accept {
-            ///The Daml `transferInstructionCid` field.
+            ///Daml field `transferInstructionCid`.
             #[serde(rename = "transferInstructionCid")]
             pub transfer_instruction_cid: rt::ContractId<
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction,
             >,
-            ///The Daml `acceptArg` field.
+            ///Daml field `acceptArg`.
             #[serde(rename = "acceptArg")]
-            pub accept_arg: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Accept,
+            pub accept_arg: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstruction_Accept,
         }
         impl rt::ToValue for WalletAppInstall_TransferInstruction_Accept {
             fn to_value(&self) -> rt::Value {
@@ -14757,17 +14411,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferFactory_Transfer {
-            ///The Daml `transferFactoryCid` field.
+            ///Daml field `transferFactoryCid`.
             #[serde(rename = "transferFactoryCid")]
             pub transfer_factory_cid: rt::ContractId<
-                crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactory,
+                crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactory,
             >,
-            ///The Daml `transferArg` field.
+            ///Daml field `transferArg`.
             #[serde(rename = "transferArg")]
-            pub transfer_arg: crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferFactory_Transfer,
+            pub transfer_arg: crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferFactory_Transfer,
         }
         impl rt::ToValue for WalletAppInstall_TransferFactory_Transfer {
             fn to_value(&self) -> rt::Value {
@@ -14796,13 +14450,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_FeaturedAppRights_SelfGrant {
-            ///The Daml `amuletRulesCid` field.
+            ///Daml field `amuletRulesCid`.
             #[serde(rename = "amuletRulesCid")]
             pub amulet_rules_cid:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_AmuletRules::AmuletRules>,
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::AmuletRules>,
         }
         impl rt::ToValue for WalletAppInstall_FeaturedAppRights_SelfGrant {
             fn to_value(&self) -> rt::Value {
@@ -14823,12 +14477,11 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_FeaturedAppRights_Cancel {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+            pub cid: rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
         }
         impl rt::ToValue for WalletAppInstall_FeaturedAppRights_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -14842,13 +14495,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_BuyTrafficRequest_Expire {
-            ///The Daml `requestCid` field.
+            ///Daml field `requestCid`.
             #[serde(rename = "requestCid")]
             pub request_cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
+                crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
             >,
         }
         impl rt::ToValue for WalletAppInstall_BuyTrafficRequest_Expire {
@@ -14870,15 +14523,14 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_BuyTrafficRequest_Cancel {
-            ///The Daml `requestCid` field.
+            ///Daml field `requestCid`.
             #[serde(rename = "requestCid")]
             pub request_cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
+                crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
             >,
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -14904,25 +14556,25 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_CreateBuyTrafficRequest {
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
-            ///The Daml `trafficAmount` field.
+            ///Daml field `trafficAmount`.
             #[serde(rename = "trafficAmount")]
             pub traffic_amount: rt::Int64,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
         }
@@ -14975,13 +14627,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_Expire {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
             >,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_Expire {
@@ -14996,15 +14647,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_Withdraw {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
             >,
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -15026,15 +14675,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_Abort {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
             >,
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -15056,14 +14703,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_Expire {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer,
-            >,
+            pub cid:
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer>,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_Expire {
             fn to_value(&self) -> rt::Value {
@@ -15077,15 +14722,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_Withdraw {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer,
-            >,
-            ///The Daml `reason` field.
+            pub cid:
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer>,
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -15107,14 +14749,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_Reject {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer,
-            >,
+            pub cid:
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer>,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_Reject {
             fn to_value(&self) -> rt::Value {
@@ -15128,14 +14768,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_Accept {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
-            pub cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer,
-            >,
+            pub cid:
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer>,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_Accept {
             fn to_value(&self) -> rt::Value {
@@ -15149,22 +14787,19 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_CreateTransferOffer {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
-            pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
-            ///The Daml `description` field.
+            pub amount: crate::splice_wallet_payments::Splice_Wallet_Payment::PaymentAmount,
             #[serde(rename = "description")]
             pub description: ::std::string::String,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
         }
@@ -15206,13 +14841,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_SubscriptionIdleState_CancelSubscription {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
             >,
         }
         impl rt::ToValue for WalletAppInstall_SubscriptionIdleState_CancelSubscription {
@@ -15227,13 +14861,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_SubscriptionRequest_Reject {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for WalletAppInstall_SubscriptionRequest_Reject {
@@ -15248,13 +14881,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AppPaymentRequest_Expire {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest,
             >,
         }
         impl rt::ToValue for WalletAppInstall_AppPaymentRequest_Expire {
@@ -15269,13 +14901,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AppPaymentRequest_Reject {
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest,
             >,
         }
         impl rt::ToValue for WalletAppInstall_AppPaymentRequest_Reject {
@@ -15290,21 +14921,16 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_ExecuteBatch {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `operations` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "operations")]
-            pub operations: ::std::vec::Vec<
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation,
-            >,
+            pub operations:
+                ::std::vec::Vec<crate::splice_wallet::Splice_Wallet_Install::AmuletOperation>,
         }
         impl rt::ToValue for WalletAppInstall_ExecuteBatch {
             fn to_value(&self) -> rt::Value {
@@ -15332,13 +14958,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferPreapprovalProposal_CreateResult {
-            ///The Daml `preapprovalProposalCid` field.
+            ///Daml field `preapprovalProposalCid`.
             #[serde(rename = "preapprovalProposalCid")]
             pub preapproval_proposal_cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal,
+                crate::splice_wallet::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal,
             >,
         }
         impl rt::ToValue for WalletAppInstall_TransferPreapprovalProposal_CreateResult {
@@ -15360,13 +14986,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_FeaturedAppRights_SelfGrantResult {
-            ///The Daml `featuredAppRight` field.
+            ///Daml field `featuredAppRight`.
             #[serde(rename = "featuredAppRight")]
             pub featured_app_right:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
         }
         impl rt::ToValue for WalletAppInstall_FeaturedAppRights_SelfGrantResult {
             fn to_value(&self) -> rt::Value {
@@ -15392,7 +15018,6 @@ pub mod splice_wallet_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum WalletAppInstall_FeaturedAppRights_CancelResult {
-            ///The Daml `WalletAppInstall_FeaturedAppRights_CancelResult` value.
             #[serde(rename = "WalletAppInstall_FeaturedAppRights_CancelResult")]
             WalletAppInstall_FeaturedAppRights_CancelResult,
         }
@@ -15426,12 +15051,12 @@ pub mod splice_wallet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_BuyTrafficRequest_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
-            pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+            pub tracking_info: crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_BuyTrafficRequest_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -15452,12 +15077,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_BuyTrafficRequest_CancelResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
-            pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+            pub tracking_info: crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_BuyTrafficRequest_CancelResult {
             fn to_value(&self) -> rt::Value {
@@ -15478,13 +15103,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_CreateBuyTrafficRequestResult {
-            ///The Daml `buyTrafficRequest` field.
+            ///Daml field `buyTrafficRequest`.
             #[serde(rename = "buyTrafficRequest")]
             pub buy_traffic_request: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
+                crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
             >,
         }
         impl rt::ToValue for WalletAppInstall_CreateBuyTrafficRequestResult {
@@ -15506,13 +15131,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -15533,13 +15158,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_WithdrawResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -15560,13 +15185,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AcceptedTransferOffer_AbortResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_AcceptedTransferOffer_AbortResult {
             fn to_value(&self) -> rt::Value {
@@ -15587,13 +15212,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -15614,13 +15239,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_WithdrawResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -15641,13 +15266,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_RejectResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_RejectResult {
             fn to_value(&self) -> rt::Value {
@@ -15668,13 +15293,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_TransferOffer_AcceptResult {
-            ///The Daml `acceptedTransferOffer` field.
+            ///Daml field `acceptedTransferOffer`.
             #[serde(rename = "acceptedTransferOffer")]
             pub accepted_transfer_offer: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
             >,
         }
         impl rt::ToValue for WalletAppInstall_TransferOffer_AcceptResult {
@@ -15696,14 +15321,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_CreateTransferOfferResult {
-            ///The Daml `transferOffer` field.
+            ///Daml field `transferOffer`.
             #[serde(rename = "transferOffer")]
-            pub transfer_offer: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer,
-            >,
+            pub transfer_offer:
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer>,
         }
         impl rt::ToValue for WalletAppInstall_CreateTransferOfferResult {
             fn to_value(&self) -> rt::Value {
@@ -15724,13 +15348,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_SubscriptionIdleState_CancelSubscriptionResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for WalletAppInstall_SubscriptionIdleState_CancelSubscriptionResult {
@@ -15752,13 +15376,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_SubscriptionRequest_RejectResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for WalletAppInstall_SubscriptionRequest_RejectResult {
@@ -15780,13 +15404,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AppPaymentRequest_ExpireResult {
-            ///The Daml `terminatedAppPayment` field.
+            ///Daml field `terminatedAppPayment`.
             #[serde(rename = "terminatedAppPayment")]
             pub terminated_app_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::TerminatedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::TerminatedAppPayment,
             >,
         }
         impl rt::ToValue for WalletAppInstall_AppPaymentRequest_ExpireResult {
@@ -15808,13 +15432,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_AppPaymentRequest_RejectResult {
-            ///The Daml `terminatedAppPayment` field.
+            ///Daml field `terminatedAppPayment`.
             #[serde(rename = "terminatedAppPayment")]
             pub terminated_app_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::TerminatedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::TerminatedAppPayment,
             >,
         }
         impl rt::ToValue for WalletAppInstall_AppPaymentRequest_RejectResult {
@@ -15836,18 +15460,17 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall_ExecuteBatchResult {
-            ///The Daml `endUserName` field.
+            ///Daml field `endUserName`.
             #[serde(rename = "endUserName")]
             pub end_user_name: ::std::string::String,
-            ///The Daml `outcomes` field.
             #[serde(rename = "outcomes")]
             pub outcomes: ::std::vec::Vec<
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperationOutcome,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperationOutcome,
             >,
-            ///The Daml `optEndUserParty` field.
+            ///Daml field `optEndUserParty`.
             #[serde(rename = "optEndUserParty")]
             pub opt_end_user_party: ::core::option::Option<rt::Party>,
         }
@@ -15878,101 +15501,85 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AmuletOperationOutcome {
-            ///The Daml `COO_AcceptedAppPayment` constructor.
             #[serde(rename = "COO_AcceptedAppPayment")]
             COO_AcceptedAppPayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment,
+                    crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment,
                 >,
             ),
-            ///The Daml `COO_CompleteAcceptedTransfer` constructor.
             #[serde(rename = "COO_CompleteAcceptedTransfer")]
             COO_CompleteAcceptedTransfer(
-                crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
-                    crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-                    crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::daml_prim_DA_Types::DA_Types::Tuple2<
+                    crate::splice_amulet::Splice_AmuletRules::TransferResult,
+                    crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
                 >,
             ),
-            ///The Daml `COO_SubscriptionInitialPayment` constructor.
             #[serde(rename = "COO_SubscriptionInitialPayment")]
             COO_SubscriptionInitialPayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment,
+                    crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment,
                 >,
             ),
-            ///The Daml `COO_SubscriptionPayment` constructor.
             #[serde(rename = "COO_SubscriptionPayment")]
             COO_SubscriptionPayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment,
+                    crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment,
                 >,
             ),
-            ///The Daml `COO_MergeTransferInputs` constructor.
             #[serde(rename = "COO_MergeTransferInputs")]
             COO_MergeTransferInputs(
                 ::core::option::Option<
-                    rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+                    rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
                 >,
             ),
-            ///The Daml `COO_BuyMemberTraffic` constructor.
             #[serde(rename = "COO_BuyMemberTraffic")]
             COO_BuyMemberTraffic(
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                    crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
                 >,
             ),
-            ///The Daml `COO_CompleteBuyTrafficRequest` constructor.
             #[serde(rename = "COO_CompleteBuyTrafficRequest")]
             COO_CompleteBuyTrafficRequest(
-                crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
+                crate::daml_prim_DA_Types::DA_Types::Tuple2<
                     rt::ContractId<
-                        crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                        crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
                     >,
-                    crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+                    crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
                 >,
             ),
-            ///The Daml `COO_Tap` constructor.
             #[serde(rename = "COO_Tap")]
-            COO_Tap(rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>),
-            ///The Daml `COO_Error` constructor.
+            COO_Tap(rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>),
             #[serde(rename = "COO_Error")]
-            COO_Error(
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::InvalidTransferReason,
-            ),
-            ///The Daml `ExtAmuletOperationOutcome` constructor.
+            COO_Error(crate::splice_amulet::Splice_AmuletRules::InvalidTransferReason),
             #[serde(rename = "ExtAmuletOperationOutcome")]
             ExtAmuletOperationOutcome(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperationOutcome_ExtAmuletOperationOutcome,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperationOutcome_ExtAmuletOperationOutcome,
             ),
-            ///The Daml `COO_CreateExternalPartySetupProposal` constructor.
             #[serde(rename = "COO_CreateExternalPartySetupProposal")]
             COO_CreateExternalPartySetupProposal(
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_AmuletRules::ExternalPartySetupProposal,
+                    crate::splice_amulet::Splice_AmuletRules::ExternalPartySetupProposal,
                 >,
             ),
-            ///The Daml `COO_AcceptTransferPreapprovalProposal` constructor.
             #[serde(rename = "COO_AcceptTransferPreapprovalProposal")]
             COO_AcceptTransferPreapprovalProposal(
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
+                    crate::splice_amulet::Splice_AmuletRules::TransferPreapproval,
                 >,
             ),
-            ///The Daml `COO_RenewTransferPreapproval` constructor.
             #[serde(rename = "COO_RenewTransferPreapproval")]
             COO_RenewTransferPreapproval(
                 rt::ContractId<
-                    crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
+                    crate::splice_amulet::Splice_AmuletRules::TransferPreapproval,
                 >,
             ),
-            ///The Daml `COO_TransferPreapprovalSend` constructor.
             #[serde(rename = "COO_TransferPreapprovalSend")]
             COO_TransferPreapprovalSend(
                 ::core::option::Option<
-                    rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+                    rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
                 >,
             ),
         }
@@ -16122,10 +15729,10 @@ pub mod splice_wallet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperationOutcome_ExtAmuletOperationOutcome {
-            ///The Daml `dummyUnitField` field.
+            ///Daml field `dummyUnitField`.
             #[serde(rename = "dummyUnitField")]
             pub dummy_unit_field: rt::Unit,
         }
@@ -16148,79 +15755,64 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AmuletOperation {
-            ///The Daml `CO_AppPayment` constructor.
             #[serde(rename = "CO_AppPayment")]
             CO_AppPayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest,
+                    crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest,
                 >,
             ),
-            ///The Daml `CO_CompleteAcceptedTransfer` constructor.
             #[serde(rename = "CO_CompleteAcceptedTransfer")]
             CO_CompleteAcceptedTransfer(
                 rt::ContractId<
-                    crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                    crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
                 >,
             ),
-            ///The Daml `CO_SubscriptionAcceptAndMakeInitialPayment` constructor.
             #[serde(rename = "CO_SubscriptionAcceptAndMakeInitialPayment")]
             CO_SubscriptionAcceptAndMakeInitialPayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                    crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
                 >,
             ),
-            ///The Daml `CO_SubscriptionMakePayment` constructor.
             #[serde(rename = "CO_SubscriptionMakePayment")]
             CO_SubscriptionMakePayment(
                 rt::ContractId<
-                    crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                    crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
                 >,
             ),
-            ///The Daml `CO_MergeTransferInputs` constructor.
             #[serde(rename = "CO_MergeTransferInputs")]
             CO_MergeTransferInputs(rt::Unit),
-            ///The Daml `CO_BuyMemberTraffic` constructor.
             #[serde(rename = "CO_BuyMemberTraffic")]
             CO_BuyMemberTraffic(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_BuyMemberTraffic,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_BuyMemberTraffic,
             ),
-            ///The Daml `CO_CompleteBuyTrafficRequest` constructor.
             #[serde(rename = "CO_CompleteBuyTrafficRequest")]
             CO_CompleteBuyTrafficRequest(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_CompleteBuyTrafficRequest,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_CompleteBuyTrafficRequest,
             ),
-            ///The Daml `CO_Tap` constructor.
             #[serde(rename = "CO_Tap")]
-            CO_Tap(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_Tap,
-            ),
-            ///The Daml `ExtAmuletOperation` constructor.
+            CO_Tap(crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_Tap),
             #[serde(rename = "ExtAmuletOperation")]
             ExtAmuletOperation(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_ExtAmuletOperation,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_ExtAmuletOperation,
             ),
-            ///The Daml `CO_CreateExternalPartySetupProposal` constructor.
             #[serde(rename = "CO_CreateExternalPartySetupProposal")]
             CO_CreateExternalPartySetupProposal(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_CreateExternalPartySetupProposal,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_CreateExternalPartySetupProposal,
             ),
-            ///The Daml `CO_AcceptTransferPreapprovalProposal` constructor.
             #[serde(rename = "CO_AcceptTransferPreapprovalProposal")]
             CO_AcceptTransferPreapprovalProposal(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_AcceptTransferPreapprovalProposal,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_AcceptTransferPreapprovalProposal,
             ),
-            ///The Daml `CO_RenewTransferPreapproval` constructor.
             #[serde(rename = "CO_RenewTransferPreapproval")]
             CO_RenewTransferPreapproval(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_RenewTransferPreapproval,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_RenewTransferPreapproval,
             ),
-            ///The Daml `CO_TransferPreapprovalSend` constructor.
             #[serde(rename = "CO_TransferPreapprovalSend")]
             CO_TransferPreapprovalSend(
-                crate::splice_wallet_0_1_14::Splice_Wallet_Install::AmuletOperation_CO_TransferPreapprovalSend,
+                crate::splice_wallet::Splice_Wallet_Install::AmuletOperation_CO_TransferPreapprovalSend,
             ),
         }
         impl rt::ToValue for AmuletOperation {
@@ -16350,30 +15942,28 @@ pub mod splice_wallet_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_BuyMemberTraffic {
-            ///The Daml `trafficAmount` field.
+            ///Daml field `trafficAmount`.
             #[serde(rename = "trafficAmount")]
             pub traffic_amount: rt::Int64,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
-            ///The Daml `minTopupInterval` field.
+            ///Daml field `minTopupInterval`.
             #[serde(rename = "minTopupInterval")]
-            pub min_topup_interval: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `topupStateCid` field.
+            pub min_topup_interval: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `topupStateCid`.
             #[serde(rename = "topupStateCid")]
             pub topup_state_cid: ::core::option::Option<
-                rt::ContractId<
-                    crate::splice_wallet_0_1_14::Splice_Wallet_TopUpState::ValidatorTopUpState,
-                >,
+                rt::ContractId<crate::splice_wallet::Splice_Wallet_TopUpState::ValidatorTopUpState>,
             >,
         }
         impl rt::ToValue for AmuletOperation_CO_BuyMemberTraffic {
@@ -16427,13 +16017,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_CompleteBuyTrafficRequest {
-            ///The Daml `trafficRequestCid` field.
+            ///Daml field `trafficRequestCid`.
             #[serde(rename = "trafficRequestCid")]
             pub traffic_request_cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
+                crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest,
             >,
         }
         impl rt::ToValue for AmuletOperation_CO_CompleteBuyTrafficRequest {
@@ -16455,10 +16045,10 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_Tap {
-            ///The Daml `tapAmount` field.
+            ///Daml field `tapAmount`.
             #[serde(rename = "tapAmount")]
             pub tap_amount: rt::Numeric,
         }
@@ -16481,10 +16071,10 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_ExtAmuletOperation {
-            ///The Daml `dummyUnitField` field.
+            ///Daml field `dummyUnitField`.
             #[serde(rename = "dummyUnitField")]
             pub dummy_unit_field: rt::Unit,
         }
@@ -16507,13 +16097,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_CreateExternalPartySetupProposal {
-            ///The Daml `externalParty` field.
+            ///Daml field `externalParty`.
             #[serde(rename = "externalParty")]
             pub external_party: rt::Party,
-            ///The Daml `preapprovalExpiresAt` field.
+            ///Daml field `preapprovalExpiresAt`.
             #[serde(rename = "preapprovalExpiresAt")]
             pub preapproval_expires_at: rt::Timestamp,
         }
@@ -16544,15 +16134,15 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_AcceptTransferPreapprovalProposal {
-            ///The Daml `preapprovalProposalCid` field.
+            ///Daml field `preapprovalProposalCid`.
             #[serde(rename = "preapprovalProposalCid")]
             pub preapproval_proposal_cid: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal,
+                crate::splice_wallet::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal,
             >,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
         }
@@ -16583,15 +16173,14 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_RenewTransferPreapproval {
-            ///The Daml `previousApprovalCid` field.
+            ///Daml field `previousApprovalCid`.
             #[serde(rename = "previousApprovalCid")]
-            pub previous_approval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
-            ///The Daml `newExpiresAt` field.
+            pub previous_approval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
+            ///Daml field `newExpiresAt`.
             #[serde(rename = "newExpiresAt")]
             pub new_expires_at: rt::Timestamp,
         }
@@ -16622,23 +16211,20 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AmuletOperation_CO_TransferPreapprovalSend {
-            ///The Daml `transferPreapprovalCid` field.
+            ///Daml field `transferPreapprovalCid`.
             #[serde(rename = "transferPreapprovalCid")]
-            pub transfer_preapproval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
-            ///The Daml `providerFeaturedAppRightCid` field.
+            pub transfer_preapproval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
+            ///Daml field `providerFeaturedAppRightCid`.
             #[serde(rename = "providerFeaturedAppRightCid")]
             pub provider_featured_app_right_cid: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::FeaturedAppRight>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::FeaturedAppRight>,
             >,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::core::option::Option<::std::string::String>,
         }
@@ -16678,22 +16264,19 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExecutionContext {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `endUser` field.
+            ///Daml field `endUser`.
             #[serde(rename = "endUser")]
             pub end_user: rt::Party,
-            ///The Daml `validator` field.
             #[serde(rename = "validator")]
             pub validator: rt::Party,
-            ///The Daml `paymentContext` field.
+            ///Daml field `paymentContext`.
             #[serde(rename = "paymentContext")]
-            pub payment_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
+            pub payment_context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
         }
         impl rt::ToValue for ExecutionContext {
             fn to_value(&self) -> rt::Value {
@@ -16728,19 +16311,52 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Install:WalletAppInstall`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.Install:WalletAppInstall`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `WalletAppInstall_ExecuteBatch` — non-consuming
+        ///- `WalletAppInstall_AppPaymentRequest_Reject` — non-consuming
+        ///- `WalletAppInstall_AppPaymentRequest_Expire` — non-consuming
+        ///- `WalletAppInstall_SubscriptionRequest_Reject` — non-consuming
+        ///- `WalletAppInstall_SubscriptionIdleState_CancelSubscription` — non-consuming
+        ///- `WalletAppInstall_CreateTransferOffer` — non-consuming
+        ///- `WalletAppInstall_TransferOffer_Accept` — non-consuming
+        ///- `WalletAppInstall_TransferOffer_Reject` — non-consuming
+        ///- `WalletAppInstall_TransferOffer_Withdraw` — non-consuming
+        ///- `WalletAppInstall_TransferOffer_Expire` — non-consuming
+        ///- `WalletAppInstall_AcceptedTransferOffer_Abort` — non-consuming
+        ///- `WalletAppInstall_AcceptedTransferOffer_Withdraw` — non-consuming
+        ///- `WalletAppInstall_AcceptedTransferOffer_Expire` — non-consuming
+        ///- `WalletAppInstall_CreateBuyTrafficRequest` — non-consuming
+        ///- `WalletAppInstall_BuyTrafficRequest_Cancel` — non-consuming
+        ///- `WalletAppInstall_BuyTrafficRequest_Expire` — non-consuming
+        ///- `WalletAppInstall_FeaturedAppRights_Cancel` — non-consuming
+        ///- `WalletAppInstall_FeaturedAppRights_SelfGrant` — non-consuming
+        ///- `WalletAppInstall_TransferFactory_Transfer` — non-consuming
+        ///- `WalletAppInstall_TransferInstruction_Accept` — non-consuming
+        ///- `WalletAppInstall_TransferInstruction_Reject` — non-consuming
+        ///- `WalletAppInstall_TransferInstruction_Withdraw` — non-consuming
+        ///- `WalletAppInstall_AllocationFactory_Allocate` — non-consuming
+        ///- `Archive` — consuming
+        ///- `WalletAppInstall_Allocation_Withdraw` — non-consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct WalletAppInstall {
-            ///The Daml `dsoParty` field.
+            ///Daml field `dsoParty`.
             #[serde(rename = "dsoParty")]
             pub dso_party: rt::Party,
-            ///The Daml `validatorParty` field.
+            ///Daml field `validatorParty`.
             #[serde(rename = "validatorParty")]
             pub validator_party: rt::Party,
-            ///The Daml `endUserName` field.
+            ///Daml field `endUserName`.
             #[serde(rename = "endUserName")]
             pub end_user_name: ::std::string::String,
-            ///The Daml `endUserParty` field.
+            ///Daml field `endUserParty`.
             #[serde(rename = "endUserParty")]
             pub end_user_party: rt::Party,
         }
@@ -16803,169 +16419,175 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `WalletAppInstall_ExecuteBatch` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-            for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_ExecuteBatch
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_ExecuteBatch
         {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_ExecuteBatchResult;
+            type Return =
+                crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_ExecuteBatchResult;
             const NAME: &'static str = "WalletAppInstall_ExecuteBatch";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AppPaymentRequest_Reject` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_Reject {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_RejectResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_Reject {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_RejectResult;
             const NAME: &'static str = "WalletAppInstall_AppPaymentRequest_Reject";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AppPaymentRequest_Expire` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_ExpireResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_Expire {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AppPaymentRequest_ExpireResult;
             const NAME: &'static str = "WalletAppInstall_AppPaymentRequest_Expire";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_SubscriptionRequest_Reject` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_SubscriptionRequest_Reject {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_SubscriptionRequest_RejectResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_SubscriptionRequest_Reject {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_SubscriptionRequest_RejectResult;
             const NAME: &'static str = "WalletAppInstall_SubscriptionRequest_Reject";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_SubscriptionIdleState_CancelSubscription` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_SubscriptionIdleState_CancelSubscription {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_SubscriptionIdleState_CancelSubscriptionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_SubscriptionIdleState_CancelSubscription {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_SubscriptionIdleState_CancelSubscriptionResult;
             const NAME: &'static str = "WalletAppInstall_SubscriptionIdleState_CancelSubscription";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_CreateTransferOffer` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_CreateTransferOffer {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_CreateTransferOfferResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_CreateTransferOffer
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_CreateTransferOfferResult;
             const NAME: &'static str = "WalletAppInstall_CreateTransferOffer";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferOffer_Accept` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Accept {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_AcceptResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Accept
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_AcceptResult;
             const NAME: &'static str = "WalletAppInstall_TransferOffer_Accept";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferOffer_Reject` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Reject {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_RejectResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Reject
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_RejectResult;
             const NAME: &'static str = "WalletAppInstall_TransferOffer_Reject";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferOffer_Withdraw` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Withdraw {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_WithdrawResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Withdraw
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_WithdrawResult;
             const NAME: &'static str = "WalletAppInstall_TransferOffer_Withdraw";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferOffer_Expire` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferOffer_ExpireResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_Expire
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferOffer_ExpireResult;
             const NAME: &'static str = "WalletAppInstall_TransferOffer_Expire";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AcceptedTransferOffer_Abort` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Abort {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_AbortResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Abort {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_AbortResult;
             const NAME: &'static str = "WalletAppInstall_AcceptedTransferOffer_Abort";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AcceptedTransferOffer_Withdraw` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Withdraw {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_WithdrawResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Withdraw {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_WithdrawResult;
             const NAME: &'static str = "WalletAppInstall_AcceptedTransferOffer_Withdraw";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AcceptedTransferOffer_Expire` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_ExpireResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_Expire {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AcceptedTransferOffer_ExpireResult;
             const NAME: &'static str = "WalletAppInstall_AcceptedTransferOffer_Expire";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_CreateBuyTrafficRequest` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_CreateBuyTrafficRequest {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_CreateBuyTrafficRequestResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_CreateBuyTrafficRequest {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_CreateBuyTrafficRequestResult;
             const NAME: &'static str = "WalletAppInstall_CreateBuyTrafficRequest";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_BuyTrafficRequest_Cancel` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_Cancel {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_CancelResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_Cancel {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_CancelResult;
             const NAME: &'static str = "WalletAppInstall_BuyTrafficRequest_Cancel";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_BuyTrafficRequest_Expire` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_ExpireResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_Expire {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_BuyTrafficRequest_ExpireResult;
             const NAME: &'static str = "WalletAppInstall_BuyTrafficRequest_Expire";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_FeaturedAppRights_Cancel` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_Cancel {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_CancelResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_Cancel {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_CancelResult;
             const NAME: &'static str = "WalletAppInstall_FeaturedAppRights_Cancel";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_FeaturedAppRights_SelfGrant` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_SelfGrant {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_SelfGrantResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_SelfGrant {
+            type Return = crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_FeaturedAppRights_SelfGrantResult;
             const NAME: &'static str = "WalletAppInstall_FeaturedAppRights_SelfGrant";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferFactory_Transfer` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferFactory_Transfer {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferFactory_Transfer {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "WalletAppInstall_TransferFactory_Transfer";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferInstruction_Accept` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Accept {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Accept {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "WalletAppInstall_TransferInstruction_Accept";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferInstruction_Reject` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Reject {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Reject {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "WalletAppInstall_TransferInstruction_Reject";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_TransferInstruction_Withdraw` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Withdraw {
-            type Return = crate::splice_api_token_transfer_instruction_v1_1_0_0::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_TransferInstruction_Withdraw {
+            type Return = crate::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1::TransferInstructionResult;
             const NAME: &'static str = "WalletAppInstall_TransferInstruction_Withdraw";
             const CONSUMING: bool = false;
         }
         ///The `WalletAppInstall_AllocationFactory_Allocate` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_AllocationFactory_Allocate {
-            type Return = crate::splice_api_token_allocation_instruction_v1_1_0_0::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
+        for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_AllocationFactory_Allocate {
+            type Return = crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstructionResult;
             const NAME: &'static str = "WalletAppInstall_AllocationFactory_Allocate";
             const CONSUMING: bool = false;
         }
         ///The `Archive` choice on [`WalletAppInstall`] (consuming).
         impl rt::Choice<WalletAppInstall>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -16973,18 +16595,18 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `WalletAppInstall_Allocation_Withdraw` choice on [`WalletAppInstall`] (non-consuming).
         impl rt::Choice<WalletAppInstall>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_Install::WalletAppInstall_Allocation_Withdraw {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
+            for crate::splice_wallet::Splice_Wallet_Install::WalletAppInstall_Allocation_Withdraw
+        {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
             const NAME: &'static str = "WalletAppInstall_Allocation_Withdraw";
             const CONSUMING: bool = false;
         }
     }
     pub mod Splice_Wallet_TransferOffer {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -17000,10 +16622,9 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_Abort {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -17021,10 +16642,9 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_Withdraw {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -17042,18 +16662,15 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_Complete {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `transferContext` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `walletProvider` field.
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
+            ///Daml field `walletProvider`.
             #[serde(rename = "walletProvider")]
             pub wallet_provider: rt::Party,
         }
@@ -17091,21 +16708,20 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_CompleteResult {
-            ///The Daml `transferResult` field.
+            ///Daml field `transferResult`.
             #[serde(rename = "transferResult")]
-            pub transfer_result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `trackingInfo` field.
+            pub transfer_result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
-            ///The Daml `senderChangeAmulet` field.
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+            ///Daml field `senderChangeAmulet`.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            >,
+            pub sender_change_amulet:
+                ::core::option::Option<rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>>,
         }
         impl rt::ToValue for AcceptedTransferOffer_CompleteResult {
             fn to_value(&self) -> rt::Value {
@@ -17139,16 +16755,14 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOfferTrackingInfo {
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
         }
@@ -17178,10 +16792,9 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -17197,10 +16810,9 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_Withdraw {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -17218,7 +16830,7 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_Reject {}
         impl rt::ToValue for TransferOffer_Reject {
@@ -17231,7 +16843,7 @@ pub mod splice_wallet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_Accept {}
         impl rt::ToValue for TransferOffer_Accept {
@@ -17244,13 +16856,13 @@ pub mod splice_wallet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for AcceptedTransferOffer_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -17271,13 +16883,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_AbortResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for AcceptedTransferOffer_AbortResult {
             fn to_value(&self) -> rt::Value {
@@ -17298,13 +16910,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer_WithdrawResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for AcceptedTransferOffer_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -17325,13 +16937,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for TransferOffer_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -17352,13 +16964,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_WithdrawResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for TransferOffer_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -17379,13 +16991,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_RejectResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
             pub tracking_info:
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOfferTrackingInfo,
         }
         impl rt::ToValue for TransferOffer_RejectResult {
             fn to_value(&self) -> rt::Value {
@@ -17406,13 +17018,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer_AcceptResult {
-            ///The Daml `acceptedTransferOffer` field.
+            ///Daml field `acceptedTransferOffer`.
             #[serde(rename = "acceptedTransferOffer")]
             pub accepted_transfer_offer: rt::ContractId<
-                crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
+                crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer,
             >,
         }
         impl rt::ToValue for TransferOffer_AcceptResult {
@@ -17434,25 +17046,34 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.TransferOffer:AcceptedTransferOffer`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.TransferOffer:AcceptedTransferOffer`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AcceptedTransferOffer_Complete` — consuming
+        ///- `AcceptedTransferOffer_Withdraw` — consuming
+        ///- `AcceptedTransferOffer_Abort` — consuming
+        ///- `AcceptedTransferOffer_Expire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedTransferOffer {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
-            pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
-            ///The Daml `expiresAt` field.
+            pub amount: crate::splice_wallet_payments::Splice_Wallet_Payment::PaymentAmount,
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
         }
@@ -17515,62 +17136,74 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `AcceptedTransferOffer_Complete` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Complete {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_CompleteResult;
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Complete
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_CompleteResult;
             const NAME: &'static str = "AcceptedTransferOffer_Complete";
             const CONSUMING: bool = true;
         }
         ///The `AcceptedTransferOffer_Withdraw` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Withdraw {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_WithdrawResult;
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Withdraw
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_WithdrawResult;
             const NAME: &'static str = "AcceptedTransferOffer_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `AcceptedTransferOffer_Abort` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Abort {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_AbortResult;
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Abort
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_AbortResult;
             const NAME: &'static str = "AcceptedTransferOffer_Abort";
             const CONSUMING: bool = true;
         }
         ///The `AcceptedTransferOffer_Expire` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::AcceptedTransferOffer_ExpireResult;
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_Expire
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_TransferOffer::AcceptedTransferOffer_ExpireResult;
             const NAME: &'static str = "AcceptedTransferOffer_Expire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`AcceptedTransferOffer`] (consuming).
         impl rt::Choice<AcceptedTransferOffer>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.TransferOffer:TransferOffer`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.TransferOffer:TransferOffer`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `TransferOffer_Accept` — consuming
+        ///- `TransferOffer_Reject` — consuming
+        ///- `TransferOffer_Withdraw` — consuming
+        ///- `TransferOffer_Expire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferOffer {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
-            pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
-            ///The Daml `description` field.
+            pub amount: crate::splice_wallet_payments::Splice_Wallet_Payment::PaymentAmount,
             #[serde(rename = "description")]
             pub description: ::std::string::String,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
         }
@@ -17640,39 +17273,43 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `TransferOffer_Accept` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
-            for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_Accept
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_Accept
         {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_AcceptResult;
+            type Return =
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_AcceptResult;
             const NAME: &'static str = "TransferOffer_Accept";
             const CONSUMING: bool = true;
         }
         ///The `TransferOffer_Reject` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
-            for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_Reject
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_Reject
         {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_RejectResult;
+            type Return =
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_RejectResult;
             const NAME: &'static str = "TransferOffer_Reject";
             const CONSUMING: bool = true;
         }
         ///The `TransferOffer_Withdraw` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
-            for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_Withdraw
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_Withdraw
         {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_WithdrawResult;
+            type Return =
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_WithdrawResult;
             const NAME: &'static str = "TransferOffer_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `TransferOffer_Expire` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
-            for crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_Expire
+            for crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_Expire
         {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferOffer::TransferOffer_ExpireResult;
+            type Return =
+                crate::splice_wallet::Splice_Wallet_TransferOffer::TransferOffer_ExpireResult;
             const NAME: &'static str = "TransferOffer_Expire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`TransferOffer`] (consuming).
         impl rt::Choice<TransferOffer>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -17681,7 +17318,7 @@ pub mod splice_wallet_0_1_14 {
     }
     pub mod Splice_Wallet_BuyTrafficRequest {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_Expire {}
         impl rt::ToValue for BuyTrafficRequest_Expire {
@@ -17694,10 +17331,9 @@ pub mod splice_wallet_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_Cancel {
-            ///The Daml `reason` field.
             #[serde(rename = "reason")]
             pub reason: ::std::string::String,
         }
@@ -17715,17 +17351,14 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_Complete {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `context` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `walletProvider` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
+            ///Daml field `walletProvider`.
             #[serde(rename = "walletProvider")]
             pub wallet_provider: rt::Party,
         }
@@ -17758,12 +17391,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_ExpireResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
-            pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+            pub tracking_info: crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
         }
         impl rt::ToValue for BuyTrafficRequest_ExpireResult {
             fn to_value(&self) -> rt::Value {
@@ -17784,12 +17417,12 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_CancelResult {
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
-            pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+            pub tracking_info: crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
         }
         impl rt::ToValue for BuyTrafficRequest_CancelResult {
             fn to_value(&self) -> rt::Value {
@@ -17810,21 +17443,21 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest_CompleteResult {
-            ///The Daml `purchasedTraffic` field.
+            ///Daml field `purchasedTraffic`.
             #[serde(rename = "purchasedTraffic")]
             pub purchased_traffic: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_DecentralizedSynchronizer::MemberTraffic,
+                crate::splice_amulet::Splice_DecentralizedSynchronizer::MemberTraffic,
             >,
-            ///The Daml `trackingInfo` field.
+            ///Daml field `trackingInfo`.
             #[serde(rename = "trackingInfo")]
-            pub tracking_info: crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
-            ///The Daml `senderChangeAmulet` field.
+            pub tracking_info: crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequestTrackingInfo,
+            ///Daml field `senderChangeAmulet`.
             #[serde(rename = "senderChangeAmulet")]
             pub sender_change_amulet: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for BuyTrafficRequest_CompleteResult {
@@ -17859,13 +17492,13 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequestTrackingInfo {
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
-            ///The Daml `endUserParty` field.
+            ///Daml field `endUserParty`.
             #[serde(rename = "endUserParty")]
             pub end_user_party: rt::Party,
         }
@@ -17893,31 +17526,42 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.BuyTrafficRequest:BuyTrafficRequest`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.BuyTrafficRequest:BuyTrafficRequest`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `BuyTrafficRequest_Complete` — consuming
+        ///- `BuyTrafficRequest_Cancel` — consuming
+        ///- `Archive` — consuming
+        ///- `BuyTrafficRequest_Expire` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BuyTrafficRequest {
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `endUserParty` field.
+            ///Daml field `endUserParty`.
             #[serde(rename = "endUserParty")]
             pub end_user_party: rt::Party,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `trackingId` field.
+            ///Daml field `trackingId`.
             #[serde(rename = "trackingId")]
             pub tracking_id: ::std::string::String,
-            ///The Daml `trafficAmount` field.
+            ///Daml field `trafficAmount`.
             #[serde(rename = "trafficAmount")]
             pub traffic_amount: rt::Int64,
-            ///The Daml `memberId` field.
+            ///Daml field `memberId`.
             #[serde(rename = "memberId")]
             pub member_id: ::std::string::String,
-            ///The Daml `synchronizerId` field.
+            ///Daml field `synchronizerId`.
             #[serde(rename = "synchronizerId")]
             pub synchronizer_id: ::std::string::String,
-            ///The Daml `migrationId` field.
+            ///Daml field `migrationId`.
             #[serde(rename = "migrationId")]
             pub migration_id: rt::Int64,
         }
@@ -18004,21 +17648,23 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `BuyTrafficRequest_Complete` choice on [`BuyTrafficRequest`] (consuming).
         impl rt::Choice<BuyTrafficRequest>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Complete {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_CompleteResult;
+            for crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Complete
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_CompleteResult;
             const NAME: &'static str = "BuyTrafficRequest_Complete";
             const CONSUMING: bool = true;
         }
         ///The `BuyTrafficRequest_Cancel` choice on [`BuyTrafficRequest`] (consuming).
         impl rt::Choice<BuyTrafficRequest>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Cancel {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_CancelResult;
+            for crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Cancel
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_CancelResult;
             const NAME: &'static str = "BuyTrafficRequest_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`BuyTrafficRequest`] (consuming).
         impl rt::Choice<BuyTrafficRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -18026,26 +17672,26 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `BuyTrafficRequest_Expire` choice on [`BuyTrafficRequest`] (consuming).
         impl rt::Choice<BuyTrafficRequest>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Expire {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_ExpireResult;
+            for crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_Expire
+        {
+            type Return = crate::splice_wallet::Splice_Wallet_BuyTrafficRequest::BuyTrafficRequest_ExpireResult;
             const NAME: &'static str = "BuyTrafficRequest_Expire";
             const CONSUMING: bool = true;
         }
     }
     pub mod Splice_Wallet_TransferPreapproval {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapprovalProposal_AcceptResult {
-            ///The Daml `transferPreapprovalCid` field.
+            ///Daml field `transferPreapprovalCid`.
             #[serde(rename = "transferPreapprovalCid")]
-            pub transfer_preapproval_cid: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferPreapproval,
-            >,
-            ///The Daml `transferResult` field.
+            pub transfer_preapproval_cid:
+                rt::ContractId<crate::splice_amulet::Splice_AmuletRules::TransferPreapproval>,
+            ///Daml field `transferResult`.
             #[serde(rename = "transferResult")]
-            pub transfer_result: crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferResult,
-            ///The Daml `amuletPaid` field.
+            pub transfer_result: crate::splice_amulet::Splice_AmuletRules::TransferResult,
+            ///Daml field `amuletPaid`.
             #[serde(rename = "amuletPaid")]
             pub amulet_paid: rt::Numeric,
         }
@@ -18085,17 +17731,14 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapprovalProposal_Accept {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `inputs` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `expiresAt` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
         }
@@ -18125,16 +17768,24 @@ pub mod splice_wallet_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.TransferPreapproval:TransferPreapprovalProposal`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet:Splice.Wallet.TransferPreapproval:TransferPreapprovalProposal`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        ///- `TransferPreapprovalProposal_Accept` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferPreapprovalProposal {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `expectedDso` field.
+            ///Daml field `expectedDso`.
             #[serde(rename = "expectedDso")]
             pub expected_dso: ::core::option::Option<rt::Party>,
         }
@@ -18178,7 +17829,7 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `Archive` choice on [`TransferPreapprovalProposal`] (consuming).
         impl rt::Choice<TransferPreapprovalProposal>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -18186,22 +17837,21 @@ pub mod splice_wallet_0_1_14 {
         }
         ///The `TransferPreapprovalProposal_Accept` choice on [`TransferPreapprovalProposal`] (consuming).
         impl rt::Choice<TransferPreapprovalProposal>
-        for crate::splice_wallet_0_1_14::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal_Accept {
-            type Return = crate::splice_wallet_0_1_14::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal_AcceptResult;
+        for crate::splice_wallet::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal_Accept {
+            type Return = crate::splice_wallet::Splice_Wallet_TransferPreapproval::TransferPreapprovalProposal_AcceptResult;
             const NAME: &'static str = "TransferPreapprovalProposal_Accept";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_wallet_payments_0_1_14 {
+pub mod splice_wallet_payments {
     pub mod Splice_Wallet_Payment {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_Expire {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for AcceptedAppPayment_Expire {
             fn to_value(&self) -> rt::Value {
@@ -18220,12 +17870,11 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_Reject {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for AcceptedAppPayment_Reject {
             fn to_value(&self) -> rt::Value {
@@ -18244,12 +17893,11 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_Collect {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for AcceptedAppPayment_Collect {
             fn to_value(&self) -> rt::Value {
@@ -18268,15 +17916,15 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_CollectResult {
-            ///The Daml `receiverAmulets` field.
+            ///Daml field `receiverAmulets`.
             #[serde(rename = "receiverAmulets")]
             pub receiver_amulets: ::std::vec::Vec<
-                crate::daml_prim_DA_Types_1_0_0::DA_Types::Tuple2<
+                crate::daml_prim_DA_Types::DA_Types::Tuple2<
                     rt::Party,
-                    rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+                    rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
                 >,
             >,
         }
@@ -18299,16 +17947,14 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ReceiverAmulet {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
-            pub locked_amulet:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet>,
+            pub locked_amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::LockedAmulet>,
         }
         impl rt::ToValue for ReceiverAmulet {
             fn to_value(&self) -> rt::Value {
@@ -18332,7 +17978,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_Reject {}
         impl rt::ToValue for AppPaymentRequest_Reject {
@@ -18345,7 +17991,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_Withdraw {}
         impl rt::ToValue for AppPaymentRequest_Withdraw {
@@ -18358,17 +18004,14 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_Accept {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `context` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `walletProvider` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
+            ///Daml field `walletProvider`.
             #[serde(rename = "walletProvider")]
             pub wallet_provider: rt::Party,
         }
@@ -18401,10 +18044,9 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -18420,13 +18062,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ReceiverAmuletAmount {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amuletAmount` field.
+            ///Daml field `amuletAmount`.
             #[serde(rename = "amuletAmount")]
             pub amulet_amount: rt::Numeric,
         }
@@ -18452,15 +18093,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ReceiverAmount {
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
-            pub amount: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
+            pub amount: crate::splice_wallet_payments::Splice_Wallet_Payment::PaymentAmount,
         }
         impl rt::ToValue for ReceiverAmount {
             fn to_value(&self) -> rt::Value {
@@ -18482,15 +18121,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PaymentAmount {
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `unit` field.
             #[serde(rename = "unit")]
-            pub unit: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::Unit,
+            pub unit: crate::splice_wallet_payments::Splice_Wallet_Payment::Unit,
         }
         impl rt::ToValue for PaymentAmount {
             fn to_value(&self) -> rt::Value {
@@ -18510,13 +18147,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_ExpireResult {
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for AcceptedAppPayment_ExpireResult {
@@ -18533,13 +18169,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment_RejectResult {
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for AcceptedAppPayment_RejectResult {
@@ -18556,13 +18191,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_RejectResult {
-            ///The Daml `terminatedAppPayment` field.
+            ///Daml field `terminatedAppPayment`.
             #[serde(rename = "terminatedAppPayment")]
             pub terminated_app_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::TerminatedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::TerminatedAppPayment,
             >,
         }
         impl rt::ToValue for AppPaymentRequest_RejectResult {
@@ -18584,13 +18219,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_WithdrawResult {
-            ///The Daml `terminatedAppPayment` field.
+            ///Daml field `terminatedAppPayment`.
             #[serde(rename = "terminatedAppPayment")]
             pub terminated_app_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::TerminatedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::TerminatedAppPayment,
             >,
         }
         impl rt::ToValue for AppPaymentRequest_WithdrawResult {
@@ -18612,19 +18247,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_AcceptResult {
-            ///The Daml `acceptedPayment` field.
+            ///Daml field `acceptedPayment`.
             #[serde(rename = "acceptedPayment")]
             pub accepted_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment,
             >,
-            ///The Daml `senderChangeAmulet` field.
+            ///Daml field `senderChangeAmulet`.
             #[serde(rename = "senderChangeAmulet")]
-            pub sender_change_amulet: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            >,
+            pub sender_change_amulet:
+                ::core::option::Option<rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>>,
         }
         impl rt::ToValue for AppPaymentRequest_AcceptResult {
             fn to_value(&self) -> rt::Value {
@@ -18652,13 +18286,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest_ExpireResult {
-            ///The Daml `terminatedAppPayment` field.
+            ///Daml field `terminatedAppPayment`.
             #[serde(rename = "terminatedAppPayment")]
             pub terminated_app_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::TerminatedAppPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::TerminatedAppPayment,
             >,
         }
         impl rt::ToValue for AppPaymentRequest_ExpireResult {
@@ -18685,13 +18319,10 @@ pub mod splice_wallet_payments_0_1_14 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Unit {
-            ///The Daml `USDUnit` value.
             #[serde(rename = "USDUnit")]
             USDUnit,
-            ///The Daml `AmuletUnit` value.
             #[serde(rename = "AmuletUnit")]
             AmuletUnit,
-            ///The Daml `ExtUnit` value.
             #[serde(rename = "ExtUnit")]
             ExtUnit,
         }
@@ -18714,34 +18345,40 @@ pub mod splice_wallet_payments_0_1_14 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Payment:AcceptedAppPayment`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Payment:AcceptedAppPayment`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        ///- `AcceptedAppPayment_Collect` — consuming
+        ///- `AcceptedAppPayment_Expire` — consuming
+        ///- `AcceptedAppPayment_Reject` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AcceptedAppPayment {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `amuletReceiverAmounts` field.
+            ///Daml field `amuletReceiverAmounts`.
             #[serde(rename = "amuletReceiverAmounts")]
             pub amulet_receiver_amounts: ::std::vec::Vec<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::ReceiverAmuletAmount,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::ReceiverAmuletAmount,
             >,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
-            pub locked_amulet:
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet>,
-            ///The Daml `round` field.
+            pub locked_amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::LockedAmulet>,
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `reference` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest,
             >,
         }
         impl rt::ToValue for AcceptedAppPayment {
@@ -18814,7 +18451,7 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `Archive` choice on [`AcceptedAppPayment`] (consuming).
         impl rt::Choice<AcceptedAppPayment>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -18822,46 +18459,58 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `AcceptedAppPayment_Collect` choice on [`AcceptedAppPayment`] (consuming).
         impl rt::Choice<AcceptedAppPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_Collect {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_CollectResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_Collect
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_CollectResult;
             const NAME: &'static str = "AcceptedAppPayment_Collect";
             const CONSUMING: bool = true;
         }
         ///The `AcceptedAppPayment_Expire` choice on [`AcceptedAppPayment`] (consuming).
         impl rt::Choice<AcceptedAppPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_Expire {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_ExpireResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_Expire
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_ExpireResult;
             const NAME: &'static str = "AcceptedAppPayment_Expire";
             const CONSUMING: bool = true;
         }
         ///The `AcceptedAppPayment_Reject` choice on [`AcceptedAppPayment`] (consuming).
         impl rt::Choice<AcceptedAppPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_Reject {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AcceptedAppPayment_RejectResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_Reject
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AcceptedAppPayment_RejectResult;
             const NAME: &'static str = "AcceptedAppPayment_Reject";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Payment:AppPaymentRequest`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Payment:AppPaymentRequest`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AppPaymentRequest_Accept` — consuming
+        ///- `AppPaymentRequest_Expire` — consuming
+        ///- `AppPaymentRequest_Reject` — consuming
+        ///- `Archive` — consuming
+        ///- `AppPaymentRequest_Withdraw` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppPaymentRequest {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiverAmounts` field.
+            ///Daml field `receiverAmounts`.
             #[serde(rename = "receiverAmounts")]
             pub receiver_amounts: ::std::vec::Vec<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::ReceiverAmount,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::ReceiverAmount,
             >,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::std::string::String,
         }
@@ -18932,28 +18581,31 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `AppPaymentRequest_Accept` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_Accept {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_AcceptResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_Accept
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_AcceptResult;
             const NAME: &'static str = "AppPaymentRequest_Accept";
             const CONSUMING: bool = true;
         }
         ///The `AppPaymentRequest_Expire` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_Expire {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_ExpireResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_Expire
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_ExpireResult;
             const NAME: &'static str = "AppPaymentRequest_Expire";
             const CONSUMING: bool = true;
         }
         ///The `AppPaymentRequest_Reject` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_Reject {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_RejectResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_Reject
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_RejectResult;
             const NAME: &'static str = "AppPaymentRequest_Reject";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -18961,27 +18613,33 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `AppPaymentRequest_Withdraw` choice on [`AppPaymentRequest`] (consuming).
         impl rt::Choice<AppPaymentRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_Withdraw {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest_WithdrawResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_Withdraw
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest_WithdrawResult;
             const NAME: &'static str = "AppPaymentRequest_Withdraw";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Payment:TerminatedAppPayment`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Payment:TerminatedAppPayment`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TerminatedAppPayment {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `receivers` field.
             #[serde(rename = "receivers")]
             pub receivers: ::std::vec::Vec<rt::Party>,
-            ///The Daml `reference` field.
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::AppPaymentRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Payment::AppPaymentRequest,
             >,
         }
         impl rt::ToValue for TerminatedAppPayment {
@@ -19035,7 +18693,7 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `Archive` choice on [`TerminatedAppPayment`] (consuming).
         impl rt::Choice<TerminatedAppPayment>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -19044,16 +18702,14 @@ pub mod splice_wallet_payments_0_1_14 {
     }
     pub mod Splice_Wallet_Subscriptions {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionPayment_Expire {
             fn to_value(&self) -> rt::Value {
@@ -19078,13 +18734,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_Reject {
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionPayment_Reject {
             fn to_value(&self) -> rt::Value {
@@ -19105,13 +18760,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_Collect {
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionPayment_Collect {
             fn to_value(&self) -> rt::Value {
@@ -19132,7 +18786,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_CancelSubscription {}
         impl rt::ToValue for SubscriptionIdleState_CancelSubscription {
@@ -19145,10 +18799,9 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_ExpireSubscription {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
         }
@@ -19164,17 +18817,14 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_MakePayment {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `context` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `walletProvider` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
+            ///Daml field `walletProvider`.
             #[serde(rename = "walletProvider")]
             pub wallet_provider: rt::Party,
         }
@@ -19207,16 +18857,14 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionInitialPayment_Expire {
             fn to_value(&self) -> rt::Value {
@@ -19241,13 +18889,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_Reject {
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionInitialPayment_Reject {
             fn to_value(&self) -> rt::Value {
@@ -19268,13 +18915,12 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_Collect {
-            ///The Daml `transferContext` field.
+            ///Daml field `transferContext`.
             #[serde(rename = "transferContext")]
-            pub transfer_context:
-                crate::splice_amulet_0_1_14::Splice_AmuletRules::AppTransferContext,
+            pub transfer_context: crate::splice_amulet::Splice_AmuletRules::AppTransferContext,
         }
         impl rt::ToValue for SubscriptionInitialPayment_Collect {
             fn to_value(&self) -> rt::Value {
@@ -19295,7 +18941,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_Reject {}
         impl rt::ToValue for SubscriptionRequest_Reject {
@@ -19308,7 +18954,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_Withdraw {}
         impl rt::ToValue for SubscriptionRequest_Withdraw {
@@ -19321,17 +18967,14 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_AcceptAndMakePayment {
-            ///The Daml `inputs` field.
             #[serde(rename = "inputs")]
-            pub inputs:
-                ::std::vec::Vec<crate::splice_amulet_0_1_14::Splice_AmuletRules::TransferInput>,
-            ///The Daml `context` field.
+            pub inputs: ::std::vec::Vec<crate::splice_amulet::Splice_AmuletRules::TransferInput>,
             #[serde(rename = "context")]
-            pub context: crate::splice_amulet_0_1_14::Splice_AmuletRules::PaymentTransferContext,
-            ///The Daml `walletProvider` field.
+            pub context: crate::splice_amulet::Splice_AmuletRules::PaymentTransferContext,
+            ///Daml field `walletProvider`.
             #[serde(rename = "walletProvider")]
             pub wallet_provider: rt::Party,
         }
@@ -19364,19 +19007,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayData {
-            ///The Daml `paymentAmount` field.
+            ///Daml field `paymentAmount`.
             #[serde(rename = "paymentAmount")]
-            pub payment_amount:
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Payment::PaymentAmount,
-            ///The Daml `paymentInterval` field.
+            pub payment_amount: crate::splice_wallet_payments::Splice_Wallet_Payment::PaymentAmount,
+            ///Daml field `paymentInterval`.
             #[serde(rename = "paymentInterval")]
-            pub payment_interval: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `paymentDuration` field.
+            pub payment_interval: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `paymentDuration`.
             #[serde(rename = "paymentDuration")]
-            pub payment_duration: crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
+            pub payment_duration: crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
         }
         impl rt::ToValue for SubscriptionPayData {
             fn to_value(&self) -> rt::Value {
@@ -19414,7 +19056,7 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Subscription_Archive {}
         impl rt::ToValue for Subscription_Archive {
@@ -19427,18 +19069,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_ExpireResult {
-            ///The Daml `subscriptionState` field.
+            ///Daml field `subscriptionState`.
             #[serde(rename = "subscriptionState")]
             pub subscription_state: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
             >,
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for SubscriptionPayment_ExpireResult {
@@ -19468,18 +19110,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_RejectResult {
-            ///The Daml `subscriptionState` field.
+            ///Daml field `subscriptionState`.
             #[serde(rename = "subscriptionState")]
             pub subscription_state: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
             >,
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for SubscriptionPayment_RejectResult {
@@ -19509,19 +19151,16 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment_CollectResult {
-            ///The Daml `subscriptionState` field.
+            ///Daml field `subscriptionState`.
             #[serde(rename = "subscriptionState")]
             pub subscription_state: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
             >,
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::Amulet,
-            >,
+            pub amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
         }
         impl rt::ToValue for SubscriptionPayment_CollectResult {
             fn to_value(&self) -> rt::Value {
@@ -19548,19 +19187,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_MakePaymentResult {
-            ///The Daml `subscriptionPayment` field.
+            ///Daml field `subscriptionPayment`.
             #[serde(rename = "subscriptionPayment")]
             pub subscription_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment,
             >,
-            ///The Daml `senderChange` field.
+            ///Daml field `senderChange`.
             #[serde(rename = "senderChange")]
-            pub sender_change: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
-            >,
+            pub sender_change:
+                ::core::option::Option<rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>>,
         }
         impl rt::ToValue for SubscriptionIdleState_MakePaymentResult {
             fn to_value(&self) -> rt::Value {
@@ -19585,13 +19223,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_CancelSubscriptionResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for SubscriptionIdleState_CancelSubscriptionResult {
@@ -19613,13 +19251,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState_ExpireSubscriptionResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for SubscriptionIdleState_ExpireSubscriptionResult {
@@ -19641,13 +19279,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_ExpireResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for SubscriptionInitialPayment_ExpireResult {
@@ -19669,13 +19307,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_RejectResult {
-            ///The Daml `amuletSum` field.
+            ///Daml field `amuletSum`.
             #[serde(rename = "amuletSum")]
-            pub amulet_sum: crate::splice_amulet_0_1_14::Splice_Amulet::AmuletCreateSummary<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+            pub amulet_sum: crate::splice_amulet::Splice_Amulet::AmuletCreateSummary<
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for SubscriptionInitialPayment_RejectResult {
@@ -19697,24 +19335,20 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment_CollectResult {
-            ///The Daml `subscription` field.
             #[serde(rename = "subscription")]
             pub subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::Subscription,
             >,
-            ///The Daml `subscriptionState` field.
+            ///Daml field `subscriptionState`.
             #[serde(rename = "subscriptionState")]
             pub subscription_state: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState,
             >,
-            ///The Daml `amulet` field.
             #[serde(rename = "amulet")]
-            pub amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::Amulet,
-            >,
+            pub amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
         }
         impl rt::ToValue for SubscriptionInitialPayment_CollectResult {
             fn to_value(&self) -> rt::Value {
@@ -19747,13 +19381,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_RejectResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for SubscriptionRequest_RejectResult {
@@ -19775,13 +19409,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_WithdrawResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for SubscriptionRequest_WithdrawResult {
@@ -19803,18 +19437,18 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest_AcceptAndMakePaymentResult {
-            ///The Daml `subscriptionPayment` field.
+            ///Daml field `subscriptionPayment`.
             #[serde(rename = "subscriptionPayment")]
             pub subscription_payment: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment,
             >,
-            ///The Daml `senderChange` field.
+            ///Daml field `senderChange`.
             #[serde(rename = "senderChange")]
             pub sender_change: ::core::option::Option<
-                rt::ContractId<crate::splice_amulet_0_1_14::Splice_Amulet::Amulet>,
+                rt::ContractId<crate::splice_amulet::Splice_Amulet::Amulet>,
             >,
         }
         impl rt::ToValue for SubscriptionRequest_AcceptAndMakePaymentResult {
@@ -19840,13 +19474,13 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Subscription_ArchiveResult {
-            ///The Daml `terminatedSubscription` field.
+            ///Daml field `terminatedSubscription`.
             #[serde(rename = "terminatedSubscription")]
             pub terminated_subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::TerminatedSubscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::TerminatedSubscription,
             >,
         }
         impl rt::ToValue for Subscription_ArchiveResult {
@@ -19868,22 +19502,17 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionData {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `dso` field.
             #[serde(rename = "dso")]
             pub dso: rt::Party,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::std::string::String,
         }
@@ -19919,16 +19548,26 @@ pub mod splice_wallet_payments_0_1_14 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:Subscription`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:Subscription`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Subscription_Archive` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Subscription {
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `reference` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for Subscription {
@@ -19978,40 +19617,53 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `Subscription_Archive` choice on [`Subscription`] (consuming).
         impl rt::Choice<Subscription>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription_Archive {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription_ArchiveResult;
+            for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::Subscription_Archive
+        {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::Subscription_ArchiveResult;
             const NAME: &'static str = "Subscription_Archive";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`Subscription`] (consuming).
         impl rt::Choice<Subscription>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:SubscriptionIdleState`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:SubscriptionIdleState`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `SubscriptionIdleState_MakePayment` — consuming
+        ///- `SubscriptionIdleState_ExpireSubscription` — consuming
+        ///- `SubscriptionIdleState_CancelSubscription` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionIdleState {
-            ///The Daml `subscription` field.
             #[serde(rename = "subscription")]
             pub subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::Subscription,
             >,
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `payData` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
+            ///Daml field `payData`.
             #[serde(rename = "payData")]
-            pub pay_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayData,
-            ///The Daml `nextPaymentDueAt` field.
+            pub pay_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayData,
+            ///Daml field `nextPaymentDueAt`.
             #[serde(rename = "nextPaymentDueAt")]
             pub next_payment_due_at: rt::Timestamp,
-            ///The Daml `reference` field.
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for SubscriptionIdleState {
@@ -20086,57 +19738,67 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `SubscriptionIdleState_MakePayment` choice on [`SubscriptionIdleState`] (consuming).
         impl rt::Choice<SubscriptionIdleState>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_MakePayment {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_MakePaymentResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_MakePayment {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_MakePaymentResult;
             const NAME: &'static str = "SubscriptionIdleState_MakePayment";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionIdleState_ExpireSubscription` choice on [`SubscriptionIdleState`] (consuming).
         impl rt::Choice<SubscriptionIdleState>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_ExpireSubscription {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_ExpireSubscriptionResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_ExpireSubscription {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_ExpireSubscriptionResult;
             const NAME: &'static str = "SubscriptionIdleState_ExpireSubscription";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionIdleState_CancelSubscription` choice on [`SubscriptionIdleState`] (consuming).
         impl rt::Choice<SubscriptionIdleState>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_CancelSubscription {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionIdleState_CancelSubscriptionResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_CancelSubscription {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionIdleState_CancelSubscriptionResult;
             const NAME: &'static str = "SubscriptionIdleState_CancelSubscription";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`SubscriptionIdleState`] (consuming).
         impl rt::Choice<SubscriptionIdleState>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:SubscriptionInitialPayment`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:SubscriptionInitialPayment`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `SubscriptionInitialPayment_Collect` — consuming
+        ///- `SubscriptionInitialPayment_Reject` — consuming
+        ///- `SubscriptionInitialPayment_Expire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionInitialPayment {
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `payData` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
+            ///Daml field `payData`.
             #[serde(rename = "payData")]
-            pub pay_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayData,
-            ///The Daml `targetAmount` field.
+            pub pay_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayData,
+            ///Daml field `targetAmount`.
             #[serde(rename = "targetAmount")]
             pub target_amount: rt::Numeric,
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
-            pub locked_amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet,
-            >,
-            ///The Daml `round` field.
+            pub locked_amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::LockedAmulet>,
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `reference` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for SubscriptionInitialPayment {
@@ -20208,65 +19870,74 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `SubscriptionInitialPayment_Collect` choice on [`SubscriptionInitialPayment`] (consuming).
         impl rt::Choice<SubscriptionInitialPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Collect {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_CollectResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Collect {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_CollectResult;
             const NAME: &'static str = "SubscriptionInitialPayment_Collect";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionInitialPayment_Reject` choice on [`SubscriptionInitialPayment`] (consuming).
         impl rt::Choice<SubscriptionInitialPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Reject {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_RejectResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Reject {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_RejectResult;
             const NAME: &'static str = "SubscriptionInitialPayment_Reject";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionInitialPayment_Expire` choice on [`SubscriptionInitialPayment`] (consuming).
         impl rt::Choice<SubscriptionInitialPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Expire {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_ExpireResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_Expire {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionInitialPayment_ExpireResult;
             const NAME: &'static str = "SubscriptionInitialPayment_Expire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`SubscriptionInitialPayment`] (consuming).
         impl rt::Choice<SubscriptionInitialPayment>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:SubscriptionPayment`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:SubscriptionPayment`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `SubscriptionPayment_Collect` — consuming
+        ///- `SubscriptionPayment_Reject` — consuming
+        ///- `SubscriptionPayment_Expire` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionPayment {
-            ///The Daml `subscription` field.
             #[serde(rename = "subscription")]
             pub subscription: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::Subscription,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::Subscription,
             >,
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `payData` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
+            ///Daml field `payData`.
             #[serde(rename = "payData")]
-            pub pay_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayData,
-            ///The Daml `thisPaymentDueAt` field.
+            pub pay_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayData,
+            ///Daml field `thisPaymentDueAt`.
             #[serde(rename = "thisPaymentDueAt")]
             pub this_payment_due_at: rt::Timestamp,
-            ///The Daml `targetAmount` field.
+            ///Daml field `targetAmount`.
             #[serde(rename = "targetAmount")]
             pub target_amount: rt::Numeric,
-            ///The Daml `lockedAmulet` field.
+            ///Daml field `lockedAmulet`.
             #[serde(rename = "lockedAmulet")]
-            pub locked_amulet: rt::ContractId<
-                crate::splice_amulet_0_1_14::Splice_Amulet::LockedAmulet,
-            >,
-            ///The Daml `round` field.
+            pub locked_amulet: rt::ContractId<crate::splice_amulet::Splice_Amulet::LockedAmulet>,
             #[serde(rename = "round")]
-            pub round: crate::splice_amulet_0_1_14::Splice_Types::Round,
-            ///The Daml `reference` field.
+            pub round: crate::splice_amulet::Splice_Types::Round,
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for SubscriptionPayment {
@@ -20358,42 +20029,56 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `SubscriptionPayment_Collect` choice on [`SubscriptionPayment`] (consuming).
         impl rt::Choice<SubscriptionPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_Collect {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_CollectResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_Collect {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_CollectResult;
             const NAME: &'static str = "SubscriptionPayment_Collect";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionPayment_Reject` choice on [`SubscriptionPayment`] (consuming).
         impl rt::Choice<SubscriptionPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_Reject {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_RejectResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_Reject {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_RejectResult;
             const NAME: &'static str = "SubscriptionPayment_Reject";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionPayment_Expire` choice on [`SubscriptionPayment`] (consuming).
         impl rt::Choice<SubscriptionPayment>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_Expire {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayment_ExpireResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_Expire {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayment_ExpireResult;
             const NAME: &'static str = "SubscriptionPayment_Expire";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`SubscriptionPayment`] (consuming).
         impl rt::Choice<SubscriptionPayment>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:SubscriptionRequest`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:SubscriptionRequest`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `SubscriptionRequest_AcceptAndMakePayment` — consuming
+        ///- `SubscriptionRequest_Withdraw` — consuming
+        ///- `SubscriptionRequest_Reject` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SubscriptionRequest {
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `payData` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
+            ///Daml field `payData`.
             #[serde(rename = "payData")]
-            pub pay_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionPayData,
+            pub pay_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionPayData,
         }
         impl rt::ToValue for SubscriptionRequest {
             fn to_value(&self) -> rt::Value {
@@ -20440,43 +20125,52 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `SubscriptionRequest_AcceptAndMakePayment` choice on [`SubscriptionRequest`] (consuming).
         impl rt::Choice<SubscriptionRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_AcceptAndMakePayment {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_AcceptAndMakePaymentResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_AcceptAndMakePayment {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_AcceptAndMakePaymentResult;
             const NAME: &'static str = "SubscriptionRequest_AcceptAndMakePayment";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionRequest_Withdraw` choice on [`SubscriptionRequest`] (consuming).
         impl rt::Choice<SubscriptionRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_Withdraw {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_WithdrawResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_Withdraw {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_WithdrawResult;
             const NAME: &'static str = "SubscriptionRequest_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `SubscriptionRequest_Reject` choice on [`SubscriptionRequest`] (consuming).
         impl rt::Choice<SubscriptionRequest>
-        for crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_Reject {
-            type Return = crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest_RejectResult;
+        for crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_Reject {
+            type Return = crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest_RejectResult;
             const NAME: &'static str = "SubscriptionRequest_Reject";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`SubscriptionRequest`] (consuming).
         impl rt::Choice<SubscriptionRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Splice.Wallet.Subscriptions:TerminatedSubscription`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#splice-wallet-payments:Splice.Wallet.Subscriptions:TerminatedSubscription`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TerminatedSubscription {
-            ///The Daml `subscriptionData` field.
+            ///Daml field `subscriptionData`.
             #[serde(rename = "subscriptionData")]
-            pub subscription_data: crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionData,
-            ///The Daml `reference` field.
+            pub subscription_data:
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionData,
             #[serde(rename = "reference")]
             pub reference: rt::ContractId<
-                crate::splice_wallet_payments_0_1_14::Splice_Wallet_Subscriptions::SubscriptionRequest,
+                crate::splice_wallet_payments::Splice_Wallet_Subscriptions::SubscriptionRequest,
             >,
         }
         impl rt::ToValue for TerminatedSubscription {
@@ -20526,7 +20220,7 @@ pub mod splice_wallet_payments_0_1_14 {
         }
         ///The `Archive` choice on [`TerminatedSubscription`] (consuming).
         impl rt::Choice<TerminatedSubscription>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";

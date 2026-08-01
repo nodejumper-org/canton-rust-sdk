@@ -85,10 +85,24 @@ fn named_module(module: &NamedModule) -> TokenStream {
     }
 }
 
+/// A doc line for a generated item, but only where the Rust identifier had to
+/// be spelled differently from the Daml one.
+///
+/// Where the two agree the doc would only restate the identifier next to it —
+/// noise on every field of every record on docs.rs. The `#[serde(rename)]`
+/// beside it records the wire label either way.
+fn renamed_doc(rust_name: &Ident, daml_name: &str, kind: &str) -> TokenStream {
+    if rust_name.to_string().trim_start_matches("r#") == daml_name {
+        return TokenStream::new();
+    }
+    let doc = format!("Daml {kind} `{daml_name}`.");
+    quote!(#[doc = #doc])
+}
+
 /// Generate the `struct` for a record data type (also used for template
 /// payloads). Field names are snake-cased for Rust; the original Daml label is
-/// kept in a doc comment and pinned on the wire by the emitted codecs (the
-/// gRPC `Record` labels, and `serde(rename)` for JSON).
+/// pinned on the wire by the emitted codecs (the gRPC `Record` labels, and
+/// `serde(rename)` for JSON) and appears in a doc only where the two differ.
 #[must_use]
 pub(crate) fn record_struct(record: &Record) -> TokenStream {
     let name = type_ident(&record.name);
@@ -97,9 +111,9 @@ pub(crate) fn record_struct(record: &Record) -> TokenStream {
         let field_name = field_ident(&field.label);
         let ty = rust_type(&field.ty);
         let label = &field.label;
-        let doc = format!("The Daml `{}` field.", field.label);
+        let doc = renamed_doc(&field_name, label, "field");
         quote! {
-            #[doc = #doc]
+            #doc
             #[serde(rename = #label)]
             pub #field_name: #ty,
         }
@@ -107,7 +121,7 @@ pub(crate) fn record_struct(record: &Record) -> TokenStream {
     let phantom = phantom_field(&record.type_params, record.fields.iter().map(|f| &f.ty));
 
     quote! {
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct #name #generics {
             #(#fields)*
@@ -281,7 +295,7 @@ pub(crate) fn variant_enum(variant: &Variant) -> TokenStream {
     let constructors = variant.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(&ctor.name);
         let label = &ctor.name;
-        let doc = format!("The Daml `{}` constructor.", ctor.name);
+        let doc = renamed_doc(&ctor_name, label, "constructor");
         // A nullary constructor carries `Unit`, not nothing: the LF-JSON variant
         // form always has a `value`, and a nullary one is `Unit` (`{}`). Emitting
         // it as a bare unit variant would serialize to `{"tag":<c>}`, which the
@@ -291,7 +305,7 @@ pub(crate) fn variant_enum(variant: &Variant) -> TokenStream {
             .as_ref()
             .map_or_else(|| quote!(rt::Unit), rust_type);
         quote! {
-            #[doc = #doc]
+            #doc
             #[serde(rename = #label)]
             #ctor_name(#payload),
         }
@@ -300,7 +314,7 @@ pub(crate) fn variant_enum(variant: &Variant) -> TokenStream {
     // The LF-JSON variant form is `{"tag": <ctor>, "value": <payload>}` —
     // serde's adjacently-tagged representation.
     quote! {
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum #name #generics {
             #(#constructors)*
@@ -367,9 +381,9 @@ pub(crate) fn enum_type(enumeration: &Enum) -> TokenStream {
     let constructors = enumeration.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(ctor);
         let label = ctor;
-        let doc = format!("The Daml `{ctor}` value.");
+        let doc = renamed_doc(&ctor_name, label, "constructor");
         quote! {
-            #[doc = #doc]
+            #doc
             #[serde(rename = #label)]
             #ctor_name,
         }
@@ -431,6 +445,55 @@ fn enum_codecs(enumeration: &Enum) -> TokenStream {
     }
 }
 
+/// The doc on a template's payload struct: its on-ledger identity and the
+/// choices exercisable on it.
+///
+/// rustdoc has no reverse index for `impl Choice<This> for That`, so without
+/// this a reader on docs.rs sees a payload struct and no way to discover what
+/// can be done with it.
+///
+/// One `#[doc]` attribute per line: a single multi-line string is rendered as a
+/// `/** … */` block whose continuation lines are indented to match the item,
+/// and rustdoc reads a four-space indent as a code block — which would turn the
+/// prose into a failing doctest in the user's crate.
+fn template_doc(template: &Template) -> TokenStream {
+    let mut lines = vec![
+        format!(
+            "The Daml template `{}:{}`.",
+            template.module_name, template.name
+        ),
+        String::new(),
+        format!(
+            "Submit with `rt::create_command`; its on-ledger id is `#{}:{}:{}`.",
+            template.package_name, template.module_name, template.name,
+        ),
+    ];
+    if !template.choices.is_empty() {
+        lines.extend([
+            String::new(),
+            "# Choices".to_string(),
+            String::new(),
+            "Exercise with `rt::exercise_command`:".to_string(),
+            String::new(),
+        ]);
+        for choice in &template.choices {
+            let consuming = if choice.consuming {
+                "consuming"
+            } else {
+                "non-consuming"
+            };
+            lines.push(format!("- `{}` — {consuming}", choice.name));
+        }
+    }
+    if template.key.is_some() {
+        lines.extend([
+            String::new(),
+            "Keyed: also exercisable with `rt::exercise_by_key_command`.".to_string(),
+        ]);
+    }
+    quote!(#(#[doc = #lines])*)
+}
+
 /// Emit a template: its payload `struct`, its on-ledger identity
 /// (`rt::Contract` + `rt::Template`), an `rt::WithKey` impl when it is keyed, and
 /// a typed `rt::Choice` impl per choice.
@@ -442,6 +505,7 @@ pub(crate) fn template(template: &Template) -> TokenStream {
         fields: template.fields.clone(),
     });
     let self_ty = type_ident(&template.name);
+    let doc = template_doc(template);
 
     let contract_impl = contract_impl(
         &self_ty,
@@ -473,6 +537,7 @@ pub(crate) fn template(template: &Template) -> TokenStream {
     });
 
     quote! {
+        #doc
         #payload
         #contract_impl
         impl rt::Template for #self_ty {

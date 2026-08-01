@@ -13,38 +13,37 @@
 //!
 //! # Packages in this crate
 //!
-//! - [`daml_prim_DA_Exception_ArithmeticError_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_AssertionFailed_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_GeneralError_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Exception_PreconditionFailed_1_0_0`] — 1 Daml module
-//! - [`daml_prim_DA_Types_1_0_0`] — 1 Daml module
-//! - [`daml_prim_GHC_Tuple_1_0_0`] — 1 Daml module
-//! - [`daml_prim_GHC_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Date_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Internal_Down_1_0_0`] — 1 Daml module
-//! - [`ghc_stdlib_DA_Internal_Template_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Logic_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Monoid_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_NonEmpty_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Random_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Semigroup_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Set_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Stack_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Time_Types_1_0_0`] — 1 Daml module
-//! - [`daml_stdlib_DA_Validation_Types_1_0_0`] — 1 Daml module
-//! - [`quickstart_licensing_0_0_1`] — 2 Daml modules
-//! - [`splice_api_token_allocation_request_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_allocation_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_holding_v1_1_0_0`] — 1 Daml module
-//! - [`splice_api_token_metadata_v1_1_0_0`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_ArithmeticError`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_AssertionFailed`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_GeneralError`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_PreconditionFailed`] — 1 Daml module
+//! - [`daml_prim_DA_Types`] — 1 Daml module
+//! - [`daml_prim_GHC_Tuple`] — 1 Daml module
+//! - [`daml_prim_GHC_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Date_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Internal_Down`] — 1 Daml module
+//! - [`ghc_stdlib_DA_Internal_Template`] — 1 Daml module
+//! - [`daml_stdlib_DA_Logic_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Monoid_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_NonEmpty_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Random_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Semigroup_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Set_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Stack_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Time_Types`] — 1 Daml module
+//! - [`daml_stdlib_DA_Validation_Types`] — 1 Daml module
+//! - [`quickstart_licensing`] — 2 Daml modules
+//! - [`splice_api_token_allocation_request_v1`] — 1 Daml module
+//! - [`splice_api_token_allocation_v1`] — 1 Daml module
+//! - [`splice_api_token_holding_v1`] — 1 Daml module
+//! - [`splice_api_token_metadata_v1`] — 1 Daml module
 
-pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
+pub mod daml_prim_DA_Exception_ArithmeticError {
     pub mod DA_Exception_ArithmeticError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ArithmeticError {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -67,13 +66,12 @@ pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
+pub mod daml_prim_DA_Exception_AssertionFailed {
     pub mod DA_Exception_AssertionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AssertionFailed {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -96,13 +94,12 @@ pub mod daml_prim_DA_Exception_AssertionFailed_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
+pub mod daml_prim_DA_Exception_GeneralError {
     pub mod DA_Exception_GeneralError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct GeneralError {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -125,13 +122,12 @@ pub mod daml_prim_DA_Exception_GeneralError_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
+pub mod daml_prim_DA_Exception_PreconditionFailed {
     pub mod DA_Exception_PreconditionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct PreconditionFailed {
-            ///The Daml `message` field.
             #[serde(rename = "message")]
             pub message: ::std::string::String,
         }
@@ -154,16 +150,14 @@ pub mod daml_prim_DA_Exception_PreconditionFailed_1_0_0 {
         }
     }
 }
-pub mod daml_prim_DA_Types_1_0_0 {
+pub mod daml_prim_DA_Types {
     pub mod DA_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Either<A, B> {
-            ///The Daml `Left` constructor.
             #[serde(rename = "Left")]
             Left(A),
-            ///The Daml `Right` constructor.
             #[serde(rename = "Right")]
             Right(B),
         }
@@ -201,13 +195,11 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple2<T1, T2> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
         }
@@ -235,16 +227,13 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple3<T1, T2, T3> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
         }
@@ -276,19 +265,15 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple4<T1, T2, T3, T4> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
         }
@@ -324,22 +309,17 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple5<T1, T2, T3, T4, T5> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
         }
@@ -379,25 +359,19 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple6<T1, T2, T3, T4, T5, T6> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
         }
@@ -441,28 +415,21 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple7<T1, T2, T3, T4, T5, T6, T7> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
         }
@@ -510,31 +477,23 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
         }
@@ -586,34 +545,25 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
         }
@@ -670,37 +620,27 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
         }
@@ -762,40 +702,29 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
         }
@@ -861,43 +790,31 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
         }
@@ -967,46 +884,33 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
         }
@@ -1080,49 +984,35 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
         }
@@ -1200,52 +1090,37 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
         }
@@ -1327,55 +1202,39 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
         }
@@ -1461,7 +1320,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple17<
             T1,
@@ -1482,55 +1341,38 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T16,
             T17,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
         }
@@ -1621,7 +1463,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple18<
             T1,
@@ -1643,58 +1485,40 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T17,
             T18,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
         }
@@ -1828,7 +1652,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple19<
             T1,
@@ -1851,61 +1675,42 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T18,
             T19,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
-            ///The Daml `_19` field.
             #[serde(rename = "_19")]
             pub _19: T19,
         }
@@ -2045,7 +1850,7 @@ pub mod daml_prim_DA_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Tuple20<
             T1,
@@ -2069,64 +1874,44 @@ pub mod daml_prim_DA_Types_1_0_0 {
             T19,
             T20,
         > {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: T1,
-            ///The Daml `_2` field.
             #[serde(rename = "_2")]
             pub _2: T2,
-            ///The Daml `_3` field.
             #[serde(rename = "_3")]
             pub _3: T3,
-            ///The Daml `_4` field.
             #[serde(rename = "_4")]
             pub _4: T4,
-            ///The Daml `_5` field.
             #[serde(rename = "_5")]
             pub _5: T5,
-            ///The Daml `_6` field.
             #[serde(rename = "_6")]
             pub _6: T6,
-            ///The Daml `_7` field.
             #[serde(rename = "_7")]
             pub _7: T7,
-            ///The Daml `_8` field.
             #[serde(rename = "_8")]
             pub _8: T8,
-            ///The Daml `_9` field.
             #[serde(rename = "_9")]
             pub _9: T9,
-            ///The Daml `_10` field.
             #[serde(rename = "_10")]
             pub _10: T10,
-            ///The Daml `_11` field.
             #[serde(rename = "_11")]
             pub _11: T11,
-            ///The Daml `_12` field.
             #[serde(rename = "_12")]
             pub _12: T12,
-            ///The Daml `_13` field.
             #[serde(rename = "_13")]
             pub _13: T13,
-            ///The Daml `_14` field.
             #[serde(rename = "_14")]
             pub _14: T14,
-            ///The Daml `_15` field.
             #[serde(rename = "_15")]
             pub _15: T15,
-            ///The Daml `_16` field.
             #[serde(rename = "_16")]
             pub _16: T16,
-            ///The Daml `_17` field.
             #[serde(rename = "_17")]
             pub _17: T17,
-            ///The Daml `_18` field.
             #[serde(rename = "_18")]
             pub _18: T18,
-            ///The Daml `_19` field.
             #[serde(rename = "_19")]
             pub _19: T19,
-            ///The Daml `_20` field.
             #[serde(rename = "_20")]
             pub _20: T20,
         }
@@ -2314,13 +2099,12 @@ pub mod daml_prim_DA_Types_1_0_0 {
         }
     }
 }
-pub mod daml_prim_GHC_Tuple_1_0_0 {
+pub mod daml_prim_GHC_Tuple {
     pub mod GHC_Tuple {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Unit<A> {
-            ///The Daml `_1` field.
             #[serde(rename = "_1")]
             pub _1: A,
         }
@@ -2344,7 +2128,7 @@ pub mod daml_prim_GHC_Tuple_1_0_0 {
         }
     }
 }
-pub mod daml_prim_GHC_Types_1_0_0 {
+pub mod daml_prim_GHC_Types {
     pub mod GHC_Types {
         use canton_daml as rt;
         #[derive(
@@ -2352,13 +2136,10 @@ pub mod daml_prim_GHC_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Ordering {
-            ///The Daml `LT` value.
             #[serde(rename = "LT")]
             LT,
-            ///The Daml `EQ` value.
             #[serde(rename = "EQ")]
             EQ,
-            ///The Daml `GT` value.
             #[serde(rename = "GT")]
             GT,
         }
@@ -2385,7 +2166,7 @@ pub mod daml_prim_GHC_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Date_Types_1_0_0 {
+pub mod daml_stdlib_DA_Date_Types {
     pub mod DA_Date_Types {
         use canton_daml as rt;
         #[derive(
@@ -2393,25 +2174,18 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum DayOfWeek {
-            ///The Daml `Monday` value.
             #[serde(rename = "Monday")]
             Monday,
-            ///The Daml `Tuesday` value.
             #[serde(rename = "Tuesday")]
             Tuesday,
-            ///The Daml `Wednesday` value.
             #[serde(rename = "Wednesday")]
             Wednesday,
-            ///The Daml `Thursday` value.
             #[serde(rename = "Thursday")]
             Thursday,
-            ///The Daml `Friday` value.
             #[serde(rename = "Friday")]
             Friday,
-            ///The Daml `Saturday` value.
             #[serde(rename = "Saturday")]
             Saturday,
-            ///The Daml `Sunday` value.
             #[serde(rename = "Sunday")]
             Sunday,
         }
@@ -2449,40 +2223,28 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         )]
         #[serde(crate = "rt::serde")]
         pub enum Month {
-            ///The Daml `Jan` value.
             #[serde(rename = "Jan")]
             Jan,
-            ///The Daml `Feb` value.
             #[serde(rename = "Feb")]
             Feb,
-            ///The Daml `Mar` value.
             #[serde(rename = "Mar")]
             Mar,
-            ///The Daml `Apr` value.
             #[serde(rename = "Apr")]
             Apr,
-            ///The Daml `May` value.
             #[serde(rename = "May")]
             May,
-            ///The Daml `Jun` value.
             #[serde(rename = "Jun")]
             Jun,
-            ///The Daml `Jul` value.
             #[serde(rename = "Jul")]
             Jul,
-            ///The Daml `Aug` value.
             #[serde(rename = "Aug")]
             Aug,
-            ///The Daml `Sep` value.
             #[serde(rename = "Sep")]
             Sep,
-            ///The Daml `Oct` value.
             #[serde(rename = "Oct")]
             Oct,
-            ///The Daml `Nov` value.
             #[serde(rename = "Nov")]
             Nov,
-            ///The Daml `Dec` value.
             #[serde(rename = "Dec")]
             Dec,
         }
@@ -2527,13 +2289,12 @@ pub mod daml_stdlib_DA_Date_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Internal_Down_1_0_0 {
+pub mod daml_stdlib_DA_Internal_Down {
     pub mod DA_Internal_Down {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Down<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2559,10 +2320,10 @@ pub mod daml_stdlib_DA_Internal_Down_1_0_0 {
         }
     }
 }
-pub mod ghc_stdlib_DA_Internal_Template_1_0_0 {
+pub mod ghc_stdlib_DA_Internal_Template {
     pub mod DA_Internal_Template {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Archive {}
         impl rt::ToValue for Archive {
@@ -2577,35 +2338,25 @@ pub mod ghc_stdlib_DA_Internal_Template_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
+pub mod daml_stdlib_DA_Logic_Types {
     pub mod DA_Logic_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Formula<A> {
-            ///The Daml `Proposition` constructor.
             #[serde(rename = "Proposition")]
             Proposition(A),
-            ///The Daml `Negation` constructor.
             #[serde(rename = "Negation")]
             Negation(
-                ::std::boxed::Box<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::boxed::Box<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
-            ///The Daml `Conjunction` constructor.
             #[serde(rename = "Conjunction")]
             Conjunction(
-                ::std::vec::Vec<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
-            ///The Daml `Disjunction` constructor.
             #[serde(rename = "Disjunction")]
             Disjunction(
-                ::std::vec::Vec<
-                    crate::daml_stdlib_DA_Logic_Types_1_0_0::DA_Logic_Types::Formula<A>,
-                >,
+                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
             ),
         }
         impl<A> rt::ToValue for Formula<A>
@@ -2656,13 +2407,13 @@ pub mod daml_stdlib_DA_Logic_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
+pub mod daml_stdlib_DA_Monoid_Types {
     pub mod DA_Monoid_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct All {
-            ///The Daml `getAll` field.
+            ///Daml field `getAll`.
             #[serde(rename = "getAll")]
             pub get_all: bool,
         }
@@ -2683,10 +2434,10 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Any {
-            ///The Daml `getAny` field.
+            ///Daml field `getAny`.
             #[serde(rename = "getAny")]
             pub get_any: bool,
         }
@@ -2707,10 +2458,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Sum<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2734,10 +2484,9 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Product<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2763,16 +2512,14 @@ pub mod daml_stdlib_DA_Monoid_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
+pub mod daml_stdlib_DA_NonEmpty_Types {
     pub mod DA_NonEmpty_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct NonEmpty<A> {
-            ///The Daml `hd` field.
             #[serde(rename = "hd")]
             pub hd: A,
-            ///The Daml `tl` field.
             #[serde(rename = "tl")]
             pub tl: ::std::vec::Vec<A>,
         }
@@ -2800,13 +2547,12 @@ pub mod daml_stdlib_DA_NonEmpty_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Random_Types_1_0_0 {
+pub mod daml_stdlib_DA_Random_Types {
     pub mod DA_Random_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Minstd {
-            ///The Daml `Minstd` constructor.
             #[serde(rename = "Minstd")]
             Minstd(rt::Int64),
         }
@@ -2834,13 +2580,12 @@ pub mod daml_stdlib_DA_Random_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
+pub mod daml_stdlib_DA_Semigroup_Types {
     pub mod DA_Semigroup_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Min<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2864,10 +2609,9 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Max<A> {
-            ///The Daml `unpack` field.
             #[serde(rename = "unpack")]
             pub unpack: A,
         }
@@ -2893,13 +2637,12 @@ pub mod daml_stdlib_DA_Semigroup_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Set_Types_1_0_0 {
+pub mod daml_stdlib_DA_Set_Types {
     pub mod DA_Set_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Set<K> {
-            ///The Daml `map` field.
             #[serde(rename = "map")]
             pub map: rt::GenMap<K, rt::Unit>,
         }
@@ -2923,31 +2666,31 @@ pub mod daml_stdlib_DA_Set_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
+pub mod daml_stdlib_DA_Stack_Types {
     pub mod DA_Stack_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SrcLoc {
-            ///The Daml `srcLocPackage` field.
+            ///Daml field `srcLocPackage`.
             #[serde(rename = "srcLocPackage")]
             pub src_loc_package: ::std::string::String,
-            ///The Daml `srcLocModule` field.
+            ///Daml field `srcLocModule`.
             #[serde(rename = "srcLocModule")]
             pub src_loc_module: ::std::string::String,
-            ///The Daml `srcLocFile` field.
+            ///Daml field `srcLocFile`.
             #[serde(rename = "srcLocFile")]
             pub src_loc_file: ::std::string::String,
-            ///The Daml `srcLocStartLine` field.
+            ///Daml field `srcLocStartLine`.
             #[serde(rename = "srcLocStartLine")]
             pub src_loc_start_line: rt::Int64,
-            ///The Daml `srcLocStartCol` field.
+            ///Daml field `srcLocStartCol`.
             #[serde(rename = "srcLocStartCol")]
             pub src_loc_start_col: rt::Int64,
-            ///The Daml `srcLocEndLine` field.
+            ///Daml field `srcLocEndLine`.
             #[serde(rename = "srcLocEndLine")]
             pub src_loc_end_line: rt::Int64,
-            ///The Daml `srcLocEndCol` field.
+            ///Daml field `srcLocEndCol`.
             #[serde(rename = "srcLocEndCol")]
             pub src_loc_end_col: rt::Int64,
         }
@@ -3019,13 +2762,12 @@ pub mod daml_stdlib_DA_Stack_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Time_Types_1_0_0 {
+pub mod daml_stdlib_DA_Time_Types {
     pub mod DA_Time_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct RelTime {
-            ///The Daml `microseconds` field.
             #[serde(rename = "microseconds")]
             pub microseconds: rt::Int64,
         }
@@ -3050,16 +2792,14 @@ pub mod daml_stdlib_DA_Time_Types_1_0_0 {
         }
     }
 }
-pub mod daml_stdlib_DA_Validation_Types_1_0_0 {
+pub mod daml_stdlib_DA_Validation_Types {
     pub mod DA_Validation_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Validation<Errs, A> {
-            ///The Daml `Errors` constructor.
             #[serde(rename = "Errors")]
-            Errors(crate::daml_stdlib_DA_NonEmpty_Types_1_0_0::DA_NonEmpty_Types::NonEmpty<Errs>),
-            ///The Daml `Success` constructor.
+            Errors(crate::daml_stdlib_DA_NonEmpty_Types::DA_NonEmpty_Types::NonEmpty<Errs>),
             #[serde(rename = "Success")]
             Success(A),
         }
@@ -3101,25 +2841,25 @@ pub mod daml_stdlib_DA_Validation_Types_1_0_0 {
         }
     }
 }
-pub mod quickstart_licensing_0_0_1 {
+pub mod quickstart_licensing {
     pub mod Licensing_License {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LicenseRenewalRequest_CompleteRenewal {
-            ///The Daml `allocationCid` field.
+            ///Daml field `allocationCid`.
             #[serde(rename = "allocationCid")]
             pub allocation_cid: rt::ContractId<
-                crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation,
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation,
             >,
-            ///The Daml `licenseCid` field.
+            ///Daml field `licenseCid`.
             #[serde(rename = "licenseCid")]
-            pub license_cid: rt::ContractId<
-                crate::quickstart_licensing_0_0_1::Licensing_License::License,
-            >,
-            ///The Daml `extraArgs` field.
+            pub license_cid:
+                rt::ContractId<crate::quickstart_licensing::Licensing_License::License>,
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
-            pub extra_args: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+            pub extra_args:
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for LicenseRenewalRequest_CompleteRenewal {
             fn to_value(&self) -> rt::Value {
@@ -3151,16 +2891,13 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct License_Expire {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for License_Expire {
             fn to_value(&self) -> rt::Value {
@@ -3178,33 +2915,32 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct License_Renew {
-            ///The Daml `requestId` field.
+            ///Daml field `requestId`.
             #[serde(rename = "requestId")]
             pub request_id: ::std::string::String,
-            ///The Daml `licenseFeeInstrumentId` field.
+            ///Daml field `licenseFeeInstrumentId`.
             #[serde(rename = "licenseFeeInstrumentId")]
             pub license_fee_instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `licenseFeeAmount` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
+            ///Daml field `licenseFeeAmount`.
             #[serde(rename = "licenseFeeAmount")]
             pub license_fee_amount: rt::Numeric,
-            ///The Daml `licenseExtensionDuration` field.
+            ///Daml field `licenseExtensionDuration`.
             #[serde(rename = "licenseExtensionDuration")]
             pub license_extension_duration:
-                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `requestedAt` field.
+                crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `prepareUntil` field.
+            ///Daml field `prepareUntil`.
             #[serde(rename = "prepareUntil")]
             pub prepare_until: rt::Timestamp,
-            ///The Daml `settleBefore` field.
+            ///Daml field `settleBefore`.
             #[serde(rename = "settleBefore")]
             pub settle_before: rt::Timestamp,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::std::string::String,
         }
@@ -3277,13 +3013,11 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LicenseParams {
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for LicenseParams {
             fn to_value(&self) -> rt::Value {
@@ -3297,24 +3031,32 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Licensing.License:License`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#quickstart-licensing:Licensing.License:License`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `Archive` — consuming
+        ///- `License_Renew` — non-consuming
+        ///- `License_Expire` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct License {
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: rt::Timestamp,
-            ///The Daml `licenseNum` field.
+            ///Daml field `licenseNum`.
             #[serde(rename = "licenseNum")]
             pub license_num: rt::Int64,
-            ///The Daml `params` field.
             #[serde(rename = "params")]
-            pub params: crate::quickstart_licensing_0_0_1::Licensing_License::LicenseParams,
+            pub params: crate::quickstart_licensing::Licensing_License::LicenseParams,
         }
         impl rt::ToValue for License {
             fn to_value(&self) -> rt::Value {
@@ -3369,63 +3111,68 @@ pub mod quickstart_licensing_0_0_1 {
             }
         }
         ///The `Archive` choice on [`License`] (consuming).
-        impl rt::Choice<License>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
-        {
+        impl rt::Choice<License> for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
         ///The `License_Renew` choice on [`License`] (non-consuming).
-        impl rt::Choice<License> for crate::quickstart_licensing_0_0_1::Licensing_License::License_Renew {
+        impl rt::Choice<License> for crate::quickstart_licensing::Licensing_License::License_Renew {
             type Return = rt::ContractId<
-                crate::quickstart_licensing_0_0_1::Licensing_License::LicenseRenewalRequest,
+                crate::quickstart_licensing::Licensing_License::LicenseRenewalRequest,
             >;
             const NAME: &'static str = "License_Renew";
             const CONSUMING: bool = false;
         }
         ///The `License_Expire` choice on [`License`] (consuming).
-        impl rt::Choice<License> for crate::quickstart_licensing_0_0_1::Licensing_License::License_Expire {
+        impl rt::Choice<License> for crate::quickstart_licensing::Licensing_License::License_Expire {
             type Return = rt::Unit;
             const NAME: &'static str = "License_Expire";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Licensing.License:LicenseRenewalRequest`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#quickstart-licensing:Licensing.License:LicenseRenewalRequest`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `LicenseRenewalRequest_CompleteRenewal` — non-consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct LicenseRenewalRequest {
-            ///The Daml `requestId` field.
+            ///Daml field `requestId`.
             #[serde(rename = "requestId")]
             pub request_id: ::std::string::String,
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `licenseNum` field.
+            ///Daml field `licenseNum`.
             #[serde(rename = "licenseNum")]
             pub license_num: rt::Int64,
-            ///The Daml `licenseFeeAmount` field.
+            ///Daml field `licenseFeeAmount`.
             #[serde(rename = "licenseFeeAmount")]
             pub license_fee_amount: rt::Numeric,
-            ///The Daml `licenseFeeInstrumentId` field.
+            ///Daml field `licenseFeeInstrumentId`.
             #[serde(rename = "licenseFeeInstrumentId")]
             pub license_fee_instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `licenseExtensionDuration` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
+            ///Daml field `licenseExtensionDuration`.
             #[serde(rename = "licenseExtensionDuration")]
             pub license_extension_duration:
-                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            ///The Daml `prepareUntil` field.
+                crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+            ///Daml field `prepareUntil`.
             #[serde(rename = "prepareUntil")]
             pub prepare_until: rt::Timestamp,
-            ///The Daml `settleBefore` field.
+            ///Daml field `settleBefore`.
             #[serde(rename = "settleBefore")]
             pub settle_before: rt::Timestamp,
-            ///The Daml `requestedAt` field.
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `description` field.
             #[serde(rename = "description")]
             pub description: ::std::string::String,
         }
@@ -3545,16 +3292,16 @@ pub mod quickstart_licensing_0_0_1 {
         }
         ///The `LicenseRenewalRequest_CompleteRenewal` choice on [`LicenseRenewalRequest`] (non-consuming).
         impl rt::Choice<LicenseRenewalRequest>
-        for crate::quickstart_licensing_0_0_1::Licensing_License::LicenseRenewalRequest_CompleteRenewal {
+        for crate::quickstart_licensing::Licensing_License::LicenseRenewalRequest_CompleteRenewal {
             type Return = rt::ContractId<
-                crate::quickstart_licensing_0_0_1::Licensing_License::License,
+                crate::quickstart_licensing::Licensing_License::License,
             >;
             const NAME: &'static str = "LicenseRenewalRequest_CompleteRenewal";
             const CONSUMING: bool = false;
         }
         ///The `Archive` choice on [`LicenseRenewalRequest`] (consuming).
         impl rt::Choice<LicenseRenewalRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -3563,13 +3310,11 @@ pub mod quickstart_licensing_0_0_1 {
     }
     pub mod Licensing_AppInstall {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstallRequest_Reject {
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AppInstallRequest_Reject {
             fn to_value(&self) -> rt::Value {
@@ -3583,17 +3328,15 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstallRequest_Accept {
-            ///The Daml `installMeta` field.
+            ///Daml field `installMeta`.
             #[serde(rename = "installMeta")]
             pub install_meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
-            ///The Daml `meta` field.
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AppInstallRequest_Accept {
             fn to_value(&self) -> rt::Value {
@@ -3615,16 +3358,13 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstall_Cancel {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AppInstall_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -3642,12 +3382,11 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstall_CreateLicense {
-            ///The Daml `params` field.
             #[serde(rename = "params")]
-            pub params: crate::quickstart_licensing_0_0_1::Licensing_License::LicenseParams,
+            pub params: crate::quickstart_licensing::Licensing_License::LicenseParams,
         }
         impl rt::ToValue for AppInstall_CreateLicense {
             fn to_value(&self) -> rt::Value {
@@ -3663,17 +3402,16 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstall_CreateLicense_Result {
-            ///The Daml `installId` field.
+            ///Daml field `installId`.
             #[serde(rename = "installId")]
             pub install_id:
-                rt::ContractId<crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall>,
-            ///The Daml `licenseId` field.
+                rt::ContractId<crate::quickstart_licensing::Licensing_AppInstall::AppInstall>,
+            ///Daml field `licenseId`.
             #[serde(rename = "licenseId")]
-            pub license_id:
-                rt::ContractId<crate::quickstart_licensing_0_0_1::Licensing_License::License>,
+            pub license_id: rt::ContractId<crate::quickstart_licensing::Licensing_License::License>,
         }
         impl rt::ToValue for AppInstall_CreateLicense_Result {
             fn to_value(&self) -> rt::Value {
@@ -3699,20 +3437,27 @@ pub mod quickstart_licensing_0_0_1 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Licensing.AppInstall:AppInstall`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#quickstart-licensing:Licensing.AppInstall:AppInstall`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AppInstall_CreateLicense` — consuming
+        ///- `AppInstall_Cancel` — consuming
+        ///- `Archive` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstall {
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
-            ///The Daml `numLicensesCreated` field.
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
+            ///Daml field `numLicensesCreated`.
             #[serde(rename = "numLicensesCreated")]
             pub num_licenses_created: rt::Int64,
         }
@@ -3767,15 +3512,16 @@ pub mod quickstart_licensing_0_0_1 {
         }
         ///The `AppInstall_CreateLicense` choice on [`AppInstall`] (consuming).
         impl rt::Choice<AppInstall>
-            for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall_CreateLicense
+            for crate::quickstart_licensing::Licensing_AppInstall::AppInstall_CreateLicense
         {
-            type Return = crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall_CreateLicense_Result;
+            type Return =
+                crate::quickstart_licensing::Licensing_AppInstall::AppInstall_CreateLicense_Result;
             const NAME: &'static str = "AppInstall_CreateLicense";
             const CONSUMING: bool = true;
         }
         ///The `AppInstall_Cancel` choice on [`AppInstall`] (consuming).
         impl rt::Choice<AppInstall>
-            for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall_Cancel
+            for crate::quickstart_licensing::Licensing_AppInstall::AppInstall_Cancel
         {
             type Return = rt::Unit;
             const NAME: &'static str = "AppInstall_Cancel";
@@ -3783,25 +3529,32 @@ pub mod quickstart_licensing_0_0_1 {
         }
         ///The `Archive` choice on [`AppInstall`] (consuming).
         impl rt::Choice<AppInstall>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        ///The Daml template `Licensing.AppInstall:AppInstallRequest`.
+        ///
+        ///Submit with `rt::create_command`; its on-ledger id is `#quickstart-licensing:Licensing.AppInstall:AppInstallRequest`.
+        ///
+        ///# Choices
+        ///
+        ///Exercise with `rt::exercise_command`:
+        ///
+        ///- `AppInstallRequest_Accept` — consuming
+        ///- `Archive` — consuming
+        ///- `AppInstallRequest_Reject` — consuming
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AppInstallRequest {
-            ///The Daml `provider` field.
             #[serde(rename = "provider")]
             pub provider: rt::Party,
-            ///The Daml `user` field.
             #[serde(rename = "user")]
             pub user: rt::Party,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AppInstallRequest {
             fn to_value(&self) -> rt::Value {
@@ -3841,16 +3594,16 @@ pub mod quickstart_licensing_0_0_1 {
         }
         ///The `AppInstallRequest_Accept` choice on [`AppInstallRequest`] (consuming).
         impl rt::Choice<AppInstallRequest>
-            for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstallRequest_Accept
+            for crate::quickstart_licensing::Licensing_AppInstall::AppInstallRequest_Accept
         {
             type Return =
-                rt::ContractId<crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstall>;
+                rt::ContractId<crate::quickstart_licensing::Licensing_AppInstall::AppInstall>;
             const NAME: &'static str = "AppInstallRequest_Accept";
             const CONSUMING: bool = true;
         }
         ///The `Archive` choice on [`AppInstallRequest`] (consuming).
         impl rt::Choice<AppInstallRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -3858,7 +3611,7 @@ pub mod quickstart_licensing_0_0_1 {
         }
         ///The `AppInstallRequest_Reject` choice on [`AppInstallRequest`] (consuming).
         impl rt::Choice<AppInstallRequest>
-            for crate::quickstart_licensing_0_0_1::Licensing_AppInstall::AppInstallRequest_Reject
+            for crate::quickstart_licensing::Licensing_AppInstall::AppInstallRequest_Reject
         {
             type Return = rt::Unit;
             const NAME: &'static str = "AppInstallRequest_Reject";
@@ -3866,23 +3619,21 @@ pub mod quickstart_licensing_0_0_1 {
         }
     }
 }
-pub mod splice_api_token_allocation_request_v1_1_0_0 {
+pub mod splice_api_token_allocation_request_v1 {
     pub mod Splice_Api_Token_AllocationRequestV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequestView {
-            ///The Daml `settlement` field.
             #[serde(rename = "settlement")]
-            pub settlement: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::SettlementInfo,
-            ///The Daml `transferLegs` field.
+            pub settlement: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::SettlementInfo,
+            ///Daml field `transferLegs`.
             #[serde(rename = "transferLegs")]
             pub transfer_legs: rt::TextMap<
-                crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::TransferLeg,
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::TransferLeg,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationRequestView {
             fn to_value(&self) -> rt::Value {
@@ -3910,13 +3661,13 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequest_Withdraw {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for AllocationRequest_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -3937,16 +3688,15 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequest_Reject {
-            ///The Daml `actor` field.
             #[serde(rename = "actor")]
             pub actor: rt::Party,
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for AllocationRequest_Reject {
             fn to_value(&self) -> rt::Value {
@@ -3979,11 +3729,11 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "AllocationRequest";
         }
         impl rt::Interface for AllocationRequest {
-            type View = crate::splice_api_token_allocation_request_v1_1_0_0::Splice_Api_Token_AllocationRequestV1::AllocationRequestView;
+            type View = crate::splice_api_token_allocation_request_v1::Splice_Api_Token_AllocationRequestV1::AllocationRequestView;
         }
         ///The `Archive` choice on [`AllocationRequest`] (consuming).
         impl rt::Choice<AllocationRequest>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -3991,37 +3741,35 @@ pub mod splice_api_token_allocation_request_v1_1_0_0 {
         }
         ///The `AllocationRequest_Reject` choice on [`AllocationRequest`] (consuming).
         impl rt::Choice<AllocationRequest>
-        for crate::splice_api_token_allocation_request_v1_1_0_0::Splice_Api_Token_AllocationRequestV1::AllocationRequest_Reject {
-            type Return = crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ChoiceExecutionMetadata;
+        for crate::splice_api_token_allocation_request_v1::Splice_Api_Token_AllocationRequestV1::AllocationRequest_Reject {
+            type Return = crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ChoiceExecutionMetadata;
             const NAME: &'static str = "AllocationRequest_Reject";
             const CONSUMING: bool = true;
         }
         ///The `AllocationRequest_Withdraw` choice on [`AllocationRequest`] (consuming).
         impl rt::Choice<AllocationRequest>
-        for crate::splice_api_token_allocation_request_v1_1_0_0::Splice_Api_Token_AllocationRequestV1::AllocationRequest_Withdraw {
-            type Return = crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ChoiceExecutionMetadata;
+        for crate::splice_api_token_allocation_request_v1::Splice_Api_Token_AllocationRequestV1::AllocationRequest_Withdraw {
+            type Return = crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ChoiceExecutionMetadata;
             const NAME: &'static str = "AllocationRequest_Withdraw";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_allocation_v1_1_0_0 {
+pub mod splice_api_token_allocation_v1 {
     pub mod Splice_Api_Token_AllocationV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_WithdrawResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_WithdrawResult {
             fn to_value(&self) -> rt::Value {
@@ -4046,20 +3794,18 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_CancelResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_CancelResult {
             fn to_value(&self) -> rt::Value {
@@ -4084,27 +3830,25 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransferResult {
-            ///The Daml `senderHoldingCids` field.
+            ///Daml field `senderHoldingCids`.
             #[serde(rename = "senderHoldingCids")]
             pub sender_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `receiverHoldingCids` field.
+            ///Daml field `receiverHoldingCids`.
             #[serde(rename = "receiverHoldingCids")]
             pub receiver_holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for Allocation_ExecuteTransferResult {
             fn to_value(&self) -> rt::Value {
@@ -4138,13 +3882,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Withdraw {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_Withdraw {
             fn to_value(&self) -> rt::Value {
@@ -4165,13 +3909,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Cancel {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_Cancel {
             fn to_value(&self) -> rt::Value {
@@ -4192,13 +3936,13 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransfer {
-            ///The Daml `extraArgs` field.
+            ///Daml field `extraArgs`.
             #[serde(rename = "extraArgs")]
             pub extra_args:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ExtraArgs,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ExtraArgs,
         }
         impl rt::ToValue for Allocation_ExecuteTransfer {
             fn to_value(&self) -> rt::Value {
@@ -4219,22 +3963,20 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationView {
-            ///The Daml `allocation` field.
             #[serde(rename = "allocation")]
-            pub allocation: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationSpecification,
-            ///The Daml `holdingCids` field.
+            pub allocation: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationSpecification,
+            ///Daml field `holdingCids`.
             #[serde(rename = "holdingCids")]
             pub holding_cids: ::std::vec::Vec<
                 rt::ContractId<
-                    crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Holding,
+                    crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding,
                 >,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for AllocationView {
             fn to_value(&self) -> rt::Value {
@@ -4262,18 +4004,17 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationSpecification {
-            ///The Daml `settlement` field.
             #[serde(rename = "settlement")]
-            pub settlement: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::SettlementInfo,
-            ///The Daml `transferLegId` field.
+            pub settlement: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::SettlementInfo,
+            ///Daml field `transferLegId`.
             #[serde(rename = "transferLegId")]
             pub transfer_leg_id: ::std::string::String,
-            ///The Daml `transferLeg` field.
+            ///Daml field `transferLeg`.
             #[serde(rename = "transferLeg")]
-            pub transfer_leg: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::TransferLeg,
+            pub transfer_leg: crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::TransferLeg,
         }
         impl rt::ToValue for AllocationSpecification {
             fn to_value(&self) -> rt::Value {
@@ -4308,26 +4049,21 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferLeg {
-            ///The Daml `sender` field.
             #[serde(rename = "sender")]
             pub sender: rt::Party,
-            ///The Daml `receiver` field.
             #[serde(rename = "receiver")]
             pub receiver: rt::Party,
-            ///The Daml `amount` field.
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `instrumentId` field.
+            ///Daml field `instrumentId`.
             #[serde(rename = "instrumentId")]
             pub instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `meta` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for TransferLeg {
             fn to_value(&self) -> rt::Value {
@@ -4361,27 +4097,26 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SettlementInfo {
-            ///The Daml `executor` field.
             #[serde(rename = "executor")]
             pub executor: rt::Party,
-            ///The Daml `settlementRef` field.
+            ///Daml field `settlementRef`.
             #[serde(rename = "settlementRef")]
-            pub settlement_ref: crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Reference,
-            ///The Daml `requestedAt` field.
+            pub settlement_ref:
+                crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Reference,
+            ///Daml field `requestedAt`.
             #[serde(rename = "requestedAt")]
             pub requested_at: rt::Timestamp,
-            ///The Daml `allocateBefore` field.
+            ///Daml field `allocateBefore`.
             #[serde(rename = "allocateBefore")]
             pub allocate_before: rt::Timestamp,
-            ///The Daml `settleBefore` field.
+            ///Daml field `settleBefore`.
             #[serde(rename = "settleBefore")]
             pub settle_before: rt::Timestamp,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for SettlementInfo {
             fn to_value(&self) -> rt::Value {
@@ -4428,17 +4163,15 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Reference {
-            ///The Daml `id` field.
             #[serde(rename = "id")]
             pub id: ::std::string::String,
-            ///The Daml `cid` field.
             #[serde(rename = "cid")]
             pub cid: ::core::option::Option<
                 rt::ContractId<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
             >,
         }
@@ -4469,11 +4202,11 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "Allocation";
         }
         impl rt::Interface for Allocation {
-            type View = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::AllocationView;
+            type View = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::AllocationView;
         }
         ///The `Archive` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
@@ -4481,52 +4214,47 @@ pub mod splice_api_token_allocation_v1_1_0_0 {
         }
         ///The `Allocation_Withdraw` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_Withdraw {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_Withdraw {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_WithdrawResult;
             const NAME: &'static str = "Allocation_Withdraw";
             const CONSUMING: bool = true;
         }
         ///The `Allocation_Cancel` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_Cancel {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_CancelResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_Cancel {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_CancelResult;
             const NAME: &'static str = "Allocation_Cancel";
             const CONSUMING: bool = true;
         }
         ///The `Allocation_ExecuteTransfer` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransfer {
-            type Return = crate::splice_api_token_allocation_v1_1_0_0::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransferResult;
+        for crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransfer {
+            type Return = crate::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation_ExecuteTransferResult;
             const NAME: &'static str = "Allocation_ExecuteTransfer";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_holding_v1_1_0_0 {
+pub mod splice_api_token_holding_v1 {
     pub mod Splice_Api_Token_HoldingV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct HoldingView {
-            ///The Daml `owner` field.
             #[serde(rename = "owner")]
             pub owner: rt::Party,
-            ///The Daml `instrumentId` field.
+            ///Daml field `instrumentId`.
             #[serde(rename = "instrumentId")]
             pub instrument_id:
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::InstrumentId,
-            ///The Daml `amount` field.
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::InstrumentId,
             #[serde(rename = "amount")]
             pub amount: rt::Numeric,
-            ///The Daml `lock` field.
             #[serde(rename = "lock")]
             pub lock: ::core::option::Option<
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::Lock,
+                crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Lock,
             >,
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for HoldingView {
             fn to_value(&self) -> rt::Value {
@@ -4556,21 +4284,18 @@ pub mod splice_api_token_holding_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Lock {
-            ///The Daml `holders` field.
             #[serde(rename = "holders")]
             pub holders: ::std::vec::Vec<rt::Party>,
-            ///The Daml `expiresAt` field.
+            ///Daml field `expiresAt`.
             #[serde(rename = "expiresAt")]
             pub expires_at: ::core::option::Option<rt::Timestamp>,
-            ///The Daml `expiresAfter` field.
+            ///Daml field `expiresAfter`.
             #[serde(rename = "expiresAfter")]
-            pub expires_after: ::core::option::Option<
-                crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime,
-            >,
-            ///The Daml `context` field.
+            pub expires_after:
+                ::core::option::Option<crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime>,
             #[serde(rename = "context")]
             pub context: ::core::option::Option<::std::string::String>,
         }
@@ -4596,13 +4321,11 @@ pub mod splice_api_token_holding_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InstrumentId {
-            ///The Daml `admin` field.
             #[serde(rename = "admin")]
             pub admin: rt::Party,
-            ///The Daml `id` field.
             #[serde(rename = "id")]
             pub id: ::std::string::String,
         }
@@ -4633,29 +4356,24 @@ pub mod splice_api_token_holding_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "Holding";
         }
         impl rt::Interface for Holding {
-            type View =
-                crate::splice_api_token_holding_v1_1_0_0::Splice_Api_Token_HoldingV1::HoldingView;
+            type View = crate::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::HoldingView;
         }
         ///The `Archive` choice on [`Holding`] (consuming).
-        impl rt::Choice<Holding>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
-        {
+        impl rt::Choice<Holding> for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
         }
     }
 }
-pub mod splice_api_token_metadata_v1_1_0_0 {
+pub mod splice_api_token_metadata_v1 {
     pub mod Splice_Api_Token_MetadataV1 {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ChoiceExecutionMetadata {
-            ///The Daml `meta` field.
             #[serde(rename = "meta")]
-            pub meta:
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for ChoiceExecutionMetadata {
             fn to_value(&self) -> rt::Value {
@@ -4669,15 +4387,14 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ExtraArgs {
-            ///The Daml `context` field.
             #[serde(rename = "context")]
-            pub context: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::ChoiceContext,
-            ///The Daml `meta` field.
+            pub context:
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::ChoiceContext,
             #[serde(rename = "meta")]
-            pub meta: crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata,
+            pub meta: crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
         }
         impl rt::ToValue for ExtraArgs {
             fn to_value(&self) -> rt::Value {
@@ -4697,10 +4414,9 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Metadata {
-            ///The Daml `values` field.
             #[serde(rename = "values")]
             pub values: rt::TextMap<::std::string::String>,
         }
@@ -4718,13 +4434,12 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct ChoiceContext {
-            ///The Daml `values` field.
             #[serde(rename = "values")]
             pub values: rt::TextMap<
-                crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
             >,
         }
         impl rt::ToValue for ChoiceContext {
@@ -4741,7 +4456,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AnyContractView {}
         impl rt::ToValue for AnyContractView {
@@ -4754,52 +4469,41 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
                 ::core::result::Result::Ok(Self {})
             }
         }
-        #[derive(Clone, Debug, PartialEq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AnyValue {
-            ///The Daml `AV_Text` constructor.
             #[serde(rename = "AV_Text")]
             AV_Text(::std::string::String),
-            ///The Daml `AV_Int` constructor.
             #[serde(rename = "AV_Int")]
             AV_Int(rt::Int64),
-            ///The Daml `AV_Decimal` constructor.
             #[serde(rename = "AV_Decimal")]
             AV_Decimal(rt::Numeric),
-            ///The Daml `AV_Bool` constructor.
             #[serde(rename = "AV_Bool")]
             AV_Bool(bool),
-            ///The Daml `AV_Date` constructor.
             #[serde(rename = "AV_Date")]
             AV_Date(rt::Date),
-            ///The Daml `AV_Time` constructor.
             #[serde(rename = "AV_Time")]
             AV_Time(rt::Timestamp),
-            ///The Daml `AV_RelTime` constructor.
             #[serde(rename = "AV_RelTime")]
-            AV_RelTime(crate::daml_stdlib_DA_Time_Types_1_0_0::DA_Time_Types::RelTime),
-            ///The Daml `AV_Party` constructor.
+            AV_RelTime(crate::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime),
             #[serde(rename = "AV_Party")]
             AV_Party(rt::Party),
-            ///The Daml `AV_ContractId` constructor.
             #[serde(rename = "AV_ContractId")]
             AV_ContractId(
                 rt::ContractId<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContract,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContract,
                 >,
             ),
-            ///The Daml `AV_List` constructor.
             #[serde(rename = "AV_List")]
             AV_List(
                 ::std::vec::Vec<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),
-            ///The Daml `AV_Map` constructor.
             #[serde(rename = "AV_Map")]
             AV_Map(
                 rt::TextMap<
-                    crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyValue,
+                    crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyValue,
                 >,
             ),
         }
@@ -4896,11 +4600,12 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             const ENTITY_NAME: &'static str = "AnyContract";
         }
         impl rt::Interface for AnyContract {
-            type View = crate::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::AnyContractView;
+            type View =
+                crate::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::AnyContractView;
         }
         ///The `Archive` choice on [`AnyContract`] (consuming).
         impl rt::Choice<AnyContract>
-            for crate::ghc_stdlib_DA_Internal_Template_1_0_0::DA_Internal_Template::Archive
+            for crate::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
         {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
