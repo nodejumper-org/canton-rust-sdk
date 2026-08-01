@@ -81,7 +81,7 @@ Term-level Daml (expression bodies of choices/values), and LF type shapes that
 are not serialisable (`Forall`, structural records, type synonyms as such,
 function/`Update`/`Any` types) are not modelled — codegen only needs the
 serialisable type skeleton. A type that cannot be lowered is skipped and
-surfaced as a `LowerError` rather than emitted incorrectly.
+surfaced as a `SkippedType` rather than emitted incorrectly.
 
 ## Known limitation: a nested `Optional` behind a type parameter
 

@@ -80,6 +80,44 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with: { command: check all }
 
+  # Manifest breakage (a bad `include`, a missing licence file, a path
+  # dependency without a version) otherwise surfaces only at `cargo publish`,
+  # when half the crates are already live and the order cannot be undone.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Every publishable crate packages cleanly
+        run: |
+          for crate in canton-proto canton-core canton-auth canton-lf canton-daml \
+                       canton-ledger canton-admin canton-codegen canton-codegen-cli canton; do
+            cargo package --no-verify --list -p "$crate" > /tmp/files.txt
+            grep -qx 'LICENSE' /tmp/files.txt || { echo "::error::$crate ships no LICENSE"; exit 1; }
+            grep -qx 'README.md' /tmp/files.txt || { echo "::error::$crate ships no README"; exit 1; }
+            # Integration tests read fixtures from the repo root, which is not in
+            # the package — shipping them gives a published crate a failing
+            # `cargo test`.
+            ! grep -q '^tests/' /tmp/files.txt || { echo "::error::$crate ships integration tests"; exit 1; }
+          done
+
+  # The four committed binding crates prove that *some* past generator emitted
+  # compilable code. This proves the one on this commit does.
+  codegen-output:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Generate from the fixture DAR and compile the result
+        run: |
+          cargo run -p canton-codegen-cli -- \
+            --dar testdata/splice-api-token-holding-v1-1.0.0.dar \
+            --out "$RUNNER_TEMP/bindings" \
+            --runtime-path "$GITHUB_WORKSPACE/crates/canton-daml"
+          cd "$RUNNER_TEMP/bindings" && cargo check --locked || cargo check
+
   # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
   # crates.io — it guards the hand-written public API against accidental
   # breaking changes (generated proto types are exempt per the stability
