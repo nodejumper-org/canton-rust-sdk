@@ -179,11 +179,178 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
         }
     }
 
+    // A skipped declaration leaves its name unresolvable, so anything that
+    // referenced it cannot be emitted either. Drop those too, transitively.
+    drop_dangling_references(&mut krate, &mut errors);
+
     // With every package lowered, break containment cycles crate-wide (direct,
     // Optional-wrapped, mutual, cross-module, and generic-instantiation ones).
     box_recursion(&mut krate);
 
     (krate, errors)
+}
+
+/// Remove declarations that reference a type which was skipped, repeating until
+/// nothing changes.
+///
+/// Lowering is best-effort, so an unrepresentable type is skipped with a
+/// warning — but a *surviving* type that mentioned it still emits
+/// `crate::pkg::Mod::Gone` in a field, and the crate handed to the user fails
+/// to compile (E0425) with nothing tying the error back to the warning. A
+/// binding that cannot compile is worth no more than the one that was skipped,
+/// so its dependents go the same way, each reported with the name it was
+/// waiting on.
+fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+    let mut declared: std::collections::HashSet<String> = krate
+        .packages
+        .iter()
+        .flat_map(|package| {
+            package.modules.iter().flat_map(move |module| {
+                let at = |name: &str| path_key_for(&package.name, &module.name, name);
+                module
+                    .module
+                    .data_types
+                    .iter()
+                    .map(move |data_type| at(data_type_name(data_type)))
+                    .chain(
+                        module
+                            .module
+                            .templates
+                            .iter()
+                            .map(move |template| at(&template.name)),
+                    )
+            })
+        })
+        .collect();
+
+    loop {
+        let mut dropped = false;
+        for package in &mut krate.packages {
+            let package_name = package.name.clone();
+            for module in &mut package.modules {
+                let module_name = module.name.clone();
+                let at = |name: &str| path_key_for(&package_name, &module_name, name);
+
+                let missing = |referenced: Vec<String>| -> Option<String> {
+                    referenced
+                        .into_iter()
+                        .find(|key| key.starts_with("crate::") && !declared.contains(key))
+                };
+
+                let mut report = Vec::new();
+                module.module.data_types.retain(|data_type| {
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_data_type(data_type, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((
+                                at(data_type_name(data_type)),
+                                data_type_name(data_type).to_string(),
+                                gone,
+                            ));
+                            false
+                        }
+                        None => true,
+                    }
+                });
+                module.module.templates.retain(|template| {
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_template(template, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((at(&template.name), template.name.clone(), gone));
+                            false
+                        }
+                        None => true,
+                    }
+                });
+                // An interface's impls hang off a marker; drop them with it.
+                module
+                    .module
+                    .interfaces
+                    .retain(|interface| declared.contains(&at(&interface.name)));
+
+                for (key, name, gone) in report {
+                    declared.remove(&key);
+                    errors.push(
+                        SkippedType::new(format!(
+                            "`{name}` references `{}`, which was skipped",
+                            gone.rsplit("::").next().unwrap_or(&gone),
+                        ))
+                        .in_module(&module_name),
+                    );
+                    dropped = true;
+                }
+            }
+        }
+        if !dropped {
+            break;
+        }
+    }
+
+    krate.packages.iter_mut().for_each(|package| {
+        package.modules.retain(|module| {
+            !module.module.data_types.is_empty()
+                || !module.module.templates.is_empty()
+                || !module.module.interfaces.is_empty()
+        });
+    });
+    krate.packages.retain(|package| !package.modules.is_empty());
+}
+
+/// Every named-type reference reachable from a data type.
+fn collect_all_refs_of_data_type(data_type: &DataType, out: &mut Vec<String>) {
+    match data_type {
+        DataType::Record(record) => record
+            .fields
+            .iter()
+            .for_each(|field| collect_all_refs(&field.ty, out)),
+        DataType::Variant(variant) => variant
+            .constructors
+            .iter()
+            .filter_map(|constructor| constructor.payload.as_ref())
+            .for_each(|payload| collect_all_refs(payload, out)),
+        DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+    }
+}
+
+/// Every named-type reference reachable from a template: its payload, its
+/// choices' argument and return types, and its contract key.
+fn collect_all_refs_of_template(template: &Template, out: &mut Vec<String>) {
+    for field in &template.fields {
+        collect_all_refs(&field.ty, out);
+    }
+    for choice in &template.choices {
+        collect_all_refs(&choice.argument, out);
+        collect_all_refs(&choice.returns, out);
+    }
+    if let Some(key) = &template.key {
+        collect_all_refs(key, out);
+    }
+}
+
+/// Every named-type reference inside a type, at any depth (unlike
+/// `collect_inline_refs`, which stops at heap indirection).
+fn collect_all_refs(ty: &DamlType, out: &mut Vec<String>) {
+    match ty {
+        DamlType::Ref(reference) => {
+            out.push(path_key_of(reference));
+            reference
+                .args
+                .iter()
+                .for_each(|arg| collect_all_refs(arg, out));
+        }
+        DamlType::ContractId(inner)
+        | DamlType::List(inner)
+        | DamlType::Optional(inner)
+        | DamlType::TextMap(inner)
+        | DamlType::Boxed(inner) => collect_all_refs(inner, out),
+        DamlType::GenMap(key, value) => {
+            collect_all_refs(key, out);
+            collect_all_refs(value, out);
+        }
+        _ => {}
+    }
 }
 
 /// The Rust module name a package's types live under: its `name_version` (both
@@ -1113,6 +1280,77 @@ mod tests {
             .flat_map(|p| p.modules.iter().map(|m| m.name.as_str()))
             .collect();
         assert!(modules.is_empty(), "no module may be emitted: {modules:?}");
+    }
+
+    #[test]
+    fn a_type_referencing_a_skipped_type_is_dropped_transitively() {
+        // `Bad` is unrepresentable and skipped; `Good` has a field of type
+        // `Bad`, and `Worse` a field of type `Good`. Emitting either leaves
+        // `crate::…::Bad` dangling and the user's crate fails with E0425, with
+        // nothing tying that to the warning — so both must go too.
+        let path = |name: &str| {
+            DamlType::Ref(TypeRef {
+                path: vec![
+                    "crate".to_string(),
+                    "pkg_1_0_0".to_string(),
+                    "Mod".to_string(),
+                    name.to_string(),
+                ],
+                args: vec![],
+            })
+        };
+        let record = |name: &str, field: DamlType| {
+            DataType::Record(Record {
+                name: name.to_string(),
+                type_params: vec![],
+                fields: vec![Field {
+                    label: "x".to_string(),
+                    ty: field,
+                }],
+            })
+        };
+        let mut krate = Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        // `Bad` is absent — as if lowering had skipped it.
+                        data_types: vec![
+                            record("Good", path("Bad")),
+                            record("Worse", path("Good")),
+                            record("Fine", DamlType::Text),
+                        ],
+                        ..Module::default()
+                    },
+                }],
+            }],
+        };
+
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+
+        let surviving: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(surviving, ["Fine"], "only the self-contained type survives");
+
+        let reasons: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("`Good` references `Bad`")),
+            "{reasons:?}"
+        );
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("`Worse` references `Good`")),
+            "the drop must cascade: {reasons:?}"
+        );
     }
 
     #[test]
