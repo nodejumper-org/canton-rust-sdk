@@ -59,10 +59,19 @@ pub use primitives::{
     Timestamp, Unit,
 };
 pub use template::{Contract, Interface, Template, WithKey};
+pub use value::{FromValue, ToValue, ValueError, from_record};
+
+/// The pieces an emitted `ToValue`/`FromValue` body is written in terms of.
+///
+/// Public because generated code names them as `rt::…`, but hidden from the
+/// rendered docs: nothing here is meant to be called by hand. To build a
+/// `Value` yourself, use the builders in `canton_ledger`; to decode one, use
+/// [`FromValue`] or [`from_record`].
+#[doc(hidden)]
 pub use value::{
-    AbsentField, FromValue, ToValue, ValueError, enum_constructor, enum_value, find_field,
-    from_record, optional_field, record, record_field, record_fields, record_value, required_field,
-    unexpected_constructor, unit_value, variant_parts, variant_value,
+    AbsentField, enum_constructor, enum_value, find_field, optional_field, record, record_field,
+    record_fields, record_value, required_field, unexpected_constructor, unit_value, variant_parts,
+    variant_value,
 };
 
 /// The Ledger API `Value` and `Record` — the gRPC wire forms generated
