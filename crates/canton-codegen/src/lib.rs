@@ -246,6 +246,31 @@ mod tests {
     }
 
     #[test]
+    fn only_a_renamed_field_carries_a_doc() {
+        let record = Record {
+            name: "Payload".to_string(),
+            type_params: Vec::new(),
+            fields: vec![
+                field("owner", DamlType::Party),
+                field("acceptArg", DamlType::Text),
+                field("type", DamlType::Text),
+            ],
+        };
+
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+        // Camel-cased on the wire, snake_cased in Rust: the doc is the only
+        // place a reader sees the label they have to send.
+        assert!(src.contains("Daml field `acceptArg`"), "{src}");
+        // Same spelling in both languages — a doc here would only restate the
+        // identifier under it, on every field of every record.
+        assert!(!src.contains("Daml field `owner`"), "{src}");
+        // A raw identifier is the same name, so it is not a rename either.
+        assert!(src.contains("r#type"), "{src}");
+        assert!(!src.contains("Daml field `type`"), "{src}");
+    }
+
+    #[test]
     fn record_emits_value_codecs() {
         let record = Record {
             name: "Payload".to_string(),
@@ -447,6 +472,54 @@ mod tests {
             src.contains("const PACKAGE_NAME: &'static str = \"app-install\""),
             "{src}"
         );
+    }
+
+    #[test]
+    fn a_template_documents_its_identity_and_its_choices() {
+        use crate::ir::{Choice, Template, TypeRef};
+
+        let template = Template {
+            name: "AppInstall".to_string(),
+            module_name: "Licensing.AppInstall".to_string(),
+            package_id: "abc123".to_string(),
+            package_name: "app-install".to_string(),
+            fields: vec![field("provider", DamlType::Party)],
+            choices: vec![
+                Choice {
+                    name: "Accept".to_string(),
+                    consuming: true,
+                    argument: DamlType::Ref(TypeRef::local("AppInstall_Accept", Vec::new())),
+                    returns: DamlType::Unit,
+                },
+                Choice {
+                    name: "Peek".to_string(),
+                    consuming: false,
+                    argument: DamlType::Ref(TypeRef::local("AppInstall_Peek", Vec::new())),
+                    returns: DamlType::Unit,
+                },
+            ],
+            key: None,
+        };
+
+        let src = generate_template(&template).unwrap();
+        syn::parse_file(&src).unwrap();
+        // rustdoc has no reverse index for `impl Choice<This> for That`, so the
+        // payload struct is the only place a reader can learn what it can do.
+        assert!(
+            src.contains("The Daml template `Licensing.AppInstall:AppInstall`"),
+            "{src}"
+        );
+        assert!(
+            src.contains("`#app-install:Licensing.AppInstall:AppInstall`"),
+            "{src}"
+        );
+        assert!(src.contains("- `Accept` — consuming"), "{src}");
+        assert!(src.contains("- `Peek` — non-consuming"), "{src}");
+        // One `#[doc]` per line, never a block comment: prettyplease indents a
+        // `/** */` continuation line to match the item, and rustdoc reads four
+        // spaces as a code block — which makes the prose a failing doctest in
+        // the user's crate.
+        assert!(!src.contains("/**"), "{src}");
     }
 
     #[test]
