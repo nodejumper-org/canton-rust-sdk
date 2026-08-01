@@ -154,7 +154,14 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
                 errors.push(SkippedType::new("unresolved module name"));
                 continue;
             };
-            if let Some(sources) = colliding_modules.get(&dotted.replace('.', "_")) {
+            let module_ident = dotted.replace('.', "_");
+            if !is_rust_ident(&module_ident) {
+                errors.push(SkippedType::new(format!(
+                    "module `{dotted}` is not representable as a Rust module name"
+                )));
+                continue;
+            }
+            if let Some(sources) = colliding_modules.get(&module_ident) {
                 errors.push(SkippedType::new(format!(
                     "modules `{}` both map to the Rust module `{}`; \
                      rename one in Daml to generate either",
@@ -210,7 +217,10 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
 /// uses its parameter, and a distinct IR node for "this `Optional` is nested".
 /// Until then the case is refused rather than emitted wrong — it does not occur
 /// anywhere in the Splice corpus, so nothing real is lost.
-fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+/// For each generic data type, which of its declared parameters appear under an
+/// `Optional` in its own fields — the question that decides whether an
+/// `Optional` type argument lands in a nested position.
+fn parameters_used_under_optional(krate: &Crate) -> HashMap<String, Vec<bool>> {
     // path key -> for each declared parameter, whether it is used under an
     // `Optional` in that type's own fields.
     let mut nests_parameter: HashMap<String, Vec<bool>> = HashMap::new();
@@ -255,15 +265,19 @@ fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedTy
             }
         }
     }
+    nests_parameter
+}
 
-    let mut ambiguous = Vec::new();
+fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+    let nests_parameter = parameters_used_under_optional(krate);
+
+    // Every declaration kind is an instantiation site: a template's payload is
+    // folded into `Template.fields` and never appears in `data_types` at all,
+    // so scanning only data types missed exactly the case that matters most.
+    let mut ambiguous: Vec<(String, String, String, String)> = Vec::new();
     for package in &krate.packages {
         for module in &package.modules {
-            for data_type in &module.module.data_types {
-                let mut referenced = Vec::new();
-                collect_all_refs_of_data_type(data_type, &mut referenced);
-                let mut types = Vec::new();
-                collect_type_refs_of_data_type(data_type, &mut types);
+            let mut check = |name: &str, types: Vec<&TypeRef>| {
                 if let Some(target) = types.iter().find_map(|reference| {
                     let nests = nests_parameter.get(&path_key_of(reference))?;
                     reference
@@ -276,10 +290,26 @@ fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedTy
                     ambiguous.push((
                         package.name.clone(),
                         module.name.clone(),
-                        data_type_name(data_type).to_string(),
+                        name.to_string(),
                         target,
                     ));
                 }
+            };
+
+            for data_type in &module.module.data_types {
+                let mut types = Vec::new();
+                collect_type_refs_of_data_type(data_type, &mut types);
+                check(data_type_name(data_type), types);
+            }
+            for template in &module.module.templates {
+                let mut types = Vec::new();
+                each_type_of_template(template, &mut |ty| collect_type_refs(ty, &mut types));
+                check(&template.name, types);
+            }
+            for interface in &module.module.interfaces {
+                let mut types = Vec::new();
+                each_type_of_interface(interface, &mut |ty| collect_type_refs(ty, &mut types));
+                check(&interface.name, types);
             }
         }
     }
@@ -288,9 +318,19 @@ fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedTy
         let key = path_key_for(&package_name, &module_name, &name);
         for package in &mut krate.packages {
             for module in &mut package.modules {
-                module.module.data_types.retain(|data_type| {
-                    path_key_for(&package.name, &module.name, data_type_name(data_type)) != key
-                });
+                let at = |name: &str| path_key_for(&package.name, &module.name, name);
+                module
+                    .module
+                    .data_types
+                    .retain(|data_type| at(data_type_name(data_type)) != key);
+                module
+                    .module
+                    .templates
+                    .retain(|template| at(&template.name) != key);
+                module
+                    .module
+                    .interfaces
+                    .retain(|interface| at(&interface.name) != key);
             }
         }
         errors.push(
@@ -442,11 +482,23 @@ fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
                         None => true,
                     }
                 });
-                // An interface's impls hang off a marker; drop them with it.
-                module
-                    .module
-                    .interfaces
-                    .retain(|interface| declared.contains(&at(&interface.name)));
+                // An interface's impls name its view and choice types, so it
+                // dangles the same way a record does — and its marker must
+                // still exist.
+                module.module.interfaces.retain(|interface| {
+                    if !declared.contains(&at(&interface.name)) {
+                        return false;
+                    }
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_interface(interface, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((at(&interface.name), interface.name.clone(), gone));
+                            false
+                        }
+                        None => true,
+                    }
+                });
 
                 for (key, name, gone) in report {
                     declared.remove(&key);
@@ -495,15 +547,38 @@ fn collect_all_refs_of_data_type(data_type: &DataType, out: &mut Vec<String>) {
 /// Every named-type reference reachable from a template: its payload, its
 /// choices' argument and return types, and its contract key.
 fn collect_all_refs_of_template(template: &Template, out: &mut Vec<String>) {
+    each_type_of_template(template, &mut |ty| collect_all_refs(ty, out));
+}
+
+/// Every named-type reference reachable from an interface: its view type and
+/// its choices' argument and return types.
+fn collect_all_refs_of_interface(interface: &Interface, out: &mut Vec<String>) {
+    each_type_of_interface(interface, &mut |ty| collect_all_refs(ty, out));
+}
+
+/// Visit every type a template mentions. Both post-lowering passes go through
+/// this rather than each walking the fields it happens to remember.
+fn each_type_of_template<'a>(template: &'a Template, visit: &mut impl FnMut(&'a DamlType)) {
     for field in &template.fields {
-        collect_all_refs(&field.ty, out);
+        visit(&field.ty);
     }
     for choice in &template.choices {
-        collect_all_refs(&choice.argument, out);
-        collect_all_refs(&choice.returns, out);
+        visit(&choice.argument);
+        visit(&choice.returns);
     }
     if let Some(key) = &template.key {
-        collect_all_refs(key, out);
+        visit(key);
+    }
+}
+
+/// Visit every type an interface mentions.
+fn each_type_of_interface<'a>(interface: &'a Interface, visit: &mut impl FnMut(&'a DamlType)) {
+    if let Some(view) = &interface.view {
+        visit(view);
+    }
+    for choice in &interface.choices {
+        visit(&choice.argument);
+        visit(&choice.returns);
     }
 }
 
@@ -875,9 +950,15 @@ impl Lowering<'_> {
                     .constructors_interned_str
                     .iter()
                     .map(|&index| {
-                        interned_str(self.package, index)
-                            .map(str::to_string)
-                            .ok_or_else(|| SkippedType::new("unresolved enum constructor"))
+                        let name = interned_str(self.package, index)
+                            .ok_or_else(|| SkippedType::new("unresolved enum constructor"))?;
+                        if is_rust_ident(name) {
+                            Ok(name.to_string())
+                        } else {
+                            Err(SkippedType::new(format!(
+                                "enum constructor `{name}` is not representable as a Rust identifier"
+                            )))
+                        }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Some(DataType::Enum(Enum { name, constructors })))
@@ -922,6 +1003,11 @@ impl Lowering<'_> {
         let name = interned_str(self.package, field.field_interned_str)
             .ok_or_else(|| SkippedType::new("unresolved variant constructor"))?
             .to_string();
+        if !is_rust_ident(&name) {
+            return Err(SkippedType::new(format!(
+                "variant constructor `{name}` is not representable as a Rust identifier"
+            )));
+        }
         // A `Unit` payload is a nullary constructor.
         let payload = match self.type_(field_type(field)?)? {
             DamlType::Unit => None,
@@ -1318,16 +1404,26 @@ fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, 
     let dotted = interned_dotted_name(package, name_interned_dname)
         .ok_or_else(|| SkippedType::new("unresolved dotted name"))?;
     let name = dotted.replace('.', "_");
-    let valid_ident = !name.is_empty()
-        && !name.starts_with(|c: char| c.is_ascii_digit())
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
-    if valid_ident {
+    if is_rust_ident(&name) {
         Ok(name)
     } else {
         Err(SkippedType::new(format!(
             "`{dotted}` is not representable as a Rust identifier"
         )))
     }
+}
+
+/// Whether `name` can be emitted as a Rust identifier.
+///
+/// Everything handed to the emitter must pass this: `Ident::new` **panics** on
+/// anything else, and Daml permits names Rust does not — an apostrophe suffix
+/// (`Red'`) is ordinary Daml and Haskell. A name that fails is skipped with a
+/// reason, which is the contract this crate documents; aborting the process
+/// with a `proc_macro2` backtrace is not.
+fn is_rust_ident(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 #[cfg(test)]
@@ -1555,6 +1651,119 @@ mod tests {
         assert_eq!(plain.packages[0].modules[0].module.data_types.len(), 2);
     }
 
+    /// The two post-lowering passes each walk every declaration kind. They were
+    /// written one kind at a time and both missed one — the dangling-reference
+    /// pass judged interfaces only by their marker, and the nested-Optional
+    /// pass never looked at templates, whose payload is folded into
+    /// `Template.fields` and so never appears in `data_types` at all.
+    #[test]
+    fn both_post_lowering_passes_cover_templates_and_interfaces() {
+        let reference = |name: &str, args: Vec<DamlType>| {
+            DamlType::Ref(TypeRef {
+                path: vec![
+                    "crate".to_string(),
+                    "pkg_1_0_0".to_string(),
+                    "Mod".to_string(),
+                    name.to_string(),
+                ],
+                args,
+            })
+        };
+        let module_of = |data_types: Vec<DataType>,
+                         templates: Vec<Template>,
+                         interfaces: Vec<Interface>| Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        templates,
+                        interfaces,
+                    },
+                }],
+            }],
+        };
+        let choice = |ty: DamlType| Choice {
+            name: "Do".to_string(),
+            consuming: true,
+            argument: DamlType::Unit,
+            returns: ty,
+        };
+        let template_of = |name: &str, field: DamlType| Template {
+            name: name.to_string(),
+            module_name: "Mod".to_string(),
+            package_id: "aa".to_string(),
+            package_name: "pkg".to_string(),
+            fields: vec![Field {
+                label: "x".to_string(),
+                ty: field,
+            }],
+            choices: vec![],
+            key: None,
+        };
+
+        // (1) An interface whose choice returns a skipped type used to survive,
+        // emitting `type Return = crate::…::Bad` and failing the user's build
+        // with E0425 — the very error the pass exists to prevent.
+        let mut krate = module_of(
+            vec![DataType::InterfaceMarker("Iface".to_string())],
+            vec![],
+            vec![Interface {
+                name: "Iface".to_string(),
+                module_name: "Mod".to_string(),
+                package_id: "aa".to_string(),
+                package_name: "pkg".to_string(),
+                view: None,
+                choices: vec![choice(reference("Bad", vec![]))], // `Bad` was skipped
+            }],
+        );
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("`Iface` references `Bad`")),
+            "an interface dangles like anything else: {errors:?}"
+        );
+        assert!(
+            krate.packages.is_empty() || krate.packages[0].modules[0].module.interfaces.is_empty(),
+            "the interface must not be emitted"
+        );
+
+        // (2) The same ambiguous instantiation inside a *template payload* used
+        // to be emitted, serialising the inner Optional as `null` where LF-JSON
+        // requires `[]`.
+        let wrap = DataType::Record(Record {
+            name: "Wrap".to_string(),
+            type_params: vec!["a".to_string()],
+            fields: vec![Field {
+                label: "value".to_string(),
+                ty: DamlType::Optional(Box::new(DamlType::Var("a".to_string()))),
+            }],
+        });
+        let mut krate = module_of(
+            vec![wrap],
+            vec![template_of(
+                "Tpl",
+                reference("Wrap", vec![DamlType::Optional(Box::new(DamlType::Text))]),
+            )],
+            vec![],
+        );
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "a template payload is an instantiation site too: {errors:?}"
+        );
+        assert!(
+            krate.packages[0].modules[0].module.templates.is_empty(),
+            "the template must not be emitted"
+        );
+    }
+
     #[test]
     fn a_type_referencing_a_skipped_type_is_dropped_transitively() {
         // `Bad` is unrepresentable and skipped; `Good` has a field of type
@@ -1624,6 +1833,48 @@ mod tests {
                 .any(|r| r.contains("`Worse` references `Good`")),
             "the drop must cascade: {reasons:?}"
         );
+    }
+
+    #[test]
+    fn a_daml_name_rust_cannot_spell_is_skipped_not_panicked_on() {
+        // `Red'` is ordinary Daml and Haskell. Only *type* names were checked,
+        // so a module or constructor carrying an apostrophe reached
+        // `Ident::new` and aborted the CLI with a proc_macro2 panic instead of
+        // the skip-with-a-reason this crate promises.
+        assert!(is_rust_ident("Red"));
+        assert!(is_rust_ident("_x9"));
+        for bad in ["Red'", "", "9lives", "naïve", "a-b", "A.B"] {
+            assert!(!is_rust_ident(bad), "{bad:?} is not a Rust identifier");
+        }
+
+        // An enum constructor Rust cannot spell skips its declaration.
+        // strings: 0=Colour 1=Red' ; dnames: 0=Colour
+        let mut package = package_with(&["Colour"]);
+        package.interned_strings.push("Red'".to_string());
+        let constructor = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![lf::DefDataType {
+                name_interned_dname: 0,
+                serializable: true,
+                data_cons: Some(lf::def_data_type::DataCons::Enum(
+                    lf::def_data_type::EnumConstructors {
+                        constructors_interned_str: vec![constructor],
+                    },
+                )),
+                ..lf::DefDataType::default()
+            }],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("enum constructor `Red'`")),
+            "{skipped:?}"
+        );
+        assert!(krate.packages.is_empty(), "nothing may be emitted");
     }
 
     #[test]

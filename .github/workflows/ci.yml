@@ -92,7 +92,8 @@ jobs:
       - name: Every publishable crate packages cleanly
         run: |
           for crate in canton-proto canton-core canton-auth canton-lf canton-daml \
-                       canton-ledger canton-admin canton-codegen canton-codegen-cli canton; do
+                       canton-ledger canton-admin canton-codegen canton-codegen-cli canton \
+                       canton-splice-amulet canton-splice-wallet canton-splice-wallet-payments; do
             cargo package --no-verify --list -p "$crate" > /tmp/files.txt
             grep -qx 'LICENSE' /tmp/files.txt || { echo "::error::$crate ships no LICENSE"; exit 1; }
             grep -qx 'README.md' /tmp/files.txt || { echo "::error::$crate ships no README"; exit 1; }
