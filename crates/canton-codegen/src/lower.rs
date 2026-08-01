@@ -144,11 +144,25 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
             name: module_names[id.as_str()].clone(),
             modules: Vec::new(),
         };
+        // The same flattening applies to module names: `A.B` and `A_B` would
+        // both become `pub mod A_B`. Detect it here rather than emitting a
+        // crate that fails to compile.
+        let colliding_modules = colliding_module_names(package);
+
         for lf_module in &package.modules {
             let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
                 errors.push(SkippedType::new("unresolved module name"));
                 continue;
             };
+            if let Some(sources) = colliding_modules.get(&dotted.replace('.', "_")) {
+                errors.push(SkippedType::new(format!(
+                    "modules `{}` both map to the Rust module `{}`; \
+                     rename one in Daml to generate either",
+                    sources.join("` and `"),
+                    dotted.replace('.', "_"),
+                )));
+                continue;
+            }
             let ir_module = lowering.module(lf_module, &dotted, &mut errors);
             if !ir_module.data_types.is_empty()
                 || !ir_module.templates.is_empty()
@@ -186,13 +200,43 @@ fn package_module_name(package: &lf::Package, package_id: &str) -> String {
 
 /// The first 8 identifier-safe characters of a package id, for `p_<hash8>` /
 /// collision-suffix module names. Character-based (a byte slice could panic on
-/// a hostile non-ASCII id) and filtered to alphanumerics.
+/// a hostile non-ASCII id) and filtered to alphanumerics. An id with no
+/// alphanumerics at all would yield an *empty* suffix, defeating the
+/// de-collision this exists for, so it falls back to a hash of the id.
 fn ident_prefix(package_id: &str) -> String {
-    package_id
+    let prefix: String = package_id
         .chars()
         .filter(char::is_ascii_alphanumeric)
         .take(8)
-        .collect()
+        .collect();
+    if prefix.is_empty() {
+        use std::hash::{Hash as _, Hasher as _};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        package_id.hash(&mut hasher);
+        format!("h{:x}", hasher.finish())
+    } else {
+        prefix
+    }
+}
+
+/// Rust module names claimed by more than one distinct Daml module name in a
+/// package, mapped to the Daml names that claim them.
+fn colliding_module_names(
+    package: &lf::Package,
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut claims: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for lf_module in &package.modules {
+        let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
+            continue;
+        };
+        let sources = claims.entry(dotted.replace('.', "_")).or_default();
+        if !sources.contains(&dotted) {
+            sources.push(dotted);
+        }
+    }
+    claims.retain(|_, sources| sources.len() > 1);
+    claims
 }
 
 /// Map each non-alphanumeric character to `_` so the result is a valid Rust
@@ -232,18 +276,39 @@ impl Lowering<'_> {
         module_dotted: &str,
         errors: &mut Vec<SkippedType>,
     ) -> Module {
+        // Daml names are dotted and Rust identifiers are not, so `A.B` and `A_B`
+        // both flatten to `A_B`. Emitting both would either overwrite one
+        // silently (a template taking another type's payload — wrong commands,
+        // no compile error) or produce a duplicate definition. Detect the clash
+        // up front and skip the whole colliding set, naming both Daml sources.
+        let colliding = self.colliding_flattened_names(lf_module);
+
         // The names that are templates — their payload record is folded in below.
         let template_names: std::collections::HashSet<String> = lf_module
             .templates
             .iter()
             .filter_map(|def| rust_name(self.package, def.tycon_interned_dname).ok())
+            .filter(|name| !colliding.contains_key(name))
             .collect();
+
+        for (flattened, sources) in &colliding {
+            errors.push(
+                SkippedType::new(format!(
+                    "`{}` both map to the Rust name `{flattened}`; \
+                     rename one in Daml to generate either",
+                    sources.join("` and `"),
+                ))
+                .in_module(module_dotted),
+            );
+        }
+        let skip = |name: &str| colliding.contains_key(name);
 
         let mut module = Module::default();
         // Payload records held aside for their template (name → fields).
         let mut payloads: HashMap<String, Vec<Field>> = HashMap::new();
         for data_type in &lf_module.data_types {
             match self.data_type(data_type) {
+                Ok(Some(lowered)) if skip(data_type_name(&lowered)) => {}
                 Ok(Some(DataType::Record(record))) if template_names.contains(&record.name) => {
                     payloads.insert(record.name, record.fields);
                 }
@@ -255,6 +320,7 @@ impl Lowering<'_> {
 
         for def in &lf_module.templates {
             match self.template(def, module_dotted, &mut payloads) {
+                Ok(template) if skip(&template.name) => {}
                 Ok(template) => module.templates.push(template),
                 Err(error) => errors.push(error.in_module(module_dotted)),
             }
@@ -262,11 +328,52 @@ impl Lowering<'_> {
 
         for def in &lf_module.interfaces {
             match self.interface(def, module_dotted) {
+                Ok(interface) if skip(&interface.name) => {}
                 Ok(interface) => module.interfaces.push(interface),
                 Err(error) => errors.push(error.in_module(module_dotted)),
             }
         }
         module
+    }
+
+    /// Rust names claimed by more than one *distinct* Daml name in this module,
+    /// mapped to the Daml names that claim them. A template and its payload
+    /// record share one Daml name, so they never collide with each other.
+    fn colliding_flattened_names(
+        &self,
+        lf_module: &lf::Module,
+    ) -> std::collections::BTreeMap<String, Vec<String>> {
+        let declared = lf_module
+            .data_types
+            .iter()
+            .map(|def| def.name_interned_dname)
+            .chain(
+                lf_module
+                    .templates
+                    .iter()
+                    .map(|def| def.tycon_interned_dname),
+            )
+            .chain(
+                lf_module
+                    .interfaces
+                    .iter()
+                    .map(|def| def.tycon_interned_dname),
+            );
+
+        let mut claims: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for index in declared {
+            let Some(dotted) = interned_dotted_name(self.package, index) else {
+                continue;
+            };
+            let flattened = dotted.replace('.', "_");
+            let sources = claims.entry(flattened).or_default();
+            if !sources.contains(&dotted) {
+                sources.push(dotted);
+            }
+        }
+        claims.retain(|_, sources| sources.len() > 1);
+        claims
     }
 
     /// Lower one `DefInterface`: its view type and choices, plus the on-ledger
@@ -320,12 +427,14 @@ impl Lowering<'_> {
             .iter()
             .map(|choice| self.choice(choice))
             .collect::<Result<Vec<_>, _>>()?;
-        let key = def
-            .key
-            .as_ref()
-            .and_then(|key| key.r#type.as_ref())
-            .map(|ty| self.type_(ty))
-            .transpose()?;
+        let key = match def.key.as_ref() {
+            // A declared key with no type is malformed LF: lowering it to a
+            // keyless template would silently drop `exercise_by_key`.
+            Some(key) => Some(self.type_(key.r#type.as_ref().ok_or_else(|| {
+                SkippedType::new(format!("template {name}: contract key has no type"))
+            })?)?),
+            None => None,
+        };
         Ok(Template {
             name,
             module_name: module_dotted.to_string(),
@@ -506,7 +615,11 @@ impl Lowering<'_> {
                 self.apply(lhs, &args)
             }
             lf::r#type::Sum::Var(var) => {
-                if !extra.is_empty() {
+                // A higher-kinded application (`f a`) has no Rust equivalent.
+                // `Var` carries its own `args` as well as any from a curried
+                // `TApp`; dropping either would silently emit the bare
+                // parameter in place of the applied type.
+                if !extra.is_empty() || !var.args.is_empty() {
                     return Err(SkippedType::new("type-variable application is unsupported"));
                 }
                 let name = interned_str(self.package, var.var_interned_str)
@@ -840,6 +953,16 @@ fn field_type(field: &lf::FieldWithType) -> Result<&lf::Type, SkippedType> {
         .ok_or_else(|| SkippedType::new("field without a type"))
 }
 
+/// The Rust name a lowered declaration will be emitted under.
+fn data_type_name(data_type: &DataType) -> &str {
+    match data_type {
+        DataType::Record(record) => &record.name,
+        DataType::Variant(variant) => &variant.name,
+        DataType::Enum(enumeration) => &enumeration.name,
+        DataType::InterfaceMarker(name) => name,
+    }
+}
+
 /// Resolve an interned dotted type name into a Rust-usable identifier: the Daml
 /// qualified name with `.` replaced by `_` (Daml type names are otherwise valid
 /// Rust identifiers). Definitions and references use this same mapping, so they
@@ -867,6 +990,139 @@ fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, 
 mod tests {
     use super::*;
     use canton_lf::Dar;
+
+    // ---- name flattening (always-on, synthetic LF) -------------------------
+    //
+    // Daml names are dotted, Rust identifiers are not. These build the minimal
+    // LF packages where that difference used to produce silently-wrong output.
+
+    /// An LF package with the given interned strings and dotted names, where
+    /// dotted name `i` is built from the single string `i` unless it contains
+    /// a `.`, in which case it is split into segments.
+    fn package_with(names: &[&str]) -> lf::Package {
+        let mut strings: Vec<String> = Vec::new();
+        let mut dotted = Vec::new();
+        for name in names {
+            let segments = name
+                .split('.')
+                .map(|segment| {
+                    strings.push(segment.to_string());
+                    i32::try_from(strings.len() - 1).unwrap()
+                })
+                .collect();
+            dotted.push(lf::InternedDottedName {
+                segments_interned_str: segments,
+            });
+        }
+        lf::Package {
+            interned_strings: strings,
+            interned_dotted_names: dotted,
+            ..lf::Package::default()
+        }
+    }
+
+    /// A serializable record data type named by dotted-name index `name`, with
+    /// one `Party` field labelled by interned-string index `label`.
+    fn record_def(name: i32, label: i32) -> lf::DefDataType {
+        lf::DefDataType {
+            name_interned_dname: name,
+            serializable: true,
+            data_cons: Some(lf::def_data_type::DataCons::Record(
+                lf::def_data_type::Fields {
+                    fields: vec![lf::FieldWithType {
+                        field_interned_str: label,
+                        r#type: Some(lf::Type {
+                            sum: Some(lf::r#type::Sum::Builtin(lf::r#type::Builtin {
+                                builtin: lf::BuiltinType::Party as i32,
+                                args: vec![],
+                            })),
+                        }),
+                    }],
+                },
+            )),
+            ..lf::DefDataType::default()
+        }
+    }
+
+    #[test]
+    fn two_daml_names_that_flatten_alike_are_skipped_not_silently_merged() {
+        // `Foo.Bar` (a data type) and `Foo_Bar` (a template) both flatten to the
+        // Rust name `Foo_Bar`. The payload fold was keyed on the flattened name,
+        // so the data type's fields silently replaced the template's — a create
+        // command with the wrong shape, and no compile error anywhere.
+        // strings: 0=Foo 1=Bar 2=Foo_Bar 3=owner 4=note ; dnames: 0=Foo.Bar 1=Foo_Bar
+        let mut package = package_with(&["Foo.Bar", "Foo_Bar"]);
+        package.interned_strings.push("owner".to_string());
+        package.interned_strings.push("note".to_string());
+        let (owner, note) = (3, 4);
+
+        package.modules.push(lf::Module {
+            name_interned_dname: 1, // reuse `Foo_Bar` as the module name
+            data_types: vec![record_def(0, note), record_def(1, owner)],
+            templates: vec![lf::DefTemplate {
+                tycon_interned_dname: 1,
+                ..lf::DefTemplate::default()
+            }],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons.iter().any(|r| r.contains("Foo.Bar")
+                && r.contains("Foo_Bar")
+                && r.contains("map to the Rust name")),
+            "the clash must be reported naming both Daml sources: {reasons:?}"
+        );
+        // Nothing under that name is emitted — better no bindings than bindings
+        // that submit the wrong payload.
+        let emitted: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .flat_map(|m| m.module.templates.iter().map(|t| t.name.as_str()))
+            .collect();
+        assert!(!emitted.contains(&"Foo_Bar"), "emitted: {emitted:?}");
+    }
+
+    #[test]
+    fn two_module_names_that_flatten_alike_are_skipped() {
+        // `A.B` and `A_B` would both become `pub mod A_B` — E0428 in the crate
+        // we hand the user, reported as a successful generation.
+        let mut package = package_with(&["A.B", "A_B", "T"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        for name in [0, 1] {
+            package.modules.push(lf::Module {
+                name_interned_dname: name,
+                data_types: vec![record_def(2, owner)],
+                ..lf::Module::default()
+            });
+        }
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("map to the Rust module")),
+            "{skipped:?}"
+        );
+        let modules: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| p.modules.iter().map(|m| m.name.as_str()))
+            .collect();
+        assert!(modules.is_empty(), "no module may be emitted: {modules:?}");
+    }
+
+    #[test]
+    fn the_collision_suffix_is_never_empty() {
+        // Two metadata-less packages whose ids share no ASCII alphanumerics both
+        // derived `p_`, and the de-collision suffix was empty — two `pub mod p__`.
+        assert_ne!(ident_prefix("€€€€"), ident_prefix("£££££"));
+        assert!(!ident_prefix("€€€€").is_empty());
+        assert_eq!(ident_prefix("aabbccddee"), "aabbccdd");
+    }
 
     // ---- recursion breaking (always-on, pure IR) ---------------------------
 
