@@ -85,13 +85,40 @@ const MODULE_PREAMBLE: &str = concat!(
     "use canton_daml as rt;\n\n",
 );
 
-/// The header prepended to a whole generated crate (its `lib.rs`): the same
-/// lints, but no top-level `rt` alias — each generated module aliases the
-/// runtime itself, so references resolve within their own module.
-const CRATE_PREAMBLE: &str = concat!(
-    "#![allow(non_camel_case_types, non_snake_case, unused_imports, dead_code, unused_variables, clippy::all)]\n",
-    "//! Generated Daml bindings — do not edit by hand.\n\n",
-);
+/// The lint header for a whole generated crate. Daml names are not Rust
+/// casing and the emitter deliberately emits some unused glue, so those two
+/// lints are silenced; `clippy::all` is off because generated code is not
+/// hand-maintained and its style is not the reader's business.
+const CRATE_LINTS: &str =
+    "#![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]\n";
+
+/// The crate-level docs for a generated crate: what it is, how it is used, and
+/// an index of the Daml packages inside it — otherwise a reader landing on
+/// docs.rs sees twenty-odd opaque module names and no entry point.
+fn crate_docs(krate: &Crate) -> String {
+    use std::fmt::Write as _;
+
+    let mut docs = String::new();
+    docs.push_str("//! Typed Rust bindings generated from a Daml archive (DAR).\n//!\n");
+    docs.push_str(
+        "//! **Generated file — do not edit by hand.** Regenerate with\n\
+         //! `dpm-codegen-rust --dar <the DAR> --out <this crate>`; edits are lost.\n//!\n\
+         //! Each Daml package in the DAR's dependency closure is one top-level\n\
+         //! module, and each Daml module a submodule under it, so cross-package\n\
+         //! references resolve and names never collide. Templates carry typed\n\
+         //! choices; the runtime traits they implement (`Template`, `Choice`,\n\
+         //! `Contract`) and the command builders live in `canton-daml`, which the\n\
+         //! generated code imports as `rt`.\n//!\n\
+         //! # Packages in this crate\n//!\n",
+    );
+    for package in &krate.packages {
+        let modules = package.modules.len();
+        let plural = if modules == 1 { "module" } else { "modules" };
+        let _ = writeln!(docs, "//! - [`{}`] — {modules} Daml {plural}", package.name);
+    }
+    docs.push('\n');
+    docs
+}
 
 /// Format a stream of generated items as Rust source, first checking it is
 /// syntactically valid Rust.
@@ -156,7 +183,7 @@ pub fn generate_module(module: &Module) -> Result<String, CodegenError> {
 /// Returns [`CodegenError`] if the generated tokens are not valid Rust.
 pub fn generate_crate(krate: &Crate) -> Result<String, CodegenError> {
     let body = format_items(emit::crate_items(krate))?;
-    Ok(format!("{CRATE_PREAMBLE}{body}"))
+    Ok(format!("{CRATE_LINTS}{}{body}", crate_docs(krate)))
 }
 
 #[cfg(test)]

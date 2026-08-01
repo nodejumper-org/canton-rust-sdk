@@ -106,7 +106,10 @@ fn cli_generate_writes_a_versioned_marked_crate_and_respects_clobber_rules() {
     // The crate version is the DAR's package version, not a placeholder.
     assert!(cargo_toml.contains("version = \"1.0.0\""), "{cargo_toml}");
     let lib_rs = std::fs::read_to_string(out.join("src/lib.rs")).unwrap();
-    assert!(lib_rs.contains("Generated Daml bindings"), "lib.rs marker");
+    assert!(
+        lib_rs.contains("Typed Rust bindings generated from a Daml archive"),
+        "lib.rs marker"
+    );
 
     // Re-running over our own output is fine (regeneration)…
     generate(&opts).expect("regenerating over own output succeeds");

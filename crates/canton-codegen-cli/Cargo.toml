@@ -25,11 +25,5 @@ path = "src/main.rs"
 canton-codegen = { workspace = true }
 thiserror      = { workspace = true }
 
-[dev-dependencies]
-# The up-to-date drift guard compares regenerated vs committed bindings at the
-# AST level (formatting-independent).
-syn          = { workspace = true }
-prettyplease = { workspace = true }
-
 [lints]
 workspace = true

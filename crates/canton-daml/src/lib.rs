@@ -12,6 +12,39 @@
 //! It contains no ledger I/O — it is the thin type/codec layer beneath the
 //! generated bindings, kept separate from the codegen tool (which is
 //! build-time) and from the client crates (which do the actual RPCs).
+//!
+//! # Using it
+//!
+//! You rarely name this crate directly: `canton-codegen` emits bindings that
+//! import it as `rt`. What you *do* touch are its types, and the three things
+//! below — build a payload, turn it into a command, decode a result:
+//!
+//! ```rust,ignore
+//! use canton_daml as rt;
+//! use rt::Template as _; // brings `from_created_event` into scope
+//! use my_bindings::my_app_1_0_0::My_Module::{Asset, Asset_Transfer};
+//!
+//! // A typed payload, built from the runtime's Daml primitives.
+//! let asset = Asset {
+//!     owner: rt::Party::new("alice::1220ab…"),
+//!     price: "12.50".parse::<rt::Numeric>()?,
+//!     minted_at: rt::Timestamp::from_datetime(time::OffsetDateTime::now_utc()),
+//! };
+//!
+//! // Commands for the ledger client to submit.
+//! let create = rt::create_command(&asset);
+//! let transfer = rt::exercise_command(&contract_id, &Asset_Transfer {
+//!     new_owner: rt::Party::new("bob::1220cd…"),
+//! });
+//!
+//! // The typed read path: a CreatedEvent from a transaction or the ACS.
+//! let read_back: Asset = Asset::from_created_event(&event)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! Codec failures are [`ValueError`], which converts into `canton_core::Error`,
+//! so one function can call this runtime and the ledger client and use `?` on
+//! both.
 
 mod choice;
 mod commands;

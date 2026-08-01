@@ -108,7 +108,7 @@ fn refuses_to_clobber_a_foreign_crate_then_obeys_force() {
     assert!(
         std::fs::read_to_string(&user_file)
             .unwrap()
-            .contains("Generated Daml bindings")
+            .contains("Typed Rust bindings generated from a Daml archive")
     );
     std::fs::remove_dir_all(&dir).ok();
 }

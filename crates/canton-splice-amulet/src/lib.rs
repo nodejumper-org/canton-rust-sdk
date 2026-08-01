@@ -1,12 +1,44 @@
-#![allow(
-    non_camel_case_types,
-    non_snake_case,
-    unused_imports,
-    dead_code,
-    unused_variables,
-    clippy::all
-)]
-//! Generated Daml bindings — do not edit by hand.
+#![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]
+//! Typed Rust bindings generated from a Daml archive (DAR).
+//!
+//! **Generated file — do not edit by hand.** Regenerate with
+//! `dpm-codegen-rust --dar <the DAR> --out <this crate>`; edits are lost.
+//!
+//! Each Daml package in the DAR's dependency closure is one top-level
+//! module, and each Daml module a submodule under it, so cross-package
+//! references resolve and names never collide. Templates carry typed
+//! choices; the runtime traits they implement (`Template`, `Choice`,
+//! `Contract`) and the command builders live in `canton-daml`, which the
+//! generated code imports as `rt`.
+//!
+//! # Packages in this crate
+//!
+//! - [`daml_prim_DA_Exception_ArithmeticError_1_0_0`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_AssertionFailed_1_0_0`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_GeneralError_1_0_0`] — 1 Daml module
+//! - [`daml_prim_DA_Exception_PreconditionFailed_1_0_0`] — 1 Daml module
+//! - [`daml_prim_DA_Types_1_0_0`] — 1 Daml module
+//! - [`daml_prim_GHC_Tuple_1_0_0`] — 1 Daml module
+//! - [`daml_prim_GHC_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Date_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Internal_Down_1_0_0`] — 1 Daml module
+//! - [`ghc_stdlib_DA_Internal_Template_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Logic_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Monoid_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_NonEmpty_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Random_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Semigroup_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Set_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Stack_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Time_Types_1_0_0`] — 1 Daml module
+//! - [`daml_stdlib_DA_Validation_Types_1_0_0`] — 1 Daml module
+//! - [`splice_amulet_0_1_14`] — 17 Daml modules
+//! - [`splice_api_featured_app_v1_1_0_0`] — 1 Daml module
+//! - [`splice_api_token_allocation_instruction_v1_1_0_0`] — 1 Daml module
+//! - [`splice_api_token_allocation_v1_1_0_0`] — 1 Daml module
+//! - [`splice_api_token_holding_v1_1_0_0`] — 1 Daml module
+//! - [`splice_api_token_metadata_v1_1_0_0`] — 1 Daml module
+//! - [`splice_api_token_transfer_instruction_v1_1_0_0`] — 1 Daml module
 
 pub mod daml_prim_DA_Exception_ArithmeticError_1_0_0 {
     pub mod DA_Exception_ArithmeticError {
@@ -2541,7 +2573,7 @@ pub mod ghc_stdlib_DA_Internal_Template_1_0_0 {
             }
         }
         impl rt::FromValue for Archive {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -3209,7 +3241,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for TransferPreapproval_ExpireResult {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -3343,7 +3375,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for TransferPreapproval_Expire {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -3598,7 +3630,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for ExternalPartySetupProposal_Accept {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7009,7 +7041,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for UnclaimedActivityRecord_DsoExpire {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7022,7 +7054,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for SvRewardCoupon_ArchiveAsBeneficiary {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7149,7 +7181,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for FeaturedAppRight_Cancel {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7183,7 +7215,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for ValidatorRight_ArchiveAsUser {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7196,7 +7228,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for ValidatorRight_ArchiveAsValidator {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -7439,7 +7471,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for ValidatorRewardCoupon_ArchiveAsValidatorResult {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -9268,7 +9300,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for TransferCommand_Withdraw {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -10381,7 +10413,7 @@ pub mod splice_amulet_0_1_14 {
             }
         }
         impl rt::FromValue for ValidatorLicense_ReportActive {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -13577,7 +13609,7 @@ pub mod splice_api_token_metadata_v1_1_0_0 {
             }
         }
         impl rt::FromValue for AnyContractView {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }

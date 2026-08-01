@@ -231,6 +231,12 @@ fn record_codecs(record: &Record) -> TokenStream {
         codec_header(&name, &record.type_params, &quote!(rt::ToValue));
     let (_, _, from_where) = codec_header(&name, &record.type_params, &quote!(rt::FromValue));
     let phantom = phantom_init(&record.type_params, record.fields.iter().map(|f| &f.ty));
+    // A record with no fields never reads the wire value.
+    let value_binding = ident(if record.fields.is_empty() {
+        "_value"
+    } else {
+        "value"
+    });
     quote! {
         impl #impl_generics rt::ToValue for #ty #to_where {
             fn to_value(&self) -> rt::Value {
@@ -238,7 +244,7 @@ fn record_codecs(record: &Record) -> TokenStream {
             }
         }
         impl #impl_generics rt::FromValue for #ty #from_where {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(#value_binding: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self { #(#from_fields)* #phantom })
             }
         }

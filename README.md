@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status: Milestone 1 published; Milestone 2 (type-safe codegen) code-complete.** M1 — the core Ledger API client — is implemented, verified (no-node tests + a full live suite against a Canton **3.5.7** LocalNet participant, all green under `-D warnings` on every feature combination), and released to crates.io. M2 — `canton-codegen` (DAR → typed Rust, SCU-aware), the `dpm codegen-rust` component, pre-built `canton-splice-*` bindings, and a reference app — is code-complete and verified end to end (the whole Splice DAR closure compiles; the sample's typed command submits and is read back from the ACS over gRPC and JSON). M3 is next.
+> **Status:** the Ledger API client and the type-safe DAR codegen are both released. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. Token-standard support (CIP-56 / CIP-0112), a PQS client, and external signing are next.
 
 ## Crates
 
@@ -25,7 +25,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.1.x | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.2.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
 supported Canton range re-vendors them in a new SDK minor (see the stability
@@ -41,7 +41,7 @@ crates release in **lockstep** — mix only equal versions
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
 
-The `canton` facade forwards both: `canton = { version = "0.1", features = ["ws", "otel"] }`.
+The `canton` facade forwards both: `canton = { version = "0.2", features = ["ws", "otel"] }`.
 
 Telemetry follows the standard Rust model: the SDK **emits** (`tracing` spans, `metrics` counters labelled by method + transport); the application installs the subscriber/recorder of its choice.
 
@@ -52,46 +52,47 @@ cargo add canton            # the whole SDK, one crate
 # or pick pieces: cargo add canton-ledger canton-auth
 ```
 
-```rust
+```rust,ignore
 use canton::ledger::{CantonClient, Config};
 
-# async fn run() -> canton::Result<()> {
-let client = CantonClient::connect_lazy(Config::new("http://localhost:3901"))?;
-println!("ledger api version: {}", client.version().await?);
-println!("node health:        {:?}", client.health_check().await?);
-# Ok(())
-# }
+#[tokio::main]
+async fn main() -> canton::Result<()> {
+    let client = CantonClient::connect_lazy(Config::new("http://localhost:3901"))?;
+    println!("ledger api version: {}", client.version().await?);
+    println!("node health:        {:?}", client.health_check().await?);
+    Ok(())
+}
 ```
 
 With OIDC auth and a command:
 
-```rust
+```rust,ignore
 use canton::auth::{OidcConfig, TokenProvider};
 use canton::ledger::{CantonClient, Config, Submit, create, identifier, record, value};
 
-# async fn run(party: &str, pkg: &str) -> canton::Result<()> {
-let auth = TokenProvider::new(OidcConfig::keycloak(
-    "http://keycloak.localhost:8082", "AppProvider", "client-id", "client-secret",
-));
-let client = CantonClient::connect_lazy(
-    Config::new("http://localhost:3901").with_oidc(auth),
-)?;
+async fn submit(party: &str, pkg: &str) -> canton::Result<()> {
+    let auth = TokenProvider::new(OidcConfig::keycloak(
+        "http://keycloak.localhost:8082", "AppProvider", "client-id", "client-secret",
+    ));
+    let client = CantonClient::connect_lazy(
+        Config::new("http://localhost:3901").with_oidc(auth),
+    )?;
 
-let tx = client
-    .submit_and_wait_for_transaction(
-        Submit::new(party).add_command(create(
-            identifier(pkg, "Licensing.AppInstall", "AppInstallRequest"),
-            record(vec![
-                ("provider", value::party(party)),
-                ("user", value::party(party)),
-                ("meta", value::record(record(vec![("values", value::empty_text_map())]))),
-            ]),
-        )),
-    )
-    .await?;
-println!("committed {} at offset {}", tx.update_id, tx.offset);
-# Ok(())
-# }
+    let tx = client
+        .submit_and_wait_for_transaction(
+            Submit::new(party).add_command(create(
+                identifier(pkg, "Licensing.AppInstall", "AppInstallRequest"),
+                record(vec![
+                    ("provider", value::party(party)),
+                    ("user", value::party(party)),
+                    ("meta", value::record(record(vec![("values", value::empty_text_map())]))),
+                ]),
+            )),
+        )
+        .await?;
+    println!("committed {} at offset {}", tx.update_id, tx.offset);
+    Ok(())
+}
 ```
 
 Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_and_health.rs) (no auth) and [`submit_and_read`](crates/canton-ledger/examples/submit_and_read.rs) (OIDC auth + a create). Run with `cargo run -p canton-ledger --example version_and_health`. See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
@@ -102,9 +103,23 @@ Turn any DAR into a typed crate — templates become structs, choices become
 typed exercise impls, with JSON and gRPC codecs on everything:
 
 ```sh
-cargo run -p canton-codegen-cli -- \
-  --dar path/to/my-app-0.1.0.dar \
-  --out my-app-bindings
+cargo install canton-codegen-cli          # provides `dpm-codegen-rust`
+dpm-codegen-rust --dar path/to/my-app-0.1.0.dar --out my-app-bindings
+```
+
+Or call it from a build script, the way `prost-build` is used — the pipeline is
+the `canton-codegen` library, so no CLI dependency is needed:
+
+```rust,ignore
+// build.rs
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("cargo:rerun-if-changed=dars/my-app-0.1.0.dar");
+    canton_codegen::generate(&canton_codegen::Options::new(
+        "dars/my-app-0.1.0.dar",
+        "my-app-bindings",
+    ))?;
+    Ok(())
+}
 ```
 
 The output is a self-contained crate (`Cargo.toml` + `src/lib.rs`). Add it to
@@ -149,7 +164,16 @@ MSRV.
 
 ## Roadmap
 
-M1 is the core client. **M2** — type-safe code generation from DAR packages, SCU-aware, with a `dpm codegen-rust` component and prebuilt `canton-splice-*` crates — is code-complete (via a native Rust LF 2.x decoder rather than the JVM `daml-lf-archive`; see `docs/adr/0008-native-lf-decoder.md`). Coming next per the proposal: **M3** — token-standard support (CIP-56 V1 + CIP-0112 V2), interactive submission with a pluggable signer, a typed PQS client, and the Ledger-Client-Standard conformance suite.
+**Shipped:** the async Ledger API client (gRPC + JSON + WebSocket, auth, TLS,
+retry, telemetry) and type-safe code generation from DAR packages — SCU-aware,
+with a `dpm codegen-rust` component and prebuilt `canton-splice-*` crates. The
+LF decoder is native Rust rather than a JVM wrapper around `daml-lf-archive`
+([ADR-0008](docs/adr/0008-native-lf-decoder.md)); its output is held to the
+official JVM reader by a conformance oracle.
+
+**Next:** token-standard support (CIP-56 V1 + CIP-0112 V2), interactive
+submission with a pluggable signer, a typed PQS client, and the
+Ledger-Client-Standard conformance suite.
 
 ## Contributing & security
 

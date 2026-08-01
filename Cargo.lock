@@ -212,8 +212,6 @@ name = "canton-codegen-cli"
 version = "0.2.0"
 dependencies = [
  "canton-codegen",
- "prettyplease",
- "syn",
  "thiserror 2.0.18",
 ]
 
