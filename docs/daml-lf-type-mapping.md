@@ -83,6 +83,24 @@ function/`Update`/`Any` types) are not modelled — codegen only needs the
 serialisable type skeleton. A type that cannot be lowered is skipped and
 surfaced as a `LowerError` rather than emitted incorrectly.
 
+## Known limitation: a nested `Optional` behind a type parameter
+
+LF-JSON encodes a top-level `Optional` as `null`/value and every `Optional`
+below one as a list, which is why `Optional (Optional t)` maps to
+`Option<NestedOpt<T>>`. That rewrite is structural, so it cannot see through a
+type parameter: for `data Wrap a = Wrap with value : Optional a` instantiated
+at `Wrap (Optional Text)`, the nesting is real on the wire but absent from the
+spelled-out Rust type.
+
+Rather than emit `Option<Option<String>>` — which would serialize the inner
+layer as `null` where the ledger expects `[]` — codegen **refuses** that
+instantiation and reports it as a skipped declaration. Encoding it correctly
+requires the instantiation site to know how the target uses its parameter, plus
+a distinct IR node for "this `Optional` is nested"; until then the case is
+rejected rather than mis-encoded. It does not occur anywhere in the Splice
+corpus. The gRPC codec is unaffected — both layers are a proto `Optional`
+there.
+
 ## Conformance against the official `daml-lf-archive` reader
 
 The decode itself is machine-generated from the official `daml-lf-archive`
