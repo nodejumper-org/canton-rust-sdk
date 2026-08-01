@@ -34,6 +34,10 @@ the rest. The published 0.1.x API is unchanged except for additions.
   and gRPC codecs. Output is a fully-qualified `pub mod` tree
   (`crate::<package>::<module>::<Type>`) so cross-package references resolve and
   names never collide; template ids use the SCU-friendly `#<package-name>` form.
+  The package segment is the package **name** — a version bump does not rename
+  the paths a consumer imports — with the version appended only to separate two
+  packages that would otherwise share a module name. Each template's docs carry
+  its on-ledger id and its choices with their consuming flag.
 - **`canton-codegen-cli`** — the `dpm-codegen-rust` binary (a `dpm codegen-rust`
   component / build-script tool) that writes a self-contained bindings crate from
   a DAR.
