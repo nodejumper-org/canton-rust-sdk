@@ -480,6 +480,33 @@ mod tests {
     }
 
     #[test]
+    fn value_errors_carry_a_path_and_flow_into_the_sdk_error() {
+        // A decode failure deep in a payload names where it happened…
+        let error = ValueError::new("expected Text")
+            .at("city")
+            .at("address")
+            .at("owner");
+        assert_eq!(error.path(), ["owner", "address", "city"]);
+        assert!(
+            error.to_string().contains("`owner.address.city`"),
+            "{error}"
+        );
+        assert_eq!(error.message(), "expected Text");
+
+        // …and `?` carries it into the SDK-wide error, so one function can call
+        // the typed runtime and the ledger client and return canton::Result.
+        let sdk: canton_core::Error = error.clone().into();
+        assert!(!sdk.is_retriable(), "a shape mismatch will not fix itself");
+        assert!(
+            std::error::Error::source(&sdk)
+                .map(ToString::to_string)
+                .unwrap_or_default()
+                .contains("owner.address.city"),
+            "the cause chain keeps the path"
+        );
+    }
+
+    #[test]
     fn numeric_compares_by_value_not_by_text() {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -571,8 +598,8 @@ mod tests {
         let mut wrong = event.clone();
         wrong.template_id.as_mut().unwrap().entity_name = "SomethingElse".to_string();
         let error = AppInstall::from_created_event(&wrong).unwrap_err();
-        assert!(error.message.contains("SomethingElse"), "{error}");
-        assert!(error.message.contains("AppInstall"), "{error}");
+        assert!(error.message().contains("SomethingElse"), "{error}");
+        assert!(error.message().contains("AppInstall"), "{error}");
 
         // No payload is a typed error.
         let mut empty = event.clone();
@@ -585,7 +612,7 @@ mod tests {
         // Truncating past the optional tail removes the required `tags` field.
         let error = AppInstall::from_value(&wire_record(true, 2)).unwrap_err();
         assert!(
-            error.message.contains("tags"),
+            error.message().contains("tags"),
             "error should name the missing field: {error}"
         );
     }

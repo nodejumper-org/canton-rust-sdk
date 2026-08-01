@@ -78,15 +78,27 @@ fn run() -> Result<(), Box<CliError>> {
                 .ok_or_else(|| usage(format!("{flag} needs a value"))),
         };
         match flag.as_str() {
-            "-h" | "--help" => {
-                print!("{USAGE}");
+            "-h" | "--help" | "-V" | "--version" => {
+                if let Some(value) = inline.take() {
+                    return Err(usage(format!("{flag} takes no value (got `={value}`)")));
+                }
+                if flag == "-h" || flag == "--help" {
+                    print!("{USAGE}");
+                } else {
+                    println!("dpm-codegen-rust {}", env!("CARGO_PKG_VERSION"));
+                }
                 return Ok(());
             }
-            "-V" | "--version" => {
-                println!("dpm-codegen-rust {}", env!("CARGO_PKG_VERSION"));
-                return Ok(());
+            // A boolean flag takes no value: `--force=false` must not be read
+            // as "enable force" (it would destroy the caller's files).
+            "--force" => {
+                if let Some(value) = inline.take() {
+                    return Err(usage(format!(
+                        "--force is a flag and takes no value (got `={value}`)"
+                    )));
+                }
+                force = true;
             }
-            "--force" => force = true,
             "--dar" => dar = Some(PathBuf::from(value(&mut args, "--dar")?)),
             "--out" => out = Some(PathBuf::from(value(&mut args, "--out")?)),
             "--name" => name = Some(value(&mut args, "--name")?),

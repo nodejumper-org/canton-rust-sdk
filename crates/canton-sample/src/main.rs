@@ -23,7 +23,9 @@ use canton_quickstart_licensing::quickstart_licensing_0_0_1::Licensing_AppInstal
 use canton_quickstart_licensing::splice_api_token_metadata_v1_1_0_0::Splice_Api_Token_MetadataV1::Metadata;
 use rt::Template as _;
 
-type Error = Box<dyn std::error::Error>;
+// The whole app runs on the SDK's own error type: the ledger client, the typed
+// codecs and serde all convert into it, so every call site is a plain `?`.
+type Error = canton_ledger::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -111,7 +113,9 @@ async fn run_grpc(
     );
 
     // The typed READ path: decode the committed event back into the payload.
-    let created_event = first_created_event(&tx.events).ok_or("no created event")?;
+    let created_event = first_created_event(&tx.events).ok_or_else(|| {
+        Error::UnexpectedResponse("the submit returned no created event".to_string())
+    })?;
     let read_back = AppInstallRequest::from_created_event(created_event)?;
     assert_eq!(&read_back, request, "typed read-back matches the submit");
     println!(

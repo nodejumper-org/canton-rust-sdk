@@ -11,27 +11,75 @@ use crate::primitives::{
 };
 
 /// An error converting a Ledger API [`Value`](pb::Value) into a typed value.
+///
+/// Carries the **path** to the offending spot inside the payload — a decode
+/// failure deep in a nested record reports `owner.address.city: expected Text`
+/// rather than just `expected Text`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValueError {
-    /// A human-readable description of the mismatch.
-    pub message: String,
+    /// Field path from the root of the decoded value, outermost first.
+    path: Vec<String>,
+    message: String,
 }
 
 impl ValueError {
-    pub(crate) fn new(message: impl Into<String>) -> Self {
+    /// A conversion error with no path context. Hand-written [`FromValue`]
+    /// impls use this; generated code adds context with [`ValueError::at`].
+    #[must_use]
+    pub fn new(message: impl Into<String>) -> Self {
         Self {
+            path: Vec::new(),
             message: message.into(),
         }
+    }
+
+    /// Prepend a field (or index) to the path — called as the error propagates
+    /// out of a nested value, so the path reads outermost-first.
+    #[must_use]
+    pub fn at(mut self, field: impl Into<String>) -> Self {
+        self.path.insert(0, field.into());
+        self
+    }
+
+    /// The failure description, without the path.
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// The field path from the root of the value, outermost first; empty when
+    /// the failure was at the root.
+    #[must_use]
+    pub fn path(&self) -> &[String] {
+        &self.path
     }
 }
 
 impl std::fmt::Display for ValueError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "value conversion error: {}", self.message)
+        if self.path.is_empty() {
+            write!(f, "value conversion error: {}", self.message)
+        } else {
+            write!(
+                f,
+                "value conversion error at `{}`: {}",
+                self.path.join("."),
+                self.message
+            )
+        }
     }
 }
 
 impl std::error::Error for ValueError {}
+
+/// Lets `?` carry a codec failure straight into the SDK-wide error type, so one
+/// function can call the typed runtime and the ledger client and return
+/// `canton::Result`.
+impl From<ValueError> for canton_core::Error {
+    fn from(error: ValueError) -> Self {
+        canton_core::Error::Payload(Box::new(error))
+    }
+}
 
 /// Encode a typed Rust value as a Ledger API [`Value`](pb::Value).
 pub trait ToValue {

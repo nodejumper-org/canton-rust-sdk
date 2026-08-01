@@ -14,6 +14,7 @@ description  = "Runtime types and Value codecs for canton-codegen-generated Daml
 include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
+canton-core  = { workspace = true }
 canton-proto = { workspace = true }
 serde        = { workspace = true }
 time         = { workspace = true }

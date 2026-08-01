@@ -65,6 +65,12 @@ pub enum Error {
     /// The operation exceeded its configured deadline. Retriable.
     #[error("operation timed out")]
     Timeout,
+
+    /// A typed payload failed to convert to or from the Ledger API `Value` —
+    /// a `canton-daml` codec error. Not retriable: the shape will not change
+    /// on a retry.
+    #[error("payload conversion failed")]
+    Payload(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl Error {
