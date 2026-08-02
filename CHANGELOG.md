@@ -82,6 +82,15 @@ the rest. The published 0.1.x API is unchanged except for additions.
 
 ### Changed
 
+- **`canton-core` gains `Error::Payload`** — the one addition to the surface
+  published in 0.1.x. It carries a `canton-daml` codec failure as its `source`,
+  so a typed decode and a transport failure land in the same `Result` and an
+  application can stay on `canton::Error` end to end. `Error` is
+  `#[non_exhaustive]`, so the new variant does not break a `match`.
+  `canton-daml` supplies the bridge (`impl From<ValueError> for
+  canton_core::Error`), and `ValueError` is structured rather than a string:
+  it carries the field **path** it failed at and the message separately, so the
+  path survives into the error chain instead of being formatted away.
 - The `canton` facade re-exports the codegen runtime as [`canton::daml`], so
   `cargo add canton` gets a version-locked runtime for generated bindings. The
   generator stays out of the facade on purpose: it is a build-time tool

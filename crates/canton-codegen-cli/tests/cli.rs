@@ -159,6 +159,32 @@ fn usage_errors_are_actionable_and_exit_nonzero() {
 }
 
 #[test]
+fn two_ways_of_naming_the_runtime_dependency_is_a_usage_error() {
+    // Both flags answer the same question. Honouring the path and dropping the
+    // version — the same silent swallow of an explicit intent that `--force=false`
+    // was — writes a manifest the user did not ask for, with nothing to notice.
+    let dir = scratch("runtime-conflict");
+    let output = run(&[
+        "--dar",
+        fixture().to_str().unwrap(),
+        "--out",
+        dir.join("out").to_str().unwrap(),
+        "--runtime-path",
+        "/somewhere/canton-daml",
+        "--runtime-version",
+        "0.2",
+    ]);
+    assert!(!output.status.success(), "should be rejected");
+    let message = stderr(&output);
+    assert!(message.contains("--runtime-path"), "{message}");
+    assert!(message.contains("--runtime-version"), "{message}");
+    assert!(
+        !dir.join("out").exists(),
+        "nothing should be written when the arguments are rejected"
+    );
+}
+
+#[test]
 fn help_and_version_succeed() {
     let help = run(&["--help"]);
     assert!(help.status.success());

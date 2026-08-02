@@ -28,7 +28,9 @@
 //! let asset = Asset {
 //!     owner: rt::Party::new("alice::1220ab…"),
 //!     price: "12.50".parse::<rt::Numeric>()?,
-//!     minted_at: rt::Timestamp::from_datetime(time::OffsetDateTime::now_utc()),
+//!     // `None` only for a datetime outside the microsecond range of an `i64`.
+//!     minted_at: rt::Timestamp::from_datetime(time::OffsetDateTime::now_utc())
+//!         .expect("now is representable"),
 //! };
 //!
 //! // Commands for the ledger client to submit.

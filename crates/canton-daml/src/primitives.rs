@@ -527,6 +527,13 @@ impl Date {
 
     /// The Daml date for a calendar date, or `None` when the day count is
     /// outside the range a Daml `Date` can hold.
+    ///
+    /// No `time::Date` reaches that bound: the year range is ±9999 here (and
+    /// ±999999 under `time`'s `large-dates`), against the ~5.9 million years an
+    /// `i32` day count spans. The `Option` is kept because [`Date::to_date`]
+    /// genuinely needs one — a `Date` decoded from the wire can name a day
+    /// `time` cannot represent — and a pair of conversions that disagree on
+    /// fallibility invites the caller to assume the wrong one is total.
     #[must_use]
     pub fn from_date(date: time::Date) -> Option<Self> {
         i32::try_from((date - UNIX_EPOCH_DATE).whole_days())

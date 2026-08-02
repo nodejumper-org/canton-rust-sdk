@@ -119,6 +119,15 @@ fn run() -> Result<(), Box<CliError>> {
     if let Some(name) = name {
         options = options.with_crate_name(name);
     }
+    // A path dependency and a version requirement are two answers to one
+    // question. Taking the path and dropping the version silently would write a
+    // manifest the user did not ask for and give them no way to notice.
+    if runtime_path.is_some() && runtime_version.is_some() {
+        return Err(usage(
+            "--runtime-path and --runtime-version both set the `canton-daml` dependency; pass one"
+                .to_string(),
+        ));
+    }
     let by_version = runtime_path.is_none();
     if let Some(path) = runtime_path {
         options = options.with_runtime(Runtime::Path(path));

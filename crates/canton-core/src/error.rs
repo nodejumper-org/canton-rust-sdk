@@ -69,7 +69,10 @@ pub enum Error {
     /// A typed payload failed to convert to or from the Ledger API `Value` —
     /// a `canton-daml` codec error. Not retriable: the shape will not change
     /// on a retry.
-    #[error("payload conversion failed")]
+    // The cause is in the message *and* kept as `source`: every other variant
+    // here prints its detail, and an application that logs `{err}` without
+    // walking the chain would otherwise be told only that something failed.
+    #[error("payload conversion failed: {0}")]
     Payload(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
