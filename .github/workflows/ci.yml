@@ -117,7 +117,34 @@ jobs:
             --dar testdata/splice-api-token-holding-v1-1.0.0.dar \
             --out "$RUNNER_TEMP/bindings" \
             --runtime-path "$GITHUB_WORKSPACE/crates/canton-daml"
-          cd "$RUNNER_TEMP/bindings" && cargo check --locked || cargo check
+          # No Cargo.lock is generated for the output crate, so --locked could
+          # only ever fail here.
+          cd "$RUNNER_TEMP/bindings" && cargo check
+
+  # The native LF decoder claims to agree with the official JVM reader. That
+  # claim is only worth what a reviewer can re-run, so run it here rather than
+  # leaving it to a local machine. Its own job: it pulls a JVM and the Maven
+  # artifact, which the fast gates should not wait on.
+  lf-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: VirtusLab/scala-cli-setup@v1
+      - name: Native decoder agrees with daml-lf-archive-reader
+        env:
+          CANTON_LF_ORACLE_DAR: testdata/splice-api-token-holding-v1-1.0.0.dar
+        run: |
+          # The test skips silently when the DAR or scala-cli is absent, which
+          # here would mean a green job that verified nothing.
+          cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle.log
+          grep -q 'oracle agreement:' /tmp/oracle.log || {
+            echo "::error::the oracle skipped instead of running"; exit 1; }
 
   # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
   # crates.io — it guards the hand-written public API against accidental

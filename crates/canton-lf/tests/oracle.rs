@@ -439,6 +439,16 @@ fn decoder_matches_the_official_jvm_reader() {
         eprintln!("skipping oracle: set CANTON_LF_ORACLE_DAR=/path/to/x.dar");
         return;
     };
+    // Cargo runs an integration test with the *crate* directory as its working
+    // directory, so a relative path typed at the repo root would not resolve.
+    let dar_path = {
+        let path = std::path::PathBuf::from(&dar_path);
+        if path.is_absolute() {
+            path
+        } else {
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).join(path)
+        }
+    };
     if std::process::Command::new("scala-cli")
         .arg("--version")
         .output()
@@ -459,7 +469,8 @@ fn decoder_matches_the_official_jvm_reader() {
         "/../../tools/lf-oracle/LfOracle.scala"
     );
     let output = std::process::Command::new("scala-cli")
-        .args(["run", "--quiet", helper, "--", &dar_path])
+        .args(["run", "--quiet", helper, "--"])
+        .arg(&dar_path)
         .output()
         .expect("run scala-cli");
     assert!(
