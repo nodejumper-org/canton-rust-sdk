@@ -21,6 +21,8 @@
 
 use std::collections::HashMap;
 
+use heck::ToUpperCamelCase;
+
 use canton_lf::pb::daml_lf_2 as lf;
 use canton_lf::{
     Dar, DecodeError, decode_all, imported_package_id, interned_dotted_name, interned_str,
@@ -109,7 +111,17 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
     let mut krate = Crate::default();
     let mut errors = Vec::new();
 
+    // `package_module_names` is keyed by package id and so can only hold one
+    // name per id, but the input is a slice: a DAR carrying the same id twice
+    // would get one name emitted twice and a crate that fails with E0428. The
+    // second copy is the same package by definition — an id is a hash of its
+    // content — so dropping it loses nothing.
+    let mut lowered: std::collections::HashSet<&str> = std::collections::HashSet::new();
+
     for (id, package) in packages {
+        if !lowered.insert(id.as_str()) {
+            continue;
+        }
         let lowering = Lowering {
             package,
             qualify: Some(Qualify {
@@ -803,7 +815,7 @@ fn colliding_module_names(
 ) -> std::collections::BTreeMap<String, Vec<String>> {
     let mut claims: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
-    for lf_module in &package.modules {
+    for lf_module in package.modules.iter().filter(|m| emits_anything(m)) {
         let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
             continue;
         };
@@ -814,6 +826,24 @@ fn colliding_module_names(
     }
     claims.retain(|_, sources| sources.len() > 1);
     claims
+}
+
+/// Whether a data type reaches the generated crate: an interface contributes
+/// its marker `struct`, anything else has to be serializable.
+fn emits_a_type(def: &lf::DefDataType) -> bool {
+    matches!(
+        def.data_cons,
+        Some(lf::def_data_type::DataCons::Interface(_))
+    ) || def.serializable
+}
+
+/// Whether a module reaches the generated crate at all. A Daml module of pure
+/// functions lowers to nothing and is never pushed as a `pub mod`, so it cannot
+/// collide with one that is — and must not be counted as if it could.
+fn emits_anything(lf_module: &lf::Module) -> bool {
+    !lf_module.templates.is_empty()
+        || !lf_module.interfaces.is_empty()
+        || lf_module.data_types.iter().any(emits_a_type)
 }
 
 /// Map each non-alphanumeric character to `_` so the result is a valid Rust
@@ -920,9 +950,13 @@ impl Lowering<'_> {
         &self,
         lf_module: &lf::Module,
     ) -> std::collections::BTreeMap<String, Vec<String>> {
+        // Only what the crate emits can collide. A non-serializable data type
+        // is dropped by `data_type`, so counting its name here took a real type
+        // down with a claimant that never appears.
         let declared = lf_module
             .data_types
             .iter()
+            .filter(|def| emits_a_type(def))
             .map(|def| def.name_interned_dname)
             .chain(
                 lf_module
@@ -1076,6 +1110,7 @@ impl Lowering<'_> {
                     .ok_or_else(|| SkippedType::new("unresolved type parameter"))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        check_type_params(&name, &type_params)?;
 
         let Some(data_cons) = &data_type.data_cons else {
             return Err(SkippedType::new(format!("{name}: no data constructor")));
@@ -1570,6 +1605,34 @@ fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, 
     }
 }
 
+/// Reject a generic whose parameters cannot become distinct Rust generic
+/// parameters.
+///
+/// Every other naming boundary is guarded; this one was not, and
+/// `emit::type_var_ident` upper-camel-cases (`a` -> `A`), which is not
+/// injective. Daml `data Pair a A = …` produced `pub struct Pair<A, A>`, which
+/// parses — so generation reported success and wrote the file — and then failed
+/// in the user's build with E0403, having silently merged the two parameters.
+fn check_type_params(name: &str, params: &[String]) -> Result<(), SkippedType> {
+    let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
+    for param in params {
+        let ident = param.to_upper_camel_case();
+        if !is_rust_ident(&ident) {
+            return Err(SkippedType::new(format!(
+                "{name}: type parameter `{param}` is not representable as a Rust \
+                 generic parameter"
+            )));
+        }
+        if let Some(previous) = seen.insert(ident.clone(), param) {
+            return Err(SkippedType::new(format!(
+                "{name}: type parameters `{previous}` and `{param}` both map to the \
+                 Rust generic parameter `{ident}`; rename one in Daml"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Whether `name` can be emitted as a Rust identifier.
 ///
 /// Everything handed to the emitter must pass this: `Ident::new` **panics** on
@@ -1775,6 +1838,119 @@ mod tests {
             names.iter().all(|n| n.starts_with("my_app_1_0_0_")),
             "{names:?}"
         );
+    }
+
+    #[test]
+    fn a_non_serializable_claimant_does_not_take_a_real_type_down() {
+        // The Rust-name clash was computed over the raw LF, before lowering
+        // decides what is emitted. A non-serializable data type is dropped, so
+        // counting its flattened name refused the serializable type it "clashed"
+        // with — and, through the dangling-reference pass, everything using it.
+        let mut package = package_with(&["Mod", "Handler.OnEvent", "Handler_OnEvent"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        let mut ghost = record_def(1, owner);
+        ghost.serializable = false;
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![ghost, record_def(2, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(skipped.is_empty(), "nothing collides: {skipped:?}");
+        let emitted: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(emitted, ["Handler_OnEvent"]);
+    }
+
+    #[test]
+    fn a_module_that_emits_nothing_does_not_block_one_that_does() {
+        // Same shape one level up: a Daml module of pure functions lowers to no
+        // items and is never pushed as a `pub mod`, so it cannot collide — but
+        // it was counted, and both modules were refused.
+        let mut package = package_with(&["Util.Text", "Util_Text"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0, // Util.Text — functions only
+            ..lf::Module::default()
+        });
+        package.modules.push(lf::Module {
+            name_interned_dname: 1, // Util_Text — a real record
+            data_types: vec![record_def(1, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(skipped.is_empty(), "nothing collides: {skipped:?}");
+        let modules: Vec<&str> = krate.packages[0]
+            .modules
+            .iter()
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(modules, ["Util_Text"]);
+    }
+
+    #[test]
+    fn two_type_parameters_that_upper_camel_alike_are_skipped() {
+        // `emit::type_var_ident` upper-camel-cases, which is not injective:
+        // `data Pair a A` emitted `pub struct Pair<A, A>`. That parses, so
+        // generation reported success and the user's build failed with E0403.
+        let mut package = package_with(&["Mod", "Pair"]);
+        let base = i32::try_from(package.interned_strings.len()).unwrap();
+        package.interned_strings.push("a".to_string());
+        package.interned_strings.push("A".to_string());
+        let mut pair = record_def(1, base);
+        pair.params = vec![
+            lf::TypeVarWithKind {
+                var_interned_str: base,
+                kind: None,
+            },
+            lf::TypeVarWithKind {
+                var_interned_str: base + 1,
+                kind: None,
+            },
+        ];
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![pair],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("Rust generic parameter `A`")),
+            "{skipped:?}"
+        );
+        assert!(krate.packages.is_empty(), "nothing emitted");
+    }
+
+    #[test]
+    fn the_same_package_id_twice_yields_one_module() {
+        // The name map is keyed by id, so it cannot see a duplicate in the input
+        // slice: both entries got the same name and the crate failed with E0428.
+        let mut package = package_with(&["Mod", "T"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(1, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, _) = lower_crate(&[
+            ("aa".to_string(), package.clone()),
+            ("aa".to_string(), package),
+        ]);
+        let names: Vec<&str> = krate.packages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names.len(), 1, "{names:?}");
     }
 
     #[test]
