@@ -181,9 +181,10 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
 /// Reject a generic instantiation whose `Optional` argument lands under the
 /// target's own `Optional`.
 ///
-/// LF-JSON encodes a top-level `Optional` as `null`/value but every `Optional`
-/// below one as a list (`[]` / `[x]`), which is why the mapping turns
-/// `Optional (Optional t)` into `Option<NestedOpt<T>>`. That rewrite is
+/// LF-JSON encodes an `Optional` as `null`/value unless its *immediate*
+/// argument is itself an `Optional`, in which case that one takes the list form
+/// (`[]` / `[x]`) — which is why the mapping turns `Optional (Optional t)` into
+/// `Option<NestedOpt<T>>`. That rewrite is
 /// structural, so it cannot see through a type parameter: for
 /// `data Wrap a = Wrap { value : Optional a }` instantiated at
 /// `Wrap (Optional Text)`, the nesting exists on the wire but not in the
@@ -194,13 +195,39 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
 /// uses its parameter, and a distinct IR node for "this `Optional` is nested".
 /// Until then the case is refused rather than emitted wrong — it does not occur
 /// anywhere in the Splice corpus, so nothing real is lost.
-/// For each generic data type, which of its declared parameters appear under an
-/// `Optional` in its own fields — the question that decides whether an
-/// `Optional` type argument lands in a nested position.
+/// For each generic data type, which of its declared parameters land **directly
+/// under an `Optional`** once instantiated — the question that decides whether
+/// an `Optional` type argument is a nested optional on the wire.
+///
+/// Two ways a parameter gets there, and the analysis needs both:
+///
+/// - **Directly**, as `Optional a` in the type's own fields.
+/// - **Through another generic**, as the k-th argument of a reference to a type
+///   that nests *its* k-th parameter: with `Wrap a = { value : Optional a }`,
+///   the parameter of `Outer a = { inner : Wrap a }` nests too, even though
+///   `Outer` has no `Optional` of its own. Answering that needs a fixpoint —
+///   one pass cannot, since the two may be declared in either order, or be
+///   mutually recursive.
+///
+/// The relation is deliberately *not* propagated through `List`, `TextMap`,
+/// `GenMap` or `ContractId`. LF-JSON's list form disambiguates an `Optional`
+/// whose argument is *itself* an `Optional`; a container boundary already
+/// disambiguates, so `Optional [a]` at `a = Optional Text` is the ordinary
+/// `Option<Vec<Option<String>>>` and encodes correctly. `map.rs` draws the line
+/// in exactly the same place (see `nested_optional_inner`), and the two must
+/// agree or this pass either refuses code the emitter handles or lets through
+/// code it does not.
 fn parameters_used_under_optional(krate: &Crate) -> HashMap<String, Vec<bool>> {
-    // path key -> for each declared parameter, whether it is used under an
-    // `Optional` in that type's own fields.
-    let mut nests_parameter: HashMap<String, Vec<bool>> = HashMap::new();
+    struct Generic<'a> {
+        params: &'a [String],
+        /// `Optional a` occurrences: the parameter is nested outright.
+        direct: std::collections::BTreeSet<&'a str>,
+        /// `Ref(target, args)` occurrences where `args[k]` is a bare parameter:
+        /// it nests if the target nests its own k-th parameter.
+        forwards: Vec<(String, usize, &'a str)>,
+    }
+
+    let mut generics: HashMap<String, Generic<'_>> = HashMap::new();
     for package in &krate.packages {
         for module in &package.modules {
             for data_type in &module.module.data_types {
@@ -228,21 +255,116 @@ fn parameters_used_under_optional(krate: &Crate) -> HashMap<String, Vec<bool>> {
                 if params.is_empty() {
                     continue;
                 }
-                let mut under_optional = std::collections::BTreeSet::new();
+                let mut generic = Generic {
+                    params,
+                    direct: std::collections::BTreeSet::new(),
+                    forwards: Vec::new(),
+                };
                 for ty in types {
-                    collect_vars_under_optional(ty, false, &mut under_optional);
+                    collect_nesting_positions(ty, &mut generic.direct, &mut generic.forwards);
                 }
-                nests_parameter.insert(
-                    path_key_for(&package.name, &module.name, name),
-                    params
-                        .iter()
-                        .map(|param| under_optional.contains(param))
-                        .collect(),
-                );
+                generics.insert(path_key_for(&package.name, &module.name, name), generic);
             }
         }
     }
+
+    // Seed with the direct occurrences, then propagate along the forward edges
+    // until nothing changes. Monotone (a flag is only ever set) over a finite
+    // lattice, so this terminates even on mutually recursive generics.
+    let mut nests_parameter: HashMap<String, Vec<bool>> = generics
+        .iter()
+        .map(|(key, generic)| {
+            let flags = generic
+                .params
+                .iter()
+                .map(|param| generic.direct.contains(param.as_str()))
+                .collect();
+            (key.clone(), flags)
+        })
+        .collect();
+
+    loop {
+        let mut changed = false;
+        for (key, generic) in &generics {
+            for (target, index, param) in &generic.forwards {
+                let target_nests = nests_parameter
+                    .get(target)
+                    .and_then(|flags| flags.get(*index))
+                    .copied()
+                    .unwrap_or(false);
+                if !target_nests {
+                    continue;
+                }
+                let Some(position) = generic.params.iter().position(|p| p == param) else {
+                    continue;
+                };
+                let Some(flag) = nests_parameter
+                    .get_mut(key)
+                    .and_then(|flags| flags.get_mut(position))
+                else {
+                    continue;
+                };
+                if !*flag {
+                    *flag = true;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
     nests_parameter
+}
+
+/// The two ways a type mentions a parameter in a position that decides nesting:
+/// as the immediate argument of an `Optional`, or as a bare argument to another
+/// generic.
+fn collect_nesting_positions<'a>(
+    ty: &'a DamlType,
+    direct: &mut std::collections::BTreeSet<&'a str>,
+    forwards: &mut Vec<(String, usize, &'a str)>,
+) {
+    match ty {
+        DamlType::Optional(inner) => {
+            if let Some(param) = bare_parameter(inner) {
+                direct.insert(param);
+            }
+            collect_nesting_positions(inner, direct, forwards);
+        }
+        DamlType::Ref(reference) => {
+            let target = path_key_of(reference);
+            for (index, arg) in reference.args.iter().enumerate() {
+                if let Some(param) = bare_parameter(arg) {
+                    forwards.push((target.clone(), index, param));
+                }
+                collect_nesting_positions(arg, direct, forwards);
+            }
+        }
+        // Not `ContractId`: its type argument is a phantom tag. `ContractId<T>`
+        // is a string on both wires whatever `T` is, so nothing under one can be
+        // a nested optional, and descending would refuse code that encodes fine.
+        DamlType::List(inner) | DamlType::TextMap(inner) | DamlType::Boxed(inner) => {
+            collect_nesting_positions(inner, direct, forwards);
+        }
+        DamlType::GenMap(key, value) => {
+            collect_nesting_positions(key, direct, forwards);
+            collect_nesting_positions(value, direct, forwards);
+        }
+        _ => {}
+    }
+}
+
+/// The parameter a type *is*, looking through `Box` (a codegen artifact with no
+/// wire form). `None` for anything else, including a parameter buried inside a
+/// container — that occurrence is a different position.
+fn bare_parameter(ty: &DamlType) -> Option<&str> {
+    match ty {
+        DamlType::Var(name) => Some(name),
+        DamlType::Boxed(inner) => bare_parameter(inner),
+        _ => None,
+    }
 }
 
 fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
@@ -280,12 +402,16 @@ fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedTy
             }
             for template in &module.module.templates {
                 let mut types = Vec::new();
-                each_type_of_template(template, &mut |ty| collect_type_refs(ty, &mut types));
+                each_type_of_template(template, &mut |ty| {
+                    collect_type_refs(ty, &mut types);
+                });
                 check(&template.name, types);
             }
             for interface in &module.module.interfaces {
                 let mut types = Vec::new();
-                each_type_of_interface(interface, &mut |ty| collect_type_refs(ty, &mut types));
+                each_type_of_interface(interface, &mut |ty| {
+                    collect_type_refs(ty, &mut types);
+                });
                 check(&interface.name, types);
             }
         }
@@ -321,33 +447,6 @@ fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedTy
     }
 }
 
-/// Type variables appearing under an `Optional` anywhere inside `ty`.
-fn collect_vars_under_optional(
-    ty: &DamlType,
-    under: bool,
-    out: &mut std::collections::BTreeSet<String>,
-) {
-    match ty {
-        DamlType::Var(name) if under => {
-            out.insert(name.clone());
-        }
-        DamlType::Optional(inner) => collect_vars_under_optional(inner, true, out),
-        DamlType::ContractId(inner)
-        | DamlType::List(inner)
-        | DamlType::TextMap(inner)
-        | DamlType::Boxed(inner) => collect_vars_under_optional(inner, under, out),
-        DamlType::GenMap(key, value) => {
-            collect_vars_under_optional(key, under, out);
-            collect_vars_under_optional(value, under, out);
-        }
-        DamlType::Ref(reference) => reference
-            .args
-            .iter()
-            .for_each(|arg| collect_vars_under_optional(arg, under, out)),
-        _ => {}
-    }
-}
-
 /// Every `TypeRef` reachable from a data type (the references themselves, so
 /// their type arguments can be inspected).
 fn collect_type_refs_of_data_type<'a>(data_type: &'a DataType, out: &mut Vec<&'a TypeRef>) {
@@ -372,8 +471,7 @@ fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
                 .iter()
                 .for_each(|arg| collect_type_refs(arg, out));
         }
-        DamlType::ContractId(inner)
-        | DamlType::List(inner)
+        DamlType::List(inner)
         | DamlType::Optional(inner)
         | DamlType::TextMap(inner)
         | DamlType::Boxed(inner) => collect_type_refs(inner, out),
@@ -381,6 +479,11 @@ fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
             collect_type_refs(key, out);
             collect_type_refs(value, out);
         }
+        // `ContractId` lands here on purpose: its type argument is a phantom
+        // tag, so an instantiation under one has no wire form to get wrong.
+        // The dangling-reference pass wants the opposite and walks its own
+        // `collect_all_refs_*`, since a `ContractId<Iface>` must still name a
+        // type the crate emits.
         _ => {}
     }
 }
@@ -395,8 +498,11 @@ fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
 /// binding that cannot compile is worth no more than the one that was skipped,
 /// so its dependents go the same way, each reported with the name it was
 /// waiting on.
-fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
-    let mut declared: std::collections::HashSet<String> = krate
+/// The path key of every declaration the crate emits under its own name. An
+/// interface is absent on purpose: its key belongs to the marker `struct` in
+/// `data_types`, which is what a `ContractId<Iface>` resolves to.
+fn declared_keys(krate: &Crate) -> std::collections::HashSet<String> {
+    krate
         .packages
         .iter()
         .flat_map(|package| {
@@ -416,7 +522,21 @@ fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
                     )
             })
         })
-        .collect();
+        .collect()
+}
+
+/// Whether a surviving declaration in `module` still owns `key`. An interface
+/// and its marker `struct` share one, and the marker outlives the interface.
+fn still_declares(module: &Module, key: &str, at: &impl Fn(&str) -> String) -> bool {
+    module
+        .data_types
+        .iter()
+        .any(|data_type| at(data_type_name(data_type)) == key)
+        || module.templates.iter().any(|t| at(&t.name) == key)
+}
+
+fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+    let mut declared = declared_keys(krate);
 
     loop {
         let mut dropped = false;
@@ -478,7 +598,14 @@ fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
                 });
 
                 for (key, name, gone) in report {
-                    declared.remove(&key);
+                    // An interface and its marker `struct` share one path key,
+                    // and the marker is a separate `data_types` entry that
+                    // survives. Unregistering the key would make every holder
+                    // of a `ContractId<Iface>` look dangling and cascade-drop
+                    // it, naming a type the crate does emit.
+                    if !still_declares(&module.module, &key, &at) {
+                        declared.remove(&key);
+                    }
                     errors.push(
                         SkippedType::new(format!(
                             "`{name}` references `{}`, which was skipped",
@@ -614,7 +741,13 @@ fn package_module_names(packages: &[(String, lf::Package)]) -> HashMap<&str, Str
             .map(sanitize)
             .filter(|version| !version.is_empty())
     };
-    for step in 0..2 {
+    // The last step appends the whole package id, which is the map's key and so
+    // is unique by construction: the loop always terminates with distinct names
+    // rather than leaving a duplicate for rustc to report as E0428. Two ids
+    // agreeing on their first 8 hex characters is not going to happen, but
+    // "not going to happen" is a poor reason to emit a crate that will not
+    // compile.
+    for step in 0..3 {
         let mut counts: HashMap<String, usize> = HashMap::new();
         for name in names.values() {
             *counts.entry(name.clone()).or_default() += 1;
@@ -631,10 +764,10 @@ fn package_module_names(packages: &[(String, lf::Package)]) -> HashMap<&str, Str
             if !ambiguous.contains(name.as_str()) {
                 continue;
             }
-            let suffix = if step == 0 {
-                versioned(id).unwrap_or_else(|| ident_prefix(id))
-            } else {
-                ident_prefix(id)
+            let suffix = match step {
+                0 => versioned(id).unwrap_or_else(|| ident_prefix(id)),
+                1 => ident_prefix(id),
+                _ => sanitize(id),
             };
             *name = format!("{name}_{suffix}");
         }
@@ -1628,6 +1761,23 @@ mod tests {
     }
 
     #[test]
+    fn ids_sharing_a_prefix_still_get_distinct_module_names() {
+        // Two package ids agreeing on their first 8 identifier-safe characters
+        // would have collided after the last disambiguation step, and the crate
+        // would have failed to compile with E0428 instead of naming the cause.
+        let names = module_names(&[
+            ("aaaaaaaa1111", named_package("my-app", Some("1.0.0"))),
+            ("aaaaaaaa2222", named_package("my-app", Some("1.0.0"))),
+        ]);
+        assert_eq!(names.len(), 2);
+        assert_ne!(names[0], names[1], "{names:?}");
+        assert!(
+            names.iter().all(|n| n.starts_with("my_app_1_0_0_")),
+            "{names:?}"
+        );
+    }
+
+    #[test]
     fn two_module_names_that_flatten_alike_are_skipped() {
         // `A.B` and `A_B` would both become `pub mod A_B` — E0428 in the crate
         // we hand the user, reported as a successful generation.
@@ -1750,6 +1900,280 @@ mod tests {
         drop_ambiguous_nested_optionals(&mut plain, &mut errors);
         assert!(errors.is_empty(), "{errors:?}");
         assert_eq!(plain.packages[0].modules[0].module.data_types.len(), 2);
+    }
+
+    #[test]
+    fn nesting_introduced_through_an_intermediate_generic_is_still_refused() {
+        // `Outer` has no `Optional` of its own, so a one-level analysis clears
+        // it — but `Outer (Optional Text)` reaches `Wrap`'s `Optional a` all the
+        // same, and the emitted `Option<Option<String>>` would put `null` on the
+        // wire where the ledger expects `[]`.
+        //
+        //   Wrap a  = { value : Optional a }
+        //   Outer a = { inner : Wrap a }
+        //   User    = { o : Outer (Optional Text) }
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["a"], vec![("value", optional(var("a")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![("inner", reference("Wrap", vec![var("a")]))],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "the transitive nesting must be refused, not mis-encoded: {errors:?}"
+        );
+        let names: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(
+            names,
+            ["Wrap", "Outer"],
+            "only the instantiation site is dropped"
+        );
+    }
+
+    #[test]
+    fn mutually_recursive_generics_reach_a_fixpoint() {
+        // Neither declaration alone shows the nesting, and each depends on the
+        // other, so a worklist that visits declarations once in either order
+        // gets a different answer than the one that runs to fixpoint. It must
+        // also terminate.
+        //
+        //   Ping a = { p : Optional a }
+        //   Pong a = { q : Ping a, r : Optional (Pong a) }
+        let mut krate = generics_module(vec![
+            generic_record("Ping", &["a"], vec![("p", optional(var("a")))]),
+            generic_record(
+                "Pong",
+                &["a"],
+                vec![
+                    ("q", reference("Ping", vec![var("a")])),
+                    ("r", optional(reference("Pong", vec![var("a")]))),
+                ],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Pong", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "{errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_container_between_the_two_optionals_is_not_a_nested_optional() {
+        // `Optional [a]` at `a = Optional Text` is `Optional (List (Optional
+        // Text))`. The list form exists to tell an inner `None` from an outer
+        // one; a list element boundary already does that, so the inner Optional
+        // keeps the plain `null`/value form and `Option<Vec<Option<String>>>`
+        // is correct. Refusing it would reject code the emitter handles — and
+        // `map.rs` agrees, since `nested_optional_inner` stops at the container
+        // too.
+        for container in [
+            DamlType::List(Box::new(var("a"))),
+            DamlType::TextMap(Box::new(var("a"))),
+            DamlType::GenMap(Box::new(DamlType::Text), Box::new(var("a"))),
+        ] {
+            let mut krate = generics_module(vec![
+                generic_record("Wrap", &["a"], vec![("value", optional(container))]),
+                generic_record(
+                    "User",
+                    &[],
+                    vec![("w", reference("Wrap", vec![optional(DamlType::Text)]))],
+                ),
+            ]);
+            let mut errors = Vec::new();
+            drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+            assert!(errors.is_empty(), "must not be refused: {errors:?}");
+            assert_eq!(krate.packages[0].modules[0].module.data_types.len(), 2);
+        }
+    }
+
+    #[test]
+    fn dropping_an_interface_keeps_its_marker_reachable() {
+        // An interface and its marker `struct` share a path key. When the
+        // interface goes (its view type was unrepresentable) the marker stays
+        // and is still emitted, so a template holding a `ContractId<Iface>`
+        // must survive too — dropping it would blame a type the crate emits.
+        let mut krate = Crate {
+            packages: vec![PackageModule {
+                name: "pkg".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types: vec![DataType::InterfaceMarker("Holding".to_string())],
+                        templates: vec![Template {
+                            name: "Vault".to_string(),
+                            module_name: "Mod".to_string(),
+                            package_id: "id".to_string(),
+                            package_name: "pkg".to_string(),
+                            fields: vec![Field {
+                                label: "held".to_string(),
+                                ty: DamlType::ContractId(Box::new(reference("Holding", vec![]))),
+                            }],
+                            choices: vec![],
+                            key: None,
+                        }],
+                        interfaces: vec![Interface {
+                            name: "Holding".to_string(),
+                            module_name: "Mod".to_string(),
+                            package_id: "id".to_string(),
+                            package_name: "pkg".to_string(),
+                            // The view type was skipped by an earlier pass.
+                            view: Some(reference("HoldingView", vec![])),
+                            choices: vec![],
+                        }],
+                    },
+                }],
+            }],
+        };
+
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+
+        let module = &krate.packages[0].modules[0].module;
+        assert!(module.interfaces.is_empty(), "the interface itself must go");
+        assert_eq!(
+            module.data_types.len(),
+            1,
+            "the marker is still emitted: {:?}",
+            module
+                .data_types
+                .iter()
+                .map(data_type_name)
+                .collect::<Vec<_>>()
+        );
+        let templates: Vec<&str> = module.templates.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(
+            templates,
+            ["Vault"],
+            "a ContractId of the marker still resolves; reasons: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_contract_id_type_argument_is_not_a_value_position() {
+        // `ContractId<T>` is a tagged string: the tag never reaches either
+        // wire, so nothing under a `ContractId` can be a nested optional.
+        // Refusing here would drop a declaration that encodes perfectly.
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["a"], vec![("value", optional(var("a")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![(
+                    "c",
+                    DamlType::ContractId(Box::new(reference("Wrap", vec![var("a")]))),
+                )],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(errors.is_empty(), "must not be refused: {errors:?}");
+        assert_eq!(krate.packages[0].modules[0].module.data_types.len(), 3);
+    }
+
+    #[test]
+    fn a_parameter_handed_on_inside_a_container_does_not_propagate() {
+        // `Outer a = { inner : Wrap [a] }` instantiates `Wrap`'s parameter at
+        // `[a]`, not at `a`, so `Wrap`'s `Optional b` becomes `Optional [a]` —
+        // a container between the two Optionals again. Propagating the flag
+        // through the container would be a false refusal.
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["b"], vec![("value", optional(var("b")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![(
+                    "inner",
+                    reference("Wrap", vec![DamlType::List(Box::new(var("a")))]),
+                )],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(errors.is_empty(), "must not be refused: {errors:?}");
+    }
+
+    // Builders for the nested-Optional tests above.
+    fn var(name: &str) -> DamlType {
+        DamlType::Var(name.to_string())
+    }
+
+    fn optional(ty: DamlType) -> DamlType {
+        DamlType::Optional(Box::new(ty))
+    }
+
+    fn reference(name: &str, args: Vec<DamlType>) -> DamlType {
+        DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg".to_string(),
+                "Mod".to_string(),
+                name.to_string(),
+            ],
+            args,
+        })
+    }
+
+    fn generic_record(name: &str, params: &[&str], fields: Vec<(&str, DamlType)>) -> DataType {
+        DataType::Record(Record {
+            name: name.to_string(),
+            type_params: params.iter().map(|p| (*p).to_string()).collect(),
+            fields: fields
+                .into_iter()
+                .map(|(label, ty)| Field {
+                    label: label.to_string(),
+                    ty,
+                })
+                .collect(),
+        })
+    }
+
+    fn generics_module(data_types: Vec<DataType>) -> Crate {
+        Crate {
+            packages: vec![PackageModule {
+                name: "pkg".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        ..Module::default()
+                    },
+                }],
+            }],
+        }
     }
 
     /// The two post-lowering passes each walk every declaration kind. They were

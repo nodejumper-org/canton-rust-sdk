@@ -33,9 +33,11 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
 - **`Unit`** is the empty object `{}` in LF-JSON, **not** JSON `null` — so it maps
   to a dedicated `rt::Unit`, not Rust `()` (whose serde form is `null`).
 - **Nested `Optional`.** The top-level `Optional` is `null`/value; every
-  `Optional` nested inside another uses the LF-JSON *list* form so `Some None`
-  (`[]`) stays distinct from `None` (`null`). Codegen wraps each nested layer in
-  `rt::NestedOpt`; the gRPC form is an ordinary proto `Optional`.
+  `Optional` **directly** inside another uses the LF-JSON *list* form so
+  `Some None` (`[]`) stays distinct from `None` (`null`). Only a directly nested
+  one: `Optional [Optional t]` is `Option<Vec<Option<T>>>`, because the list
+  element boundary already separates the two. Codegen wraps each directly nested
+  layer in `rt::NestedOpt`; the gRPC form is an ordinary proto `Optional`.
 - **`Int64`** is LF-JSON-encoded **as a string** (`encodeInt64AsString`, to
   survive JavaScript's 53-bit precision); it maps to `rt::Int64` (a newtype over
   `i64`) which serialises to a string and accepts a string *or* a number on
@@ -88,20 +90,30 @@ surfaced as a `SkippedType` rather than emitted incorrectly.
 
 ## Known limitation: a nested `Optional` behind a type parameter
 
-LF-JSON encodes a top-level `Optional` as `null`/value and every `Optional`
-below one as a list, which is why `Optional (Optional t)` maps to
-`Option<NestedOpt<T>>`. That rewrite is structural, so it cannot see through a
-type parameter: for `data Wrap a = Wrap with value : Optional a` instantiated
-at `Wrap (Optional Text)`, the nesting is real on the wire but absent from the
-spelled-out Rust type.
+LF-JSON encodes an `Optional` as `null`/value unless its **immediate** argument
+is itself an `Optional`, in which case that inner one takes the list form —
+which is why `Optional (Optional t)` maps to `Option<NestedOpt<T>>`. The rule is
+local: a container or record boundary in between already tells an inner `None`
+from an outer one, so `Optional [Optional t]` is the ordinary
+`Option<Vec<Option<T>>>` with `null` elements.
+
+That rewrite is structural, so it cannot see through a type parameter: for
+`data Wrap a = Wrap with value : Optional a` instantiated at
+`Wrap (Optional Text)`, the nesting is real on the wire but absent from the
+spelled-out Rust type. Nor is the nesting always visible at the instantiation
+site: `data Outer a = Outer with inner : Wrap a` nests its own parameter too,
+through `Wrap`, so the property is computed as a fixpoint over the reference
+graph rather than one declaration at a time.
 
 Rather than emit `Option<Option<String>>` — which would serialize the inner
 layer as `null` where the ledger expects `[]` — codegen **refuses** that
 instantiation and reports it as a skipped declaration. Encoding it correctly
 requires the instantiation site to know how the target uses its parameter, plus
 a distinct IR node for "this `Optional` is nested"; until then the case is
-rejected rather than mis-encoded. It does not occur anywhere in the Splice
-corpus. The gRPC codec is unaffected — both layers are a proto `Optional`
+rejected rather than mis-encoded. The refusal is deliberately narrow — it fires
+only where the two `Optional`s really do meet, never across a `List`, `TextMap`,
+`GenMap` or a `ContractId`'s phantom tag. It does not occur anywhere in the
+Splice corpus. The gRPC codec is unaffected — both layers are a proto `Optional`
 there.
 
 ## Conformance against the official `daml-lf-archive` reader
@@ -126,7 +138,11 @@ Run it with a JVM and [scala-cli](https://scala-cli.virtuslab.org) on `PATH`:
 CANTON_LF_ORACLE_DAR=/path/to/x.dar cargo test -p canton-lf --test oracle
 ```
 
-Verified across the Splice surface (splice-amulet, splice-wallet,
-splice-wallet-payments, the token-standard API DARs, quickstart-licensing):
-245 package decodings, zero disagreements. Like the other DAR-dependent suites,
-the test skips cleanly when the env var or toolchain is absent.
+**CI runs it** on the vendored fixture (`testdata/splice-api-token-holding-v1-1.0.0.dar`,
+31 packages) in the `lf-conformance` job, which installs a JVM and scala-cli and
+fails if the test skips instead of comparing — a conformance claim is worth what
+a reviewer can re-run. Locally the same test has been run across the whole
+Splice surface (splice-amulet, splice-wallet, splice-wallet-payments, the
+token-standard API DARs, quickstart-licensing): 245 package decodings, zero
+disagreements. Like the other DAR-dependent suites, the test skips cleanly when
+the env var or toolchain is absent.
