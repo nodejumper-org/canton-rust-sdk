@@ -102,18 +102,40 @@ fn is_error_frame(value: &Value) -> bool {
 }
 
 /// Map a `JsCantonError` frame to an [`Error`].
+///
+/// The frame is the same error object the JSON API returns as an HTTP error
+/// body (`code`/`cause`/`errorCategory`/`retryInfo`/…), so it is surfaced as
+/// [`Error::Http`] with the gRPC code's canonical HTTP status: that routes it
+/// through the category-first retry classification
+/// ([`Error::is_retriable`]/[`Error::category`]/[`Error::retry_delay`]),
+/// which the resumable WS stream relies on to reconnect on transient errors.
 fn error_frame(value: &Value) -> Error {
-    let code = value
-        .get("code")
-        .and_then(Value::as_str)
-        .unwrap_or("UNKNOWN")
-        .to_string();
-    let message = value
-        .get("cause")
-        .and_then(Value::as_str)
-        .unwrap_or("ws stream error")
-        .to_string();
-    Error::CommandRejected { code, message }
+    let status = value
+        .get("grpcCodeValue")
+        .and_then(Value::as_i64)
+        .map_or(500, grpc_code_to_http_status);
+    Error::Http {
+        status,
+        body: value.to_string(),
+    }
+}
+
+/// The canonical HTTP status for a gRPC code (the google.rpc code mapping).
+fn grpc_code_to_http_status(code: i64) -> u16 {
+    match code {
+        0 => 200,          // OK (never an error frame)
+        1 => 499,          // CANCELLED
+        3 | 9 | 11 => 400, // INVALID_ARGUMENT, FAILED_PRECONDITION, OUT_OF_RANGE
+        4 => 504,          // DEADLINE_EXCEEDED
+        5 => 404,          // NOT_FOUND
+        6 | 10 => 409,     // ALREADY_EXISTS, ABORTED
+        7 => 403,          // PERMISSION_DENIED
+        8 => 429,          // RESOURCE_EXHAUSTED
+        12 => 501,         // UNIMPLEMENTED
+        14 => 503,         // UNAVAILABLE
+        16 => 401,         // UNAUTHENTICATED
+        _ => 500,          // UNKNOWN, INTERNAL, DATA_LOSS, unrecognized
+    }
 }
 
 /// The ledger offset carried by an update frame (transaction / reassignment /
@@ -233,19 +255,43 @@ mod tests {
     #[test]
     fn error_frames_are_distinguished_from_success() {
         let error = serde_json::json!({
-            "code": "JSON_API_X", "cause": "boom", "errorCategory": 2, "grpcCodeValue": 7
+            "code": "JSON_API_X", "cause": "boom", "errorCategory": 7, "grpcCodeValue": 7
         });
         assert!(is_error_frame(&error));
         match error_frame(&error) {
-            Error::CommandRejected { code, message } => {
-                assert_eq!(code, "JSON_API_X");
-                assert_eq!(message, "boom");
+            Error::Http { status, body } => {
+                assert_eq!(status, 403, "PERMISSION_DENIED maps to 403");
+                assert!(body.contains("JSON_API_X"));
             }
-            other => panic!("expected CommandRejected, got {other:?}"),
+            other => panic!("expected Http, got {other:?}"),
         }
 
         let success = serde_json::json!({ "update": { "Transaction": {} } });
         assert!(!is_error_frame(&success));
+    }
+
+    // The whole point of the Http mapping: a transient participant error in a
+    // WS frame must classify as retriable via its category (so the resumable
+    // stream reconnects), and a terminal one must not — regardless of what
+    // the synthesized HTTP status alone would say.
+    #[test]
+    fn error_frames_classify_by_canton_category() {
+        // Category 1 (transient) on PERMISSION_DENIED-ish mapping: retriable.
+        let transient = serde_json::json!({
+            "code": "SEQUENCER_OVERLOADED", "cause": "backpressure",
+            "errorCategory": 1, "grpcCodeValue": 10, "retryInfo": "1 second"
+        });
+        let err = error_frame(&transient);
+        assert!(err.is_retriable());
+        assert_eq!(err.retry_delay(), Some(std::time::Duration::from_secs(1)));
+
+        // Category 8 (invalid independent of state) on a 5xx-mapping code:
+        // not retriable — the category wins over the synthesized status.
+        let terminal = serde_json::json!({
+            "code": "BAD_FORMAT", "cause": "malformed",
+            "errorCategory": 8, "grpcCodeValue": 13
+        });
+        assert!(!error_frame(&terminal).is_retriable());
     }
 
     #[test]

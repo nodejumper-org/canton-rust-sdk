@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status: Milestone 1 code-complete.** Every M1 deliverable is implemented and verified — 112 no-node tests (unit, in-process gRPC/WS mock servers, TLS) plus a full live suite against a Canton **3.5.7** LocalNet participant, all green under `-D warnings` on every feature combination. The remaining step before the M1 submission is the first crates.io release.
+> **Status: Milestone 1 released.** Every M1 deliverable is implemented, published on crates.io, and verified — no-node tests (unit, in-process gRPC/WS mock servers, TLS) plus a full live suite against a Canton **3.5.7** LocalNet participant, all green under `-D warnings` on every feature combination. Type-safe codegen from DAR packages (M2) is in progress.
 
 ## Crates
 
@@ -14,14 +14,14 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
-| `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
+| `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
 
 ## Compatibility
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.1.x (unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.1.2 | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
 supported Canton range re-vendors them in a new SDK minor (see the stability

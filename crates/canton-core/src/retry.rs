@@ -101,7 +101,13 @@ where
         match outcome {
             Ok(value) => return Ok(value),
             Err(err) if err.is_retriable() && attempt < config.max_attempts => {
-                tokio::time::sleep(with_jitter(backoff)).await;
+                // Canton attaches a `RetryInfo` recommendation to retryable
+                // errors; when the server asks for a longer pause than the
+                // local schedule, honour it (it knows why it rejected us).
+                let delay = err
+                    .retry_delay()
+                    .map_or(backoff, |server| server.max(backoff));
+                tokio::time::sleep(with_jitter(delay)).await;
                 backoff = (backoff * 2).min(config.max_backoff);
                 attempt += 1;
             }
@@ -146,6 +152,38 @@ mod tests {
 
         assert_eq!(result.unwrap(), 3);
         assert_eq!(calls.get(), 3);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_server_recommended_delay_stretches_the_backoff() {
+        // The op fails once with a Canton-style status carrying
+        // `RetryInfo { retry_delay: 3s }`, far above the local 1ms schedule.
+        // With the paused clock, the elapsed time measures the actual sleep.
+        let delay = Duration::from_secs(3);
+        let status = {
+            use tonic_types::{ErrorDetails, StatusExt as _};
+            let mut details = ErrorDetails::new();
+            details.set_retry_info(Some(delay));
+            tonic::Status::with_error_details(tonic::Code::Unavailable, "wait", details)
+        };
+
+        let started = tokio::time::Instant::now();
+        let calls = Cell::new(0);
+        let result: Result<u32> = run_with_retry(Some(&fast()), || {
+            calls.set(calls.get() + 1);
+            let n = calls.get();
+            let err = Error::from(status.clone());
+            async move { if n == 1 { Err(err) } else { Ok(n) } }
+        })
+        .await;
+
+        assert_eq!(result.unwrap(), 2);
+        // Jitter scales by 0.5–1.5, so 1.5s is the guaranteed floor.
+        assert!(
+            started.elapsed() >= delay / 2,
+            "the server's delay must be honoured, slept only {:?}",
+            started.elapsed()
+        );
     }
 
     #[tokio::test]

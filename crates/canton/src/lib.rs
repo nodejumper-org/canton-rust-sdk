@@ -43,5 +43,5 @@ pub use canton_auth as auth;
 pub use canton_ledger as ledger;
 
 pub use canton_core::{
-    Auth, Config, Error, ErrorInfo, Result, RetryConfig, TlsConfig, TokenSource,
+    Auth, Config, Error, ErrorCategory, ErrorInfo, Result, RetryConfig, TlsConfig, TokenSource,
 };

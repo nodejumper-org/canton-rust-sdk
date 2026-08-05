@@ -41,7 +41,8 @@ otel = [
 ]
 
 [dev-dependencies]
-tokio              = { workspace = true, features = ["rt", "macros"] }
+# `test-util` powers the paused-clock retry-delay test.
+tokio              = { workspace = true, features = ["rt", "macros", "test-util"] }
 tracing-subscriber = "0.3"
 metrics-util       = "0.19"
 

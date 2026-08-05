@@ -24,21 +24,20 @@ pub struct Submit {
     pub(crate) workflow_id: Option<String>,
     pub(crate) synchronizer_id: Option<String>,
     pub(crate) deduplication: Option<pb::commands::DeduplicationPeriod>,
+    pub(crate) transaction_shape: crate::request::TransactionShape,
+    pub(crate) submission_id: Option<String>,
+    pub(crate) disclosed_contracts: Vec<pb::DisclosedContract>,
+    pub(crate) package_id_selection_preference: Vec<String>,
+    pub(crate) min_ledger_time_abs: Option<prost_types::Timestamp>,
+    pub(crate) min_ledger_time_rel: Option<std::time::Duration>,
+    pub(crate) prefetch_contract_keys: Vec<pb::PrefetchContractKey>,
+    pub(crate) taps_max_passes: Option<u32>,
 }
 
 impl Submit {
     /// Start a submission acting as a single party.
     pub fn new(act_as: impl Into<String>) -> Self {
-        Self {
-            act_as: vec![act_as.into()],
-            commands: Vec::new(),
-            command_id: None,
-            user_id: None,
-            read_as: Vec::new(),
-            workflow_id: None,
-            synchronizer_id: None,
-            deduplication: None,
-        }
+        Self::new_multi(vec![act_as.into()])
     }
 
     /// Start a submission acting as multiple parties (multi-party
@@ -54,6 +53,14 @@ impl Submit {
             workflow_id: None,
             synchronizer_id: None,
             deduplication: None,
+            transaction_shape: crate::request::TransactionShape::default(),
+            submission_id: None,
+            disclosed_contracts: Vec::new(),
+            package_id_selection_preference: Vec::new(),
+            min_ledger_time_abs: None,
+            min_ledger_time_rel: None,
+            prefetch_contract_keys: Vec::new(),
+            taps_max_passes: None,
         }
     }
 
@@ -125,6 +132,83 @@ impl Submit {
         self
     }
 
+    /// Select the shape of the transaction returned by
+    /// [`submit_and_wait_for_transaction`] (default:
+    /// [`TransactionShape::LedgerEffects`], the full as-executed view;
+    /// [`TransactionShape::AcsDelta`] returns the net create/archive change).
+    /// Ignored by the submission-only paths, which return no transaction.
+    ///
+    /// [`submit_and_wait_for_transaction`]: crate::CantonClient::submit_and_wait_for_transaction
+    /// [`TransactionShape::LedgerEffects`]: crate::request::TransactionShape::LedgerEffects
+    /// [`TransactionShape::AcsDelta`]: crate::request::TransactionShape::AcsDelta
+    #[must_use]
+    pub fn with_transaction_shape(mut self, shape: crate::request::TransactionShape) -> Self {
+        self.transaction_shape = shape;
+        self
+    }
+
+    /// Set an explicit submission id, to correlate this particular submission
+    /// attempt in completions (unlike the command id, it identifies one
+    /// attempt, not the change). Defaults to participant-generated.
+    #[must_use]
+    pub fn with_submission_id(mut self, submission_id: impl Into<String>) -> Self {
+        self.submission_id = Some(submission_id.into());
+        self
+    }
+
+    /// Attach a disclosed contract: an off-ledger contract (obtained as a
+    /// `created_event_blob`, e.g. via
+    /// `UpdatesRequest::with_created_event_blobs` /
+    /// `ActiveContractsRequest::with_created_event_blobs`) made readable to
+    /// this submission's interpretation. May be called repeatedly.
+    #[must_use]
+    pub fn add_disclosed_contract(mut self, contract: pb::DisclosedContract) -> Self {
+        self.disclosed_contracts.push(contract);
+        self
+    }
+
+    /// Restrict package selection for interpretation to these package ids
+    /// (at most one preference per package name) — the SCU upgrade pin.
+    #[must_use]
+    pub fn with_package_id_selection_preference(mut self, package_ids: Vec<String>) -> Self {
+        self.package_id_selection_preference = package_ids;
+        self
+    }
+
+    /// Set the lower bound for the ledger-effective time as an absolute
+    /// timestamp (mutually exclusive with
+    /// [`Self::with_min_ledger_time_rel`] — the participant rejects both).
+    #[must_use]
+    pub fn with_min_ledger_time_abs(mut self, time: prost_types::Timestamp) -> Self {
+        self.min_ledger_time_abs = Some(time);
+        self
+    }
+
+    /// Set the lower bound for the ledger-effective time relative to the
+    /// participant's local clock (mutually exclusive with
+    /// [`Self::with_min_ledger_time_abs`]).
+    #[must_use]
+    pub fn with_min_ledger_time_rel(mut self, duration: std::time::Duration) -> Self {
+        self.min_ledger_time_rel = Some(duration);
+        self
+    }
+
+    /// Hint contract keys to resolve eagerly before interpretation (a
+    /// performance knob for key-heavy workflows).
+    #[must_use]
+    pub fn with_prefetch_contract_keys(mut self, keys: Vec<pb::PrefetchContractKey>) -> Self {
+        self.prefetch_contract_keys = keys;
+        self
+    }
+
+    /// Cap the topology-aware package selection passes (defaults to the
+    /// participant's configured value).
+    #[must_use]
+    pub fn with_taps_max_passes(mut self, passes: u32) -> Self {
+        self.taps_max_passes = Some(passes);
+        self
+    }
+
     /// Build the wire [`pb::Commands`], filling `command_id` with a fresh UUID
     /// when the caller did not set one. Returns `(command_id, commands)` so the
     /// caller can hand the change ID back for completion-based recovery.
@@ -141,7 +225,16 @@ impl Submit {
             synchronizer_id: self.synchronizer_id.unwrap_or_default(),
             commands: self.commands,
             deduplication_period: self.deduplication,
-            ..Default::default()
+            submission_id: self.submission_id.unwrap_or_default(),
+            disclosed_contracts: self.disclosed_contracts,
+            package_id_selection_preference: self.package_id_selection_preference,
+            min_ledger_time_abs: self.min_ledger_time_abs,
+            min_ledger_time_rel: self.min_ledger_time_rel.map(|d| prost_types::Duration {
+                seconds: i64::try_from(d.as_secs()).unwrap_or(i64::MAX),
+                nanos: i32::try_from(d.subsec_nanos()).unwrap_or(0),
+            }),
+            prefetch_contract_keys: self.prefetch_contract_keys,
+            taps_max_passes: self.taps_max_passes,
         };
         (command_id, commands)
     }
@@ -320,12 +413,22 @@ mod tests {
 
     #[test]
     fn into_commands_wires_every_field_and_generates_an_id() {
+        let disclosed = pb::DisclosedContract {
+            contract_id: "cid-1".to_string(),
+            ..Default::default()
+        };
         let (command_id, commands) = Submit::new("alice")
             .with_user_id("user-1")
             .with_read_as(vec!["bob".to_string()])
             .with_workflow_id("wf-1")
             .with_synchronizer_id("sync-1")
             .with_deduplication_duration(std::time::Duration::from_secs(30))
+            .with_submission_id("sub-1")
+            .add_disclosed_contract(disclosed)
+            .with_package_id_selection_preference(vec!["pkg-1".to_string()])
+            .with_min_ledger_time_rel(std::time::Duration::from_millis(1500))
+            .with_prefetch_contract_keys(vec![pb::PrefetchContractKey::default()])
+            .with_taps_max_passes(3)
             .add_command(create(identifier("p", "M", "E"), record(vec![])))
             .into_commands();
 
@@ -337,12 +440,39 @@ mod tests {
         assert_eq!(commands.workflow_id, "wf-1");
         assert_eq!(commands.synchronizer_id, "sync-1");
         assert_eq!(commands.commands.len(), 1);
+        assert_eq!(commands.submission_id, "sub-1");
+        assert_eq!(commands.disclosed_contracts.len(), 1);
+        assert_eq!(commands.disclosed_contracts[0].contract_id, "cid-1");
+        assert_eq!(
+            commands.package_id_selection_preference,
+            vec!["pkg-1".to_string()]
+        );
+        let Some(rel) = commands.min_ledger_time_rel else {
+            panic!("expected a relative min ledger time");
+        };
+        assert_eq!((rel.seconds, rel.nanos), (1, 500_000_000));
+        assert_eq!(commands.prefetch_contract_keys.len(), 1);
+        assert_eq!(commands.taps_max_passes, Some(3));
         let Some(pb::commands::DeduplicationPeriod::DeduplicationDuration(d)) =
             commands.deduplication_period
         else {
             panic!("expected a deduplication duration");
         };
         assert_eq!(d.seconds, 30);
+    }
+
+    #[test]
+    fn into_commands_wires_an_absolute_min_ledger_time() {
+        let (_, commands) = Submit::new("alice")
+            .with_min_ledger_time_abs(prost_types::Timestamp {
+                seconds: 1_700_000_000,
+                nanos: 0,
+            })
+            .into_commands();
+        let Some(abs) = commands.min_ledger_time_abs else {
+            panic!("expected an absolute min ledger time");
+        };
+        assert_eq!(abs.seconds, 1_700_000_000);
     }
 
     #[test]
