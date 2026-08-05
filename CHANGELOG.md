@@ -7,20 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [0.1.3] - 2026-08-04
+## [0.1.4] - 2026-08-05
 
 Documentation and developer-experience fixes from the Canton Foundation review
-of the M1 submission.
+of the M1 submission. No library code changes; `0.1.3` and `0.1.4` are the same
+SDK.
 
 ### Fixed
 
-- **`canton-ledger`:** `CompletionsRequest`'s JSON body builder is now gated on
-  the `ws` feature, which is the only thing that reads it — the JSON Ledger API
-  has no POST endpoint for completions. Without the gate the method was dead
-  code in any build without `ws`, which failed the workspace's own
-  `-D warnings` on the feature powerset. **Consumers of 0.1.2 are unaffected**:
-  Cargo caps lints in registry dependencies, so a `default-features = false`
-  build of the published crate compiles either way.
 - **Examples:** `version_and_health` and `submit_and_read` read the same
   `CANTON_TEST_*` variables as the live tests (the unprefixed `CANTON_*`
   spellings still work and take precedence). They previously required a second,
@@ -39,11 +33,25 @@ of the M1 submission.
   with a copy-pasteable export block. `CANTON_TEST_JSON_ENDPOINT` (the JSON and
   WebSocket tests) and `CANTON_TEST_SYNC_ID` were previously undocumented, and
   six names were listed without their prefix.
-- **README:** node setup now leads with the
+- **README:** node setup lists the
   [Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
-  and Splice LocalNet, either of which is up in about two minutes, with
-  `cn-quickstart` named as the one that also supplies the licensing app the
-  command-submission tests need.
+  and [Splice LocalNet](https://docs.sync.global/app_dev/testing/localnet.html)
+  alongside `cn-quickstart`, with what each one actually provides: Splice
+  LocalNet is unauthenticated, so the OIDC-gated tests skip there as well as the
+  command-submission ones; the Builder Tool's `canton builder deploy` uploads a
+  DAR, which is how to get `CANTON_TEST_LICENSING_PKG` without cn-quickstart.
+
+## [0.1.3] - 2026-08-04
+
+### Fixed
+
+- **`canton-ledger`:** `CompletionsRequest`'s JSON body builder is now gated on
+  the `ws` feature, which is the only thing that reads it — the JSON Ledger API
+  has no POST endpoint for completions. Without the gate the method was dead
+  code in any build without `ws`, which failed the workspace's own
+  `-D warnings` on the feature powerset. **Consumers of 0.1.2 are unaffected**:
+  Cargo caps lints in registry dependencies, so a `default-features = false`
+  build of the published crate compiles either way.
 
 ## [0.1.2] - 2026-08-04
 
