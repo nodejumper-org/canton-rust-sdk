@@ -9,6 +9,9 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [0.1.3] - 2026-08-04
 
+Documentation and developer-experience fixes from the Canton Foundation review
+of the M1 submission.
+
 ### Fixed
 
 - **`canton-ledger`:** `CompletionsRequest`'s JSON body builder is now gated on
@@ -18,6 +21,29 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   `-D warnings` on the feature powerset. **Consumers of 0.1.2 are unaffected**:
   Cargo caps lints in registry dependencies, so a `default-features = false`
   build of the published crate compiles either way.
+- **Examples:** `version_and_health` and `submit_and_read` read the same
+  `CANTON_TEST_*` variables as the live tests (the unprefixed `CANTON_*`
+  spellings still work and take precedence). They previously required a second,
+  undocumented set of six names, so following the README's own setup and then
+  running the example it links to failed on `set CANTON_TOKEN_URL`.
+- **Live tests:** the ACS token-paging test no longer caps the walk at 500
+  pages. At page size 1 that bounded the ledger rather than the loop, so on a
+  participant with a few hundred contracts a healthy walk reported "paging did
+  not terminate". It now fails when the page token stops advancing, which is
+  the condition it was meant to catch.
+
+### Documentation
+
+- **README:** the live-test variables are documented under their real names
+  (every one is `CANTON_TEST_`-prefixed) in a table that says what each gates,
+  with a copy-pasteable export block. `CANTON_TEST_JSON_ENDPOINT` (the JSON and
+  WebSocket tests) and `CANTON_TEST_SYNC_ID` were previously undocumented, and
+  six names were listed without their prefix.
+- **README:** node setup now leads with the
+  [Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
+  and Splice LocalNet, either of which is up in about two minutes, with
+  `cn-quickstart` named as the one that also supplies the licensing app the
+  command-submission tests need.
 
 ## [0.1.2] - 2026-08-04
 

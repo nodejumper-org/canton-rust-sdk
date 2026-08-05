@@ -1,10 +1,19 @@
 //! Live integration tests against a running participant node.
 //!
 //! Gated on `CANTON_TEST_ENDPOINT` so `cargo test` stays green without a node.
-//! Run against LocalNet's App Provider:
+//! Each further variable unlocks a group of tests, and the rest keep skipping:
+//! `CANTON_TEST_JSON_ENDPOINT` the JSON-transport and WebSocket tests,
+//! `CANTON_TEST_TOKEN_URL` + `CANTON_TEST_CLIENT_ID` +
+//! `CANTON_TEST_CLIENT_SECRET` the authenticated ones, and
+//! `CANTON_TEST_PARTY` + `CANTON_TEST_LICENSING_PKG` those that submit
+//! commands. Run against LocalNet's App Provider:
 //!
 //! ```sh
 //! CANTON_TEST_ENDPOINT=http://localhost:3901 \
+//! CANTON_TEST_JSON_ENDPOINT=http://localhost:3975 \
+//! CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token \
+//! CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=… \
+//! CANTON_TEST_PARTY='…::1220…' CANTON_TEST_LICENSING_PKG='#quickstart-licensing' \
 //!   cargo test -p canton-ledger --test live -- --nocapture
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::large_futures)]
@@ -919,18 +928,25 @@ async fn acs_paging_walks_pages_via_token() {
     let mut token = None;
     let mut pages = 0usize;
     let mut total = 0usize;
+    // The failure this guards against is a token that stops advancing — pages
+    // keep coming while nothing new arrives. Bounding the page count instead
+    // would bound the *ledger*: at page size 1 a long-lived participant needs
+    // one page per contract, so any fixed ceiling eventually reports a
+    // non-terminating walk on a perfectly healthy node.
+    let mut barren = 0usize;
     loop {
         let (contracts, next) = client
             .active_contracts_page(vec![party.clone()], offset, 1, token)
             .await
             .expect("acs page");
+        barren = if contracts.is_empty() { barren + 1 } else { 0 };
+        assert!(barren <= 3, "paging stopped advancing after {pages} pages");
         total += contracts.len();
         pages += 1;
         match next {
             Some(t) => token = Some(t),
             None => break,
         }
-        assert!(pages <= 500, "paging did not terminate");
     }
     assert!(
         pages >= 2,

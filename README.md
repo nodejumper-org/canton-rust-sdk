@@ -90,12 +90,67 @@ println!("committed {} at offset {}", tx.update_id, tx.offset);
 # }
 ```
 
-Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_and_health.rs) (no auth) and [`submit_and_read`](crates/canton-ledger/examples/submit_and_read.rs) (OIDC auth + a create). Run with `cargo run -p canton-ledger --example version_and_health`. See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
+Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_and_health.rs) (no auth, defaults to `http://localhost:3901`) and [`submit_and_read`](crates/canton-ledger/examples/submit_and_read.rs) (OIDC auth + a create). Both read the same `CANTON_TEST_*` variables as the live tests below, so one export set runs everything:
+
+```sh
+cargo run -p canton-ledger --example version_and_health
+cargo run -p canton-ledger --example submit_and_read
+```
+
+See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
 
 ## Testing
 
-- **Unit / in-process / TLS / WS tests** run with no external services: `cargo test --workspace --all-features`.
-- **Live integration tests** run against a participant node when `CANTON_TEST_ENDPOINT` (and, for authenticated tests, `CANTON_TEST_TOKEN_URL` / `CLIENT_ID` / `CLIENT_SECRET` / `PARTY` / `LICENSING_PKG`; for admin, `CANTON_TEST_ADMIN_ENDPOINT` / `ADMIN_CLIENT_ID` / `ADMIN_CLIENT_SECRET`) are set; otherwise they skip. Bring up a node with [`cn-quickstart`](https://github.com/digital-asset/cn-quickstart) LocalNet.
+**No-node tests** — unit tests, in-process gRPC/WebSocket mock servers, TLS
+handshakes, wire-shape assertions. Nothing to install or configure:
+
+```sh
+cargo test --workspace --all-features
+```
+
+**Live integration tests** run against a real participant when the variables
+below are set, and skip otherwise (so the command above stays green without a
+node). Every name is prefixed `CANTON_TEST_`:
+
+| Variable | What it gates | Example (LocalNet App Provider) |
+|---|---|---|
+| `CANTON_TEST_ENDPOINT` | all gRPC live tests | `http://localhost:3901` |
+| `CANTON_TEST_JSON_ENDPOINT` | the JSON-transport and WebSocket tests | `http://localhost:3975` |
+| `CANTON_TEST_TOKEN_URL` | authenticated tests (OIDC client-credentials) | `http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token` |
+| `CANTON_TEST_CLIENT_ID`, `CANTON_TEST_CLIENT_SECRET` | ditto | `app-provider-backend`, … |
+| `CANTON_TEST_PARTY` | command submission and read-back | `app_provider_quickstart-…::1220…` |
+| `CANTON_TEST_LICENSING_PKG` | ditto — the package the test commands instantiate | `#quickstart-licensing` |
+| `CANTON_TEST_ADMIN_ENDPOINT` | `canton-admin` topology reads | `http://localhost:3902` |
+| `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | party-admin RPCs (need the `ParticipantAdmin` right) | `app-provider-validator`, … |
+| `CANTON_TEST_SYNC_ID` | optional: also assert vetted packages in the synchronizer store | |
+
+```sh
+export CANTON_TEST_ENDPOINT=http://localhost:3901
+export CANTON_TEST_JSON_ENDPOINT=http://localhost:3975
+export CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token
+export CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=…
+export CANTON_TEST_PARTY='app_provider_quickstart-…::1220…'
+export CANTON_TEST_LICENSING_PKG='#quickstart-licensing'
+cargo test -p canton-ledger --all-features --test live -- --nocapture
+```
+
+**Bringing up a node.** Any Canton 3.5 participant works; three paths, fastest
+first:
+
+- [Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
+  — generates a LocalNet compose setup from a form; up in roughly two minutes,
+  and the least to install.
+- [Splice LocalNet](https://docs.sync.global/app_dev/testing/localnet.html) —
+  plain Docker Compose. The App Provider participant listens on the ports used
+  above (`3901` gRPC, `3902` admin, `3975` JSON), so everything except the
+  command-submission tests runs as-is.
+- [`cn-quickstart`](https://github.com/digital-asset/cn-quickstart)
+  (`make setup && make build && make start`) — the same LocalNet plus the
+  licensing sample app, which is where `CANTON_TEST_LICENSING_PKG` /
+  `#quickstart-licensing` comes from; needed for the tests that submit commands.
+
+More LocalNet tooling is catalogued on the
+[Canton Dev Hub](https://dev-hub.canton.foundation/).
 
 CI enforces `rustfmt`, `clippy -D warnings` (all features), the full test suite on Linux/macOS/Windows, rustdoc `-D warnings`, `cargo-deny`, and the MSRV build.
 

@@ -1,32 +1,38 @@
 //! Quickstart with OIDC auth: submit an `AppInstallRequest` create and read the
-//! resulting transaction back. Env-driven (mirrors the live-test setup).
+//! resulting transaction back.
 //!
-//! Run against LocalNet:
-//!   CANTON_ENDPOINT=http://localhost:3901 \
-//!   CANTON_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token \
-//!   CANTON_CLIENT_ID=app-provider-backend CANTON_CLIENT_SECRET=… \
-//!   CANTON_PARTY=… CANTON_LICENSING_PKG=… \
+//! Reads the same variables as the live tests, so one export set runs both:
+//!   CANTON_TEST_ENDPOINT=http://localhost:3901 \
+//!   CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token \
+//!   CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=… \
+//!   CANTON_TEST_PARTY=… CANTON_TEST_LICENSING_PKG='#quickstart-licensing' \
 //!     cargo run -p canton-ledger --example submit_and_read
+//!
+//! The unprefixed spellings (`CANTON_ENDPOINT`, …) are accepted too and win
+//! when both are set.
 
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{CantonClient, Config, Error, Submit, create, identifier, record, value};
 
-fn env(key: &str) -> canton_ledger::Result<String> {
-    std::env::var(key).map_err(|_| Error::InvalidRequest(format!("set {key}")))
+/// A setting, from `CANTON_<NAME>` or the live tests' `CANTON_TEST_<NAME>`.
+/// Two spellings for one value is a papercut for anyone following the README,
+/// so the example answers to both rather than making them guess which.
+fn env(name: &str) -> canton_ledger::Result<String> {
+    let plain = format!("CANTON_{name}");
+    let test = format!("CANTON_TEST_{name}");
+    std::env::var(&plain)
+        .or_else(|_| std::env::var(&test))
+        .map_err(|_| Error::InvalidRequest(format!("set {plain} (or {test})")))
 }
 
 #[tokio::main]
 async fn main() -> canton_ledger::Result<()> {
-    let oidc = OidcConfig::new(
-        env("CANTON_TOKEN_URL")?,
-        env("CANTON_CLIENT_ID")?,
-        env("CANTON_CLIENT_SECRET")?,
-    );
-    let party = env("CANTON_PARTY")?;
-    let pkg = env("CANTON_LICENSING_PKG")?;
+    let oidc = OidcConfig::new(env("TOKEN_URL")?, env("CLIENT_ID")?, env("CLIENT_SECRET")?);
+    let party = env("PARTY")?;
+    let pkg = env("LICENSING_PKG")?;
 
     let client = CantonClient::connect_lazy(
-        Config::new(env("CANTON_ENDPOINT")?).with_oidc(TokenProvider::new(oidc)),
+        Config::new(env("ENDPOINT")?).with_oidc(TokenProvider::new(oidc)),
     )?;
 
     // Build an AppInstallRequest create acting as `party`.
