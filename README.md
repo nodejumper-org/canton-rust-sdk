@@ -134,16 +134,24 @@ export CANTON_TEST_LICENSING_PKG='#quickstart-licensing'
 cargo test -p canton-ledger --all-features --test live -- --nocapture
 ```
 
-**Bringing up a node.** Any Canton 3.5 participant works; three paths, fastest
-first:
+**Bringing up a node.** Any Canton 3.5 participant works; three paths, least
+setup first:
 
 - [Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
-  — generates a LocalNet compose setup from a form; up in roughly two minutes,
-  and the least to install.
+  — the least to install: `canton builder start` brings up a LocalNet (its guide
+  says about five minutes the first time, faster after), and
+  `canton builder status` prints the port reference. Its App Provider
+  participant is on `3901`/`3902`/`3975` like the others, and
+  `canton builder deploy <dar>` uploads a DAR to both participants, which is how
+  you get `CANTON_TEST_LICENSING_PKG` without cn-quickstart.
 - [Splice LocalNet](https://docs.sync.global/app_dev/testing/localnet.html) —
-  plain Docker Compose. The App Provider participant listens on the ports used
-  above (`3901` gRPC, `3902` admin, `3975` JSON), so everything except the
-  command-submission tests runs as-is.
+  plain Docker Compose. Its App Provider participant is on the ports used above
+  (`3901` gRPC, `3902` admin, `3975` JSON), so `CANTON_TEST_ENDPOINT` and
+  `CANTON_TEST_JSON_ENDPOINT` need no changes. It runs **unauthenticated** by
+  default — its only other profile is `unsafe-jwt-hmac-256`, an HMAC secret you
+  sign tokens with yourself — so there is no OIDC token endpoint: the tests
+  gated on `CANTON_TEST_TOKEN_URL` skip, as do the command-submission ones,
+  which also want the licensing package. Use `cn-quickstart` for those.
 - [`cn-quickstart`](https://github.com/digital-asset/cn-quickstart)
   (`make setup && make build && make start`) — the same LocalNet plus the
   licensing sample app, which is where `CANTON_TEST_LICENSING_PKG` /
