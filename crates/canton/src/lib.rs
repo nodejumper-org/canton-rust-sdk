@@ -58,5 +58,5 @@ pub use canton_daml as daml;
 pub use canton_ledger as ledger;
 
 pub use canton_core::{
-    Auth, Config, Error, ErrorInfo, Result, RetryConfig, TlsConfig, TokenSource,
+    Auth, Config, Error, ErrorCategory, ErrorInfo, Result, RetryConfig, TlsConfig, TokenSource,
 };

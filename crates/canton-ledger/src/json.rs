@@ -31,6 +31,7 @@ pub struct JsonClient {
     /// Kept for the WebSocket handshake (feature `ws`); the HTTP client bakes
     /// its TLS settings into `http` at `with_tls` time.
     tls: Option<canton_core::TlsConfig>,
+    retry: Option<canton_core::RetryConfig>,
 }
 
 #[derive(Deserialize)]
@@ -62,6 +63,18 @@ pub struct JsonCommands {
     workflow_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     synchronizer_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    submission_id: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    disclosed_contracts: Vec<Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    package_id_selection_preference: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    deduplication_period: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    min_ledger_time_abs: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    min_ledger_time_rel: Option<Value>,
 }
 
 impl JsonCommands {
@@ -77,6 +90,12 @@ impl JsonCommands {
             read_as: Vec::new(),
             workflow_id: None,
             synchronizer_id: None,
+            submission_id: None,
+            disclosed_contracts: Vec::new(),
+            package_id_selection_preference: Vec::new(),
+            deduplication_period: None,
+            min_ledger_time_abs: None,
+            min_ledger_time_rel: None,
         }
     }
 
@@ -137,6 +156,59 @@ impl JsonCommands {
         self.commands.push(command);
         self
     }
+
+    /// Set an explicit submission id, to correlate this particular submission
+    /// attempt in completions. Defaults to participant-generated.
+    #[must_use]
+    pub fn with_submission_id(mut self, submission_id: impl Into<String>) -> Self {
+        self.submission_id = Some(submission_id.into());
+        self
+    }
+
+    /// Attach a disclosed contract (raw JSON: `{"templateId": …,
+    /// "contractId": …, "createdEventBlob": …, "synchronizerId": …}`, with the
+    /// blob obtained from a read with created-event blobs enabled). May be
+    /// called repeatedly.
+    #[must_use]
+    pub fn add_disclosed_contract(mut self, contract: Value) -> Self {
+        self.disclosed_contracts.push(contract);
+        self
+    }
+
+    /// Restrict package selection for interpretation to these package ids
+    /// (at most one preference per package name) — the SCU upgrade pin.
+    #[must_use]
+    pub fn with_package_id_selection_preference(mut self, package_ids: Vec<String>) -> Self {
+        self.package_id_selection_preference = package_ids;
+        self
+    }
+
+    /// Set the de-duplication period (raw JSON, e.g.
+    /// `{"DeduplicationDuration": {"value": {"duration": "5s"}}}`), matching
+    /// the JSON API's `deduplicationPeriod` encoding.
+    #[must_use]
+    pub fn with_deduplication_period(mut self, period: Value) -> Self {
+        self.deduplication_period = Some(period);
+        self
+    }
+
+    /// Set the absolute lower bound for the ledger-effective time (raw JSON,
+    /// an ISO-8601 timestamp string). Mutually exclusive with
+    /// [`Self::with_min_ledger_time_rel`].
+    #[must_use]
+    pub fn with_min_ledger_time_abs(mut self, time: Value) -> Self {
+        self.min_ledger_time_abs = Some(time);
+        self
+    }
+
+    /// Set the relative lower bound for the ledger-effective time (raw JSON,
+    /// a proto duration like `"5s"`). Mutually exclusive with
+    /// [`Self::with_min_ledger_time_abs`].
+    #[must_use]
+    pub fn with_min_ledger_time_rel(mut self, duration: Value) -> Self {
+        self.min_ledger_time_rel = Some(duration);
+        self
+    }
 }
 
 /// The response to a successful `submit-and-wait-for-transaction`.
@@ -178,62 +250,29 @@ pub struct JsonTransaction {
 }
 
 /// The request body for an ACS snapshot at `active_at_offset` (POST and WS).
+/// Built through [`crate::request::ActiveContractsRequest`], so the plain and
+/// builder-driven methods share one body producer.
 fn active_contracts_request(parties: &[String], active_at_offset: i64) -> Value {
-    json!({
-        "activeAtOffset": active_at_offset,
-        "eventFormat": wildcard_event_format(parties),
-    })
+    crate::request::ActiveContractsRequest::new(parties.to_vec(), active_at_offset).json_body()
 }
 
 /// The request body for updates over `(begin_exclusive, end_inclusive]` (POST
-/// and WS); omit `end_inclusive` for an unbounded tail. Uses the
-/// `LEDGER_EFFECTS` transaction shape — the same as the gRPC lane — so both
+/// and WS); omit `end_inclusive` for an unbounded tail. Built through
+/// [`crate::request::UpdatesRequest`] — `LEDGER_EFFECTS`, wildcard filters,
+/// reassignments included — the same defaults as the gRPC lane, so both
 /// transports yield the same event set for the same query.
 fn updates_request(parties: &[String], begin_exclusive: i64, end_inclusive: Option<i64>) -> Value {
-    let mut body = json!({
-        "beginExclusive": begin_exclusive,
-        "updateFormat": {
-            "includeTransactions": {
-                "eventFormat": wildcard_event_format(parties),
-                "transactionShape": "TRANSACTION_SHAPE_LEDGER_EFFECTS",
-            },
-            // Match the gRPC lane (UpdateFormat.include_reassignments) so both
-            // transports return the same event set — otherwise the JSON lane
-            // silently drops Assigned/Unassigned reassignment updates.
-            "includeReassignments": wildcard_event_format(parties),
-        }
-    });
+    let mut request = crate::request::UpdatesRequest::new(parties.to_vec(), begin_exclusive);
     if let Some(end) = end_inclusive {
-        body["endInclusive"] = json!(end);
+        request = request.until(end);
     }
-    body
+    request.json_body()
 }
 
 /// The request body for command completions from `begin_exclusive` (WS).
 #[cfg(feature = "ws")]
 fn completions_request(parties: &[String], begin_exclusive: i64) -> Value {
-    json!({ "parties": parties, "beginExclusive": begin_exclusive })
-}
-
-/// An `EventFormat` (JSON) with a wildcard (all-templates) filter per party,
-/// mirroring the gRPC client's `wildcard_event_format`.
-fn wildcard_event_format(parties: &[String]) -> Value {
-    let filters_by_party: serde_json::Map<String, Value> = parties
-        .iter()
-        .map(|party| {
-            (
-                party.clone(),
-                json!({
-                    "cumulative": [{
-                        "identifierFilter": {
-                            "WildcardFilter": { "value": { "includeCreatedEventBlob": false } }
-                        }
-                    }]
-                }),
-            )
-        })
-        .collect();
-    json!({ "filtersByParty": filters_by_party, "verbose": true })
+    crate::request::CompletionsRequest::new(parties.to_vec(), begin_exclusive).json_body()
 }
 
 /// Add W3C trace-context headers to an outgoing request (a no-op without the
@@ -304,7 +343,21 @@ impl JsonClient {
             http: reqwest::Client::new(),
             auth: Auth::None,
             tls: None,
+            retry: None,
         }
+    }
+
+    /// Retry requests on retriable errors (category-first classification of
+    /// the participant's error body, transient HTTP statuses, connection
+    /// failures) with exponential backoff, honouring a server-recommended
+    /// retry delay — the same policy as the gRPC client's unary retries.
+    /// Off by default. Safe for command submission too: the command id in
+    /// the body stays fixed across attempts, so the participant de-duplicates.
+    /// Streaming (the WS lane) resumes via its own reconnect policy instead.
+    #[must_use]
+    pub fn with_retry(mut self, retry: canton_core::RetryConfig) -> Self {
+        self.retry = Some(retry);
+        self
     }
 
     /// Use TLS for the HTTP connection: a custom CA (server-side TLS against a
@@ -365,16 +418,19 @@ impl JsonClient {
     }
 
     async fn get<T: for<'de> Deserialize<'de>>(&self, path: &str) -> Result<T> {
-        let mut request = self.http.get(format!("{}{path}", self.base_url));
-        if let Some(token) = self.auth.bearer().await? {
-            request = request.bearer_auth(token);
-        }
-        request = with_trace_context(request);
-        let response = request
-            .send()
-            .await
-            .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
-        read_json(response, path).await
+        canton_core::retry::run_with_retry(self.retry.as_ref(), || async {
+            let mut request = self.http.get(format!("{}{path}", self.base_url));
+            if let Some(token) = self.auth.bearer().await? {
+                request = request.bearer_auth(token);
+            }
+            request = with_trace_context(request);
+            let response = request
+                .send()
+                .await
+                .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
+            read_json(response, path).await
+        })
+        .await
     }
 
     async fn post<B: Serialize, T: for<'de> Deserialize<'de>>(
@@ -382,19 +438,22 @@ impl JsonClient {
         path: &str,
         body: &B,
     ) -> Result<T> {
-        let mut request = self
-            .http
-            .post(format!("{}{path}", self.base_url))
-            .json(body);
-        if let Some(token) = self.auth.bearer().await? {
-            request = request.bearer_auth(token);
-        }
-        request = with_trace_context(request);
-        let response = request
-            .send()
-            .await
-            .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
-        read_json(response, path).await
+        canton_core::retry::run_with_retry(self.retry.as_ref(), || async {
+            let mut request = self
+                .http
+                .post(format!("{}{path}", self.base_url))
+                .json(body);
+            if let Some(token) = self.auth.bearer().await? {
+                request = request.bearer_auth(token);
+            }
+            request = with_trace_context(request);
+            let response = request
+                .send()
+                .await
+                .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
+            read_json(response, path).await
+        })
+        .await
     }
 
     /// The participant's Ledger API version (`GET /v2/version`, unauthenticated).
@@ -466,6 +525,26 @@ impl JsonClient {
         .await
     }
 
+    /// Like [`Self::active_contracts`], with the full request surface of an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest)
+    /// (template/interface filters, created-event blobs, non-verbose records)
+    /// — the same builder the gRPC lane takes.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails, or the
+    /// result set exceeds the node limit (`413`).
+    pub async fn active_contracts_with(
+        &self,
+        request: &crate::request::ActiveContractsRequest,
+        limit: Option<i64>,
+    ) -> Result<Vec<Value>> {
+        telemetry::instrument("active_contracts", TRANSPORT_JSON, async {
+            let path = with_limit("/v2/state/active-contracts", limit);
+            self.post(&path, &request.json_body()).await
+        })
+        .await
+    }
+
     /// Updates (transactions/reassignments) for `parties` in the offset range
     /// `(begin_exclusive, end_inclusive]` (`POST /v2/updates`).
     ///
@@ -488,6 +567,26 @@ impl JsonClient {
             let body = updates_request(&parties, begin_exclusive, end_inclusive);
             let path = with_limit("/v2/updates", limit);
             self.post(&path, &body).await
+        })
+        .await
+    }
+
+    /// Like [`Self::updates`], with the full request surface of an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) (bounds, template/
+    /// interface filters, transaction shape, created-event blobs, topology
+    /// events, non-verbose records) — the same builder the gRPC lane takes.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails, or the
+    /// result set exceeds the node limit (`413`).
+    pub async fn updates_with(
+        &self,
+        request: &crate::request::UpdatesRequest,
+        limit: Option<i64>,
+    ) -> Result<Vec<Value>> {
+        telemetry::instrument("updates", TRANSPORT_JSON, async {
+            let path = with_limit("/v2/updates", limit);
+            self.post(&path, &request.json_body()).await
         })
         .await
     }
@@ -542,6 +641,33 @@ impl JsonClient {
         .await
     }
 
+    /// Like [`Self::ws_updates`], with the full request surface of an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) — the same builder
+    /// the gRPC lane takes (bounds, filters, shape, blobs, topology events,
+    /// non-verbose records).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
+    /// a participant error frame or a transport failure.
+    #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    pub async fn ws_updates_with(
+        &self,
+        request: &crate::request::UpdatesRequest,
+    ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
+        telemetry::instrument("ws_updates", TRANSPORT_JSON, async move {
+            let inner = crate::ws::subscribe(
+                &self.base_url,
+                &self.auth,
+                self.tls.as_ref(),
+                "/v2/updates",
+                request.json_body(),
+            )
+            .await?;
+            Ok(crate::ws::filter_checkpoints(inner))
+        })
+        .await
+    }
+
     /// Stream the active contract set snapshot at `active_at_offset` over
     /// WebSocket (feature `ws`), wildcard-filtered to `parties`. The stream
     /// closes when the snapshot is fully delivered. Each item is raw JSON
@@ -573,6 +699,31 @@ impl JsonClient {
         .await
     }
 
+    /// Like [`Self::ws_active_contracts`], with the full request surface of an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest) —
+    /// the same builder the gRPC lane takes.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
+    /// a participant error frame or a transport failure.
+    #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    pub async fn ws_active_contracts_with(
+        &self,
+        request: &crate::request::ActiveContractsRequest,
+    ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
+        telemetry::instrument("ws_active_contracts", TRANSPORT_JSON, async move {
+            crate::ws::subscribe(
+                &self.base_url,
+                &self.auth,
+                self.tls.as_ref(),
+                "/v2/state/active-contracts",
+                request.json_body(),
+            )
+            .await
+        })
+        .await
+    }
+
     /// Stream command completions over WebSocket (feature `ws`) for `parties`,
     /// starting after `begin_exclusive`. Each item is a raw JSON completion;
     /// `OffsetCheckpoint` heartbeats are filtered out.
@@ -594,6 +745,33 @@ impl JsonClient {
                 self.tls.as_ref(),
                 "/v2/commands/command-completions",
                 request,
+            )
+            .await?;
+            Ok(crate::ws::filter_checkpoints(inner))
+        })
+        .await
+    }
+
+    /// Like [`Self::ws_completions`], with the full request surface of a
+    /// [`CompletionsRequest`](crate::request::CompletionsRequest) — including
+    /// the submitting `user_id` to scope the stream to (the same builder the
+    /// gRPC lane takes).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
+    /// a participant error frame or a transport failure.
+    #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    pub async fn ws_completions_with(
+        &self,
+        request: &crate::request::CompletionsRequest,
+    ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
+        telemetry::instrument("ws_completions", TRANSPORT_JSON, async move {
+            let inner = crate::ws::subscribe(
+                &self.base_url,
+                &self.auth,
+                self.tls.as_ref(),
+                "/v2/commands/command-completions",
+                request.json_body(),
             )
             .await?;
             Ok(crate::ws::filter_checkpoints(inner))
@@ -724,6 +902,13 @@ mod tests {
             .with_read_as(vec!["bob::2".to_string()])
             .with_workflow_id("wf-1")
             .with_synchronizer_id("sync-1")
+            .with_submission_id("sub-1")
+            .add_disclosed_contract(json!({ "contractId": "c9", "createdEventBlob": "AQI=" }))
+            .with_package_id_selection_preference(vec!["pkg-9".to_string()])
+            .with_deduplication_period(
+                json!({ "DeduplicationDuration": { "value": { "duration": "30s" } } }),
+            )
+            .with_min_ledger_time_rel(json!("5s"))
             .add_create("pkg:Mod:Ent", json!({ "owner": "alice::1" }))
             .add_command(json!({ "ExerciseCommand": { "contractId": "c1" } }));
         let value = serde_json::to_value(&commands).unwrap();
@@ -732,6 +917,15 @@ mod tests {
         assert_eq!(value["readAs"][0], "bob::2");
         assert_eq!(value["workflowId"], "wf-1");
         assert_eq!(value["synchronizerId"], "sync-1");
+        assert_eq!(value["submissionId"], "sub-1");
+        assert_eq!(value["disclosedContracts"][0]["contractId"], "c9");
+        assert_eq!(value["packageIdSelectionPreference"][0], "pkg-9");
+        assert_eq!(
+            value["deduplicationPeriod"]["DeduplicationDuration"]["value"]["duration"],
+            "30s"
+        );
+        assert_eq!(value["minLedgerTimeRel"], "5s");
+        assert!(value.get("minLedgerTimeAbs").is_none());
         // Both the convenience create and the raw command are present, in order.
         assert!(value["commands"][0]["CreateCommand"].is_object());
         assert_eq!(value["commands"][1]["ExerciseCommand"]["contractId"], "c1");
@@ -739,7 +933,8 @@ mod tests {
 
     #[test]
     fn wildcard_event_format_filters_each_party() {
-        let format = wildcard_event_format(&["alice::1".to_string(), "bob::2".to_string()]);
+        let format = &active_contracts_request(&["alice::1".to_string(), "bob::2".to_string()], 0)
+            ["eventFormat"];
         assert_eq!(format["verbose"], true);
         assert!(format["filtersByParty"]["alice::1"]["cumulative"][0]["identifierFilter"]
             ["WildcardFilter"]

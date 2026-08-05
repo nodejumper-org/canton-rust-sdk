@@ -1,10 +1,19 @@
 //! Live integration tests against a running participant node.
 //!
 //! Gated on `CANTON_TEST_ENDPOINT` so `cargo test` stays green without a node.
-//! Run against LocalNet's App Provider:
+//! Each further variable unlocks a group of tests, and the rest keep skipping:
+//! `CANTON_TEST_JSON_ENDPOINT` the JSON-transport and WebSocket tests,
+//! `CANTON_TEST_TOKEN_URL` + `CANTON_TEST_CLIENT_ID` +
+//! `CANTON_TEST_CLIENT_SECRET` the authenticated ones, and
+//! `CANTON_TEST_PARTY` + `CANTON_TEST_LICENSING_PKG` those that submit
+//! commands. Run against LocalNet's App Provider:
 //!
 //! ```sh
 //! CANTON_TEST_ENDPOINT=http://localhost:3901 \
+//! CANTON_TEST_JSON_ENDPOINT=http://localhost:3975 \
+//! CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token \
+//! CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=… \
+//! CANTON_TEST_PARTY='…::1220…' CANTON_TEST_LICENSING_PKG='#quickstart-licensing' \
 //!   cargo test -p canton-ledger --test live -- --nocapture
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::large_futures)]
@@ -409,6 +418,256 @@ async fn resumable_updates_yield_a_transaction() {
     println!("resumable — first update received");
 }
 
+/// The request builder E2E: a bounded (`until`) update stream filtered to one
+/// template, ACS-delta shaped. The stream must contain the created contract
+/// and — unlike the plain live stream — terminate on its own at the end offset.
+#[tokio::test]
+async fn bounded_filtered_updates_via_the_request_builder() {
+    use canton_ledger::{TransactionShape, UpdatesRequest};
+    use tokio_stream::StreamExt as _;
+    let Some((client, party, pkg)) = full_setup() else {
+        eprintln!("skipping bounded_filtered_updates_via_the_request_builder: env not set");
+        return;
+    };
+
+    let begin = client.ledger_end().await.expect("ledger_end");
+    let created = client
+        .submit_and_wait_for_transaction(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("create should succeed");
+    let end = client.ledger_end().await.expect("ledger_end");
+
+    let request = UpdatesRequest::new(vec![party.clone()], begin)
+        .until(end)
+        .with_shape(TransactionShape::AcsDelta)
+        .for_templates([format!("{pkg}:Licensing.AppInstall:AppInstallRequest")])
+        .expect("well-formed template id");
+    let stream = client
+        .updates_with(request)
+        .await
+        .expect("open bounded updates stream");
+    tokio::pin!(stream);
+
+    // Drain to completion — a bounded stream terminates by itself.
+    let mut saw_created_tx = false;
+    loop {
+        let item = tokio::time::timeout(std::time::Duration::from_secs(15), stream.next())
+            .await
+            .expect("bounded stream should terminate, not hang");
+        let Some(update) = item else { break };
+        if let canton_ledger::proto::get_updates_response::Update::Transaction(tx) =
+            update.expect("update stream error")
+        {
+            assert!(
+                tx.offset > begin && tx.offset <= end,
+                "offset {} escaped the ({begin}, {end}] bound",
+                tx.offset
+            );
+            if tx.update_id == created.update_id {
+                saw_created_tx = true;
+            }
+        }
+    }
+    assert!(
+        saw_created_tx,
+        "the template-filtered bounded read should include the created contract"
+    );
+    println!("bounded filtered read — terminated at offset {end}, created tx seen");
+}
+
+/// The remaining builder surfaces E2E: a template-filtered ACS read (gRPC),
+/// an ACS-delta-shaped `submit_and_wait_for_transaction`, and the same
+/// template-filtered bounded read over the JSON transport.
+#[tokio::test]
+async fn filtered_acs_shape_selection_and_json_builder_reads() {
+    use canton_ledger::{ActiveContractsRequest, Submit, TransactionShape, UpdatesRequest};
+    use tokio_stream::StreamExt as _;
+    let Some((client, party, pkg)) = full_setup() else {
+        eprintln!("skipping filtered_acs_shape_selection_and_json_builder_reads: env not set");
+        return;
+    };
+
+    // An ACS-delta-shaped submit: the returned transaction carries the net
+    // create events (a plain create has exactly the created event).
+    let begin = client.ledger_end().await.expect("ledger_end");
+    let tx = client
+        .submit_and_wait_for_transaction(
+            Submit::new(&party)
+                .add_command(app_install(&party, &pkg))
+                .with_transaction_shape(TransactionShape::AcsDelta),
+        )
+        .await
+        .expect("acs-delta submit should succeed");
+    assert!(
+        tx.events.iter().any(|e| matches!(
+            e.event,
+            Some(canton_ledger::proto::event::Event::Created(_))
+        )),
+        "acs-delta transaction should carry the created event"
+    );
+    let end = client.ledger_end().await.expect("ledger_end");
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+
+    // Template-filtered ACS read via the builder: only that template comes back.
+    let acs_request = ActiveContractsRequest::new(vec![party.clone()], end)
+        .for_templates([template_id.clone()])
+        .expect("well-formed template id");
+    let stream = client
+        .active_contracts_with(acs_request)
+        .await
+        .expect("open filtered acs stream");
+    tokio::pin!(stream);
+    let mut seen = 0usize;
+    while let Some(contract) =
+        tokio::time::timeout(std::time::Duration::from_secs(15), stream.next())
+            .await
+            .expect("acs stream should terminate")
+    {
+        let contract = contract.expect("acs stream error");
+        let created = contract.created_event.expect("active contract has event");
+        let id = created.template_id.expect("created event has template id");
+        assert_eq!(id.entity_name, "AppInstallRequest", "filter must hold");
+        seen += 1;
+    }
+    assert!(seen >= 1, "the just-created contract should be in the ACS");
+
+    // The same filtered bounded read over the JSON transport.
+    if let Ok(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT") {
+        let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc().expect("oidc")));
+        let request = UpdatesRequest::new(vec![party.clone()], begin)
+            .until(end)
+            .with_shape(TransactionShape::AcsDelta)
+            .for_templates([template_id])
+            .expect("well-formed template id");
+        let updates = json
+            .updates_with(&request, Some(100))
+            .await
+            .expect("json filtered updates read");
+        let has_our_tx = updates
+            .iter()
+            .any(|u| u["update"]["Transaction"]["value"]["updateId"] == tx.update_id.as_str());
+        assert!(
+            has_our_tx,
+            "json filtered read should include the created transaction"
+        );
+        println!(
+            "json builder read — {} update(s), created tx found",
+            updates.len()
+        );
+    }
+    println!("filtered acs — {seen} contract(s), shape selection verified");
+}
+
+/// Descending bounded reads via the builder, on both transports: offsets come
+/// back newest-first, and the same builder body drives gRPC and JSON.
+#[tokio::test]
+async fn descending_reads_on_both_transports() {
+    use canton_ledger::UpdatesRequest;
+    use tokio_stream::StreamExt as _;
+    let Some((client, party, pkg)) = full_setup() else {
+        eprintln!("skipping descending_reads_on_both_transports: env not set");
+        return;
+    };
+
+    // Two commands so the window has at least two offsets to order.
+    let begin = client.ledger_end().await.expect("ledger_end");
+    for _ in 0..2 {
+        client
+            .submit_and_wait(Submit::new(&party).add_command(app_install(&party, &pkg)))
+            .await
+            .expect("submit");
+    }
+    let end = client.ledger_end().await.expect("ledger_end");
+
+    let request = UpdatesRequest::new(vec![party.clone()], begin)
+        .until(end)
+        .descending();
+    let stream = client
+        .updates_with(request.clone())
+        .await
+        .expect("open descending stream");
+    tokio::pin!(stream);
+    let mut offsets = Vec::new();
+    while let Some(update) = tokio::time::timeout(std::time::Duration::from_secs(15), stream.next())
+        .await
+        .expect("bounded stream should terminate")
+    {
+        if let canton_ledger::proto::get_updates_response::Update::Transaction(tx) =
+            update.expect("stream error")
+        {
+            offsets.push(tx.offset);
+        }
+    }
+    assert!(offsets.len() >= 2, "expected at least two transactions");
+    assert!(
+        offsets.windows(2).all(|w| w[0] > w[1]),
+        "grpc offsets should be strictly descending: {offsets:?}"
+    );
+
+    if let Ok(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT") {
+        // With retry enabled: the happy path is untouched, errors would follow
+        // the category-first policy.
+        let json = JsonClient::new(json_url)
+            .with_oidc(TokenProvider::new(oidc().expect("oidc")))
+            .with_retry(canton_ledger::RetryConfig::default());
+        let updates = json
+            .updates_with(&request, Some(100))
+            .await
+            .expect("json descending read");
+        let json_offsets: Vec<i64> = updates
+            .iter()
+            .filter_map(|u| u["update"]["Transaction"]["value"]["offset"].as_i64())
+            .collect();
+        assert!(
+            json_offsets.len() >= 2 && json_offsets.windows(2).all(|w| w[0] > w[1]),
+            "json offsets should be strictly descending: {json_offsets:?}"
+        );
+    }
+    println!(
+        "descending reads — {} offset(s), newest first",
+        offsets.len()
+    );
+}
+
+/// The completions request builder E2E: the completion of a submitted command
+/// arrives through `completions_with` (default request — parity with
+/// `completions`; the `user_id` field itself is asserted at the wire level in
+/// unit tests, since which user ids a token may read for is participant policy).
+#[tokio::test]
+async fn completions_via_the_request_builder() {
+    use canton_ledger::CompletionsRequest;
+    use tokio_stream::StreamExt as _;
+    let Some((client, party, pkg)) = full_setup() else {
+        eprintln!("skipping completions_via_the_request_builder: env not set");
+        return;
+    };
+
+    let begin = client.ledger_end().await.expect("ledger_end");
+    let command_id = client
+        .submit(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("submit should succeed");
+
+    let stream = client
+        .completions_with(CompletionsRequest::new(vec![party.clone()], begin))
+        .await
+        .expect("open completions stream");
+    tokio::pin!(stream);
+
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+    loop {
+        let completion = tokio::time::timeout_at(deadline, stream.next())
+            .await
+            .expect("completion timed out")
+            .expect("completion stream ended unexpectedly")
+            .expect("completion stream error");
+        if completion.command_id == command_id {
+            println!("builder completions — completion for {command_id} received");
+            return;
+        }
+    }
+}
+
 #[tokio::test]
 async fn json_transport_version_and_ledger_end() {
     let Some(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT").ok() else {
@@ -669,18 +928,25 @@ async fn acs_paging_walks_pages_via_token() {
     let mut token = None;
     let mut pages = 0usize;
     let mut total = 0usize;
+    // The failure this guards against is a token that stops advancing — pages
+    // keep coming while nothing new arrives. Bounding the page count instead
+    // would bound the *ledger*: at page size 1 a long-lived participant needs
+    // one page per contract, so any fixed ceiling eventually reports a
+    // non-terminating walk on a perfectly healthy node.
+    let mut barren = 0usize;
     loop {
         let (contracts, next) = client
             .active_contracts_page(vec![party.clone()], offset, 1, token)
             .await
             .expect("acs page");
+        barren = if contracts.is_empty() { barren + 1 } else { 0 };
+        assert!(barren <= 3, "paging stopped advancing after {pages} pages");
         total += contracts.len();
         pages += 1;
         match next {
             Some(t) => token = Some(t),
             None => break,
         }
-        assert!(pages <= 500, "paging did not terminate");
     }
     assert!(
         pages >= 2,

@@ -37,7 +37,11 @@ pub enum Error {
     Json(#[source] Box<serde_json::Error>),
 
     /// A command was rejected by the ledger for business/interpretation
-    /// reasons (as opposed to a transport failure). Not retriable.
+    /// reasons (as opposed to a transport failure). Not retriable: this is a
+    /// terminal outcome of that submission read back from the completion
+    /// stream, and re-submitting is an application decision — the automatic
+    /// retry path (`submit*` RPC errors) surfaces rejections as
+    /// [`Error::Status`] instead, with full category/retry-delay precision.
     #[error("command rejected ({code}): {message}")]
     CommandRejected {
         /// The rejection status code.
@@ -88,22 +92,95 @@ impl Error {
 
     /// Whether retrying the operation may succeed.
     ///
-    /// Transient conditions are retriable: timeouts, transport/connection
-    /// failures, the transient gRPC codes (`Unavailable`, `DeadlineExceeded`,
-    /// `ResourceExhausted`, `Aborted`), and transient HTTP status codes
+    /// For gRPC statuses, Canton's own verdict wins: every Ledger API error
+    /// carries an [`ErrorCategory`] whose retryability is defined by the
+    /// [error-code documentation], and retryable errors additionally carry a
+    /// `google.rpc.RetryInfo` detail. Only when a status carries neither (a
+    /// proxy in the middle, a non-Canton server) does the classification fall
+    /// back to the transient gRPC codes (`Unavailable`, `DeadlineExceeded`,
+    /// `ResourceExhausted`, `Aborted`).
+    ///
+    /// Beyond statuses, transient conditions are retriable: timeouts,
+    /// transport/connection failures, and transient HTTP status codes
     /// (408, 429, 5xx). Everything else — invalid input, auth rejection,
     /// command rejection, `NotFound`/`AlreadyExists`, deserialization — is not.
+    ///
+    /// [error-code documentation]: https://docs.daml.com/canton/reference/error_codes.html
     #[must_use]
     pub fn is_retriable(&self) -> bool {
         use tonic::Code::{Aborted, DeadlineExceeded, ResourceExhausted, Unavailable};
         match self {
             Error::Timeout | Error::Transport(_) | Error::Connection(_) => true,
-            Error::Status(status) => matches!(
-                status.code(),
-                Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
-            ),
-            Error::Http { status, .. } => matches!(status, 408 | 429 | 500..=599),
+            Error::Status(status) => match status_category(status) {
+                Some(category) => category.is_retriable(),
+                // No category ⇒ not a Canton self-service error. A RetryInfo
+                // detail is still an explicit "retry me"; else fall back to
+                // the transient codes.
+                None => {
+                    status_retry_delay(status).is_some()
+                        || matches!(
+                            status.code(),
+                            Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
+                        )
+                }
+            },
+            // The JSON Ledger API carries the same verdict in the error body
+            // (`errorCategory`, `retryInfo`); parse it before falling back to
+            // the transient HTTP status codes.
+            Error::Http { status, body } => match http_category(body) {
+                Some(category) => category.is_retriable(),
+                None => http_retry_delay(body).is_some() || matches!(status, 408 | 429 | 500..=599),
+            },
             _ => false,
+        }
+    }
+
+    /// The Canton [`ErrorCategory`] of this error, when it carries one: from
+    /// `ErrorInfo.metadata["category"]` on a gRPC status, or the
+    /// `errorCategory` field of a JSON API error body. This is the field the
+    /// [error-code documentation] tells clients to base error handling on;
+    /// [`Error::is_retriable`] already does.
+    ///
+    /// [error-code documentation]: https://docs.daml.com/canton/reference/error_codes.html
+    #[must_use]
+    pub fn category(&self) -> Option<ErrorCategory> {
+        match self {
+            Error::Status(status) => status_category(status),
+            Error::Http { body, .. } => http_category(body),
+            _ => None,
+        }
+    }
+
+    /// The server-recommended delay before retrying, from the
+    /// `google.rpc.RetryInfo` detail of a gRPC status or the `retryInfo`
+    /// field of a JSON API error body. Canton attaches it to retryable
+    /// errors; the retry helper ([`crate::retry::run_with_retry`]) already
+    /// honours it.
+    #[must_use]
+    pub fn retry_delay(&self) -> Option<std::time::Duration> {
+        match self {
+            Error::Status(status) => status_retry_delay(status),
+            Error::Http { body, .. } => http_retry_delay(body),
+            _ => None,
+        }
+    }
+
+    /// The correlation id of the failed request, from the
+    /// `google.rpc.RequestInfo` detail of a gRPC status or the
+    /// `correlationId`/`traceId` of a JSON API error body. Canton echoes it
+    /// in every error; quote it when reporting a problem to the participant's
+    /// operator, who can find the server-side trace by it.
+    #[must_use]
+    pub fn correlation_id(&self) -> Option<String> {
+        match self {
+            Error::Status(status) => {
+                use tonic_types::StatusExt as _;
+                status
+                    .get_details_request_info()
+                    .map(|info| info.request_id)
+            }
+            Error::Http { body, .. } => http_correlation_id(body),
+            _ => None,
         }
     }
 
@@ -128,6 +205,177 @@ impl Error {
             }
             _ => None,
         }
+    }
+}
+
+/// The category of the status's `ErrorInfo`, when present and recognized.
+fn status_category(status: &tonic::Status) -> Option<ErrorCategory> {
+    use tonic_types::StatusExt as _;
+    let info = status.get_details_error_info()?;
+    ErrorCategory::from_i32(info.metadata.get("category")?.parse().ok()?)
+}
+
+/// The `RetryInfo.retry_delay` of a status, when present.
+fn status_retry_delay(status: &tonic::Status) -> Option<std::time::Duration> {
+    use tonic_types::StatusExt as _;
+    status.get_details_retry_info()?.retry_delay
+}
+
+/// The `errorCategory` of a JSON Ledger API error body, when present and
+/// recognized. Non-JSON bodies (a proxy's HTML error page, a token endpoint)
+/// simply yield `None`.
+fn http_category(body: &str) -> Option<ErrorCategory> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    let id = body.get("errorCategory")?.as_i64()?;
+    ErrorCategory::from_i32(i32::try_from(id).ok()?)
+}
+
+/// The `retryInfo` of a JSON Ledger API error body, when present. The field
+/// is a human-readable duration (e.g. `"1 second"`, `"250 milliseconds"`).
+fn http_retry_delay(body: &str) -> Option<std::time::Duration> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    parse_spelled_duration(body.get("retryInfo")?.as_str()?)
+}
+
+/// The `correlationId` (or, failing that, `traceId`) of a JSON Ledger API
+/// error body, when present.
+fn http_correlation_id(body: &str) -> Option<String> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    ["correlationId", "traceId"]
+        .iter()
+        .find_map(|key| Some(body.get(key)?.as_str()?.to_string()))
+}
+
+/// Parse a `"<number> <unit>"` duration as the JSON API spells `retryInfo`
+/// (Scala `Duration#toString`: `"1 second"`, `"5 seconds"`, …).
+fn parse_spelled_duration(text: &str) -> Option<std::time::Duration> {
+    let mut words = text.split_whitespace();
+    let amount: f64 = words.next()?.parse().ok()?;
+    let unit = words.next()?;
+    if words.next().is_some() {
+        return None;
+    }
+    let seconds = match unit.strip_suffix('s').unwrap_or(unit) {
+        "day" => amount * 86_400.0,
+        "hour" => amount * 3_600.0,
+        "minute" => amount * 60.0,
+        "second" => amount,
+        "millisecond" => amount / 1e3,
+        "microsecond" => amount / 1e6,
+        "nanosecond" => amount / 1e9,
+        _ => return None,
+    };
+    (seconds.is_finite() && seconds >= 0.0).then(|| std::time::Duration::from_secs_f64(seconds))
+}
+
+/// Canton's error categories — the coarse classification every Ledger API
+/// error carries (`ErrorInfo.metadata["category"]`), which the [error-code
+/// documentation] defines retryability on. `#[non_exhaustive]`: Canton may add
+/// categories.
+///
+/// The variants are the categories of the Canton 3.x docs, by their stable
+/// numeric ids (13 is a server-log-only warning that never reaches the API).
+///
+/// [error-code documentation]: https://docs.daml.com/canton/reference/error_codes.html
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ErrorCategory {
+    /// 1 — a service was momentarily unavailable; the request may or may not
+    /// have been processed. Retry with backoff.
+    TransientServerFailure,
+    /// 2 — contention on shared resources (locks, rate limits, a locked
+    /// contract). Retry with backoff.
+    ContentionOnSharedResources,
+    /// 3 — the request's deadline expired with its outcome unknown. Retry a
+    /// bounded number of times, relying on command deduplication.
+    DeadlineExceededRequestStateUnknown,
+    /// 4 — a system-internal invariant was violated (implementation bug or
+    /// data corruption). Not retriable; needs operator/vendor attention.
+    SystemInternalAssumptionViolated,
+    /// 5 — a potential attack or faulty peer was detected; details are
+    /// deliberately withheld. Not retriable.
+    SecurityAlert,
+    /// 6 — missing or invalid authentication credentials. Not retriable
+    /// until the credentials are fixed.
+    AuthInterceptorInvalidAuthenticationCredentials,
+    /// 7 — authenticated, but not permitted to perform the operation. Not
+    /// retriable until permissions change.
+    InsufficientPermission,
+    /// 8 — the request is invalid regardless of system state (malformed
+    /// arguments, size limits). Not retriable.
+    InvalidIndependentOfSystemState,
+    /// 9 — the current ledger state does not satisfy the request's
+    /// preconditions (Daml interpretation failures land here). Not blindly
+    /// retriable; needs an application-level strategy.
+    InvalidGivenCurrentSystemStateOther,
+    /// 10 — a referenced resource already exists (e.g. a duplicate command).
+    /// Not retriable as-is.
+    InvalidGivenCurrentSystemStateResourceExists,
+    /// 11 — a referenced resource does not exist (contract, package, party).
+    /// Not retriable as-is.
+    InvalidGivenCurrentSystemStateResourceMissing,
+    /// 12 — the request reads past the current ledger end. Retriable: the
+    /// system may naturally progress to make it valid.
+    InvalidGivenCurrentSystemStateSeekAfterEnd,
+    /// 14 — the operation is not implemented / not enabled on this node. Not
+    /// retriable.
+    InternalUnsupportedOperation,
+}
+
+impl ErrorCategory {
+    /// The category for Canton's numeric id, `None` when unrecognized.
+    #[must_use]
+    pub const fn from_i32(id: i32) -> Option<Self> {
+        Some(match id {
+            1 => Self::TransientServerFailure,
+            2 => Self::ContentionOnSharedResources,
+            3 => Self::DeadlineExceededRequestStateUnknown,
+            4 => Self::SystemInternalAssumptionViolated,
+            5 => Self::SecurityAlert,
+            6 => Self::AuthInterceptorInvalidAuthenticationCredentials,
+            7 => Self::InsufficientPermission,
+            8 => Self::InvalidIndependentOfSystemState,
+            9 => Self::InvalidGivenCurrentSystemStateOther,
+            10 => Self::InvalidGivenCurrentSystemStateResourceExists,
+            11 => Self::InvalidGivenCurrentSystemStateResourceMissing,
+            12 => Self::InvalidGivenCurrentSystemStateSeekAfterEnd,
+            14 => Self::InternalUnsupportedOperation,
+            _ => return None,
+        })
+    }
+
+    /// Canton's numeric id for this category.
+    #[must_use]
+    pub const fn as_i32(self) -> i32 {
+        match self {
+            Self::TransientServerFailure => 1,
+            Self::ContentionOnSharedResources => 2,
+            Self::DeadlineExceededRequestStateUnknown => 3,
+            Self::SystemInternalAssumptionViolated => 4,
+            Self::SecurityAlert => 5,
+            Self::AuthInterceptorInvalidAuthenticationCredentials => 6,
+            Self::InsufficientPermission => 7,
+            Self::InvalidIndependentOfSystemState => 8,
+            Self::InvalidGivenCurrentSystemStateOther => 9,
+            Self::InvalidGivenCurrentSystemStateResourceExists => 10,
+            Self::InvalidGivenCurrentSystemStateResourceMissing => 11,
+            Self::InvalidGivenCurrentSystemStateSeekAfterEnd => 12,
+            Self::InternalUnsupportedOperation => 14,
+        }
+    }
+
+    /// Whether the error-code documentation classifies this category as
+    /// retryable (transient failures, contention, unknown-outcome deadlines,
+    /// and reads past the ledger end).
+    #[must_use]
+    pub const fn is_retriable(self) -> bool {
+        matches!(
+            self,
+            Self::TransientServerFailure
+                | Self::ContentionOnSharedResources
+                | Self::DeadlineExceededRequestStateUnknown
+                | Self::InvalidGivenCurrentSystemStateSeekAfterEnd
+        )
     }
 }
 
@@ -196,6 +444,194 @@ mod tests {
                 .is_none()
         );
         assert!(Error::Timeout.error_info().is_none());
+    }
+
+    /// A synthetic Canton-style status: `ErrorInfo` with a `category` metadata
+    /// entry, `RequestInfo` with the correlation id, and — when `delay` is set —
+    /// a `RetryInfo` recommendation.
+    fn canton_status(
+        code: tonic::Code,
+        category: i32,
+        delay: Option<std::time::Duration>,
+    ) -> tonic::Status {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("category".to_string(), category.to_string());
+        let mut details = ErrorDetails::with_error_info("SOME_ERROR_CODE", "participant", metadata);
+        details.set_request_info("corr-1234", "");
+        if let Some(delay) = delay {
+            details.set_retry_info(Some(delay));
+        }
+        tonic::Status::with_error_details(code, "boom", details)
+    }
+
+    #[test]
+    fn the_canton_category_decides_retryability_over_the_grpc_code() {
+        use std::time::Duration;
+
+        // ABORTED is transient by code — but category 10 (resource exists,
+        // e.g. a duplicate change id) says no. The category wins.
+        let err = Error::from(canton_status(tonic::Code::Aborted, 10, None));
+        assert_eq!(
+            err.category(),
+            Some(ErrorCategory::InvalidGivenCurrentSystemStateResourceExists)
+        );
+        assert!(!err.is_retriable());
+
+        // OUT_OF_RANGE is not transient by code — but category 12 (seek past
+        // the ledger end) says retry. The category wins again.
+        let err = Error::from(canton_status(
+            tonic::Code::OutOfRange,
+            12,
+            Some(Duration::from_secs(1)),
+        ));
+        assert_eq!(
+            err.category(),
+            Some(ErrorCategory::InvalidGivenCurrentSystemStateSeekAfterEnd)
+        );
+        assert!(err.is_retriable());
+        assert_eq!(err.retry_delay(), Some(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn correlation_id_and_retry_delay_are_extracted() {
+        use std::time::Duration;
+
+        let err = Error::from(canton_status(
+            tonic::Code::Unavailable,
+            1,
+            Some(Duration::from_millis(250)),
+        ));
+        assert_eq!(err.category(), Some(ErrorCategory::TransientServerFailure));
+        assert_eq!(err.correlation_id().as_deref(), Some("corr-1234"));
+        assert_eq!(err.retry_delay(), Some(Duration::from_millis(250)));
+
+        // Plain statuses and non-status errors carry none of it.
+        let plain = Error::from(tonic::Status::unavailable("x"));
+        assert_eq!(plain.category(), None);
+        assert_eq!(plain.correlation_id(), None);
+        assert_eq!(plain.retry_delay(), None);
+        assert_eq!(Error::Timeout.category(), None);
+    }
+
+    #[test]
+    fn statuses_without_a_category_fall_back_to_code_classification() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        // No details at all: the transient codes still classify.
+        assert!(Error::from(tonic::Status::unavailable("x")).is_retriable());
+        assert!(!Error::from(tonic::Status::not_found("x")).is_retriable());
+
+        // An unrecognized category id is ignored (forward compatibility), and
+        // the code fallback applies.
+        let err = Error::from(canton_status(tonic::Code::Unavailable, 99, None));
+        assert_eq!(err.category(), None);
+        assert!(err.is_retriable());
+
+        // A bare RetryInfo (no category) is an explicit "retry me", even on a
+        // code the fallback would refuse.
+        let mut details = ErrorDetails::new();
+        details.set_retry_info(Some(std::time::Duration::from_secs(2)));
+        let status =
+            tonic::Status::with_error_details(tonic::Code::FailedPrecondition, "wait", details);
+        assert!(Error::from(status).is_retriable());
+    }
+
+    #[test]
+    fn json_api_error_bodies_classify_by_category() {
+        // A real body captured from a LocalNet participant (JSON Ledger API):
+        // category 12 (seek after end) is retryable although the HTTP status
+        // (400) is not in the transient set — the category verdict wins.
+        let body = r#"{
+            "code": "OFFSET_AFTER_LEDGER_END",
+            "cause": "Begin offset (999999999) is after ledger end (23577)",
+            "correlationId": null,
+            "traceId": "36a33702b2fa7908a7349be166ccfa38",
+            "context": {"participant": "'app-provider'", "category": "12"},
+            "resources": [],
+            "errorCategory": 12,
+            "grpcCodeValue": 11,
+            "retryInfo": "1 second",
+            "definiteAnswer": null
+        }"#;
+        let err = Error::Http {
+            status: 400,
+            body: body.to_string(),
+        };
+        assert_eq!(
+            err.category(),
+            Some(ErrorCategory::InvalidGivenCurrentSystemStateSeekAfterEnd)
+        );
+        assert!(err.is_retriable());
+        assert_eq!(err.retry_delay(), Some(std::time::Duration::from_secs(1)));
+        // correlationId is null — falls back to traceId.
+        assert_eq!(
+            err.correlation_id().as_deref(),
+            Some("36a33702b2fa7908a7349be166ccfa38")
+        );
+
+        // A non-retryable category on a retryable-looking HTTP status: the
+        // category still wins (e.g. a 503 whose body says "invalid argument").
+        let err = Error::Http {
+            status: 503,
+            body: r#"{"errorCategory": 8}"#.to_string(),
+        };
+        assert_eq!(
+            err.category(),
+            Some(ErrorCategory::InvalidIndependentOfSystemState)
+        );
+        assert!(!err.is_retriable());
+    }
+
+    #[test]
+    fn non_json_http_bodies_fall_back_to_status_code_classification() {
+        let retriable = Error::Http {
+            status: 503,
+            body: "<html>Service Unavailable</html>".to_string(),
+        };
+        assert!(retriable.is_retriable());
+        assert_eq!(retriable.category(), None);
+        assert_eq!(retriable.retry_delay(), None);
+
+        let terminal = Error::Http {
+            status: 404,
+            body: String::new(),
+        };
+        assert!(!terminal.is_retriable());
+        assert_eq!(terminal.correlation_id(), None);
+    }
+
+    #[test]
+    fn spelled_durations_parse_and_garbage_is_refused() {
+        use std::time::Duration;
+        for (text, expected) in [
+            ("1 second", Duration::from_secs(1)),
+            ("5 seconds", Duration::from_secs(5)),
+            ("250 milliseconds", Duration::from_millis(250)),
+            ("2 minutes", Duration::from_secs(120)),
+            ("1 hour", Duration::from_secs(3600)),
+            ("0.5 seconds", Duration::from_millis(500)),
+        ] {
+            assert_eq!(parse_spelled_duration(text), Some(expected), "{text}");
+        }
+        for bad in ["", "soon", "1", "1 fortnight", "-1 second", "1 second ago"] {
+            assert_eq!(parse_spelled_duration(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn category_ids_round_trip_and_follow_the_docs_retryability() {
+        for id in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14] {
+            let category = ErrorCategory::from_i32(id).expect("known id");
+            assert_eq!(category.as_i32(), id);
+            // Per the error-code docs: 1, 2, 3 and 12 are the retryable ones.
+            assert_eq!(category.is_retriable(), matches!(id, 1 | 2 | 3 | 12));
+        }
+        assert_eq!(ErrorCategory::from_i32(0), None);
+        // 13 (BackgroundProcessDegradationWarning) never reaches the API.
+        assert_eq!(ErrorCategory::from_i32(13), None);
+        assert_eq!(ErrorCategory::from_i32(15), None);
     }
 
     #[test]

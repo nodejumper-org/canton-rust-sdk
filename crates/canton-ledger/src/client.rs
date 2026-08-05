@@ -42,14 +42,6 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
     }
 }
 
-/// A `LEDGER_EFFECTS` transaction format wildcard-filtered to the acting party.
-fn transaction_format(act_as: &[String]) -> pb::TransactionFormat {
-    pb::TransactionFormat {
-        event_format: Some(wildcard_event_format(act_as)),
-        transaction_shape: pb::TransactionShape::LedgerEffects as i32,
-    }
-}
-
 /// The offset of an update, for resumable-stream position tracking.
 fn update_offset(update: &pb::get_updates_response::Update) -> i64 {
     use pb::get_updates_response::Update;
@@ -259,18 +251,22 @@ impl CantonClient {
         &self,
         submit: crate::command::Submit,
     ) -> Result<pb::Transaction> {
+        // Built once (and outside the instrumented future, keeping it small) so
+        // retries reuse the same change ID (`command_id`), keeping the
+        // submission de-duplication-safe across attempts.
+        let shape = submit.transaction_shape;
+        let (_command_id, commands) = submit.into_commands();
+        let request = pb::SubmitAndWaitForTransactionRequest {
+            transaction_format: Some(pb::TransactionFormat {
+                event_format: Some(wildcard_event_format(&commands.act_as)),
+                transaction_shape: shape.as_grpc() as i32,
+            }),
+            commands: Some(commands),
+        };
         telemetry::instrument(
             "submit_and_wait_for_transaction",
             TRANSPORT_GRPC,
             async move {
-                // Built once so retries reuse the same change ID (`command_id`),
-                // keeping the submission de-duplication-safe across attempts.
-                let (_command_id, commands) = submit.into_commands();
-                let request = pb::SubmitAndWaitForTransactionRequest {
-                    transaction_format: Some(transaction_format(&commands.act_as)),
-                    commands: Some(commands),
-                };
-
                 let response = self
                     .with_retry(|| {
                         let request = request.clone();
@@ -305,17 +301,31 @@ impl CantonClient {
         parties: Vec<String>,
         begin_offset: i64,
     ) -> Result<impl Stream<Item = Result<pb::Completion>> + Send + use<>> {
+        self.completions_with(crate::request::CompletionsRequest::new(
+            parties,
+            begin_offset,
+        ))
+        .await
+    }
+
+    /// Like [`Self::completions`], with the full request surface: a
+    /// [`CompletionsRequest`](crate::request::CompletionsRequest) additionally
+    /// selects the `user_id` whose command completions to stream (pair it with
+    /// [`Submit::with_user_id`](crate::Submit::with_user_id)).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails.
+    pub async fn completions_with(
+        &self,
+        request: crate::request::CompletionsRequest,
+    ) -> Result<impl Stream<Item = Result<pb::Completion>> + Send + use<>> {
         telemetry::instrument("completions", TRANSPORT_GRPC, async move {
             let mut client =
                 pb::command_completion_service_client::CommandCompletionServiceClient::new(
                     self.intercepted().await?,
                 );
             let stream = client
-                .completion_stream(pb::CompletionStreamRequest {
-                    user_id: String::new(),
-                    parties,
-                    begin_exclusive: begin_offset,
-                })
+                .completion_stream(request.into_grpc())
                 .await?
                 .into_inner();
 
@@ -408,7 +418,11 @@ impl CantonClient {
     }
 
     /// Fetch the created and/or archived events for a contract by id
-    /// (`EventQueryService.GetEventsByContractId`).
+    /// (`EventQueryService.GetEventsByContractId`), with verbose records and
+    /// no created-event blob. To obtain a contract's `created_event_blob`
+    /// (for disclosure), use a template-filtered
+    /// [`Self::active_contracts_with`] read with
+    /// [`ActiveContractsRequest::with_created_event_blobs`](crate::request::ActiveContractsRequest::with_created_event_blobs).
     ///
     /// # Errors
     /// Returns an [`Error`] if authentication or the RPC fails.
@@ -447,13 +461,30 @@ impl CantonClient {
         max_page_size: i32,
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<pb::ActiveContract>, Option<Vec<u8>>)> {
+        let request = crate::request::ActiveContractsRequest::new(parties, active_at_offset);
+        self.active_contracts_page_with(&request, max_page_size, page_token)
+            .await
+    }
+
+    /// Like [`Self::active_contracts_page`], with the full request surface of
+    /// an [`ActiveContractsRequest`](crate::request::ActiveContractsRequest)
+    /// (template/interface filters, created-event blobs, non-verbose records).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn active_contracts_page_with(
+        &self,
+        request: &crate::request::ActiveContractsRequest,
+        max_page_size: i32,
+        page_token: Option<Vec<u8>>,
+    ) -> Result<(Vec<pb::ActiveContract>, Option<Vec<u8>>)> {
         telemetry::instrument("active_contracts_page", TRANSPORT_GRPC, async move {
             let mut client =
                 pb::state_service_client::StateServiceClient::new(self.intercepted().await?);
             let response = client
                 .get_active_contracts_page(pb::GetActiveContractsPageRequest {
-                    active_at_offset: Some(active_at_offset),
-                    event_format: Some(wildcard_event_format(&parties)),
+                    active_at_offset: Some(request.active_at_offset),
+                    event_format: Some(request.event_format()),
                     max_page_size: Some(max_page_size),
                     page_token,
                 })
@@ -491,20 +522,49 @@ impl CantonClient {
         descending: bool,
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<pb::GetUpdateResponse>, Option<Vec<u8>>)> {
+        let mut request = crate::request::UpdatesRequest::new(parties, begin_offset_exclusive)
+            .until(end_offset_inclusive);
+        if descending {
+            request = request.descending();
+        }
+        self.updates_page_with(&request, max_page_size, page_token)
+            .await
+    }
+
+    /// Like [`Self::updates_page`], with the full request surface of an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) (template/interface
+    /// filters, transaction shape, descending order, created-event blobs,
+    /// topology events, non-verbose records). The request's bounds supply the
+    /// page range, so
+    /// [`UpdatesRequest::until`](crate::request::UpdatesRequest::until) is
+    /// required here — the paged read is inherently bounded.
+    ///
+    /// # Errors
+    /// Returns [`Error::InvalidRequest`] if the request has no end offset, or
+    /// another [`Error`] if authentication or the RPC fails.
+    pub async fn updates_page_with(
+        &self,
+        request: &crate::request::UpdatesRequest,
+        max_page_size: i32,
+        page_token: Option<Vec<u8>>,
+    ) -> Result<(Vec<pb::GetUpdateResponse>, Option<Vec<u8>>)> {
+        let (begin_exclusive, end_inclusive) = request.bounds();
+        let Some(end_inclusive) = end_inclusive else {
+            return Err(Error::InvalidRequest(
+                "updates_page_with requires a bounded request: set UpdatesRequest::until"
+                    .to_string(),
+            ));
+        };
         telemetry::instrument("updates_page", TRANSPORT_GRPC, async move {
             let mut client =
                 pb::update_service_client::UpdateServiceClient::new(self.intercepted().await?);
             let response = client
                 .get_updates_page(pb::GetUpdatesPageRequest {
-                    begin_offset_exclusive: Some(begin_offset_exclusive),
-                    end_offset_inclusive: Some(end_offset_inclusive),
+                    begin_offset_exclusive: Some(begin_exclusive),
+                    end_offset_inclusive: Some(end_inclusive),
                     max_page_size: Some(max_page_size),
-                    update_format: Some(pb::UpdateFormat {
-                        include_transactions: Some(transaction_format(&parties)),
-                        include_reassignments: Some(wildcard_event_format(&parties)),
-                        include_topology_events: None,
-                    }),
-                    descending_order: descending,
+                    update_format: Some(request.update_format()),
+                    descending_order: request.is_descending(),
                     page_token,
                 })
                 .await?
@@ -525,13 +585,31 @@ impl CantonClient {
         parties: Vec<String>,
         active_at_offset: i64,
     ) -> Result<impl Stream<Item = Result<pb::ActiveContract>> + Send + use<>> {
+        self.active_contracts_with(crate::request::ActiveContractsRequest::new(
+            parties,
+            active_at_offset,
+        ))
+        .await
+    }
+
+    /// Like [`Self::active_contracts`], with the full request surface: an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest)
+    /// additionally filters by template or interface, includes created-event
+    /// blobs, and drops record labels.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails.
+    pub async fn active_contracts_with(
+        &self,
+        request: crate::request::ActiveContractsRequest,
+    ) -> Result<impl Stream<Item = Result<pb::ActiveContract>> + Send + use<>> {
         telemetry::instrument("active_contracts", TRANSPORT_GRPC, async move {
             let mut client =
                 pb::state_service_client::StateServiceClient::new(self.intercepted().await?);
             let stream = client
                 .get_active_contracts(pb::GetActiveContractsRequest {
-                    active_at_offset,
-                    event_format: Some(wildcard_event_format(&parties)),
+                    active_at_offset: request.active_at_offset,
+                    event_format: Some(request.event_format()),
                     stream_continuation_token: None,
                 })
                 .await?
@@ -560,6 +638,20 @@ impl CantonClient {
         active_at_offset: i64,
         max_page_size: i32,
     ) -> impl Stream<Item = Result<pb::ActiveContract>> + Send + use<> {
+        self.active_contracts_resumable_with(
+            crate::request::ActiveContractsRequest::new(parties, active_at_offset),
+            max_page_size,
+        )
+    }
+
+    /// Like [`Self::active_contracts_resumable`], with the full request
+    /// surface of an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest).
+    pub fn active_contracts_resumable_with(
+        &self,
+        request: crate::request::ActiveContractsRequest,
+        max_page_size: i32,
+    ) -> impl Stream<Item = Result<pb::ActiveContract>> + Send + use<> {
         let client = self.clone();
         let (max_reconnects, backoff_unit) = client.reconnect_policy();
         async_stream::stream! {
@@ -567,9 +659,8 @@ impl CantonClient {
             let mut reconnects = 0u32;
             loop {
                 match client
-                    .active_contracts_page(
-                        parties.clone(),
-                        active_at_offset,
+                    .active_contracts_page_with(
+                        &request,
                         max_page_size,
                         page_token.clone(),
                     )
@@ -617,10 +708,13 @@ impl CantonClient {
         }
     }
 
-    /// Stream ledger updates (transactions, reassignments, topology events) for
-    /// `parties`, starting after `begin_offset` (exclusive). Offset checkpoints
-    /// are filtered out. Reassignments are surfaced as their own case (each
-    /// carrying the distinct `Unassigned`/`Assigned` events).
+    /// Stream ledger updates — transactions and reassignments — for `parties`,
+    /// starting after `begin_offset` (exclusive). Offset checkpoints are
+    /// filtered out. Reassignments are surfaced as their own case (each
+    /// carrying the distinct `Unassigned`/`Assigned` events). Topology events
+    /// are **not** included; ask for them with
+    /// [`UpdatesRequest::with_topology_events`](crate::request::UpdatesRequest::with_topology_events)
+    /// on [`Self::updates_with`].
     ///
     /// # Errors
     /// Returns an [`Error`] if authentication or opening the stream fails.
@@ -629,22 +723,34 @@ impl CantonClient {
         parties: Vec<String>,
         begin_offset: i64,
     ) -> Result<impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<>> {
+        self.updates_with(crate::request::UpdatesRequest::new(parties, begin_offset))
+            .await
+    }
+
+    /// Like [`Self::updates`], with the full request surface: an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) additionally bounds
+    /// the stream at an end offset (`until` — the catch-up/sync form, after
+    /// which the stream terminates), filters by template or interface, selects
+    /// the ACS-delta shape, includes created-event blobs or topology events,
+    /// and drops reassignments or record labels.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails.
+    pub async fn updates_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> Result<impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<>> {
+        let (_, end_inclusive) = request.bounds();
+        if request.is_descending() && end_inclusive.is_none() {
+            return Err(Error::InvalidRequest(
+                "descending order requires a bounded request: set UpdatesRequest::until"
+                    .to_string(),
+            ));
+        }
         telemetry::instrument("updates", TRANSPORT_GRPC, async move {
             let mut client =
                 pb::update_service_client::UpdateServiceClient::new(self.intercepted().await?);
-            let stream = client
-                .get_updates(pb::GetUpdatesRequest {
-                    begin_exclusive: begin_offset,
-                    end_inclusive: None,
-                    update_format: Some(pb::UpdateFormat {
-                        include_transactions: Some(transaction_format(&parties)),
-                        include_reassignments: Some(wildcard_event_format(&parties)),
-                        include_topology_events: None,
-                    }),
-                    descending_order: false,
-                })
-                .await?
-                .into_inner();
+            let stream = client.get_updates(request.into_grpc()).await?.into_inner();
 
             Ok(stream.filter_map(|item| match item {
                 Ok(response) => match response.update {
@@ -681,13 +787,34 @@ impl CantonClient {
         parties: Vec<String>,
         begin_offset: i64,
     ) -> impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<> {
+        self.updates_resumable_with(crate::request::UpdatesRequest::new(parties, begin_offset))
+    }
+
+    /// Like [`Self::updates_resumable`], with the full request surface of an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest). A bounded request
+    /// (`until`) makes this a *resilient catch-up read*: reconnects resume
+    /// from the last yielded offset, and the stream ends once the participant
+    /// closes it at the end offset.
+    pub fn updates_resumable_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<> {
         let client = self.clone();
         let (max_reconnects, backoff_unit) = client.reconnect_policy();
         async_stream::stream! {
-            let mut offset = begin_offset;
+            // Resume tracking assumes ascending offsets; a descending request
+            // would silently re-read on every reconnect, so refuse it.
+            if request.is_descending() {
+                yield Err(Error::InvalidRequest(
+                    "the resumable stream requires ascending order; use updates_with \
+                     (bounded) for descending reads".to_string(),
+                ));
+                return;
+            }
+            let mut offset = request.begin_exclusive;
             let mut reconnects = 0u32;
             loop {
-                match client.updates(parties.clone(), offset).await {
+                match client.updates_with(request.resume_after(offset)).await {
                     Ok(stream) => {
                         tokio::pin!(stream);
                         loop {
@@ -757,6 +884,44 @@ mod tests {
                 "endpoint {bad:?} should be rejected as InvalidRequest, got {result:?}"
             );
         }
+    }
+
+    // The paged read is inherently bounded, so a request without an end offset
+    // must be refused before any RPC is attempted.
+    #[tokio::test]
+    async fn updates_page_with_requires_a_bounded_request() {
+        let Ok(client) = CantonClient::connect_lazy(Config::new("http://localhost:1")) else {
+            panic!("lazy connect accepts a valid endpoint");
+        };
+        let unbounded = crate::request::UpdatesRequest::new(vec!["p".to_string()], 0);
+        let result = client.updates_page_with(&unbounded, 10, None).await;
+        assert!(
+            matches!(result, Err(Error::InvalidRequest(_))),
+            "expected InvalidRequest, got {result:?}"
+        );
+    }
+
+    // Descending order needs an end offset (streams), and never composes with
+    // resume tracking — both must fail fast, before any RPC.
+    #[tokio::test]
+    async fn descending_requires_bounds_and_is_refused_on_resumable() {
+        use tokio_stream::StreamExt as _;
+
+        let Ok(client) = CantonClient::connect_lazy(Config::new("http://localhost:1")) else {
+            panic!("lazy connect accepts a valid endpoint");
+        };
+        let descending_unbounded =
+            crate::request::UpdatesRequest::new(vec!["p".to_string()], 0).descending();
+
+        let result = client.updates_with(descending_unbounded.clone()).await;
+        assert!(matches!(result.err(), Some(Error::InvalidRequest(_))));
+
+        let stream = client.updates_resumable_with(descending_unbounded.until(10));
+        tokio::pin!(stream);
+        let Some(first) = stream.next().await else {
+            panic!("the resumable stream should yield the rejection");
+        };
+        assert!(matches!(first, Err(Error::InvalidRequest(_))));
     }
 
     // A reassignment carries its `Unassigned` (source) and `Assigned` (target)
