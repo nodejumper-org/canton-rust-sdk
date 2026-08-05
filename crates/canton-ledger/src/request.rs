@@ -491,7 +491,10 @@ impl CompletionsRequest {
         }
     }
 
-    /// The JSON API request body (the WS completions lane).
+    /// The JSON API request body. Gated on `ws` because the JSON Ledger API
+    /// has no POST endpoint for completions — the WS lane is its only reader,
+    /// so without the feature this body has nobody to build it for.
+    #[cfg(feature = "ws")]
     pub(crate) fn json_body(&self) -> serde_json::Value {
         let mut body = serde_json::json!({
             "parties": self.parties,
@@ -861,6 +864,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ws")] // the body exists only for the WS completions lane
     fn completions_json_body_carries_the_user_id_only_when_set() {
         let plain = CompletionsRequest::new(vec!["p".to_string()], 3).json_body();
         assert!(plain.get("userId").is_none());

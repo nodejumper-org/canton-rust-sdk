@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.1.3] - 2026-08-04
+
+### Fixed
+
+- **`canton-ledger`:** `CompletionsRequest`'s JSON body builder is now gated on
+  the `ws` feature, which is the only thing that reads it — the JSON Ledger API
+  has no POST endpoint for completions. Without the gate the method was dead
+  code in any build without `ws`, which failed the workspace's own
+  `-D warnings` on the feature powerset. **Consumers of 0.1.2 are unaffected**:
+  Cargo caps lints in registry dependencies, so a `default-features = false`
+  build of the published crate compiles either way.
+
 ## [0.1.2] - 2026-08-04
 
 Additive (semver-compatible) API growth from external M1 review feedback:
