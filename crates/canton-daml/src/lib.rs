@@ -197,6 +197,44 @@ mod tests {
         }
     }
 
+    /// A type mismatch must name the kind it found and nothing from inside it.
+    ///
+    /// The message travels into `canton_core::Error` and from there into
+    /// whatever the application logs, so echoing the value would put contract
+    /// contents — parties, amounts, free text — into traces and metrics.
+    #[test]
+    fn a_mismatch_names_the_kind_and_never_the_payload() {
+        let secret = "alice::1220deadbeef";
+        let payload = record(vec![
+            ("owner", crate::Party::new(secret).to_value()),
+            (
+                "memo",
+                "wired 4200 to the numbered account".to_string().to_value(),
+            ),
+        ]);
+
+        // Decoding a record as Text is the mismatch a user hits first.
+        let err = <String as FromValue>::from_value(&payload).expect_err("a Record is not a Text");
+        let message = err.to_string();
+
+        assert!(message.contains("expected Text"), "{message}");
+        assert!(
+            message.contains("Record"),
+            "should name the kind found: {message}"
+        );
+        assert!(!message.contains(secret), "leaked a party id: {message}");
+        assert!(
+            !message.contains("4200"),
+            "leaked a payload field: {message}"
+        );
+        assert!(!message.contains("memo"), "leaked a field label: {message}");
+
+        // The same holds once it has been converted into the SDK-wide error,
+        // which is the form that actually reaches a subscriber.
+        let sdk: canton_core::Error = err.into();
+        assert!(!sdk.to_string().contains(secret), "{sdk}");
+    }
+
     #[test]
     fn record_round_trips_through_value() {
         let app = AppInstall {

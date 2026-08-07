@@ -107,8 +107,41 @@ fn sum(value: &pb::Value) -> Result<&pb::value::Sum, ValueError> {
         .ok_or_else(|| ValueError::new("empty Value (no sum set)"))
 }
 
+/// The name of a `Value`'s kind — `"Record"`, `"Party"`, … — and nothing else.
+///
+/// Deliberately not `{sum:?}`: prost's derived `Debug` prints a value in full,
+/// so a type mismatch on a contract payload would copy party ids, amounts and
+/// free text into the error message. That message travels through
+/// `From<ValueError> for canton_core::Error` into whatever the application
+/// logs, so the leak would land in traces and metrics of code that never asked
+/// to see the payload.
+///
+/// The match is exhaustive on purpose: a `Value` kind added in a future Ledger
+/// API is a build break here, not a silent `"unknown"`.
+fn kind(sum: &pb::value::Sum) -> &'static str {
+    use pb::value::Sum;
+    match sum {
+        Sum::Unit(()) => "Unit",
+        Sum::Bool(_) => "Bool",
+        Sum::Int64(_) => "Int64",
+        Sum::Date(_) => "Date",
+        Sum::Timestamp(_) => "Timestamp",
+        Sum::Numeric(_) => "Numeric",
+        Sum::Party(_) => "Party",
+        Sum::Text(_) => "Text",
+        Sum::ContractId(_) => "ContractId",
+        Sum::Optional(_) => "Optional",
+        Sum::List(_) => "List",
+        Sum::TextMap(_) => "TextMap",
+        Sum::GenMap(_) => "GenMap",
+        Sum::Record(_) => "Record",
+        Sum::Variant(_) => "Variant",
+        Sum::Enum(_) => "Enum",
+    }
+}
+
 fn mismatch(expected: &str, got: &pb::value::Sum) -> ValueError {
-    ValueError::new(format!("expected {expected}, got {got:?}"))
+    ValueError::new(format!("expected {expected}, got {}", kind(got)))
 }
 
 // ---- record helpers (used by generated ToValue/FromValue) ------------------
