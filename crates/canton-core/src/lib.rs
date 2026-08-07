@@ -14,5 +14,5 @@ pub mod retry;
 pub mod telemetry;
 
 pub use config::{Auth, Config, TlsConfig, TokenSource};
-pub use error::{Error, ErrorCategory, ErrorInfo, Result};
+pub use error::{Error, ErrorCategory, ErrorInfo, ResourceInfo, Result};
 pub use retry::RetryConfig;

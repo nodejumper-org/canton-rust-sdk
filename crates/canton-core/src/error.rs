@@ -184,6 +184,37 @@ impl Error {
         }
     }
 
+    /// The resources this error is about: which contract, package, party or
+    /// synchronizer the participant is complaining of. Canton attaches these to
+    /// the errors where "which one?" is the first question — `CONTRACT_NOT_FOUND`
+    /// names the contract id, contention names the locked contracts.
+    ///
+    /// A `Vec` rather than an `Option` because the wire carries a list: the JSON
+    /// Ledger API's `resources` is an array of `[type, name]` pairs, and one
+    /// error can name several. The gRPC side yields at most one today — that is
+    /// a limit of `tonic_types`, which models a single `google.rpc.ResourceInfo`
+    /// detail, not of the protocol.
+    #[must_use]
+    pub fn resource_info(&self) -> Vec<ResourceInfo> {
+        match self {
+            Error::Status(status) => {
+                use tonic_types::StatusExt as _;
+                status
+                    .get_details_resource_info()
+                    .map(|info| ResourceInfo {
+                        resource_type: info.resource_type,
+                        resource_name: info.resource_name,
+                        owner: info.owner,
+                        description: info.description,
+                    })
+                    .into_iter()
+                    .collect()
+            }
+            Error::Http { body, .. } => http_resource_info(body),
+            _ => Vec::new(),
+        }
+    }
+
     /// The structured `google.rpc.ErrorInfo` carried by a gRPC status, when
     /// present. Canton populates this with the machine-readable error `reason`
     /// (e.g. `DUPLICATE_COMMAND`) plus context `metadata` — prefer it over
@@ -235,6 +266,31 @@ fn http_category(body: &str) -> Option<ErrorCategory> {
 fn http_retry_delay(body: &str) -> Option<std::time::Duration> {
     let body: serde_json::Value = serde_json::from_str(body).ok()?;
     parse_spelled_duration(body.get("retryInfo")?.as_str()?)
+}
+
+/// The `resources` of a JSON Ledger API error body: an array of `[type, name]`
+/// pairs (e.g. `[["ErrorResource(CONTRACT_ID)", "00abc…"]]`). Entries that are
+/// not a pair of strings are skipped rather than failing the whole read — a
+/// diagnostic must not itself become an error.
+fn http_resource_info(body: &str) -> Vec<ResourceInfo> {
+    let Ok(body) = serde_json::from_str::<serde_json::Value>(body) else {
+        return Vec::new();
+    };
+    let Some(resources) = body.get("resources").and_then(serde_json::Value::as_array) else {
+        return Vec::new();
+    };
+    resources
+        .iter()
+        .filter_map(|entry| {
+            let pair = entry.as_array()?;
+            Some(ResourceInfo {
+                resource_type: pair.first()?.as_str()?.to_string(),
+                resource_name: pair.get(1)?.as_str()?.to_string(),
+                owner: String::new(),
+                description: String::new(),
+            })
+        })
+        .collect()
 }
 
 /// The `correlationId` (or, failing that, `traceId`) of a JSON Ledger API
@@ -390,6 +446,25 @@ pub struct ErrorInfo {
     pub domain: String,
     /// Additional structured context for the error.
     pub metadata: std::collections::HashMap<String, String>,
+}
+
+/// A resource a failure is about, from a `google.rpc.ResourceInfo` detail on a
+/// gRPC status or an entry of a JSON API error body's `resources`.
+/// `#[non_exhaustive]`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ResourceInfo {
+    /// What kind of thing it is, as Canton names it (e.g.
+    /// `ErrorResource(CONTRACT_ID)`).
+    pub resource_type: String,
+    /// The identifier itself — a contract id, package name, party, …
+    pub resource_name: String,
+    /// The owner, when the server reports one. Empty on the JSON transport,
+    /// whose `resources` entries carry only the type and the name.
+    pub owner: String,
+    /// A human-readable note, when the server reports one. Empty on the JSON
+    /// transport for the same reason.
+    pub description: String,
 }
 
 impl From<tonic::Status> for Error {
@@ -632,6 +707,70 @@ mod tests {
         // 13 (BackgroundProcessDegradationWarning) never reaches the API.
         assert_eq!(ErrorCategory::from_i32(13), None);
         assert_eq!(ErrorCategory::from_i32(15), None);
+    }
+
+    #[test]
+    fn resource_info_names_what_the_error_is_about() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        // gRPC: one `google.rpc.ResourceInfo` detail is all tonic_types models.
+        let mut details = ErrorDetails::new();
+        details.set_resource_info("ErrorResource(CONTRACT_ID)", "00abc", "alice", "not found");
+        let status = tonic::Status::with_error_details(tonic::Code::NotFound, "gone", details);
+        let found = Error::from(status).resource_info();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].resource_type, "ErrorResource(CONTRACT_ID)");
+        assert_eq!(found[0].resource_name, "00abc");
+        assert_eq!(found[0].owner, "alice");
+
+        // A status with no such detail yields nothing, not a default-filled entry.
+        assert!(
+            Error::from(tonic::Status::not_found("x"))
+                .resource_info()
+                .is_empty()
+        );
+        assert!(Error::Timeout.resource_info().is_empty());
+    }
+
+    #[test]
+    fn resource_info_reads_the_json_apis_resources_array() {
+        // The body shape is verbatim from a live Canton 3.5.7 participant
+        // answering an exercise on a contract that does not exist.
+        let body = r#"{"code":"CONTRACT_NOT_FOUND","cause":"…","errorCategory":11,
+            "resources":[["ErrorResource(CONTRACT_ID)","00ababab"]],"retryInfo":null}"#;
+        let err = Error::Http {
+            status: 404,
+            body: body.to_string(),
+        };
+        let found = err.resource_info();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].resource_type, "ErrorResource(CONTRACT_ID)");
+        assert_eq!(found[0].resource_name, "00ababab");
+        // The JSON pairs carry no owner or description; they are empty, not absent.
+        assert!(found[0].owner.is_empty());
+
+        // Several resources — contention names more than one, which is why this
+        // returns a Vec and not an Option.
+        let many = Error::Http {
+            status: 409,
+            body: r#"{"resources":[["A","1"],["B","2"]]}"#.to_string(),
+        };
+        assert_eq!(many.resource_info().len(), 2);
+
+        // A malformed entry is skipped, and an empty/absent array is not an error:
+        // a diagnostic accessor must never itself fail.
+        let ragged = Error::Http {
+            status: 500,
+            body: r#"{"resources":[["A"],["B","2"],42,null]}"#.to_string(),
+        };
+        assert_eq!(ragged.resource_info().len(), 1);
+        for body in [r#"{"resources":[]}"#, "{}", "not json at all", ""] {
+            let err = Error::Http {
+                status: 500,
+                body: body.to_string(),
+            };
+            assert!(err.resource_info().is_empty(), "{body}");
+        }
     }
 
     #[test]
