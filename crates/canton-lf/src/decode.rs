@@ -24,6 +24,22 @@ pub enum DecodeError {
     /// The package is not Daml-LF 2.x (this decoder only supports LF 2.x).
     #[error("unsupported Daml-LF version (only LF 2.x is supported)")]
     UnsupportedVersion,
+    /// The package is LF 2.x, but a **minor** this decoder was not built
+    /// against. Refused rather than decoded: prost drops fields it does not
+    /// know, so a newer minor would otherwise yield silently incomplete
+    /// bindings — a template missing a field decodes, compiles, and then fails
+    /// on the wire.
+    #[error(
+        "Daml-LF 2.{minor} is newer than this SDK supports (2.{supported}); \
+         the protos are pinned to a Canton release, so use a DAR built for it \
+         or upgrade the SDK"
+    )]
+    UnsupportedMinor {
+        /// The minor version the archive declares.
+        minor: String,
+        /// The minors this build accepts, comma-separated.
+        supported: String,
+    },
     /// A decode failure attributed to a specific package in the DAR.
     #[error("package `{name}`: {source}")]
     InPackage {
@@ -54,10 +70,35 @@ pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeE
     let archive = Archive::decode(archive_bytes)?;
     let package_id = archive.hash;
     let payload = ArchivePayload::decode(archive.payload.as_slice())?;
+    check_minor(&payload.minor)?;
     match payload.sum {
         Some(archive_payload::Sum::DamlLf2(package)) => Ok((package, package_id)),
         _ => Err(DecodeError::UnsupportedVersion),
     }
+}
+
+/// The Daml-LF 2.x minor versions this build decodes.
+///
+/// Every package in the Splice + quickstart corpus (367 of them, across the
+/// amulet, wallet, token-standard and licensing DARs) declares `"1"`, which is
+/// what the vendored schema describes. Adding a minor here is a deliberate act:
+/// re-vendor the protos for it first, or the new fields are dropped on the
+/// floor by prost and the bindings come out quietly incomplete.
+const SUPPORTED_LF2_MINORS: &[&str] = &["1"];
+
+/// Refuse a minor we were not built against.
+///
+/// `"dev"` is refused with everything else on purpose — it is the unstable
+/// spelling, and the whole point of this gate is that an unknown schema must
+/// not decode silently.
+fn check_minor(minor: &str) -> Result<(), DecodeError> {
+    if SUPPORTED_LF2_MINORS.contains(&minor) {
+        return Ok(());
+    }
+    Err(DecodeError::UnsupportedMinor {
+        minor: minor.to_string(),
+        supported: SUPPORTED_LF2_MINORS.join(", "),
+    })
 }
 
 /// Decode **every** package in a DAR, each paired with its package id (archive
@@ -134,6 +175,61 @@ pub fn package_name(package: &Package) -> Option<&str> {
 pub fn package_version(package: &Package) -> Option<&str> {
     let index = package.metadata.as_ref()?.version_interned_str;
     interned_str(package, index)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod minor_tests {
+    use super::*;
+
+    /// Build an `Archive` declaring `minor`, with an empty LF2 package inside.
+    fn archive_with_minor(minor: &str) -> Vec<u8> {
+        let payload = ArchivePayload {
+            minor: minor.to_string(),
+            sum: Some(archive_payload::Sum::DamlLf2(Package::default())),
+        };
+        Archive {
+            hash: "0".repeat(64),
+            payload: payload.encode_to_vec(),
+            ..Archive::default()
+        }
+        .encode_to_vec()
+    }
+
+    #[test]
+    fn the_minor_this_build_targets_decodes() {
+        for minor in SUPPORTED_LF2_MINORS {
+            let bytes = archive_with_minor(minor);
+            assert!(
+                decode_package(&bytes).is_ok(),
+                "minor {minor} should decode"
+            );
+        }
+    }
+
+    /// A newer minor must fail loudly. prost silently drops fields from a
+    /// schema it does not know, so decoding one would hand the user bindings
+    /// that compile and are missing template fields — the failure would surface
+    /// on the wire, far from its cause.
+    #[test]
+    fn an_unknown_minor_is_refused_rather_than_silently_decoded() {
+        for minor in ["2", "17", "dev", ""] {
+            let bytes = archive_with_minor(minor);
+            let err = decode_package(&bytes).expect_err("minor {minor} must be refused");
+            let message = err.to_string();
+            assert!(
+                matches!(err, DecodeError::UnsupportedMinor { .. }),
+                "minor {minor}: {message}"
+            );
+            // The message has to name what was found and what is accepted,
+            // or the reader cannot tell whether to rebuild the DAR or the SDK.
+            assert!(message.contains(&format!("2.{minor}")), "{message}");
+            assert!(
+                message.contains("2.1"),
+                "should name what we support: {message}"
+            );
+        }
+    }
 }
 
 #[cfg(test)]
