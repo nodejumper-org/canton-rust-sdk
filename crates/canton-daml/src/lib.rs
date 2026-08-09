@@ -71,9 +71,8 @@ pub use value::{FromValue, ToValue, ValueError, from_record};
 /// [`FromValue`] or [`from_record`].
 #[doc(hidden)]
 pub use value::{
-    AbsentField, enum_constructor, enum_value, find_field, optional_field, record, record_field,
-    record_fields, record_value, required_field, unexpected_constructor, unit_value, variant_parts,
-    variant_value,
+    AbsentField, enum_constructor, enum_value, find_field, optional_field, record, record_fields,
+    required_field, unexpected_constructor, unit_value, variant_parts, variant_value,
 };
 
 /// The Ledger API `Value` and `Record` — the gRPC wire forms generated
@@ -98,7 +97,7 @@ mod tests {
 
     // As-if-generated shapes: a payload using the runtime types, its
     // `ToValue`/`FromValue` written exactly as the generator emits them (via
-    // `record` / `record_field`), and a choice argument with its `Choice` impl.
+    // `record` / `record_fields`), and a choice argument with its `Choice` impl.
     //
     // "Exactly as the generator emits" is checked, not asserted:
     // tests/fixture_matches_the_generator.rs runs the real emitter and compares
@@ -891,5 +890,89 @@ mod tests {
         // No payload at all is an error, not a default-constructed value.
         let empty = json!({"CreatedEvent": {"contractId": "00abc"}});
         assert!(AppInstall::from_json_created_event(&empty).is_err());
+    }
+    /// A failure inside a container says *which* element, the way a failure
+    /// inside a record says which field.
+    ///
+    /// Without this the path stopped at the field: one bad entry in a list of
+    /// five hundred holdings reported that the list was bad and left the reader
+    /// to find which. `ValueError::at` was always documented as taking "a field
+    /// (or index)"; nothing passed it an index.
+    #[test]
+    fn a_container_element_is_named_in_the_path() {
+        use std::collections::BTreeMap;
+
+        // List: the position.
+        let list = wrong_at_index();
+        let error = <Vec<Party> as FromValue>::from_value(&list).unwrap_err();
+        assert_eq!(error.path(), ["2"], "{error}");
+        assert!(error.to_string().contains("expected Party"), "{error}");
+
+        // Nested in a record, the two paths compose the way a reader reads them.
+        let record = record(vec![("holders", list)]);
+        let error = <AppInstallHolders as FromValue>::from_value(&record).unwrap_err();
+        assert_eq!(error.path(), ["holders", "2"], "{error}");
+        assert!(error.to_string().contains("`holders.2`"), "{error}");
+
+        // TextMap: the key, which locates the entry better than a position.
+        let map = Value {
+            sum: Some(
+                canton_proto::com::daml::ledger::api::v2::value::Sum::TextMap(
+                    canton_proto::com::daml::ledger::api::v2::TextMap {
+                        entries: vec![canton_proto::com::daml::ledger::api::v2::text_map::Entry {
+                            key: "alice".to_string(),
+                            value: Some(42_i64.to_value()),
+                        }],
+                    },
+                ),
+            ),
+        };
+        let error = <BTreeMap<String, Party> as FromValue>::from_value(&map).unwrap_err();
+        assert_eq!(error.path(), ["alice"], "{error}");
+
+        // GenMap: the position, and which half of the entry.
+        let genmap = Value {
+            sum: Some(
+                canton_proto::com::daml::ledger::api::v2::value::Sum::GenMap(
+                    canton_proto::com::daml::ledger::api::v2::GenMap {
+                        entries: vec![canton_proto::com::daml::ledger::api::v2::gen_map::Entry {
+                            key: Some(Party::new("alice::1220ab").to_value()),
+                            value: Some(42_i64.to_value()),
+                        }],
+                    },
+                ),
+            ),
+        };
+        let error = <GenMap<Party, Party> as FromValue>::from_value(&genmap).unwrap_err();
+        assert_eq!(error.path(), ["0", "value"], "{error}");
+    }
+
+    /// A list whose third element is the wrong kind.
+    fn wrong_at_index() -> Value {
+        list(vec![
+            Party::new("a::1220ab").to_value(),
+            Party::new("b::1220ab").to_value(),
+            42_i64.to_value(),
+        ])
+    }
+
+    fn list(elements: Vec<Value>) -> Value {
+        use canton_proto::com::daml::ledger::api::v2 as pb;
+        Value {
+            sum: Some(pb::value::Sum::List(pb::List { elements })),
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct AppInstallHolders {
+        holders: Vec<Party>,
+    }
+    impl FromValue for AppInstallHolders {
+        fn from_value(value: &Value) -> Result<Self, ValueError> {
+            Ok(Self {
+                holders: FromValue::from_value(required_field(value, 0, "holders")?)
+                    .map_err(|e| e.at("holders"))?,
+            })
+        }
     }
 }

@@ -140,6 +140,18 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-daml` (decode errors in containers):** a failure inside a `List`,
+  `TextMap` or `GenMap` now names the element. Generated records attach the
+  field name to every decode, but containers dropped everything below it, so
+  one bad entry in a list of five hundred holdings reported that the list was
+  bad and left the reader to find which. The paths compose: `holders.2`. A list
+  reports the index, a `TextMap` the key (which locates an entry better than a
+  position), a `GenMap` the position and which half of the entry — its keys are
+  arbitrary values, so there is no name to point at.
+- **`canton-daml` (dead API removed before it froze):** `record_field` and
+  `record_value` are gone from the generated-code surface. The emitter never
+  emitted either, nothing in the workspace called them, and the crate is about
+  to publish — after which they would have to keep working forever.
 - **`canton-codegen` (drift guard, published crates):** a CI job fetches the
   three DARs the published bindings were generated from — cn-quickstart tracks
   them in git — at a pinned commit, verifies their SHA-256, and runs the guards

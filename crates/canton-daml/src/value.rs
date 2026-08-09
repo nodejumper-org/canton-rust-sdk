@@ -170,28 +170,6 @@ pub fn record(fields: Vec<(&str, pb::Value)>) -> pb::Value {
     wrap(pb::value::Sum::Record(record_fields(fields)))
 }
 
-/// Wrap a bare `Record` as a [`Value`](pb::Value).
-#[must_use]
-pub fn record_value(record: pb::Record) -> pb::Value {
-    wrap(pb::value::Sum::Record(record))
-}
-
-/// Extract a record field by label. Generated `FromValue` impls call this.
-///
-/// # Errors
-/// Returns [`ValueError`] if `value` is not a record or has no such field.
-pub fn record_field<'a>(value: &'a pb::Value, label: &str) -> Result<&'a pb::Value, ValueError> {
-    match sum(value)? {
-        pb::value::Sum::Record(record) => record
-            .fields
-            .iter()
-            .find(|field| field.label == label)
-            .and_then(|field| field.value.as_ref())
-            .ok_or_else(|| ValueError::new(format!("record has no field `{label}`"))),
-        other => Err(mismatch("Record", other)),
-    }
-}
-
 /// Locate a record field by **label or declaration position**, tolerating the
 /// two shapes Canton legitimately produces:
 ///
@@ -580,7 +558,17 @@ impl<T: ToValue> ToValue for Vec<T> {
 impl<T: FromValue> FromValue for Vec<T> {
     fn from_value(value: &pb::Value) -> Result<Self, ValueError> {
         match sum(value)? {
-            pb::value::Sum::List(list) => list.elements.iter().map(T::from_value).collect(),
+            // The index goes on the path for the same reason a field name does:
+            // without it, one bad element in a list of five hundred reports
+            // only that the list is bad.
+            pb::value::Sum::List(list) => list
+                .elements
+                .iter()
+                .enumerate()
+                .map(|(index, element)| {
+                    T::from_value(element).map_err(|error| error.at(index.to_string()))
+                })
+                .collect(),
             other => Err(mismatch("List", other)),
         }
     }
@@ -606,11 +594,13 @@ impl<V: FromValue> FromValue for BTreeMap<String, V> {
                 .entries
                 .iter()
                 .map(|entry| {
-                    let inner = entry
-                        .value
-                        .as_ref()
-                        .ok_or_else(|| ValueError::new("TextMap entry has no value"))?;
-                    Ok((entry.key.clone(), V::from_value(inner)?))
+                    let inner = entry.value.as_ref().ok_or_else(|| {
+                        ValueError::new("TextMap entry has no value").at(entry.key.clone())
+                    })?;
+                    // The key locates the entry better than a position would.
+                    let value =
+                        V::from_value(inner).map_err(|error| error.at(entry.key.clone()))?;
+                    Ok((entry.key.clone(), value))
                 })
                 .collect(),
             other => Err(mismatch("TextMap", other)),
@@ -639,16 +629,30 @@ impl<K: FromValue, V: FromValue> FromValue for GenMap<K, V> {
                 let entries = map
                     .entries
                     .iter()
-                    .map(|entry| {
+                    .enumerate()
+                    .map(|(index, entry)| {
+                        // A GenMap key is an arbitrary value, so unlike a
+                        // TextMap there is no name to point at — the position
+                        // is what a reader can act on. `key`/`value` says which
+                        // half of the entry failed.
+                        let at = |part: &str| {
+                            let part = part.to_string();
+                            move |error: ValueError| error.at(part).at(index.to_string())
+                        };
                         let key = entry
                             .key
                             .as_ref()
-                            .ok_or_else(|| ValueError::new("GenMap entry has no key"))?;
+                            .ok_or_else(|| ValueError::new("GenMap entry has no key"))
+                            .map_err(at("key"))?;
                         let value = entry
                             .value
                             .as_ref()
-                            .ok_or_else(|| ValueError::new("GenMap entry has no value"))?;
-                        Ok((K::from_value(key)?, V::from_value(value)?))
+                            .ok_or_else(|| ValueError::new("GenMap entry has no value"))
+                            .map_err(at("value"))?;
+                        Ok((
+                            K::from_value(key).map_err(at("key"))?,
+                            V::from_value(value).map_err(at("value"))?,
+                        ))
                     })
                     .collect::<Result<Vec<_>, ValueError>>()?;
                 Ok(GenMap(entries))
