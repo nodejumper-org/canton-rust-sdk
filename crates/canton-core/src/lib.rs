@@ -10,6 +10,7 @@
 pub mod auth;
 pub mod config;
 mod error;
+pub mod localnet;
 pub mod retry;
 pub mod telemetry;
 

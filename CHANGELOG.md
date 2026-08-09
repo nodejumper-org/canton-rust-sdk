@@ -54,6 +54,23 @@ is included; nothing from it was removed or changed in signature.
   compiles for all corpus DARs, and the sample's typed create commits and is read
   back from the ACS on both transports.
 
+### Added — a local network needs no configuration in your program
+
+- **`canton_core::localnet`** reads a Splice LocalNet out of the environment —
+  the variables [canton-devkit](https://github.com/bitdynamics-ab/canton-devkit)'s
+  `localnet env` exports. After `eval "$(canton-devkit localnet env demo)"`,
+  `Config::from_env()` is a working gRPC configuration and
+  `JsonClient::from_env()` its JSON counterpart, with the participant's token
+  attached; `Config::from_env_for("app-user")` reaches the other participant,
+  and `localnet::party(alias)` the on-ledger id an application needs for
+  `act_as`. `CANTON_ENDPOINT` / `CANTON_TOKEN` override the lot for an
+  environment that is not a LocalNet. Runnable as the `localnet` example.
+- **`Config` accepts a scheme-less `host:port`**, which is what a gRPC client
+  dials and therefore what tooling hands out —
+  `CANTON_GRPC_LEDGER_API_URL` is exactly this shape. Previously the missing
+  scheme surfaced at the first RPC as an unexplained transport error; the
+  scheme now defaults to the one TLS configuration implies.
+
 ### Security
 
 - **`canton-core`:** the mutual-TLS private key no longer reaches logs.

@@ -106,6 +106,48 @@ cargo run -p canton-ledger --example submit_and_read
 
 See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
 
+## A local network, with no configuration in your program
+
+[canton-devkit](https://github.com/bitdynamics-ab/canton-devkit) runs a Splice
+LocalNet — two participants and a super-validator — and exports it into the
+environment. The SDK reads that export directly, so nothing in the program names
+a host, a port, or a credential:
+
+```sh
+canton-devkit localnet up demo            # or: dpm localnet up demo
+eval "$(canton-devkit localnet env demo)"
+```
+
+```rust,ignore
+use canton::ledger::{CantonClient, JsonClient};
+use canton::{Config, localnet};
+
+let grpc = CantonClient::connect_lazy(Config::from_env()?)?;   // app-provider
+let json = JsonClient::from_env()?;                            // same network
+let user = Config::from_env_for("app-user")?;                  // the other participant
+let party = localnet::party("app-provider");                   // the id for `act_as`
+```
+
+Runnable: [`localnet`](crates/canton-ledger/examples/localnet.rs).
+
+```sh
+cargo run -p canton-ledger --example localnet
+```
+
+Two details this handles for you, both of which otherwise fail late and
+unhelpfully. The exported gRPC URL has **no scheme** (`host:port` is what a gRPC
+client dials) — passed to a client unchanged it produced an unexplained
+transport error at the first RPC. And the URLs are nginx **virtual-host names**
+(`grpc-ledger-api.app-provider.demo.localhost`), so the name has to reach the
+`:authority` / `Host` header rather than be resolved away; substituting
+`127.0.0.1` reaches the port and is refused by the vhost. `*.localhost` resolves
+to loopback on macOS and on Linux with systemd-resolved — elsewhere, add an
+`/etc/hosts` entry.
+
+Nothing here is devkit-specific beyond the variable names, and `CANTON_ENDPOINT`
+/ `CANTON_TOKEN` override them for an environment that is not a LocalNet. The
+full contract is in [`canton_core::localnet`](crates/canton-core/src/localnet.rs).
+
 ## Typed bindings from your DAR (codegen)
 
 Turn any DAR into a typed crate — templates become structs, choices become

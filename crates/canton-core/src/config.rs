@@ -369,6 +369,16 @@ impl Config {
 /// applied. Scheme detection is case-insensitive (tonic lowercases the parsed
 /// scheme, so `HTTPS://…` must be treated as `https`).
 fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
+    // A bare `host:port` is what a gRPC client dials, so it is what tooling
+    // hands out — canton-devkit's `CANTON_GRPC_LEDGER_API_URL` is exactly this
+    // shape. `Endpoint::from_shared` needs a scheme, and without one the
+    // failure arrives at connect time as an unexplained transport error, so
+    // supply the scheme the rest of this function would have chosen anyway.
+    if !endpoint.contains("://") {
+        let scheme = if tls_configured { "https" } else { "http" };
+        return (format!("{scheme}://{endpoint}"), tls_configured);
+    }
+
     let is_https = endpoint
         .get(..8)
         .is_some_and(|s| s.eq_ignore_ascii_case("https://"));
@@ -525,5 +535,31 @@ mod tests {
         let (uri, tls) = resolve_endpoint("HTTP://host:5001", true);
         assert_eq!(uri, "https://host:5001");
         assert_eq!(tls, true);
+    }
+
+    /// A bare `host:port` is what a gRPC client dials, so it is the form
+    /// tooling hands out — `canton-devkit localnet env` exports
+    /// `CANTON_GRPC_LEDGER_API_URL` exactly this way. `Endpoint::from_shared`
+    /// needs a scheme, and without one nothing complains until the first RPC
+    /// fails as an unexplained transport error.
+    #[test]
+    fn a_scheme_less_host_and_port_gets_the_scheme_it_implies() {
+        let (uri, tls) =
+            resolve_endpoint("grpc-ledger-api.app-provider.demo.localhost:3901", false);
+        assert_eq!(
+            uri,
+            "http://grpc-ledger-api.app-provider.demo.localhost:3901"
+        );
+        assert_eq!(tls, false);
+
+        // With TLS configured it is the same choice the rest of this function
+        // makes: never plaintext when the caller asked for TLS.
+        let (uri, tls) = resolve_endpoint("ledger.example:443", true);
+        assert_eq!(uri, "https://ledger.example:443");
+        assert_eq!(tls, true);
+
+        // An IPv6 literal has colons of its own and still is not a scheme.
+        let (uri, _) = resolve_endpoint("[::1]:3901", false);
+        assert_eq!(uri, "http://[::1]:3901");
     }
 }

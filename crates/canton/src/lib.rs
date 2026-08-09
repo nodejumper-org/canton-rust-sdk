@@ -57,6 +57,10 @@ pub use canton_auth as auth;
 pub use canton_daml as daml;
 pub use canton_ledger as ledger;
 
+/// Reading a local development network out of the environment — the variables
+/// `canton-devkit localnet env` exports, and the party ids that come with them.
+pub use canton_core::localnet;
+
 pub use canton_core::{
     Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,
     TokenSource,

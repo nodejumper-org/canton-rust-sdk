@@ -387,6 +387,59 @@ impl JsonClient {
         }
     }
 
+    /// Build a client from a local development network exported into the
+    /// environment — the JSON counterpart to [`Config::from_env`].
+    ///
+    /// ```text
+    /// eval "$(canton-devkit localnet env demo)"
+    /// ```
+    ///
+    /// reads `CANTON_JSON_LEDGER_API_URL` and the default participant's JWT.
+    /// See [`canton_core::localnet`] for the full contract.
+    ///
+    /// # Errors
+    /// Returns [`Error::InvalidRequest`] when no JSON endpoint is exported,
+    /// naming the variable and the command that produces it. A missing token is
+    /// not an error: an unauthenticated LocalNet is a normal target.
+    ///
+    /// [`Config::from_env`]: canton_core::Config::from_env
+    pub fn from_env() -> Result<Self> {
+        Self::for_role(None)
+    }
+
+    /// The same, for a participant other than the default: `"app-user"`,
+    /// `"sv"`, or any role the exporter knows.
+    ///
+    /// # Errors
+    /// As [`Self::from_env`], naming that role's variable.
+    pub fn from_env_for(role: &str) -> Result<Self> {
+        Self::for_role(Some(role))
+    }
+
+    fn for_role(role: Option<&str>) -> Result<Self> {
+        use canton_core::localnet;
+
+        let base_url = localnet::json_endpoint(role).ok_or_else(|| {
+            let variable = match role {
+                None => "CANTON_JSON_LEDGER_API_URL".to_string(),
+                Some(role) => format!(
+                    "CANTON_{}_JSON_LEDGER_API_URL",
+                    role.to_uppercase().replace('-', "_")
+                ),
+            };
+            Error::InvalidRequest(format!(
+                "no JSON ledger endpoint in the environment: set {variable}. \
+                 A local network exports it with `canton-devkit localnet env <instance>`; \
+                 run that through `eval` first."
+            ))
+        })?;
+        let client = Self::new(base_url);
+        Ok(match localnet::token(role) {
+            Some(token) => client.with_token(token),
+            None => client,
+        })
+    }
+
     /// How long one HTTP attempt may take (default 30s), the JSON lane's
     /// counterpart to [`Config::with_timeout`].
     ///
