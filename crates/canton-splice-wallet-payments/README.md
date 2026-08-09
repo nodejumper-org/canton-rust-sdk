@@ -7,6 +7,7 @@ do not edit by hand.
 | | |
 |---|---|
 | Source DAR | `splice-wallet-payments-0.1.14.dar` |
+| Splice release | 0.6.11 |
 | Daml SDK | 3.3.0 |
 | Generator | `dpm-codegen-rust` (`canton-codegen-cli`) |
 

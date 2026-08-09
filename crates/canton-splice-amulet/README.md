@@ -14,6 +14,7 @@ dependency closure, with JSON + gRPC codecs, typed `Choice`/`Template`/
 | | |
 |---|---|
 | Source DAR | `splice-amulet-0.1.14.dar` |
+| Splice release | 0.6.11 |
 | Daml SDK | 3.3.0 |
 | Generator | `dpm-codegen-rust` (`canton-codegen-cli`) |
 
