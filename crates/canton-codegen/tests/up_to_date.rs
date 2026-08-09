@@ -54,6 +54,48 @@ fn canton_splice_wallet_payments_bindings_are_up_to_date() {
     );
 }
 
+/// The same guard, on the one DAR that lives in this repository.
+///
+/// The four above need a DAR from a Splice or cn-quickstart checkout, so on a
+/// machine without one they skip — and a skipped test is reported as a passing
+/// one. CI has no such checkout, which means the property they exist to
+/// protect has never actually been enforced anywhere but a developer's laptop:
+/// three of those four crates are published, and nothing said the emitter still
+/// produces what was published.
+///
+/// This one needs nothing external and therefore runs everywhere, including
+/// CI. It does not cover the published crates directly, but it catches the
+/// thing that breaks them: an emitter change nobody meant to make. A deliberate
+/// change fails it too, which is the point — regenerating the fixture is the
+/// step that reminds you to regenerate the crates.
+///
+/// Regenerate with:
+/// `cargo run -p canton-codegen-cli -- --dar testdata/splice-api-token-holding-v1-1.0.0.dar
+///  --out /tmp/b --runtime-path crates/canton-daml`
+/// then copy `/tmp/b/src/lib.rs` over the fixture.
+#[test]
+fn the_emitter_still_produces_the_committed_fixture() {
+    let dar = Dar::open(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../testdata/splice-api-token-holding-v1-1.0.0.dar"
+    ))
+    .expect("the fixture DAR is committed to this repository");
+    let (krate, _errors) = lower_dar(&dar).expect("lower DAR");
+    let regenerated = generate_crate(&krate).expect("generate crate");
+    let committed = include_str!("fixtures/holding_v1.rs");
+
+    assert_eq!(
+        normalize(&regenerated),
+        normalize(committed),
+        "the emitter no longer produces the committed fixture. If that was \
+         intended, regenerate it — and regenerate the four bindings crates with \
+         it, because they are published and this is the only guard that runs in CI."
+    );
+    // Printed so CI can assert the test ran rather than skipped, the way the
+    // conformance-oracle job already does.
+    println!("emitter fixture agreement: ok");
+}
+
 /// Regenerate the bindings from the DAR named by `dar_env` and compare — at the
 /// AST level, so formatting is ignored — against the committed `src/lib.rs`.
 fn check(dar_env: &str, dar_name: &str, committed_path: &str) {

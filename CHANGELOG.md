@@ -140,6 +140,15 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-codegen` (drift guard):** the guard that keeps the committed
+  bindings honest now runs in CI. The four existing ones need a DAR from a
+  Splice or cn-quickstart checkout, so on a machine without one they skip — and
+  a skipped test reads exactly like a passing one, which meant the property had
+  never been enforced anywhere but a developer's laptop, for three crates that
+  are published. A fifth guard regenerates from the DAR committed to this
+  repository and AST-compares against a committed fixture, and the CI job
+  asserts it ran rather than skipped, the way the conformance-oracle job
+  already did.
 - **`canton-daml` (typed read on JSON):** `Template::from_json_created_event`
   is the JSON counterpart of `from_created_event`, which was gRPC-only. Both
   transports carry the same contract for the same bindings, so an application

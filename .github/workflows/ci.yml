@@ -127,6 +127,16 @@ jobs:
           # No Cargo.lock is generated for the output crate, so --locked could
           # only ever fail here.
           cd "$RUNNER_TEMP/bindings" && cargo check
+      - name: The emitter still produces the committed fixture
+        run: |
+          # The four drift guards over the published bindings crates need a DAR
+          # from a Splice / cn-quickstart checkout, which this runner does not
+          # have, so they skip — and a skipped test is a passing one. This fifth
+          # guard uses the DAR in the repository and therefore actually runs;
+          # assert that it did, the way the conformance-oracle job does.
+          cargo test -p canton-codegen --test up_to_date -- --nocapture | tee /tmp/drift.log
+          grep -q 'emitter fixture agreement: ok' /tmp/drift.log || {
+            echo "::error::the emitter drift guard skipped instead of running"; exit 1; }
 
   # The native LF decoder claims to agree with the official JVM reader. That
   # claim is only worth what a reviewer can re-run, so run it here rather than
