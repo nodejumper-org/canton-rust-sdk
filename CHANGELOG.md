@@ -140,6 +140,19 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-codegen` (drift guard, published crates):** a CI job fetches the
+  three DARs the published bindings were generated from — cn-quickstart tracks
+  them in git — at a pinned commit, verifies their SHA-256, and runs the guards
+  against them, asserting each one ran rather than skipped. Nothing before this
+  checked on any push that the emitter still produces what is on crates.io.
+  (`canton-quickstart-licensing` stays local-only: its DAR is built from source
+  rather than committed, so there is nothing to pin.)
+- **`canton-daml` (fixture drift):** the test fixture that claims to be written
+  "exactly as the generator emits" is now checked against the real emitter
+  instead of asserting it in a comment. It had drifted three times — the
+  `.at(label)` on each field decode, the serde derives, and the per-field
+  renames — and each drift quietly removed a path from coverage while every
+  test stayed green.
 - **`canton-codegen` (manifest injection):** the DAR's package version is
   validated before it reaches the generated `Cargo.toml`. It was interpolated
   raw, so a version of the form `0.1.0"` + newline + `[dependencies.evil]` +

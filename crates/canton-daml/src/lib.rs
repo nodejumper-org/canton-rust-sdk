@@ -99,14 +99,25 @@ mod tests {
     // As-if-generated shapes: a payload using the runtime types, its
     // `ToValue`/`FromValue` written exactly as the generator emits them (via
     // `record` / `record_field`), and a choice argument with its `Choice` impl.
-    // The serde derives are part of "as the generator emits": every generated
-    // payload carries them, and leaving them off here let the JSON half of the
-    // codec go untested against the shape it is meant to mirror.
+    //
+    // "Exactly as the generator emits" is checked, not asserted:
+    // tests/fixture_matches_the_generator.rs runs the real emitter and compares
+    // the constructs. It drifted three times before that existed — the `.at()`
+    // on each decode, the serde derives, and the renames — and each time the
+    // drift silently removed a path from coverage while the tests stayed green.
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct AppInstall {
+        #[serde(rename = "provider")]
         provider: Party,
+        #[serde(rename = "amount")]
         amount: Numeric,
+        #[serde(rename = "tags")]
         tags: Vec<String>,
+        // The Daml label differs from the Rust name, which is the ordinary
+        // case — Daml writes camelCase and the generator snake-cases it. A
+        // fixture whose labels all happened to match left the rename itself
+        // unexercised here.
+        #[serde(rename = "noteText")]
         note: Option<String>,
     }
 
@@ -116,7 +127,7 @@ mod tests {
                 ("provider", ToValue::to_value(&self.provider)),
                 ("amount", ToValue::to_value(&self.amount)),
                 ("tags", ToValue::to_value(&self.tags)),
-                ("note", ToValue::to_value(&self.note)),
+                ("noteText", ToValue::to_value(&self.note)),
             ])
         }
     }
@@ -130,7 +141,7 @@ mod tests {
                     .map_err(|e| e.at("amount"))?,
                 tags: FromValue::from_value(required_field(value, 2, "tags")?)
                     .map_err(|e| e.at("tags"))?,
-                note: optional_field(value, 3, "note").map_err(|e| e.at("note"))?,
+                note: optional_field(value, 3, "noteText").map_err(|e| e.at("noteText"))?,
             })
         }
     }
@@ -164,7 +175,7 @@ mod tests {
                 ("provider", ToValue::to_value(&self.provider)),
                 ("amount", ToValue::to_value(&self.amount)),
                 ("tags", ToValue::to_value(&self.tags)),
-                ("note", ToValue::to_value(&self.note)),
+                ("noteText", ToValue::to_value(&self.note)),
             ])
         }
     }
@@ -216,7 +227,7 @@ mod tests {
             ("provider", ToValue::to_value(&Party::new("alice"))),
             ("amount", ToValue::to_value(&Party::new("not-a-number"))),
             ("tags", ToValue::to_value(&Vec::<String>::new())),
-            ("note", ToValue::to_value(&Option::<String>::None)),
+            ("noteText", ToValue::to_value(&Option::<String>::None)),
         ]);
 
         let err = <AppInstall as FromValue>::from_value(&wrong).expect_err("amount is not a Party");
@@ -834,7 +845,7 @@ mod tests {
             "provider": "alice::1220ab",
             "amount": "1.5",
             "tags": ["a"],
-            "note": null
+            "noteText": null
         });
 
         // Wrapped the way a transaction's `events` are.

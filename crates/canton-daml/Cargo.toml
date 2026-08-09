@@ -24,5 +24,13 @@ serde        = { workspace = true }
 serde_json   = { workspace = true }
 time         = { workspace = true }
 
+[dev-dependencies]
+# Only for the test that keeps the "as the generator emits" fixture honest.
+# There is no cycle: `canton-codegen` depends on `canton-lf`, never on this
+# crate. A dev-dependency is invisible to consumers, and the alternative is a
+# comment claiming a correspondence nothing checks — which drifted twice.
+canton-codegen = { workspace = true }
+canton-lf      = { workspace = true }
+
 [lints]
 workspace = true

@@ -239,7 +239,9 @@ dependencies = [
 name = "canton-daml"
 version = "0.2.0"
 dependencies = [
+ "canton-codegen",
  "canton-core",
+ "canton-lf",
  "canton-proto",
  "serde",
  "serde_json",

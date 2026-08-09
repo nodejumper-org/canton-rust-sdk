@@ -164,6 +164,64 @@ jobs:
           grep -q 'oracle agreement:' /tmp/oracle.log || {
             echo "::error::the oracle skipped instead of running"; exit 1; }
 
+  # The three published bindings crates are checked-in generated code, and the
+  # tests that keep them in step with the emitter are gated on a DAR that lives
+  # in someone else's repository. Without one they skip — and a skipped test is
+  # reported as a passing one, so on every push so far nothing had checked that
+  # the emitter still produces what is on crates.io.
+  #
+  # cn-quickstart tracks those DARs in git, so they are fetched from a pinned
+  # commit and checked against their SHA-256 rather than vendored: no repo
+  # bloat, and the pin is what makes the run reproducible. Bumping the pin is a
+  # deliberate edit that comes with new checksums.
+  #
+  # canton-quickstart-licensing is absent on purpose: its DAR is built from
+  # source in cn-quickstart rather than committed, so there is nothing to pin.
+  # That guard stays local-only.
+  bindings-drift:
+    name: Committed bindings match the emitter
+    runs-on: ubuntu-latest
+    env:
+      QUICKSTART_COMMIT: 41f2d75cd16eff28aedfaf2e9a2278a881b1c71a
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Fetch the DARs the committed crates were generated from
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dars"
+          base="https://raw.githubusercontent.com/digital-asset/cn-quickstart/${QUICKSTART_COMMIT}/quickstart/daml/dars"
+          cat > "$RUNNER_TEMP/dars/SHA256SUMS" <<'SUMS'
+          48aaa72dfc992c6c89d5bfa84aece9fd9dad992e281252674fe33e203b2a391b  splice-amulet-0.1.14.dar
+          f5897dbe3a8c6da1ce1b25f46ab739777a70c0ed0e4057d6336c77cab9a7d6fc  splice-wallet-0.1.14.dar
+          e12ab52b325f488e87adcd4143058e16341c001bb77eb0adc0715bf5badee457  splice-wallet-payments-0.1.14.dar
+          SUMS
+          sed -i 's/^ *//' "$RUNNER_TEMP/dars/SHA256SUMS"
+          cd "$RUNNER_TEMP/dars"
+          while read -r _ name; do curl -fsSL -o "$name" "$base/$name"; done < SHA256SUMS
+          # A DAR that is not the one the crate was generated from would make the
+          # guard compare against the wrong thing and pass for the wrong reason.
+          sha256sum -c SHA256SUMS
+      - name: The emitter still produces the committed crates
+        env:
+          CANTON_SPLICE_AMULET_DAR: ${{ runner.temp }}/dars/splice-amulet-0.1.14.dar
+          CANTON_SPLICE_WALLET_DAR: ${{ runner.temp }}/dars/splice-wallet-0.1.14.dar
+          CANTON_SPLICE_WALLET_PAYMENTS_DAR: ${{ runner.temp }}/dars/splice-wallet-payments-0.1.14.dar
+        run: |
+          set -euo pipefail
+          cargo test -p canton-codegen --test up_to_date -- --nocapture | tee /tmp/drift.log
+          # Assert each guard ran. Without this the job is green when a variable
+          # is misspelled, which is the failure mode it exists to remove.
+          for var in CANTON_SPLICE_AMULET_DAR CANTON_SPLICE_WALLET_DAR \
+                     CANTON_SPLICE_WALLET_PAYMENTS_DAR; do
+            grep -q "bindings agreement: ${var} ok" /tmp/drift.log || {
+              echo "::error::the ${var} drift guard did not run"; exit 1; }
+          done
+          ! grep -q 'skipping: set CANTON_SPLICE' /tmp/drift.log || {
+            echo "::error::a guard skipped despite its DAR being present"; exit 1; }
+
   # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
   # crates.io — it guards the hand-written public API against accidental
   # breaking changes (generated proto types are exempt per the stability

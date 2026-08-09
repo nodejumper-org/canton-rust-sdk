@@ -117,6 +117,10 @@ fn check(dar_env: &str, dar_name: &str, committed_path: &str) {
         normalize(&committed),
         "{committed_path} is stale — regenerate it from the DAR (see the crate README)"
     );
+    // Printed so CI can assert the guard ran rather than skipped. Cargo's own
+    // per-test output is not a contract — it changes with `-q` and with the
+    // harness — so the marker comes from the test itself.
+    println!("bindings agreement: {dar_env} ok");
 }
 
 /// Reduce Rust source to a canonical form (parse + re-emit).
