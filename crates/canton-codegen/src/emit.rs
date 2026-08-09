@@ -233,11 +233,20 @@ fn record_codecs(record: &Record) -> TokenStream {
     let from_fields = record.fields.iter().enumerate().map(|(index, field)| {
         let label = &field.label;
         let ident = field_ident(&field.label);
+        // `.at(label)` on the *decode* of the field, not on locating it:
+        // `required_field` already names the field it could not find, while a
+        // failure inside `from_value` — the wrong type three records down —
+        // otherwise arrives as a bare "expected Text" with no way to tell which
+        // field it came from. Each layer prepends its own label as the error
+        // travels up, so the path reads `owner.address.city`.
         if matches!(field.ty, DamlType::Optional(_)) {
             // Absent (normalized-away) optional fields decode as `None`.
-            quote! { #ident: rt::optional_field(value, #index, #label)?, }
+            quote! { #ident: rt::optional_field(value, #index, #label).map_err(|e| e.at(#label))?, }
         } else {
-            quote! { #ident: rt::FromValue::from_value(rt::required_field(value, #index, #label)?)?, }
+            quote! {
+                #ident: rt::FromValue::from_value(rt::required_field(value, #index, #label)?)
+                    .map_err(|e| e.at(#label))?,
+            }
         }
     });
 
@@ -348,7 +357,11 @@ fn variant_codecs(variant: &Variant) -> TokenStream {
     let from_arms = variant.constructors.iter().map(|ctor| {
         let ctor_name = type_ident(&ctor.name);
         let label = &ctor.name;
-        quote! { #label => ::core::result::Result::Ok(#name::#ctor_name(rt::FromValue::from_value(payload)?)), }
+        quote! {
+            #label => ::core::result::Result::Ok(#name::#ctor_name(
+                rt::FromValue::from_value(payload).map_err(|e| e.at(#label))?,
+            )),
+        }
     });
 
     let (impl_generics, ty, to_where) =

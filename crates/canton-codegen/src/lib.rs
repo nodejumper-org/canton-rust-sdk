@@ -271,6 +271,34 @@ mod tests {
     }
 
     #[test]
+    fn generated_decoders_attach_the_field_name_to_a_failure() {
+        // Without this a mismatch three records down arrives as a bare
+        // "expected Text" with nothing to locate it by. `ValueError::at`
+        // prepends, so each layer contributes its own label on the way up.
+        let record = Record {
+            name: "Payload".to_string(),
+            type_params: Vec::new(),
+            fields: vec![
+                field("owner", DamlType::Party),
+                field("note", DamlType::Optional(Box::new(DamlType::Text))),
+            ],
+        };
+        let src = generate_record(&record).unwrap();
+        syn::parse_file(&src).unwrap();
+
+        // Both the required and the optional path carry it.
+        assert!(src.contains(r#".map_err(|e| e.at("owner"))"#), "{src}");
+        assert!(src.contains(r#".map_err(|e| e.at("note"))"#), "{src}");
+        // …and it wraps the *decode*, not the lookup: `required_field` already
+        // names the field it could not find, so wrapping that too would say it
+        // twice.
+        assert!(
+            src.contains(r#"rt::required_field(value, 0usize, "owner")?)"#),
+            "{src}"
+        );
+    }
+
+    #[test]
     fn record_emits_value_codecs() {
         let record = Record {
             name: "Payload".to_string(),

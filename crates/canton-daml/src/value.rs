@@ -23,8 +23,9 @@ pub struct ValueError {
 }
 
 impl ValueError {
-    /// A conversion error with no path context. Hand-written [`FromValue`]
-    /// impls use this; generated code adds context with [`ValueError::at`].
+    /// A conversion error with no path context yet. Generated `FromValue`
+    /// bodies wrap each field decode in [`ValueError::at`], so by the time one
+    /// of these reaches a caller it names the field it came from.
     #[must_use]
     pub fn new(message: impl Into<String>) -> Self {
         Self {

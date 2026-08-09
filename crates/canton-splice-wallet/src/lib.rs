@@ -64,7 +64,8 @@ pub mod daml_prim_DA_Exception_ArithmeticError {
                 ::core::result::Result::Ok(Self {
                     message: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "message",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -92,7 +93,8 @@ pub mod daml_prim_DA_Exception_AssertionFailed {
                 ::core::result::Result::Ok(Self {
                     message: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "message",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -120,7 +122,8 @@ pub mod daml_prim_DA_Exception_GeneralError {
                 ::core::result::Result::Ok(Self {
                     message: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "message",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -148,7 +151,8 @@ pub mod daml_prim_DA_Exception_PreconditionFailed {
                 ::core::result::Result::Ok(Self {
                     message: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "message",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -187,11 +191,11 @@ pub mod daml_prim_DA_Types {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "Left" => ::core::result::Result::Ok(Either::Left(rt::FromValue::from_value(
-                        payload,
-                    )?)),
+                    "Left" => ::core::result::Result::Ok(Either::Left(
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Left"))?,
+                    )),
                     "Right" => ::core::result::Result::Ok(Either::Right(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Right"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("Either", other))
@@ -226,8 +230,10 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
                 })
             }
         }
@@ -263,9 +269,12 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
                 })
             }
         }
@@ -306,10 +315,14 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
                 })
             }
         }
@@ -355,11 +368,16 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
                 })
             }
         }
@@ -410,12 +428,18 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
                 })
             }
         }
@@ -471,13 +495,20 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
                 })
             }
         }
@@ -538,14 +569,22 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
                 })
             }
         }
@@ -612,15 +651,24 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
                 })
             }
         }
@@ -693,16 +741,26 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
                 })
             }
         }
@@ -780,17 +838,28 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
                 })
             }
         }
@@ -873,18 +942,30 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
                 })
             }
         }
@@ -972,19 +1053,32 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
                 })
             }
         }
@@ -1077,20 +1171,34 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
                 })
             }
         }
@@ -1188,21 +1296,36 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
                 })
             }
         }
@@ -1305,22 +1428,38 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                        .map_err(|e| e.at("_16"))?,
                 })
             }
         }
@@ -1447,23 +1586,40 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                        .map_err(|e| e.at("_16"))?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                        .map_err(|e| e.at("_17"))?,
                 })
             }
         }
@@ -1635,24 +1791,42 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                        .map_err(|e| e.at("_16"))?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                        .map_err(|e| e.at("_17"))?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                        .map_err(|e| e.at("_18"))?,
                 })
             }
         }
@@ -1832,25 +2006,44 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
-                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                        .map_err(|e| e.at("_16"))?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                        .map_err(|e| e.at("_17"))?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                        .map_err(|e| e.at("_18"))?,
+                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)
+                        .map_err(|e| e.at("_19"))?,
                 })
             }
         }
@@ -2078,26 +2271,46 @@ pub mod daml_prim_DA_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)?,
-                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)?,
-                    _20: rt::FromValue::from_value(rt::required_field(value, 19usize, "_20")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
+                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                        .map_err(|e| e.at("_2"))?,
+                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                        .map_err(|e| e.at("_3"))?,
+                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                        .map_err(|e| e.at("_4"))?,
+                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                        .map_err(|e| e.at("_5"))?,
+                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                        .map_err(|e| e.at("_6"))?,
+                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                        .map_err(|e| e.at("_7"))?,
+                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                        .map_err(|e| e.at("_8"))?,
+                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                        .map_err(|e| e.at("_9"))?,
+                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                        .map_err(|e| e.at("_10"))?,
+                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                        .map_err(|e| e.at("_11"))?,
+                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                        .map_err(|e| e.at("_12"))?,
+                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                        .map_err(|e| e.at("_13"))?,
+                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                        .map_err(|e| e.at("_14"))?,
+                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                        .map_err(|e| e.at("_15"))?,
+                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                        .map_err(|e| e.at("_16"))?,
+                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                        .map_err(|e| e.at("_17"))?,
+                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                        .map_err(|e| e.at("_18"))?,
+                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)
+                        .map_err(|e| e.at("_19"))?,
+                    _20: rt::FromValue::from_value(rt::required_field(value, 19usize, "_20")?)
+                        .map_err(|e| e.at("_20"))?,
                 })
             }
         }
@@ -2126,7 +2339,8 @@ pub mod daml_prim_GHC_Tuple {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)?,
+                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                        .map_err(|e| e.at("_1"))?,
                 })
             }
         }
@@ -2316,9 +2530,8 @@ pub mod daml_stdlib_DA_Internal_Down {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "unpack",
-                    )?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                        .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
@@ -2392,16 +2605,16 @@ pub mod daml_stdlib_DA_Logic_Types {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "Proposition" => ::core::result::Result::Ok(Formula::Proposition(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Proposition"))?,
                     )),
                     "Negation" => ::core::result::Result::Ok(Formula::Negation(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Negation"))?,
                     )),
                     "Conjunction" => ::core::result::Result::Ok(Formula::Conjunction(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Conjunction"))?,
                     )),
                     "Disjunction" => ::core::result::Result::Ok(Formula::Disjunction(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Disjunction"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("Formula", other))
@@ -2434,7 +2647,8 @@ pub mod daml_stdlib_DA_Monoid_Types {
                 ::core::result::Result::Ok(Self {
                     get_all: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "getAll",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("getAll"))?,
                 })
             }
         }
@@ -2458,7 +2672,8 @@ pub mod daml_stdlib_DA_Monoid_Types {
                 ::core::result::Result::Ok(Self {
                     get_any: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "getAny",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("getAny"))?,
                 })
             }
         }
@@ -2482,9 +2697,8 @@ pub mod daml_stdlib_DA_Monoid_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "unpack",
-                    )?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                        .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
@@ -2508,9 +2722,8 @@ pub mod daml_stdlib_DA_Monoid_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "unpack",
-                    )?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                        .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
@@ -2544,8 +2757,10 @@ pub mod daml_stdlib_DA_NonEmpty_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    hd: rt::FromValue::from_value(rt::required_field(value, 0usize, "hd")?)?,
-                    tl: rt::FromValue::from_value(rt::required_field(value, 1usize, "tl")?)?,
+                    hd: rt::FromValue::from_value(rt::required_field(value, 0usize, "hd")?)
+                        .map_err(|e| e.at("hd"))?,
+                    tl: rt::FromValue::from_value(rt::required_field(value, 1usize, "tl")?)
+                        .map_err(|e| e.at("tl"))?,
                 })
             }
         }
@@ -2574,7 +2789,7 @@ pub mod daml_stdlib_DA_Random_Types {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "Minstd" => ::core::result::Result::Ok(Minstd::Minstd(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Minstd"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("Minstd", other))
@@ -2607,9 +2822,8 @@ pub mod daml_stdlib_DA_Semigroup_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "unpack",
-                    )?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                        .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
@@ -2633,9 +2847,8 @@ pub mod daml_stdlib_DA_Semigroup_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "unpack",
-                    )?)?,
+                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                        .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
@@ -2664,7 +2877,8 @@ pub mod daml_stdlib_DA_Set_Types {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    map: rt::FromValue::from_value(rt::required_field(value, 0usize, "map")?)?,
+                    map: rt::FromValue::from_value(rt::required_field(value, 0usize, "map")?)
+                        .map_err(|e| e.at("map"))?,
                 })
             }
         }
@@ -2730,37 +2944,44 @@ pub mod daml_stdlib_DA_Stack_Types {
                         value,
                         0usize,
                         "srcLocPackage",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocPackage"))?,
                     src_loc_module: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "srcLocModule",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocModule"))?,
                     src_loc_file: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "srcLocFile",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocFile"))?,
                     src_loc_start_line: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "srcLocStartLine",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocStartLine"))?,
                     src_loc_start_col: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "srcLocStartCol",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocStartCol"))?,
                     src_loc_end_line: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "srcLocEndLine",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocEndLine"))?,
                     src_loc_end_col: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "srcLocEndCol",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("srcLocEndCol"))?,
                 })
             }
         }
@@ -2790,7 +3011,8 @@ pub mod daml_stdlib_DA_Time_Types {
                         value,
                         0usize,
                         "microseconds",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("microseconds"))?,
                 })
             }
         }
@@ -2832,10 +3054,10 @@ pub mod daml_stdlib_DA_Validation_Types {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "Errors" => ::core::result::Result::Ok(Validation::Errors(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Errors"))?,
                     )),
                     "Success" => ::core::result::Result::Ok(Validation::Success(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Success"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("Validation", other))
@@ -2867,8 +3089,10 @@ pub mod splice_amulet {
         impl rt::FromValue for ForOwner {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    owner: rt::FromValue::from_value(rt::required_field(value, 1usize, "owner")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    owner: rt::FromValue::from_value(rt::required_field(value, 1usize, "owner")?)
+                        .map_err(|e| e.at("owner"))?,
                 })
             }
         }
@@ -2891,8 +3115,10 @@ pub mod splice_amulet {
         impl rt::FromValue for ForRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                 })
             }
         }
@@ -2910,7 +3136,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ForDso {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                 })
             }
         }
@@ -2928,9 +3155,8 @@ pub mod splice_amulet {
         impl rt::FromValue for Round {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    number: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "number",
-                    )?)?,
+                    number: rt::FromValue::from_value(rt::required_field(value, 0usize, "number")?)
+                        .map_err(|e| e.at("number"))?,
                 })
             }
         }
@@ -3027,24 +3253,29 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "transferPreapprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferPreapprovalCid"))?,
                     transfer_result: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferResult",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferResult"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     amulet_paid: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "amuletPaid",
-                    )?)?,
-                    meta: rt::optional_field(value, 5usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletPaid"))?,
+                    meta: rt::optional_field(value, 5usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3069,10 +3300,9 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferPreapproval_SendResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    result: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "result",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    result: rt::FromValue::from_value(rt::required_field(value, 0usize, "result")?)
+                        .map_err(|e| e.at("result"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3090,7 +3320,8 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferPreapproval_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)?,
+                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)
+                        .map_err(|e| e.at("p"))?,
                 })
             }
         }
@@ -3132,15 +3363,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     new_expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "newExpiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newExpiresAt"))?,
                 })
             }
         }
@@ -3174,17 +3406,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "sender",
-                    )?)?,
-                    description: rt::optional_field(value, 4usize, "description")?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 3usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
+                    description: rt::optional_field(value, 4usize, "description")
+                        .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -3202,7 +3433,8 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferPreapproval_Fetch {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)?,
+                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)
+                        .map_err(|e| e.at("p"))?,
                 })
             }
         }
@@ -3226,7 +3458,8 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     dummy_arg: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "dummyArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyArg"))?,
                 })
             }
         }
@@ -3250,7 +3483,8 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     dummy_arg: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "dummyArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyArg"))?,
                 })
             }
         }
@@ -3287,12 +3521,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "validatorRightCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorRightCid"))?,
                     transfer_preapproval_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferPreapprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferPreapprovalCid"))?,
                 })
             }
         }
@@ -3310,9 +3546,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ExternalPartySetupProposal_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -3330,9 +3565,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ExternalPartySetupProposal_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -3378,12 +3612,14 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     change_to_initial_amount_as_of_round_zero: rt::FromValue::from_value(
                         rt::required_field(value, 0usize, "changeToInitialAmountAsOfRoundZero")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("changeToInitialAmountAsOfRoundZero"))?,
                     change_to_holding_fees_rate: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "changeToHoldingFeesRate",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("changeToHoldingFeesRate"))?,
                 })
             }
         }
@@ -3480,62 +3716,74 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "inputAppRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("inputAppRewardAmount"))?,
                     input_validator_reward_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "inputValidatorRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("inputValidatorRewardAmount"))?,
                     input_sv_reward_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "inputSvRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("inputSvRewardAmount"))?,
                     input_amulet_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "inputAmuletAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("inputAmuletAmount"))?,
                     balance_changes: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "balanceChanges",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("balanceChanges"))?,
                     holding_fees: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "holdingFees",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("holdingFees"))?,
                     output_fees: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "outputFees",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("outputFees"))?,
                     sender_change_fee: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "senderChangeFee",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("senderChangeFee"))?,
                     sender_change_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         8usize,
                         "senderChangeAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("senderChangeAmount"))?,
                     amulet_price: rt::FromValue::from_value(rt::required_field(
                         value,
                         9usize,
                         "amuletPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
                     input_validator_faucet_amount: rt::optional_field(
                         value,
                         10usize,
                         "inputValidatorFaucetAmount",
-                    )?,
+                    )
+                    .map_err(|e| e.at("inputValidatorFaucetAmount"))?,
                     input_unclaimed_activity_record_amount: rt::optional_field(
                         value,
                         11usize,
                         "inputUnclaimedActivityRecordAmount",
-                    )?,
+                    )
+                    .map_err(|e| e.at("inputUnclaimedActivityRecordAmount"))?,
                 })
             }
         }
@@ -3580,18 +3828,21 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "transferPreapprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferPreapprovalCid"))?,
                     transfer_result: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferResult",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferResult"))?,
                     amulet_paid: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "amuletPaid",
-                    )?)?,
-                    meta: rt::optional_field(value, 3usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletPaid"))?,
+                    meta: rt::optional_field(value, 3usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3640,24 +3891,29 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "proposalCid",
-                    )?)?,
-                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
+                    )?)
+                    .map_err(|e| e.at("proposalCid"))?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)
+                        .map_err(|e| e.at("user"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     transfer_result: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "transferResult",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferResult"))?,
                     amulet_paid: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "amuletPaid",
-                    )?)?,
-                    meta: rt::optional_field(value, 5usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletPaid"))?,
+                    meta: rt::optional_field(value, 5usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3706,22 +3962,27 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules_BuyMemberTrafficResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    round: rt::FromValue::from_value(rt::required_field(value, 0usize, "round")?)?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 0usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     summary: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "summary",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("summary"))?,
                     amulet_paid: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "amuletPaid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPaid"))?,
                     purchased_traffic: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "purchasedTraffic",
-                    )?)?,
-                    sender_change_amulet: rt::optional_field(value, 4usize, "senderChangeAmulet")?,
-                    meta: rt::optional_field(value, 5usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("purchasedTraffic"))?,
+                    sender_change_amulet: rt::optional_field(value, 4usize, "senderChangeAmulet")
+                        .map_err(|e| e.at("senderChangeAmulet"))?,
+                    meta: rt::optional_field(value, 5usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3765,17 +4026,21 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    round: rt::FromValue::from_value(rt::required_field(value, 0usize, "round")?)?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 0usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     summary: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "summary",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("summary"))?,
                     created_amulets: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "createdAmulets",
-                    )?)?,
-                    sender_change_amulet: rt::optional_field(value, 3usize, "senderChangeAmulet")?,
-                    meta: rt::optional_field(value, 4usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("createdAmulets"))?,
+                    sender_change_amulet: rt::optional_field(value, 3usize, "senderChangeAmulet")
+                        .map_err(|e| e.at("senderChangeAmulet"))?,
+                    meta: rt::optional_field(value, 4usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -3810,16 +4075,17 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     receiver_fee_ratio: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "receiverFeeRatio",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    lock: rt::optional_field(value, 3usize, "lock")?,
+                    )?)
+                    .map_err(|e| e.at("receiverFeeRatio"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    lock: rt::optional_field(value, 3usize, "lock").map_err(|e| e.at("lock"))?,
                 })
             }
         }
@@ -3859,19 +4125,20 @@ pub mod splice_amulet {
         impl rt::FromValue for Transfer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 2usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     outputs: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "outputs",
-                    )?)?,
-                    beneficiaries: rt::optional_field(value, 4usize, "beneficiaries")?,
+                    )?)
+                    .map_err(|e| e.at("outputs"))?,
+                    beneficiaries: rt::optional_field(value, 4usize, "beneficiaries")
+                        .map_err(|e| e.at("beneficiaries"))?,
                 })
             }
         }
@@ -3943,31 +4210,43 @@ pub mod splice_amulet {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "InputAppRewardCoupon" => ::core::result::Result::Ok(
-                        TransferInput::InputAppRewardCoupon(rt::FromValue::from_value(payload)?),
-                    ),
-                    "InputValidatorRewardCoupon" => {
-                        ::core::result::Result::Ok(TransferInput::InputValidatorRewardCoupon(
-                            rt::FromValue::from_value(payload)?,
+                    "InputAppRewardCoupon" => {
+                        ::core::result::Result::Ok(TransferInput::InputAppRewardCoupon(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("InputAppRewardCoupon"))?,
                         ))
                     }
-                    "InputSvRewardCoupon" => ::core::result::Result::Ok(
-                        TransferInput::InputSvRewardCoupon(rt::FromValue::from_value(payload)?),
-                    ),
+                    "InputValidatorRewardCoupon" => {
+                        ::core::result::Result::Ok(TransferInput::InputValidatorRewardCoupon(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("InputValidatorRewardCoupon"))?,
+                        ))
+                    }
+                    "InputSvRewardCoupon" => {
+                        ::core::result::Result::Ok(TransferInput::InputSvRewardCoupon(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("InputSvRewardCoupon"))?,
+                        ))
+                    }
                     "InputAmulet" => ::core::result::Result::Ok(TransferInput::InputAmulet(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("InputAmulet"))?,
                     )),
-                    "ExtTransferInput" => ::core::result::Result::Ok(
-                        TransferInput::ExtTransferInput(rt::FromValue::from_value(payload)?),
-                    ),
+                    "ExtTransferInput" => {
+                        ::core::result::Result::Ok(TransferInput::ExtTransferInput(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ExtTransferInput"))?,
+                        ))
+                    }
                     "InputValidatorLivenessActivityRecord" => ::core::result::Result::Ok(
                         TransferInput::InputValidatorLivenessActivityRecord(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("InputValidatorLivenessActivityRecord"))?,
                         ),
                     ),
                     "InputUnclaimedActivityRecord" => {
                         ::core::result::Result::Ok(TransferInput::InputUnclaimedActivityRecord(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("InputUnclaimedActivityRecord"))?,
                         ))
                     }
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -4012,12 +4291,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "dummyUnitField",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyUnitField"))?,
                     opt_input_validator_faucet_coupon: rt::optional_field(
                         value,
                         1usize,
                         "optInputValidatorFaucetCoupon",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optInputValidatorFaucetCoupon"))?,
                 })
             }
         }
@@ -4055,17 +4336,24 @@ pub mod splice_amulet {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "TransferResultAmulet" => ::core::result::Result::Ok(
-                        CreatedAmulet::TransferResultAmulet(rt::FromValue::from_value(payload)?),
-                    ),
-                    "TransferResultLockedAmulet" => {
-                        ::core::result::Result::Ok(CreatedAmulet::TransferResultLockedAmulet(
-                            rt::FromValue::from_value(payload)?,
+                    "TransferResultAmulet" => {
+                        ::core::result::Result::Ok(CreatedAmulet::TransferResultAmulet(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferResultAmulet"))?,
                         ))
                     }
-                    "ExtCreatedAmulet" => ::core::result::Result::Ok(
-                        CreatedAmulet::ExtCreatedAmulet(rt::FromValue::from_value(payload)?),
-                    ),
+                    "TransferResultLockedAmulet" => {
+                        ::core::result::Result::Ok(CreatedAmulet::TransferResultLockedAmulet(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferResultLockedAmulet"))?,
+                        ))
+                    }
+                    "ExtCreatedAmulet" => {
+                        ::core::result::Result::Ok(CreatedAmulet::ExtCreatedAmulet(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ExtCreatedAmulet"))?,
+                        ))
+                    }
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
                         "CreatedAmulet",
                         other,
@@ -4095,7 +4383,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "dummyUnitField",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyUnitField"))?,
                 })
             }
         }
@@ -4153,18 +4442,22 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openMiningRound",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openMiningRound"))?,
                     issuing_mining_rounds: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "issuingMiningRounds",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuingMiningRounds"))?,
                     validator_rights: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "validatorRights",
-                    )?)?,
-                    featured_app_right: rt::optional_field(value, 3usize, "featuredAppRight")?,
+                    )?)
+                    .map_err(|e| e.at("validatorRights"))?,
+                    featured_app_right: rt::optional_field(value, 3usize, "featuredAppRight")
+                        .map_err(|e| e.at("featuredAppRight"))?,
                 })
             }
         }
@@ -4192,10 +4485,12 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletRules"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                 })
             }
         }
@@ -4237,13 +4532,16 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletRules"))?,
                     open_mining_round: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "openMiningRound",
-                    )?)?,
-                    featured_app_right: rt::optional_field(value, 2usize, "featuredAppRight")?,
+                    )?)
+                    .map_err(|e| e.at("openMiningRound"))?,
+                    featured_app_right: rt::optional_field(value, 2usize, "featuredAppRight")
+                        .map_err(|e| e.at("featuredAppRight"))?,
                 })
             }
         }
@@ -4273,16 +4571,17 @@ pub mod splice_amulet {
         impl rt::FromValue for PreprocessedTransferOutput {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)?,
+                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)
+                        .map_err(|e| e.at("owner"))?,
                     output_fee: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "outputFee",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    lock: rt::optional_field(value, 3usize, "lock")?,
+                    )?)
+                    .map_err(|e| e.at("outputFee"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    lock: rt::optional_field(value, 3usize, "lock").map_err(|e| e.at("lock"))?,
                 })
             }
         }
@@ -4366,45 +4665,54 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "totalAmuletAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalAmuletAmount"))?,
                     total_app_reward_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "totalAppRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalAppRewardAmount"))?,
                     total_validator_reward_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "totalValidatorRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalValidatorRewardAmount"))?,
                     total_validator_faucet_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "totalValidatorFaucetAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalValidatorFaucetAmount"))?,
                     total_sv_reward_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "totalSvRewardAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalSvRewardAmount"))?,
                     total_holding_fees: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "totalHoldingFees",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalHoldingFees"))?,
                     amount_archived_as_of_round_zero: rt::FromValue::from_value(
                         rt::required_field(value, 6usize, "amountArchivedAsOfRoundZero")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("amountArchivedAsOfRoundZero"))?,
                     change_to_holding_fees_rate: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "changeToHoldingFeesRate",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("changeToHoldingFeesRate"))?,
                     total_unclaimed_activity_record_amount: rt::optional_field(
                         value,
                         8usize,
                         "totalUnclaimedActivityRecordAmount",
-                    )?,
+                    )
+                    .map_err(|e| e.at("totalUnclaimedActivityRecordAmount"))?,
                 })
             }
         }
@@ -4457,29 +4765,28 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferContextSummary {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    featured_app_provider: rt::optional_field(
-                        value,
-                        0usize,
-                        "featuredAppProvider",
-                    )?,
-                    config: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "config",
-                    )?)?,
+                    featured_app_provider: rt::optional_field(value, 0usize, "featuredAppProvider")
+                        .map_err(|e| e.at("featuredAppProvider"))?,
+                    config: rt::FromValue::from_value(rt::required_field(value, 1usize, "config")?)
+                        .map_err(|e| e.at("config"))?,
                     open_round: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "openRound",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRound"))?,
                     issuing_mining_rounds: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "issuingMiningRounds",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuingMiningRounds"))?,
                     validator_rights: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "validatorRights",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorRights"))?,
                 })
             }
         }
@@ -4514,12 +4821,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "issueAppRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issueAppRewards"))?,
                     issue_validator_rewards: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "issueValidatorRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issueValidatorRewards"))?,
                 })
             }
         }
@@ -4537,9 +4846,8 @@ pub mod splice_amulet {
         impl rt::FromValue for InvalidTransfer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -4595,25 +4903,29 @@ pub mod splice_amulet {
                 match constructor {
                     "ITR_InsufficientFunds" => {
                         ::core::result::Result::Ok(InvalidTransferReason::ITR_InsufficientFunds(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ITR_InsufficientFunds"))?,
                         ))
                     }
                     "ITR_UnknownSynchronizer" => {
                         ::core::result::Result::Ok(InvalidTransferReason::ITR_UnknownSynchronizer(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ITR_UnknownSynchronizer"))?,
                         ))
                     }
                     "ITR_InsufficientTopupAmount" => ::core::result::Result::Ok(
                         InvalidTransferReason::ITR_InsufficientTopupAmount(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ITR_InsufficientTopupAmount"))?,
                         ),
                     ),
                     "ITR_Other" => ::core::result::Result::Ok(InvalidTransferReason::ITR_Other(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("ITR_Other"))?,
                     )),
                     "ExtInvalidTransferReason" => {
                         ::core::result::Result::Ok(InvalidTransferReason::ExtInvalidTransferReason(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ExtInvalidTransferReason"))?,
                         ))
                     }
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -4645,7 +4957,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "missingAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("missingAmount"))?,
                 })
             }
         }
@@ -4671,7 +4984,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                 })
             }
         }
@@ -4706,12 +5020,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "requestedTopupAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestedTopupAmount"))?,
                     min_topup_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "minTopupAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("minTopupAmount"))?,
                 })
             }
         }
@@ -4736,7 +5052,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "description",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -4762,7 +5079,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "dummyUnitField",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyUnitField"))?,
                 })
             }
         }
@@ -4797,12 +5115,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "markerCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("markerCids"))?,
                     open_mining_round_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "openMiningRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openMiningRoundCid"))?,
                 })
             }
         }
@@ -4833,7 +5153,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "scheduleItem",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("scheduleItem"))?,
                 })
             }
         }
@@ -4859,7 +5180,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "scheduleTime",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("scheduleTime"))?,
                 })
             }
         }
@@ -4890,7 +5212,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newScheduleItem",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newScheduleItem"))?,
                 })
             }
         }
@@ -4923,12 +5246,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newConfig"))?,
                     base_config: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "baseConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("baseConfig"))?,
                 })
             }
         }
@@ -4946,7 +5271,8 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules_Fetch {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)?,
+                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)
+                        .map_err(|e| e.at("p"))?,
                 })
             }
         }
@@ -4974,7 +5300,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "unclaimedRewardCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedRewardCids"))?,
                 })
             }
         }
@@ -5059,32 +5386,38 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                     validator_reward_coupon_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validatorRewardCouponCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorRewardCouponCids"))?,
                     app_coupon_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "appCouponCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("appCouponCids"))?,
                     sv_reward_coupon_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "svRewardCouponCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("svRewardCouponCids"))?,
                     opt_validator_faucet_coupon_cids: rt::optional_field(
                         value,
                         4usize,
                         "optValidatorFaucetCouponCids",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optValidatorFaucetCouponCids"))?,
                     opt_validator_liveness_activity_record_cids: rt::optional_field(
                         value,
                         5usize,
                         "optValidatorLivenessActivityRecordCids",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optValidatorLivenessActivityRecordCids"))?,
                 })
             }
         }
@@ -5111,7 +5444,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -5138,7 +5472,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "issuingRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuingRoundCid"))?,
                 })
             }
         }
@@ -5170,10 +5505,12 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "miningRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("miningRoundCid"))?,
                     summary: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "summary",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("summary"))?,
                 })
             }
         }
@@ -5222,22 +5559,26 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
                     round_to_archive_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "roundToArchiveCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("roundToArchiveCid"))?,
                     middle_round_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "middleRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("middleRoundCid"))?,
                     latest_round_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "latestRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("latestRoundCid"))?,
                 })
             }
         }
@@ -5273,13 +5614,16 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
                     round0_duration: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "round0Duration",
-                    )?)?,
-                    initial_round: rt::optional_field(value, 2usize, "initialRound")?,
+                    )?)
+                    .map_err(|e| e.at("round0Duration"))?,
+                    initial_round: rt::optional_field(value, 2usize, "initialRound")
+                        .map_err(|e| e.at("initialRound"))?,
                 })
             }
         }
@@ -5302,7 +5646,8 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                 })
             }
         }
@@ -5331,15 +5676,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     open_round: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "openRound",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRound"))?,
                 })
             }
         }
@@ -5368,15 +5714,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     open_round: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "openRound",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRound"))?,
                 })
             }
         }
@@ -5406,7 +5753,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "trafficCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trafficCids"))?,
                 })
             }
         }
@@ -5455,34 +5803,40 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules_BuyMemberTraffic {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                     traffic_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "trafficAmount",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 7usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("trafficAmount"))?,
+                    expected_dso: rt::optional_field(value, 7usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -5521,22 +5875,26 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 5usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
+                    expected_dso: rt::optional_field(value, 5usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -5578,22 +5936,26 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
-                    user: rt::FromValue::from_value(rt::required_field(value, 2usize, "user")?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 2usize, "user")?)
+                        .map_err(|e| e.at("user"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     preapproval_expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "preapprovalExpiresAt",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 5usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("preapprovalExpiresAt"))?,
+                    expected_dso: rt::optional_field(value, 5usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -5622,11 +5984,14 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     transfer: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "transfer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transfer"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 2usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    expected_dso: rt::optional_field(value, 2usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -5658,14 +6023,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     outputs: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "outputs",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 3usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("outputs"))?,
+                    expected_dso: rt::optional_field(value, 3usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -5693,7 +6060,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "appRewardCouponCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("appRewardCouponCids"))?,
                 })
             }
         }
@@ -5720,7 +6088,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newAmuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newAmuletRules"))?,
                 })
             }
         }
@@ -5747,7 +6116,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newAmuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newAmuletRules"))?,
                 })
             }
         }
@@ -5774,7 +6144,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newAmuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newAmuletRules"))?,
                 })
             }
         }
@@ -5801,7 +6172,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "newAmuletRules",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newAmuletRules"))?,
                 })
             }
         }
@@ -5828,7 +6200,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "unclaimedRewardCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedRewardCid"))?,
                 })
             }
         }
@@ -5852,7 +6225,8 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules_ClaimExpiredRewardsResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unclaimed_reward_cid: rt::optional_field(value, 0usize, "unclaimedRewardCid")?,
+                    unclaimed_reward_cid: rt::optional_field(value, 0usize, "unclaimedRewardCid")
+                        .map_err(|e| e.at("unclaimedRewardCid"))?,
                 })
             }
         }
@@ -5917,7 +6291,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -5944,7 +6319,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "issuingRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuingRoundCid"))?,
                 })
             }
         }
@@ -5977,12 +6353,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "summarizingRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("summarizingRoundCid"))?,
                     open_round_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "openRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRoundCid"))?,
                 })
             }
         }
@@ -6015,8 +6393,10 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openMiningRoundCid",
-                    )?)?,
-                    initial_round: rt::optional_field(value, 1usize, "initialRound")?,
+                    )?)
+                    .map_err(|e| e.at("openMiningRoundCid"))?,
+                    initial_round: rt::optional_field(value, 1usize, "initialRound")
+                        .map_err(|e| e.at("initialRound"))?,
                 })
             }
         }
@@ -6043,7 +6423,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "featuredAppRightCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("featuredAppRightCid"))?,
                 })
             }
         }
@@ -6075,8 +6456,9 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -6104,7 +6486,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
                 })
             }
         }
@@ -6132,7 +6515,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "mergedTrafficCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("mergedTrafficCid"))?,
                 })
             }
         }
@@ -6150,7 +6534,8 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules_ComputeFeesResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    fees: rt::FromValue::from_value(rt::required_field(value, 0usize, "fees")?)?,
+                    fees: rt::FromValue::from_value(rt::required_field(value, 0usize, "fees")?)
+                        .map_err(|e| e.at("fees"))?,
                 })
             }
         }
@@ -6217,15 +6602,18 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletRules {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     config_schedule: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "configSchedule",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("configSchedule"))?,
                     is_dev_net: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "isDevNet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("isDevNet"))?,
                 })
             }
         }
@@ -6473,19 +6861,24 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "validator",
-                    )?)?,
-                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)
+                        .map_err(|e| e.at("user"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     created_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "createdAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("createdAt"))?,
                     preapproval_expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "preapprovalExpiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("preapprovalExpiresAt"))?,
                 })
             }
         }
@@ -6596,28 +6989,34 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferPreapproval {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     valid_from: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "validFrom",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validFrom"))?,
                     last_renewed_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "lastRenewedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lastRenewedAt"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                 })
             }
         }
@@ -6745,7 +7144,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -6773,10 +7173,12 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     right_cid: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "rightCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("rightCid"))?,
                 })
             }
         }
@@ -6803,7 +7205,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -6830,7 +7233,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -6861,9 +7265,8 @@ pub mod splice_amulet {
         impl rt::FromValue for FeaturedAppRight_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -6913,7 +7316,8 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     round_cid: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "roundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("roundCid"))?,
                 })
             }
         }
@@ -6939,7 +7343,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRoundCid"))?,
                 })
             }
         }
@@ -6965,7 +7370,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRoundCid"))?,
                 })
             }
         }
@@ -6989,7 +7395,8 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     round_cid: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "roundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("roundCid"))?,
                 })
             }
         }
@@ -7016,7 +7423,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "unclaimedRewardCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedRewardCid"))?,
                 })
             }
         }
@@ -7110,9 +7518,8 @@ pub mod splice_amulet {
         impl rt::FromValue for SvRewardCoupon_DsoExpireResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    weight: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "weight",
-                    )?)?,
+                    weight: rt::FromValue::from_value(rt::required_field(value, 0usize, "weight")?)
+                        .map_err(|e| e.at("weight"))?,
                 })
             }
         }
@@ -7143,9 +7550,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorRewardCoupon_DsoExpireResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amount",
-                    )?)?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 0usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                 })
             }
         }
@@ -7170,10 +7576,10 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     featured: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "featured",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("featured"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                 })
             }
         }
@@ -7331,8 +7737,9 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "expireSum",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("expireSum"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -7364,8 +7771,9 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -7397,8 +7805,9 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -7428,8 +7837,9 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "expireSum",
-                    )?)?,
-                    meta: rt::optional_field(value, 1usize, "meta")?,
+                    )?)
+                    .map_err(|e| e.at("expireSum"))?,
+                    meta: rt::optional_field(value, 1usize, "meta").map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -7462,15 +7872,16 @@ pub mod splice_amulet {
         {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amulet",
-                    )?)?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 0usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                     amulet_price: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletPrice",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                 })
             }
         }
@@ -7507,16 +7918,20 @@ pub mod splice_amulet {
         impl rt::FromValue for AmuletExpireSummary {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)
+                        .map_err(|e| e.at("owner"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     change_to_initial_amount_as_of_round_zero: rt::FromValue::from_value(
                         rt::required_field(value, 2usize, "changeToInitialAmountAsOfRoundZero")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("changeToInitialAmountAsOfRoundZero"))?,
                     change_to_holding_fees_rate: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "changeToHoldingFeesRate",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("changeToHoldingFeesRate"))?,
                 })
             }
         }
@@ -7552,11 +7967,12 @@ pub mod splice_amulet {
         impl rt::FromValue for Amulet {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    owner: rt::FromValue::from_value(rt::required_field(value, 1usize, "owner")?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    owner: rt::FromValue::from_value(rt::required_field(value, 1usize, "owner")?)
+                        .map_err(|e| e.at("owner"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                 })
             }
         }
@@ -7629,18 +8045,22 @@ pub mod splice_amulet {
         impl rt::FromValue for AppRewardCoupon {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     featured: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "featured",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "amount",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 4usize, "round")?)?,
-                    beneficiary: rt::optional_field(value, 5usize, "beneficiary")?,
+                    )?)
+                    .map_err(|e| e.at("featured"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 3usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 4usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
+                    beneficiary: rt::optional_field(value, 5usize, "beneficiary")
+                        .map_err(|e| e.at("beneficiary"))?,
                 })
             }
         }
@@ -7713,18 +8133,20 @@ pub mod splice_amulet {
         impl rt::FromValue for FeaturedAppActivityMarker {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     beneficiary: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "beneficiary",
-                    )?)?,
-                    weight: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "weight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiary"))?,
+                    weight: rt::FromValue::from_value(rt::required_field(value, 3usize, "weight")?)
+                        .map_err(|e| e.at("weight"))?,
                 })
             }
         }
@@ -7783,10 +8205,12 @@ pub mod splice_amulet {
         impl rt::FromValue for FeaturedAppRight {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                 })
             }
         }
@@ -7858,10 +8282,10 @@ pub mod splice_amulet {
         impl rt::FromValue for LockedAmulet {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amulet",
-                    )?)?,
-                    lock: rt::FromValue::from_value(rt::required_field(value, 1usize, "lock")?)?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 0usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
+                    lock: rt::FromValue::from_value(rt::required_field(value, 1usize, "lock")?)
+                        .map_err(|e| e.at("lock"))?,
                 })
             }
         }
@@ -7947,17 +8371,20 @@ pub mod splice_amulet {
         impl rt::FromValue for SvRewardCoupon {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    sv: rt::FromValue::from_value(rt::required_field(value, 1usize, "sv")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    sv: rt::FromValue::from_value(rt::required_field(value, 1usize, "sv")?)
+                        .map_err(|e| e.at("sv"))?,
                     beneficiary: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "beneficiary",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 3usize, "round")?)?,
-                    weight: rt::FromValue::from_value(rt::required_field(
-                        value, 4usize, "weight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiary"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 3usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
+                    weight: rt::FromValue::from_value(rt::required_field(value, 4usize, "weight")?)
+                        .map_err(|e| e.at("weight"))?,
                 })
             }
         }
@@ -8041,23 +8468,24 @@ pub mod splice_amulet {
         impl rt::FromValue for UnclaimedActivityRecord {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     beneficiary: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "beneficiary",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "reason",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiary"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 3usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                 })
             }
         }
@@ -8124,10 +8552,10 @@ pub mod splice_amulet {
         impl rt::FromValue for UnclaimedReward {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                 })
             }
         }
@@ -8190,12 +8618,14 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorRewardCoupon {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 3usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)
+                        .map_err(|e| e.at("user"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 3usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                 })
             }
         }
@@ -8275,13 +8705,16 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorRight {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    user: rt::FromValue::from_value(rt::required_field(value, 1usize, "user")?)
+                        .map_err(|e| e.at("user"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                 })
             }
         }
@@ -8412,10 +8845,12 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "lockedAmulet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
                     transfer: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "transfer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transfer"))?,
                 })
             }
         }
@@ -8489,32 +8924,34 @@ pub mod splice_amulet {
         impl rt::FromValue for PackageConfig {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amulet",
-                    )?)?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 0usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                     amulet_name_service: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletNameService",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletNameService"))?,
                     dso_governance: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "dsoGovernance",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dsoGovernance"))?,
                     validator_lifecycle: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "validatorLifecycle",
-                    )?)?,
-                    wallet: rt::FromValue::from_value(rt::required_field(
-                        value, 4usize, "wallet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorLifecycle"))?,
+                    wallet: rt::FromValue::from_value(rt::required_field(value, 4usize, "wallet")?)
+                        .map_err(|e| e.at("wallet"))?,
                     wallet_payments: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "walletPayments",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletPayments"))?,
                 })
             }
         }
@@ -8586,37 +9023,44 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "transferConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferConfig"))?,
                     issuance_curve: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "issuanceCurve",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuanceCurve"))?,
                     decentralized_synchronizer: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "decentralizedSynchronizer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("decentralizedSynchronizer"))?,
                     tick_duration: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "tickDuration",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("tickDuration"))?,
                     package_config: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "packageConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("packageConfig"))?,
                     transfer_preapproval_fee: rt::optional_field(
                         value,
                         5usize,
                         "transferPreapprovalFee",
-                    )?,
+                    )
+                    .map_err(|e| e.at("transferPreapprovalFee"))?,
                     featured_app_activity_marker_amount: rt::optional_field(
                         value,
                         6usize,
                         "featuredAppActivityMarkerAmount",
-                    )?,
+                    )
+                    .map_err(|e| e.at("featuredAppActivityMarkerAmount"))?,
                 })
             }
         }
@@ -8690,40 +9134,48 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "createFee",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("createFee"))?,
                     holding_fee: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "holdingFee",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("holdingFee"))?,
                     transfer_fee: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "transferFee",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferFee"))?,
                     lock_holder_fee: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "lockHolderFee",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lockHolderFee"))?,
                     extra_featured_app_reward_amount: rt::FromValue::from_value(
                         rt::required_field(value, 4usize, "extraFeaturedAppRewardAmount")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("extraFeaturedAppRewardAmount"))?,
                     max_num_inputs: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "maxNumInputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("maxNumInputs"))?,
                     max_num_outputs: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "maxNumOutputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("maxNumOutputs"))?,
                     max_num_lock_holders: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "maxNumLockHolders",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("maxNumLockHolders"))?,
                     _phantom: ::core::marker::PhantomData,
                 })
             }
@@ -8798,10 +9250,10 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommand_ExpireResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
-                    nonce: rt::FromValue::from_value(rt::required_field(value, 1usize, "nonce")?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
+                    nonce: rt::FromValue::from_value(rt::required_field(value, 1usize, "nonce")?)
+                        .map_err(|e| e.at("nonce"))?,
                 })
             }
         }
@@ -8824,10 +9276,10 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommand_WithdrawResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
-                    nonce: rt::FromValue::from_value(rt::required_field(value, 1usize, "nonce")?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
+                    nonce: rt::FromValue::from_value(rt::required_field(value, 1usize, "nonce")?)
+                        .map_err(|e| e.at("nonce"))?,
                 })
             }
         }
@@ -8867,12 +9319,14 @@ pub mod splice_amulet {
                 match constructor {
                     "TransferCommandResultFailure" => ::core::result::Result::Ok(
                         TransferCommandResult::TransferCommandResultFailure(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferCommandResultFailure"))?,
                         ),
                     ),
                     "TransferCommandResultSuccess" => ::core::result::Result::Ok(
                         TransferCommandResult::TransferCommandResultSuccess(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferCommandResultSuccess"))?,
                         ),
                     ),
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -8896,9 +9350,8 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommandResult_TransferCommandResultFailure {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -8916,9 +9369,8 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommandResult_TransferCommandResultSuccess {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    result: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "result",
-                    )?)?,
+                    result: rt::FromValue::from_value(rt::required_field(value, 0usize, "result")?)
+                        .map_err(|e| e.at("result"))?,
                 })
             }
         }
@@ -8945,13 +9397,12 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommand_SendResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    result: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "result",
-                    )?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
-                    nonce: rt::FromValue::from_value(rt::required_field(value, 2usize, "nonce")?)?,
+                    result: rt::FromValue::from_value(rt::required_field(value, 0usize, "result")?)
+                        .map_err(|e| e.at("result"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
+                    nonce: rt::FromValue::from_value(rt::required_field(value, 2usize, "nonce")?)
+                        .map_err(|e| e.at("nonce"))?,
                 })
             }
         }
@@ -8969,7 +9420,8 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommand_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)?,
+                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)
+                        .map_err(|e| e.at("p"))?,
                 })
             }
         }
@@ -9025,20 +9477,22 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     transfer_preapproval_cid_o: rt::optional_field(
                         value,
                         2usize,
                         "transferPreapprovalCidO",
-                    )?,
+                    )
+                    .map_err(|e| e.at("transferPreapprovalCidO"))?,
                     transfer_counter_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "transferCounterCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferCounterCid"))?,
                 })
             }
         }
@@ -9066,7 +9520,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "transferCommandCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferCommandCid"))?,
                 })
             }
         }
@@ -9109,26 +9564,30 @@ pub mod splice_amulet {
         impl rt::FromValue for ExternalPartyAmuletRules_CreateTransferCommand {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     delegate: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "delegate",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("delegate"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 3usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
-                    nonce: rt::FromValue::from_value(rt::required_field(value, 5usize, "nonce")?)?,
-                    description: rt::optional_field(value, 6usize, "description")?,
-                    expected_dso: rt::optional_field(value, 7usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
+                    nonce: rt::FromValue::from_value(rt::required_field(value, 5usize, "nonce")?)
+                        .map_err(|e| e.at("nonce"))?,
+                    description: rt::optional_field(value, 6usize, "description")
+                        .map_err(|e| e.at("description"))?,
+                    expected_dso: rt::optional_field(value, 7usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -9156,7 +9615,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ExternalPartyAmuletRules {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                 })
             }
         }
@@ -9237,26 +9697,30 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommand {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     delegate: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "delegate",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 4usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("delegate"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 4usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "expiresAt",
-                    )?)?,
-                    nonce: rt::FromValue::from_value(rt::required_field(value, 6usize, "nonce")?)?,
-                    description: rt::optional_field(value, 7usize, "description")?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
+                    nonce: rt::FromValue::from_value(rt::required_field(value, 6usize, "nonce")?)
+                        .map_err(|e| e.at("nonce"))?,
+                    description: rt::optional_field(value, 7usize, "description")
+                        .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -9347,15 +9811,16 @@ pub mod splice_amulet {
         impl rt::FromValue for TransferCommandCounter {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     next_nonce: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "nextNonce",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("nextNonce"))?,
                 })
             }
         }
@@ -9419,12 +9884,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "initialValue",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("initialValue"))?,
                     future_values: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "futureValues",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("futureValues"))?,
                 })
             }
         }
@@ -9445,7 +9912,8 @@ pub mod splice_amulet {
         impl rt::FromValue for RatePerDay {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    rate: rt::FromValue::from_value(rt::required_field(value, 0usize, "rate")?)?,
+                    rate: rt::FromValue::from_value(rt::required_field(value, 0usize, "rate")?)
+                        .map_err(|e| e.at("rate"))?,
                 })
             }
         }
@@ -9478,17 +9946,20 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "initialAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("initialAmount"))?,
                     created_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "createdAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("createdAt"))?,
                     rate_per_round: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "ratePerRound",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("ratePerRound"))?,
                 })
             }
         }
@@ -9518,8 +9989,10 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "initialRate",
-                    )?)?,
-                    steps: rt::FromValue::from_value(rt::required_field(value, 1usize, "steps")?)?,
+                    )?)
+                    .map_err(|e| e.at("initialRate"))?,
+                    steps: rt::FromValue::from_value(rt::required_field(value, 1usize, "steps")?)
+                        .map_err(|e| e.at("steps"))?,
                 })
             }
         }
@@ -9537,7 +10010,8 @@ pub mod splice_amulet {
         impl rt::FromValue for FixedFee {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    fee: rt::FromValue::from_value(rt::required_field(value, 0usize, "fee")?)?,
+                    fee: rt::FromValue::from_value(rt::required_field(value, 0usize, "fee")?)
+                        .map_err(|e| e.at("fee"))?,
                 })
             }
         }
@@ -9555,7 +10029,8 @@ pub mod splice_amulet {
         impl rt::FromValue for RatePerRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    rate: rt::FromValue::from_value(rt::required_field(value, 0usize, "rate")?)?,
+                    rate: rt::FromValue::from_value(rt::required_field(value, 0usize, "rate")?)
+                        .map_err(|e| e.at("rate"))?,
                 })
             }
         }
@@ -9588,13 +10063,16 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     holders: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "holders",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("holders"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "expiresAt",
-                    )?)?,
-                    opt_context: rt::optional_field(value, 2usize, "optContext")?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
+                    opt_context: rt::optional_field(value, 2usize, "optContext")
+                        .map_err(|e| e.at("optContext"))?,
                 })
             }
         }
@@ -9629,10 +10107,10 @@ pub mod splice_amulet {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "Singleton" => ::core::result::Result::Ok(BoundedSet::Singleton(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("Singleton"))?,
                     )),
                     "AfterMaxBound" => ::core::result::Result::Ok(BoundedSet::AfterMaxBound(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AfterMaxBound"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("BoundedSet", other))
@@ -9678,12 +10156,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "lockedAmulet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
                     allocation: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "allocation",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
                 })
             }
         }
@@ -9751,17 +10231,20 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "rewardsToIssue",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("rewardsToIssue"))?,
                     issuance_per_coupon: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "issuancePerCoupon",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuancePerCoupon"))?,
                     unclaimed_rewards: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "unclaimedRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedRewards"))?,
                 })
             }
         }
@@ -9836,36 +10319,44 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     issuance_per_validator_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 0usize, "issuancePerValidatorRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerValidatorRewardCoupon"))?,
                     issuance_per_featured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 1usize, "issuancePerFeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerFeaturedAppRewardCoupon"))?,
                     issuance_per_unfeatured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 2usize, "issuancePerUnfeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerUnfeaturedAppRewardCoupon"))?,
                     issuance_per_sv_reward_coupon: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "issuancePerSvRewardCoupon",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuancePerSvRewardCoupon"))?,
                     unclaimed_app_rewards: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "unclaimedAppRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedAppRewards"))?,
                     unclaimed_validator_rewards: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "unclaimedValidatorRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedValidatorRewards"))?,
                     unclaimed_sv_rewards: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "unclaimedSvRewards",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unclaimedSvRewards"))?,
                     issuance_per_validator_faucet_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 7usize, "issuancePerValidatorFaucetCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerValidatorFaucetCoupon"))?,
                 })
             }
         }
@@ -9921,23 +10412,28 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "totalValidatorRewardCoupons",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalValidatorRewardCoupons"))?,
                     total_featured_app_reward_coupons: rt::FromValue::from_value(
                         rt::required_field(value, 1usize, "totalFeaturedAppRewardCoupons")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("totalFeaturedAppRewardCoupons"))?,
                     total_unfeatured_app_reward_coupons: rt::FromValue::from_value(
                         rt::required_field(value, 2usize, "totalUnfeaturedAppRewardCoupons")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("totalUnfeaturedAppRewardCoupons"))?,
                     total_sv_reward_weight: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "totalSvRewardWeight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalSvRewardWeight"))?,
                     opt_total_validator_faucet_coupons: rt::optional_field(
                         value,
                         4usize,
                         "optTotalValidatorFaucetCoupons",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optTotalValidatorFaucetCoupons"))?,
                 })
             }
         }
@@ -10007,37 +10503,44 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "amuletToIssuePerYear",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletToIssuePerYear"))?,
                     validator_reward_percentage: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validatorRewardPercentage",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorRewardPercentage"))?,
                     app_reward_percentage: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "appRewardPercentage",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("appRewardPercentage"))?,
                     validator_reward_cap: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "validatorRewardCap",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorRewardCap"))?,
                     featured_app_reward_cap: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "featuredAppRewardCap",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("featuredAppRewardCap"))?,
                     unfeatured_app_reward_cap: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "unfeaturedAppRewardCap",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("unfeaturedAppRewardCap"))?,
                     opt_validator_faucet_cap: rt::optional_field(
                         value,
                         6usize,
                         "optValidatorFaucetCap",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optValidatorFaucetCap"))?,
                 })
             }
         }
@@ -10067,7 +10570,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -10094,7 +10598,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "closedRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("closedRoundCid"))?,
                 })
             }
         }
@@ -10133,12 +10638,14 @@ pub mod splice_amulet {
                 ::core::result::Result::Ok(Self {
                     version: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "version",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("version"))?,
                     contact_point: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "contactPoint",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("contactPoint"))?,
                 })
             }
         }
@@ -10156,9 +10663,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorLicense_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -10176,9 +10682,8 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorLicense_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -10204,7 +10709,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRoundCid"))?,
                 })
             }
         }
@@ -10230,7 +10736,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "openRoundCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("openRoundCid"))?,
                 })
             }
         }
@@ -10265,15 +10772,18 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "lastUpdatedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lastUpdatedAt"))?,
                     version: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "version",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("version"))?,
                     contact_point: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "contactPoint",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("contactPoint"))?,
                 })
             }
         }
@@ -10376,7 +10886,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "licenseCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("licenseCid"))?,
                 })
             }
         }
@@ -10403,7 +10914,8 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "licenseCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("licenseCid"))?,
                 })
             }
         }
@@ -10495,12 +11007,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "licenseCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("licenseCid"))?,
                     coupon_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "couponCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("couponCid"))?,
                 })
             }
         }
@@ -10532,12 +11046,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "licenseCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("licenseCid"))?,
                     coupon_cid: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "couponCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("couponCid"))?,
                 })
             }
         }
@@ -10579,17 +11095,20 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "firstReceivedFor",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("firstReceivedFor"))?,
                     last_received_for: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "lastReceivedFor",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lastReceivedFor"))?,
                     num_coupons_missed: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "numCouponsMissed",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("numCouponsMissed"))?,
                 })
             }
         }
@@ -10625,13 +11144,16 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorFaucetCoupon {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validator",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                 })
             }
         }
@@ -10722,14 +11244,20 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     sponsor: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "sponsor",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)?,
-                    faucet_state: rt::optional_field(value, 3usize, "faucetState")?,
-                    metadata: rt::optional_field(value, 4usize, "metadata")?,
-                    last_active_at: rt::optional_field(value, 5usize, "lastActiveAt")?,
+                    )?)
+                    .map_err(|e| e.at("sponsor"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    faucet_state: rt::optional_field(value, 3usize, "faucetState")
+                        .map_err(|e| e.at("faucetState"))?,
+                    metadata: rt::optional_field(value, 4usize, "metadata")
+                        .map_err(|e| e.at("metadata"))?,
+                    last_active_at: rt::optional_field(value, 5usize, "lastActiveAt")
+                        .map_err(|e| e.at("lastActiveAt"))?,
                 })
             }
         }
@@ -10842,13 +11370,16 @@ pub mod splice_amulet {
         impl rt::FromValue for ValidatorLivenessActivityRecord {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validator",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 2usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                 })
             }
         }
@@ -10917,20 +11448,24 @@ pub mod splice_amulet {
         impl rt::FromValue for ForMemberTraffic {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                 })
             }
         }
@@ -10980,22 +11515,26 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "baseRateTrafficLimits",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("baseRateTrafficLimits"))?,
                     extra_traffic_price: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "extraTrafficPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraTrafficPrice"))?,
                     read_vs_write_scaling_factor: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "readVsWriteScalingFactor",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("readVsWriteScalingFactor"))?,
                     min_topup_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "minTopupAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("minTopupAmount"))?,
                 })
             }
         }
@@ -11024,12 +11563,14 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "burstAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("burstAmount"))?,
                     burst_window: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "burstWindow",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("burstWindow"))?,
                 })
             }
         }
@@ -11069,13 +11610,16 @@ pub mod splice_amulet {
                         value,
                         0usize,
                         "requiredSynchronizers",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requiredSynchronizers"))?,
                     active_synchronizer: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "activeSynchronizer",
-                    )?)?,
-                    fees: rt::FromValue::from_value(rt::required_field(value, 2usize, "fees")?)?,
+                    )?)
+                    .map_err(|e| e.at("activeSynchronizer"))?,
+                    fees: rt::FromValue::from_value(rt::required_field(value, 2usize, "fees")?)
+                        .map_err(|e| e.at("fees"))?,
                 })
             }
         }
@@ -11138,38 +11682,46 @@ pub mod splice_amulet {
         impl rt::FromValue for MemberTraffic {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                     total_purchased: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "totalPurchased",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("totalPurchased"))?,
                     num_purchases: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "numPurchases",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("numPurchases"))?,
                     amulet_spent: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "amuletSpent",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSpent"))?,
                     usd_spent: rt::FromValue::from_value(rt::required_field(
                         value, 7usize, "usdSpent",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("usdSpent"))?,
                 })
             }
         }
@@ -11225,7 +11777,8 @@ pub mod splice_amulet {
         impl rt::FromValue for RelRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    diff: rt::FromValue::from_value(rt::required_field(value, 0usize, "diff")?)?,
+                    diff: rt::FromValue::from_value(rt::required_field(value, 0usize, "diff")?)
+                        .map_err(|e| e.at("diff"))?,
                 })
             }
         }
@@ -11246,7 +11799,8 @@ pub mod splice_amulet {
         impl rt::FromValue for OpenMiningRound_Fetch {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)?,
+                    p: rt::FromValue::from_value(rt::required_field(value, 0usize, "p")?)
+                        .map_err(|e| e.at("p"))?,
                 })
             }
         }
@@ -11313,27 +11867,34 @@ pub mod splice_amulet {
         impl rt::FromValue for ClosedMiningRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     issuance_per_validator_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 2usize, "issuancePerValidatorRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerValidatorRewardCoupon"))?,
                     issuance_per_featured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 3usize, "issuancePerFeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerFeaturedAppRewardCoupon"))?,
                     issuance_per_unfeatured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 4usize, "issuancePerUnfeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerUnfeaturedAppRewardCoupon"))?,
                     issuance_per_sv_reward_coupon: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "issuancePerSvRewardCoupon",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuancePerSvRewardCoupon"))?,
                     opt_issuance_per_validator_faucet_coupon: rt::optional_field(
                         value,
                         6usize,
                         "optIssuancePerValidatorFaucetCoupon",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optIssuancePerValidatorFaucetCoupon"))?,
                 })
             }
         }
@@ -11454,35 +12015,44 @@ pub mod splice_amulet {
         impl rt::FromValue for IssuingMiningRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     issuance_per_validator_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 2usize, "issuancePerValidatorRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerValidatorRewardCoupon"))?,
                     issuance_per_featured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 3usize, "issuancePerFeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerFeaturedAppRewardCoupon"))?,
                     issuance_per_unfeatured_app_reward_coupon: rt::FromValue::from_value(
                         rt::required_field(value, 4usize, "issuancePerUnfeaturedAppRewardCoupon")?,
-                    )?,
+                    )
+                    .map_err(|e| e.at("issuancePerUnfeaturedAppRewardCoupon"))?,
                     issuance_per_sv_reward_coupon: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "issuancePerSvRewardCoupon",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuancePerSvRewardCoupon"))?,
                     opens_at: rt::FromValue::from_value(rt::required_field(
                         value, 6usize, "opensAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("opensAt"))?,
                     target_closes_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "targetClosesAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("targetClosesAt"))?,
                     opt_issuance_per_validator_faucet_coupon: rt::optional_field(
                         value,
                         8usize,
                         "optIssuancePerValidatorFaucetCoupon",
-                    )?,
+                    )
+                    .map_err(|e| e.at("optIssuancePerValidatorFaucetCoupon"))?,
                 })
             }
         }
@@ -11602,41 +12172,50 @@ pub mod splice_amulet {
         impl rt::FromValue for OpenMiningRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     amulet_price: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "amuletPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
                     opens_at: rt::FromValue::from_value(rt::required_field(
                         value, 3usize, "opensAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("opensAt"))?,
                     target_closes_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "targetClosesAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("targetClosesAt"))?,
                     issuing_for: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "issuingFor",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuingFor"))?,
                     transfer_config_usd: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "transferConfigUsd",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferConfigUsd"))?,
                     issuance_config: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "issuanceConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuanceConfig"))?,
                     tick_duration: rt::FromValue::from_value(rt::required_field(
                         value,
                         8usize,
                         "tickDuration",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("tickDuration"))?,
                 })
             }
         }
@@ -11728,23 +12307,28 @@ pub mod splice_amulet {
         impl rt::FromValue for SummarizingMiningRound {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 1usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     amulet_price: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "amuletPrice",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPrice"))?,
                     issuance_config: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "issuanceConfig",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("issuanceConfig"))?,
                     tick_duration: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "tickDuration",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("tickDuration"))?,
                 })
             }
         }
@@ -11833,39 +12417,44 @@ pub mod splice_amulet {
         impl rt::FromValue for TwoStepTransfer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 3usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     lock_context: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "lockContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lockContext"))?,
                     transfer_before: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "transferBefore",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferBefore"))?,
                     transfer_before_deadline: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "transferBeforeDeadline",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferBeforeDeadline"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 7usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     allow_featuring: rt::FromValue::from_value(rt::required_field(
                         value,
                         8usize,
                         "allowFeaturing",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allowFeaturing"))?,
                 })
             }
         }
@@ -11899,18 +12488,20 @@ pub mod splice_api_featured_app_v1 {
         impl rt::FromValue for FeaturedAppActivityMarkerView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     beneficiary: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "beneficiary",
-                    )?)?,
-                    weight: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "weight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiary"))?,
+                    weight: rt::FromValue::from_value(rt::required_field(value, 3usize, "weight")?)
+                        .map_err(|e| e.at("weight"))?,
                 })
             }
         }
@@ -11933,10 +12524,12 @@ pub mod splice_api_featured_app_v1 {
         impl rt::FromValue for FeaturedAppRightView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                 })
             }
         }
@@ -11966,7 +12559,8 @@ pub mod splice_api_featured_app_v1 {
                         value,
                         0usize,
                         "activityMarkerCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("activityMarkerCids"))?,
                 })
             }
         }
@@ -11993,7 +12587,8 @@ pub mod splice_api_featured_app_v1 {
                         value,
                         0usize,
                         "beneficiaries",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiaries"))?,
                 })
             }
         }
@@ -12020,10 +12615,10 @@ pub mod splice_api_featured_app_v1 {
                         value,
                         0usize,
                         "beneficiary",
-                    )?)?,
-                    weight: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "weight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("beneficiary"))?,
+                    weight: rt::FromValue::from_value(rt::required_field(value, 1usize, "weight")?)
+                        .map_err(|e| e.at("weight"))?,
                 })
             }
         }
@@ -12125,17 +12720,20 @@ pub mod splice_api_token_allocation_instruction_v1 {
                 match constructor {
                     "AllocationInstructionResult_Pending" => ::core::result::Result::Ok(
                         AllocationInstructionResult_Output::AllocationInstructionResult_Pending(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Pending"))?,
                         ),
                     ),
                     "AllocationInstructionResult_Completed" => ::core::result::Result::Ok(
                         AllocationInstructionResult_Output::AllocationInstructionResult_Completed(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Completed"))?,
                         ),
                     ),
                     "AllocationInstructionResult_Failed" => ::core::result::Result::Ok(
                         AllocationInstructionResult_Output::AllocationInstructionResult_Failed(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Failed"))?,
                         ),
                     ),
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -12169,7 +12767,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "allocationInstructionCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocationInstructionCid"))?,
                 })
             }
         }
@@ -12197,7 +12796,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "allocationCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocationCid"))?,
                 })
             }
         }
@@ -12231,15 +12831,16 @@ pub mod splice_api_token_allocation_instruction_v1 {
         impl rt::FromValue for AllocationInstructionResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    output: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "output",
-                    )?)?,
+                    output: rt::FromValue::from_value(rt::required_field(value, 0usize, "output")?)
+                        .map_err(|e| e.at("output"))?,
                     sender_change_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "senderChangeCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("senderChangeCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12267,8 +12868,10 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "expectedAdmin",
-                    )?)?,
-                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)?,
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -12315,27 +12918,32 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "expectedAdmin",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
                     allocation: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "allocation",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
                     requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "requestedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
                     input_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "inputHoldingCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
                     extra_args: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12358,8 +12966,10 @@ pub mod splice_api_token_allocation_instruction_v1 {
         impl rt::FromValue for AllocationFactoryView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
+                        .map_err(|e| e.at("admin"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12389,12 +12999,14 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "extraActors",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraActors"))?,
                     extra_args: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12421,7 +13033,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12481,28 +13094,34 @@ pub mod splice_api_token_allocation_instruction_v1 {
                         value,
                         0usize,
                         "originalInstructionCid",
-                    )?,
+                    )
+                    .map_err(|e| e.at("originalInstructionCid"))?,
                     allocation: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "allocation",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
                     pending_actions: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "pendingActions",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("pendingActions"))?,
                     requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "requestedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
                     input_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "inputHoldingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12612,8 +13231,10 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "senderHoldingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12648,8 +13269,10 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "senderHoldingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12695,13 +13318,16 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "senderHoldingCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
                     receiver_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "receiverHoldingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("receiverHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12728,7 +13354,8 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12755,7 +13382,8 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12782,7 +13410,8 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -12817,13 +13446,16 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "allocation",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
                     holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "holdingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("holdingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12858,17 +13490,20 @@ pub mod splice_api_token_allocation_v1 {
                         value,
                         0usize,
                         "settlement",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("settlement"))?,
                     transfer_leg_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferLegId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferLegId"))?,
                     transfer_leg: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "transferLeg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferLeg"))?,
                 })
             }
         }
@@ -12902,21 +13537,22 @@ pub mod splice_api_token_allocation_v1 {
         impl rt::FromValue for TransferLeg {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "instrumentId",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -12961,28 +13597,34 @@ pub mod splice_api_token_allocation_v1 {
                 ::core::result::Result::Ok(Self {
                     executor: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "executor",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("executor"))?,
                     settlement_ref: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "settlementRef",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("settlementRef"))?,
                     requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "requestedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
                     allocate_before: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "allocateBefore",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocateBefore"))?,
                     settle_before: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "settleBefore",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("settleBefore"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13009,8 +13651,9 @@ pub mod splice_api_token_allocation_v1 {
         impl rt::FromValue for Reference {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    id: rt::FromValue::from_value(rt::required_field(value, 0usize, "id")?)?,
-                    cid: rt::optional_field(value, 1usize, "cid")?,
+                    id: rt::FromValue::from_value(rt::required_field(value, 0usize, "id")?)
+                        .map_err(|e| e.at("id"))?,
+                    cid: rt::optional_field(value, 1usize, "cid").map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -13093,17 +13736,19 @@ pub mod splice_api_token_holding_v1 {
         impl rt::FromValue for HoldingView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)?,
+                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)
+                        .map_err(|e| e.at("owner"))?,
                     instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "instrumentId",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    lock: rt::optional_field(value, 3usize, "lock")?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    lock: rt::optional_field(value, 3usize, "lock").map_err(|e| e.at("lock"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13137,10 +13782,14 @@ pub mod splice_api_token_holding_v1 {
                 ::core::result::Result::Ok(Self {
                     holders: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "holders",
-                    )?)?,
-                    expires_at: rt::optional_field(value, 1usize, "expiresAt")?,
-                    expires_after: rt::optional_field(value, 2usize, "expiresAfter")?,
-                    context: rt::optional_field(value, 3usize, "context")?,
+                    )?)
+                    .map_err(|e| e.at("holders"))?,
+                    expires_at: rt::optional_field(value, 1usize, "expiresAt")
+                        .map_err(|e| e.at("expiresAt"))?,
+                    expires_after: rt::optional_field(value, 2usize, "expiresAfter")
+                        .map_err(|e| e.at("expiresAfter"))?,
+                    context: rt::optional_field(value, 3usize, "context")
+                        .map_err(|e| e.at("context"))?,
                 })
             }
         }
@@ -13163,8 +13812,10 @@ pub mod splice_api_token_holding_v1 {
         impl rt::FromValue for InstrumentId {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)?,
-                    id: rt::FromValue::from_value(rt::required_field(value, 1usize, "id")?)?,
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
+                        .map_err(|e| e.at("admin"))?,
+                    id: rt::FromValue::from_value(rt::required_field(value, 1usize, "id")?)
+                        .map_err(|e| e.at("id"))?,
                 })
             }
         }
@@ -13206,7 +13857,8 @@ pub mod splice_api_token_metadata_v1 {
         impl rt::FromValue for ChoiceExecutionMetadata {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    meta: rt::FromValue::from_value(rt::required_field(value, 0usize, "meta")?)?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 0usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13232,8 +13884,10 @@ pub mod splice_api_token_metadata_v1 {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13251,9 +13905,8 @@ pub mod splice_api_token_metadata_v1 {
         impl rt::FromValue for Metadata {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    values: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "values",
-                    )?)?,
+                    values: rt::FromValue::from_value(rt::required_field(value, 0usize, "values")?)
+                        .map_err(|e| e.at("values"))?,
                 })
             }
         }
@@ -13273,9 +13926,8 @@ pub mod splice_api_token_metadata_v1 {
         impl rt::FromValue for ChoiceContext {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    values: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "values",
-                    )?)?,
+                    values: rt::FromValue::from_value(rt::required_field(value, 0usize, "values")?)
+                        .map_err(|e| e.at("values"))?,
                 })
             }
         }
@@ -13374,37 +14026,37 @@ pub mod splice_api_token_metadata_v1 {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "AV_Text" => ::core::result::Result::Ok(AnyValue::AV_Text(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Text"))?,
                     )),
                     "AV_Int" => ::core::result::Result::Ok(AnyValue::AV_Int(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Int"))?,
                     )),
                     "AV_Decimal" => ::core::result::Result::Ok(AnyValue::AV_Decimal(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Decimal"))?,
                     )),
                     "AV_Bool" => ::core::result::Result::Ok(AnyValue::AV_Bool(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Bool"))?,
                     )),
                     "AV_Date" => ::core::result::Result::Ok(AnyValue::AV_Date(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Date"))?,
                     )),
                     "AV_Time" => ::core::result::Result::Ok(AnyValue::AV_Time(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Time"))?,
                     )),
                     "AV_RelTime" => ::core::result::Result::Ok(AnyValue::AV_RelTime(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_RelTime"))?,
                     )),
                     "AV_Party" => ::core::result::Result::Ok(AnyValue::AV_Party(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Party"))?,
                     )),
                     "AV_ContractId" => ::core::result::Result::Ok(AnyValue::AV_ContractId(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_ContractId"))?,
                     )),
                     "AV_List" => ::core::result::Result::Ok(AnyValue::AV_List(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_List"))?,
                     )),
                     "AV_Map" => ::core::result::Result::Ok(AnyValue::AV_Map(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("AV_Map"))?,
                     )),
                     other => {
                         ::core::result::Result::Err(rt::unexpected_constructor("AnyValue", other))
@@ -13458,8 +14110,10 @@ pub mod splice_api_token_transfer_instruction_v1 {
         impl rt::FromValue for TransferFactoryView {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)?,
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
+                        .map_err(|e| e.at("admin"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13487,8 +14141,10 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "expectedAdmin",
-                    )?)?,
-                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)?,
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -13520,15 +14176,18 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "expectedAdmin",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
                     transfer: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "transfer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transfer"))?,
                     extra_args: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -13558,12 +14217,14 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "extraActors",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraActors"))?,
                     extra_args: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -13590,7 +14251,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -13617,7 +14279,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -13644,7 +14307,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "extraArgs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -13685,14 +14349,16 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "originalInstructionCid",
-                    )?,
+                    )
+                    .map_err(|e| e.at("originalInstructionCid"))?,
                     transfer: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "transfer",
-                    )?)?,
-                    status: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "status",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 3usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("transfer"))?,
+                    status: rt::FromValue::from_value(rt::required_field(value, 2usize, "status")?)
+                        .map_err(|e| e.at("status"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 3usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13730,12 +14396,14 @@ pub mod splice_api_token_transfer_instruction_v1 {
                 match constructor {
                     "TransferPendingReceiverAcceptance" => ::core::result::Result::Ok(
                         TransferInstructionStatus::TransferPendingReceiverAcceptance(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferPendingReceiverAcceptance"))?,
                         ),
                     ),
                     "TransferPendingInternalWorkflow" => ::core::result::Result::Ok(
                         TransferInstructionStatus::TransferPendingInternalWorkflow(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferPendingInternalWorkflow"))?,
                         ),
                     ),
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -13767,7 +14435,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "pendingActions",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("pendingActions"))?,
                 })
             }
         }
@@ -13815,17 +14484,20 @@ pub mod splice_api_token_transfer_instruction_v1 {
                 match constructor {
                     "TransferInstructionResult_Pending" => ::core::result::Result::Ok(
                         TransferInstructionResult_Output::TransferInstructionResult_Pending(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferInstructionResult_Pending"))?,
                         ),
                     ),
                     "TransferInstructionResult_Completed" => ::core::result::Result::Ok(
                         TransferInstructionResult_Output::TransferInstructionResult_Completed(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferInstructionResult_Completed"))?,
                         ),
                     ),
                     "TransferInstructionResult_Failed" => ::core::result::Result::Ok(
                         TransferInstructionResult_Output::TransferInstructionResult_Failed(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("TransferInstructionResult_Failed"))?,
                         ),
                     ),
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -13859,7 +14531,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "transferInstructionCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferInstructionCid"))?,
                 })
             }
         }
@@ -13889,7 +14562,8 @@ pub mod splice_api_token_transfer_instruction_v1 {
                         value,
                         0usize,
                         "receiverHoldingCids",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiverHoldingCids"))?,
                 })
             }
         }
@@ -13923,15 +14597,16 @@ pub mod splice_api_token_transfer_instruction_v1 {
         impl rt::FromValue for TransferInstructionResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    output: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "output",
-                    )?)?,
+                    output: rt::FromValue::from_value(rt::required_field(value, 0usize, "output")?)
+                        .map_err(|e| e.at("output"))?,
                     sender_change_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "senderChangeCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("senderChangeCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -13984,36 +14659,40 @@ pub mod splice_api_token_transfer_instruction_v1 {
         impl rt::FromValue for Transfer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     instrument_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "instrumentId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
                     requested_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "requestedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
                     execute_before: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "executeBefore",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("executeBefore"))?,
                     input_holding_cids: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "inputHoldingCids",
-                    )?)?,
-                    meta: rt::FromValue::from_value(rt::required_field(value, 7usize, "meta")?)?,
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 7usize, "meta")?)
+                        .map_err(|e| e.at("meta"))?,
                 })
             }
         }
@@ -14156,30 +14835,36 @@ pub mod splice_wallet {
         impl rt::FromValue for ValidatorTopUpState {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                     last_purchased_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "lastPurchasedAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lastPurchasedAt"))?,
                 })
             }
         }
@@ -14246,12 +14931,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "allocationCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocationCid"))?,
                     withdraw_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "withdrawArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("withdrawArg"))?,
                 })
             }
         }
@@ -14285,12 +14972,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "allocationFactory",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocationFactory"))?,
                     allocate_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "allocateArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("allocateArg"))?,
                 })
             }
         }
@@ -14324,12 +15013,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferInstructionCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferInstructionCid"))?,
                     withdraw_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "withdrawArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("withdrawArg"))?,
                 })
             }
         }
@@ -14363,12 +15054,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferInstructionCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferInstructionCid"))?,
                     reject_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "rejectArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("rejectArg"))?,
                 })
             }
         }
@@ -14402,12 +15095,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferInstructionCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferInstructionCid"))?,
                     accept_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "acceptArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("acceptArg"))?,
                 })
             }
         }
@@ -14441,12 +15136,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferFactoryCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferFactoryCid"))?,
                     transfer_arg: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferArg",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferArg"))?,
                 })
             }
         }
@@ -14473,7 +15170,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "amuletRulesCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletRulesCid"))?,
                 })
             }
         }
@@ -14491,7 +15189,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_FeaturedAppRights_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14519,7 +15218,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "requestCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestCid"))?,
                 })
             }
         }
@@ -14549,10 +15249,10 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "requestCid",
-                    )?)?,
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "reason",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("requestCid"))?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 1usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -14598,32 +15298,38 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                     traffic_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "trafficAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trafficAmount"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     tracking_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                 })
             }
         }
@@ -14643,7 +15349,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_AcceptedTransferOffer_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14668,10 +15375,10 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_AcceptedTransferOffer_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "reason",
-                    )?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 1usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -14696,10 +15403,10 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_AcceptedTransferOffer_Abort {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "reason",
-                    )?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 1usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -14718,7 +15425,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_TransferOffer_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14742,10 +15450,10 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_TransferOffer_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "reason",
-                    )?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 1usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -14764,7 +15472,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_TransferOffer_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14783,7 +15492,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_TransferOffer_Accept {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14819,25 +15529,28 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     description: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "description",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("description"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     tracking_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                 })
             }
         }
@@ -14857,7 +15570,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_SubscriptionIdleState_CancelSubscription {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14877,7 +15591,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_SubscriptionRequest_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14897,7 +15612,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_AppPaymentRequest_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14917,7 +15633,8 @@ pub mod splice_wallet {
         impl rt::FromValue for WalletAppInstall_AppPaymentRequest_Reject {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)?,
+                    cid: rt::FromValue::from_value(rt::required_field(value, 0usize, "cid")?)
+                        .map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -14946,15 +15663,16 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     operations: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "operations",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("operations"))?,
                 })
             }
         }
@@ -14982,7 +15700,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "preapprovalProposalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("preapprovalProposalCid"))?,
                 })
             }
         }
@@ -15009,7 +15728,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "featuredAppRight",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("featuredAppRight"))?,
                 })
             }
         }
@@ -15073,7 +15793,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15099,7 +15820,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15127,7 +15849,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "buyTrafficRequest",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("buyTrafficRequest"))?,
                 })
             }
         }
@@ -15154,7 +15877,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15181,7 +15905,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15208,7 +15933,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15235,7 +15961,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15262,7 +15989,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15289,7 +16017,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -15317,7 +16046,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "acceptedTransferOffer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("acceptedTransferOffer"))?,
                 })
             }
         }
@@ -15344,7 +16074,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferOffer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferOffer"))?,
                 })
             }
         }
@@ -15372,7 +16103,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -15400,7 +16132,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -15428,7 +16161,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "terminatedAppPayment",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedAppPayment"))?,
                 })
             }
         }
@@ -15456,7 +16190,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "terminatedAppPayment",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedAppPayment"))?,
                 })
             }
         }
@@ -15493,11 +16228,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "endUserName",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUserName"))?,
                     outcomes: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "outcomes",
-                    )?)?,
-                    opt_end_user_party: rt::optional_field(value, 2usize, "optEndUserParty")?,
+                    )?)
+                    .map_err(|e| e.at("outcomes"))?,
+                    opt_end_user_party: rt::optional_field(value, 2usize, "optEndUserParty")
+                        .map_err(|e| e.at("optEndUserParty"))?,
                 })
             }
         }
@@ -15658,68 +16396,80 @@ pub mod splice_wallet {
                 match constructor {
                     "COO_AcceptedAppPayment" => {
                         ::core::result::Result::Ok(AmuletOperationOutcome::COO_AcceptedAppPayment(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_AcceptedAppPayment"))?,
                         ))
                     }
                     "COO_CompleteAcceptedTransfer" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_CompleteAcceptedTransfer(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_CompleteAcceptedTransfer"))?,
                         ),
                     ),
                     "COO_SubscriptionInitialPayment" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_SubscriptionInitialPayment(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_SubscriptionInitialPayment"))?,
                         ),
                     ),
                     "COO_SubscriptionPayment" => {
                         ::core::result::Result::Ok(AmuletOperationOutcome::COO_SubscriptionPayment(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_SubscriptionPayment"))?,
                         ))
                     }
                     "COO_MergeTransferInputs" => {
                         ::core::result::Result::Ok(AmuletOperationOutcome::COO_MergeTransferInputs(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_MergeTransferInputs"))?,
                         ))
                     }
                     "COO_BuyMemberTraffic" => {
                         ::core::result::Result::Ok(AmuletOperationOutcome::COO_BuyMemberTraffic(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_BuyMemberTraffic"))?,
                         ))
                     }
                     "COO_CompleteBuyTrafficRequest" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_CompleteBuyTrafficRequest(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_CompleteBuyTrafficRequest"))?,
                         ),
                     ),
                     "COO_Tap" => ::core::result::Result::Ok(AmuletOperationOutcome::COO_Tap(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("COO_Tap"))?,
                     )),
                     "COO_Error" => ::core::result::Result::Ok(AmuletOperationOutcome::COO_Error(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("COO_Error"))?,
                     )),
                     "ExtAmuletOperationOutcome" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::ExtAmuletOperationOutcome(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ExtAmuletOperationOutcome"))?,
                         ),
                     ),
                     "COO_CreateExternalPartySetupProposal" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_CreateExternalPartySetupProposal(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_CreateExternalPartySetupProposal"))?,
                         ),
                     ),
                     "COO_AcceptTransferPreapprovalProposal" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_AcceptTransferPreapprovalProposal(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_AcceptTransferPreapprovalProposal"))?,
                         ),
                     ),
                     "COO_RenewTransferPreapproval" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_RenewTransferPreapproval(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_RenewTransferPreapproval"))?,
                         ),
                     ),
                     "COO_TransferPreapprovalSend" => ::core::result::Result::Ok(
                         AmuletOperationOutcome::COO_TransferPreapprovalSend(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("COO_TransferPreapprovalSend"))?,
                         ),
                     ),
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -15751,7 +16501,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "dummyUnitField",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyUnitField"))?,
                 })
             }
         }
@@ -15879,60 +16630,75 @@ pub mod splice_wallet {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
                     "CO_AppPayment" => ::core::result::Result::Ok(AmuletOperation::CO_AppPayment(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("CO_AppPayment"))?,
                     )),
                     "CO_CompleteAcceptedTransfer" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_CompleteAcceptedTransfer(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_CompleteAcceptedTransfer"))?,
                         ))
                     }
                     "CO_SubscriptionAcceptAndMakeInitialPayment" => ::core::result::Result::Ok(
                         AmuletOperation::CO_SubscriptionAcceptAndMakeInitialPayment(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_SubscriptionAcceptAndMakeInitialPayment"))?,
                         ),
                     ),
                     "CO_SubscriptionMakePayment" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_SubscriptionMakePayment(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_SubscriptionMakePayment"))?,
                         ))
                     }
                     "CO_MergeTransferInputs" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_MergeTransferInputs(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_MergeTransferInputs"))?,
                         ))
                     }
-                    "CO_BuyMemberTraffic" => ::core::result::Result::Ok(
-                        AmuletOperation::CO_BuyMemberTraffic(rt::FromValue::from_value(payload)?),
-                    ),
+                    "CO_BuyMemberTraffic" => {
+                        ::core::result::Result::Ok(AmuletOperation::CO_BuyMemberTraffic(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_BuyMemberTraffic"))?,
+                        ))
+                    }
                     "CO_CompleteBuyTrafficRequest" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_CompleteBuyTrafficRequest(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_CompleteBuyTrafficRequest"))?,
                         ))
                     }
                     "CO_Tap" => ::core::result::Result::Ok(AmuletOperation::CO_Tap(
-                        rt::FromValue::from_value(payload)?,
+                        rt::FromValue::from_value(payload).map_err(|e| e.at("CO_Tap"))?,
                     )),
-                    "ExtAmuletOperation" => ::core::result::Result::Ok(
-                        AmuletOperation::ExtAmuletOperation(rt::FromValue::from_value(payload)?),
-                    ),
+                    "ExtAmuletOperation" => {
+                        ::core::result::Result::Ok(AmuletOperation::ExtAmuletOperation(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("ExtAmuletOperation"))?,
+                        ))
+                    }
                     "CO_CreateExternalPartySetupProposal" => ::core::result::Result::Ok(
                         AmuletOperation::CO_CreateExternalPartySetupProposal(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_CreateExternalPartySetupProposal"))?,
                         ),
                     ),
                     "CO_AcceptTransferPreapprovalProposal" => ::core::result::Result::Ok(
                         AmuletOperation::CO_AcceptTransferPreapprovalProposal(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_AcceptTransferPreapprovalProposal"))?,
                         ),
                     ),
                     "CO_RenewTransferPreapproval" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_RenewTransferPreapproval(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_RenewTransferPreapproval"))?,
                         ))
                     }
                     "CO_TransferPreapprovalSend" => {
                         ::core::result::Result::Ok(AmuletOperation::CO_TransferPreapprovalSend(
-                            rt::FromValue::from_value(payload)?,
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("CO_TransferPreapprovalSend"))?,
                         ))
                     }
                     other => ::core::result::Result::Err(rt::unexpected_constructor(
@@ -15994,26 +16760,32 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trafficAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trafficAmount"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                     min_topup_interval: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "minTopupInterval",
-                    )?)?,
-                    topup_state_cid: rt::optional_field(value, 5usize, "topupStateCid")?,
+                    )?)
+                    .map_err(|e| e.at("minTopupInterval"))?,
+                    topup_state_cid: rt::optional_field(value, 5usize, "topupStateCid")
+                        .map_err(|e| e.at("topupStateCid"))?,
                 })
             }
         }
@@ -16041,7 +16813,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trafficRequestCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trafficRequestCid"))?,
                 })
             }
         }
@@ -16067,7 +16840,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "tapAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("tapAmount"))?,
                 })
             }
         }
@@ -16093,7 +16867,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "dummyUnitField",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dummyUnitField"))?,
                 })
             }
         }
@@ -16125,12 +16900,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "externalParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("externalParty"))?,
                     preapproval_expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "preapprovalExpiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("preapprovalExpiresAt"))?,
                 })
             }
         }
@@ -16164,12 +16941,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "preapprovalProposalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("preapprovalProposalCid"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                 })
             }
         }
@@ -16202,12 +16981,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "previousApprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("previousApprovalCid"))?,
                     new_expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "newExpiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("newExpiresAt"))?,
                 })
             }
         }
@@ -16251,16 +17032,18 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferPreapprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferPreapprovalCid"))?,
                     provider_featured_app_right_cid: rt::optional_field(
                         value,
                         1usize,
                         "providerFeaturedAppRightCid",
-                    )?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amount",
-                    )?)?,
-                    description: rt::optional_field(value, 3usize, "description")?,
+                    )
+                    .map_err(|e| e.at("providerFeaturedAppRightCid"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    description: rt::optional_field(value, 3usize, "description")
+                        .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -16294,20 +17077,24 @@ pub mod splice_wallet {
         impl rt::FromValue for ExecutionContext {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     end_user: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "endUser",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUser"))?,
                     validator: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "validator",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validator"))?,
                     payment_context: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "paymentContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("paymentContext"))?,
                 })
             }
         }
@@ -16378,22 +17165,26 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     dso_party: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "dsoParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("dsoParty"))?,
                     validator_party: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "validatorParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("validatorParty"))?,
                     end_user_name: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "endUserName",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUserName"))?,
                     end_user_party: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "endUserParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUserParty"))?,
                 })
             }
         }
@@ -16618,7 +17409,8 @@ pub mod splice_wallet {
         impl rt::FromValue for AcceptedTransferOffer_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -16636,9 +17428,8 @@ pub mod splice_wallet {
         impl rt::FromValue for AcceptedTransferOffer_Abort {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -16656,9 +17447,8 @@ pub mod splice_wallet {
         impl rt::FromValue for AcceptedTransferOffer_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -16692,19 +17482,20 @@ pub mod splice_wallet {
         impl rt::FromValue for AcceptedTransferOffer_Complete {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     transfer_context: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                     wallet_provider: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "walletProvider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletProvider"))?,
                 })
             }
         }
@@ -16745,13 +17536,16 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferResult",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferResult"))?,
                     tracking_info: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "trackingInfo",
-                    )?)?,
-                    sender_change_amulet: rt::optional_field(value, 2usize, "senderChangeAmulet")?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
+                    sender_change_amulet: rt::optional_field(value, 2usize, "senderChangeAmulet")
+                        .map_err(|e| e.at("senderChangeAmulet"))?,
                 })
             }
         }
@@ -16782,13 +17576,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingId",
-                    )?)?,
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "sender",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 1usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                 })
             }
         }
@@ -16806,7 +17601,8 @@ pub mod splice_wallet {
         impl rt::FromValue for TransferOffer_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -16824,9 +17620,8 @@ pub mod splice_wallet {
         impl rt::FromValue for TransferOffer_Withdraw {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -16879,7 +17674,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -16906,7 +17702,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -16933,7 +17730,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -16960,7 +17758,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -16987,7 +17786,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -17014,7 +17814,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -17042,7 +17843,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "acceptedTransferOffer",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("acceptedTransferOffer"))?,
                 })
             }
         }
@@ -17092,26 +17894,28 @@ pub mod splice_wallet {
         impl rt::FromValue for AcceptedTransferOffer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 3usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     tracking_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                 })
             }
         }
@@ -17223,31 +18027,34 @@ pub mod splice_wallet {
         impl rt::FromValue for TransferOffer {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 3usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 2usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 3usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                     description: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "description",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("description"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     tracking_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                 })
             }
         }
@@ -17345,9 +18152,8 @@ pub mod splice_wallet {
         impl rt::FromValue for BuyTrafficRequest_Cancel {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    reason: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "reason",
-                    )?)?,
+                    reason: rt::FromValue::from_value(rt::required_field(value, 0usize, "reason")?)
+                        .map_err(|e| e.at("reason"))?,
                 })
             }
         }
@@ -17377,17 +18183,18 @@ pub mod splice_wallet {
         impl rt::FromValue for BuyTrafficRequest_Complete {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                     wallet_provider: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "walletProvider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletProvider"))?,
                 })
             }
         }
@@ -17413,7 +18220,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -17439,7 +18247,8 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingInfo",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
                 })
             }
         }
@@ -17482,13 +18291,16 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "purchasedTraffic",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("purchasedTraffic"))?,
                     tracking_info: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "trackingInfo",
-                    )?)?,
-                    sender_change_amulet: rt::optional_field(value, 2usize, "senderChangeAmulet")?,
+                    )?)
+                    .map_err(|e| e.at("trackingInfo"))?,
+                    sender_change_amulet: rt::optional_field(value, 2usize, "senderChangeAmulet")
+                        .map_err(|e| e.at("senderChangeAmulet"))?,
                 })
             }
         }
@@ -17517,12 +18329,14 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                     end_user_party: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "endUserParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUserParty"))?,
                 })
             }
         }
@@ -17585,40 +18399,48 @@ pub mod splice_wallet {
         impl rt::FromValue for BuyTrafficRequest {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 0usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     end_user_party: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "endUserParty",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("endUserParty"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     tracking_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "trackingId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trackingId"))?,
                     traffic_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "trafficAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("trafficAmount"))?,
                     member_id: rt::FromValue::from_value(rt::required_field(
                         value, 5usize, "memberId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("memberId"))?,
                     synchronizer_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "synchronizerId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("synchronizerId"))?,
                     migration_id: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "migrationId",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("migrationId"))?,
                 })
             }
         }
@@ -17717,17 +18539,20 @@ pub mod splice_wallet {
                         value,
                         0usize,
                         "transferPreapprovalCid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferPreapprovalCid"))?,
                     transfer_result: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferResult",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferResult"))?,
                     amulet_paid: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "amuletPaid",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletPaid"))?,
                 })
             }
         }
@@ -17756,15 +18581,16 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "inputs",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 1usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                 })
             }
         }
@@ -17803,11 +18629,14 @@ pub mod splice_wallet {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
-                    expected_dso: rt::optional_field(value, 2usize, "expectedDso")?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
+                    expected_dso: rt::optional_field(value, 2usize, "expectedDso")
+                        .map_err(|e| e.at("expectedDso"))?,
                 })
             }
         }
@@ -17866,7 +18695,8 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                 })
             }
         }
@@ -17889,7 +18719,8 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                 })
             }
         }
@@ -17912,7 +18743,8 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                 })
             }
         }
@@ -17943,7 +18775,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "receiverAmulets",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiverAmulets"))?,
                 })
             }
         }
@@ -17969,12 +18802,14 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     locked_amulet: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "lockedAmulet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
                 })
             }
         }
@@ -18030,17 +18865,18 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AppPaymentRequest_Accept {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                     wallet_provider: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "walletProvider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletProvider"))?,
                 })
             }
         }
@@ -18058,7 +18894,8 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AppPaymentRequest_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -18084,12 +18921,14 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     amulet_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletAmount"))?,
                 })
             }
         }
@@ -18114,10 +18953,10 @@ pub mod splice_wallet_payments {
                 ::core::result::Result::Ok(Self {
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 0usize, "receiver",
-                    )?)?,
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
                 })
             }
         }
@@ -18140,10 +18979,10 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for PaymentAmount {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amount: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amount",
-                    )?)?,
-                    unit: rt::FromValue::from_value(rt::required_field(value, 1usize, "unit")?)?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 0usize, "amount")?)
+                        .map_err(|e| e.at("amount"))?,
+                    unit: rt::FromValue::from_value(rt::required_field(value, 1usize, "unit")?)
+                        .map_err(|e| e.at("unit"))?,
                 })
             }
         }
@@ -18163,9 +19002,8 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AcceptedAppPayment_ExpireResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amulet",
-                    )?)?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 0usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                 })
             }
         }
@@ -18185,9 +19023,8 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AcceptedAppPayment_RejectResult {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "amulet",
-                    )?)?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 0usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                 })
             }
         }
@@ -18215,7 +19052,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedAppPayment",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedAppPayment"))?,
                 })
             }
         }
@@ -18243,7 +19081,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedAppPayment",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedAppPayment"))?,
                 })
             }
         }
@@ -18281,8 +19120,10 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "acceptedPayment",
-                    )?)?,
-                    sender_change_amulet: rt::optional_field(value, 1usize, "senderChangeAmulet")?,
+                    )?)
+                    .map_err(|e| e.at("acceptedPayment"))?,
+                    sender_change_amulet: rt::optional_field(value, 1usize, "senderChangeAmulet")
+                        .map_err(|e| e.at("senderChangeAmulet"))?,
                 })
             }
         }
@@ -18310,7 +19151,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedAppPayment",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedAppPayment"))?,
                 })
             }
         }
@@ -18400,29 +19242,34 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AcceptedAppPayment {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     amulet_receiver_amounts: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletReceiverAmounts",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletReceiverAmounts"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "provider",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     locked_amulet: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "lockedAmulet",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 5usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 5usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         6usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -18532,28 +19379,32 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for AppPaymentRequest {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver_amounts: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "receiverAmounts",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiverAmounts"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "provider",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     expires_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "expiresAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("expiresAt"))?,
                     description: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "description",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -18655,22 +19506,24 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for TerminatedAppPayment {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "provider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
                     receivers: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "receivers",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receivers"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -18725,12 +19578,14 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionPayment_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                     transfer_context: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18756,7 +19611,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18782,7 +19638,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18813,7 +19670,8 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionIdleState_ExpireSubscription {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                 })
             }
         }
@@ -18843,17 +19701,18 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionIdleState_MakePayment {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                     wallet_provider: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "walletProvider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletProvider"))?,
                 })
             }
         }
@@ -18880,12 +19739,14 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionInitialPayment_Expire {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
+                        .map_err(|e| e.at("actor"))?,
                     transfer_context: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18911,7 +19772,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18937,7 +19799,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "transferContext",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("transferContext"))?,
                 })
             }
         }
@@ -18993,17 +19856,18 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionRequest_AcceptAndMakePayment {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    inputs: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "inputs",
-                    )?)?,
+                    inputs: rt::FromValue::from_value(rt::required_field(value, 0usize, "inputs")?)
+                        .map_err(|e| e.at("inputs"))?,
                     context: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "context",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                     wallet_provider: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "walletProvider",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("walletProvider"))?,
                 })
             }
         }
@@ -19042,17 +19906,20 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "paymentAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("paymentAmount"))?,
                     payment_interval: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "paymentInterval",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("paymentInterval"))?,
                     payment_duration: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "paymentDuration",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("paymentDuration"))?,
                 })
             }
         }
@@ -19101,12 +19968,14 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionState",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionState"))?,
                     amulet_sum: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletSum",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
                 })
             }
         }
@@ -19142,12 +20011,14 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionState",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionState"))?,
                     amulet_sum: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "amuletSum",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
                 })
             }
         }
@@ -19180,10 +20051,10 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionState",
-                    )?)?,
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 1usize, "amulet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionState"))?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 1usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                 })
             }
         }
@@ -19218,8 +20089,10 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionPayment",
-                    )?)?,
-                    sender_change: rt::optional_field(value, 1usize, "senderChange")?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionPayment"))?,
+                    sender_change: rt::optional_field(value, 1usize, "senderChange")
+                        .map_err(|e| e.at("senderChange"))?,
                 })
             }
         }
@@ -19247,7 +20120,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -19275,7 +20149,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -19303,7 +20178,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
                 })
             }
         }
@@ -19331,7 +20207,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "amuletSum",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("amuletSum"))?,
                 })
             }
         }
@@ -19369,15 +20246,16 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscription"))?,
                     subscription_state: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "subscriptionState",
-                    )?)?,
-                    amulet: rt::FromValue::from_value(rt::required_field(
-                        value, 2usize, "amulet",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionState"))?,
+                    amulet: rt::FromValue::from_value(rt::required_field(value, 2usize, "amulet")?)
+                        .map_err(|e| e.at("amulet"))?,
                 })
             }
         }
@@ -19405,7 +20283,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -19433,7 +20312,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -19469,8 +20349,10 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionPayment",
-                    )?)?,
-                    sender_change: rt::optional_field(value, 1usize, "senderChange")?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionPayment"))?,
+                    sender_change: rt::optional_field(value, 1usize, "senderChange")
+                        .map_err(|e| e.at("senderChange"))?,
                 })
             }
         }
@@ -19498,7 +20380,8 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "terminatedSubscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("terminatedSubscription"))?,
                 })
             }
         }
@@ -19530,21 +20413,24 @@ pub mod splice_wallet_payments {
         impl rt::FromValue for SubscriptionData {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "sender",
-                    )?)?,
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
+                        .map_err(|e| e.at("sender"))?,
                     receiver: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "receiver",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
                     provider: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "provider",
-                    )?)?,
-                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)?,
+                    )?)
+                    .map_err(|e| e.at("provider"))?,
+                    dso: rt::FromValue::from_value(rt::required_field(value, 3usize, "dso")?)
+                        .map_err(|e| e.at("dso"))?,
                     description: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "description",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("description"))?,
                 })
             }
         }
@@ -19588,12 +20474,14 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -19690,25 +20578,30 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscription"))?,
                     subscription_data: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     pay_data: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "payData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("payData"))?,
                     next_payment_due_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "nextPaymentDueAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("nextPaymentDueAt"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -19823,26 +20716,32 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     pay_data: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "payData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("payData"))?,
                     target_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         2usize,
                         "targetAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("targetAmount"))?,
                     locked_amulet: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "lockedAmulet",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 4usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 4usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -19967,36 +20866,44 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscription",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscription"))?,
                     subscription_data: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     pay_data: rt::FromValue::from_value(rt::required_field(
                         value, 2usize, "payData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("payData"))?,
                     this_payment_due_at: rt::FromValue::from_value(rt::required_field(
                         value,
                         3usize,
                         "thisPaymentDueAt",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("thisPaymentDueAt"))?,
                     target_amount: rt::FromValue::from_value(rt::required_field(
                         value,
                         4usize,
                         "targetAmount",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("targetAmount"))?,
                     locked_amulet: rt::FromValue::from_value(rt::required_field(
                         value,
                         5usize,
                         "lockedAmulet",
-                    )?)?,
-                    round: rt::FromValue::from_value(rt::required_field(value, 6usize, "round")?)?,
+                    )?)
+                    .map_err(|e| e.at("lockedAmulet"))?,
+                    round: rt::FromValue::from_value(rt::required_field(value, 6usize, "round")?)
+                        .map_err(|e| e.at("round"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         7usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }
@@ -20098,10 +21005,12 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     pay_data: rt::FromValue::from_value(rt::required_field(
                         value, 1usize, "payData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("payData"))?,
                 })
             }
         }
@@ -20191,12 +21100,14 @@ pub mod splice_wallet_payments {
                         value,
                         0usize,
                         "subscriptionData",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("subscriptionData"))?,
                     reference: rt::FromValue::from_value(rt::required_field(
                         value,
                         1usize,
                         "reference",
-                    )?)?,
+                    )?)
+                    .map_err(|e| e.at("reference"))?,
                 })
             }
         }

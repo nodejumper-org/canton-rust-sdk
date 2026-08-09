@@ -121,10 +121,13 @@ mod tests {
     impl FromValue for AppInstall {
         fn from_value(value: &Value) -> Result<Self, ValueError> {
             Ok(Self {
-                provider: FromValue::from_value(required_field(value, 0, "provider")?)?,
-                amount: FromValue::from_value(required_field(value, 1, "amount")?)?,
-                tags: FromValue::from_value(required_field(value, 2, "tags")?)?,
-                note: optional_field(value, 3, "note")?,
+                provider: FromValue::from_value(required_field(value, 0, "provider")?)
+                    .map_err(|e| e.at("provider"))?,
+                amount: FromValue::from_value(required_field(value, 1, "amount")?)
+                    .map_err(|e| e.at("amount"))?,
+                tags: FromValue::from_value(required_field(value, 2, "tags")?)
+                    .map_err(|e| e.at("tags"))?,
+                note: optional_field(value, 3, "note").map_err(|e| e.at("note"))?,
             })
         }
     }
@@ -195,6 +198,27 @@ mod tests {
         fn to_value(&self) -> Value {
             record(vec![])
         }
+    }
+
+    /// A failure inside a nested record must say which field it came from.
+    ///
+    /// The generator wraps every field decode in `ValueError::at`, and `at`
+    /// prepends, so the labels accumulate into a path as the error travels up.
+    /// Without it a mismatch three records down arrives as a bare
+    /// "expected Text" and the reader has to guess.
+    #[test]
+    fn a_nested_decode_failure_carries_the_field_path() {
+        // `AppInstall.amount` is a Numeric; hand it a Party instead.
+        let wrong = record(vec![
+            ("provider", ToValue::to_value(&Party::new("alice"))),
+            ("amount", ToValue::to_value(&Party::new("not-a-number"))),
+            ("tags", ToValue::to_value(&Vec::<String>::new())),
+            ("note", ToValue::to_value(&Option::<String>::None)),
+        ]);
+
+        let err = <AppInstall as FromValue>::from_value(&wrong).expect_err("amount is not a Party");
+        assert_eq!(err.path(), ["amount"], "the failing field must be named");
+        assert!(err.to_string().contains("amount"), "{err}");
     }
 
     /// A type mismatch must name the kind it found and nothing from inside it.

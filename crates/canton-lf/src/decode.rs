@@ -134,12 +134,18 @@ fn hex(bytes: &[u8]) -> String {
 
 /// The Daml-LF 2.x minor versions this build decodes.
 ///
-/// Every package in the Splice + quickstart corpus (367 of them, across the
-/// amulet, wallet, token-standard and licensing DARs) declares `"1"`, which is
-/// what the vendored schema describes. Adding a minor here is a deliberate act:
-/// re-vendor the protos for it first, or the new fields are dropped on the
-/// floor by prost and the bindings come out quietly incomplete.
-const SUPPORTED_LF2_MINORS: &[&str] = &["1"];
+/// The list is evidence, not aspiration: a survey of every DAR available here —
+/// 18 of them, 648 packages across the Splice amulet/wallet/token-standard and
+/// quickstart-licensing sets — finds 617 packages at `2.1` and 31 at `2.2`, and
+/// both spellings appear inside DARs this repo generates bindings from. Both
+/// decode correctly against the vendored schema, which the conformance oracle
+/// checks against the official JVM `daml-lf-archive` reader.
+///
+/// Adding a minor is a deliberate act with a procedure: re-vendor the protos if
+/// the new minor changes them, then re-run the oracle. Guessing instead means
+/// prost silently drops fields belonging to a schema it does not know, and the
+/// bindings come out quietly incomplete.
+const SUPPORTED_LF2_MINORS: &[&str] = &["1", "2"];
 
 /// Refuse a minor we were not built against.
 ///
@@ -341,7 +347,7 @@ mod minor_tests {
     /// on the wire, far from its cause.
     #[test]
     fn an_unknown_minor_is_refused_rather_than_silently_decoded() {
-        for minor in ["2", "17", "dev", ""] {
+        for minor in ["3", "17", "dev", ""] {
             let bytes = archive_with_minor(minor);
             let err = decode_package(&bytes).expect_err("minor {minor} must be refused");
             let message = err.to_string();
