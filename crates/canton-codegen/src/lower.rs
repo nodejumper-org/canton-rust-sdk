@@ -191,23 +191,6 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
     (krate, errors)
 }
 
-/// Reject a generic instantiation whose `Optional` argument lands under the
-/// target's own `Optional`.
-///
-/// LF-JSON encodes an `Optional` as `null`/value unless its *immediate*
-/// argument is itself an `Optional`, in which case that one takes the list form
-/// (`[]` / `[x]`) — which is why the mapping turns `Optional (Optional t)` into
-/// `Option<NestedOpt<T>>`. That rewrite is
-/// structural, so it cannot see through a type parameter: for
-/// `data Wrap a = Wrap { value : Optional a }` instantiated at
-/// `Wrap (Optional Text)`, the nesting exists on the wire but not in the
-/// spelled-out type, and the emitted `Option<Option<String>>` would serialize
-/// the inner layer as `null` instead of `[]`.
-///
-/// Encoding that correctly needs the instantiation site to know how the target
-/// uses its parameter, and a distinct IR node for "this `Optional` is nested".
-/// Until then the case is refused rather than emitted wrong — it does not occur
-/// anywhere in the Splice corpus, so nothing real is lost.
 /// For each generic data type, which of its declared parameters land **directly
 /// under an `Optional`** once instantiated — the question that decides whether
 /// an `Optional` type argument is a nested optional on the wire.
@@ -380,6 +363,25 @@ fn bare_parameter(ty: &DamlType) -> Option<&str> {
     }
 }
 
+/// Reject a generic instantiation whose `Optional` argument lands under the
+/// target's own `Optional`.
+///
+/// LF-JSON encodes an `Optional` as `null`/value unless its *immediate*
+/// argument is itself an `Optional`, in which case that one takes the list form
+/// (`[]` / `[x]`) — which is why the mapping turns `Optional (Optional t)` into
+/// `Option<NestedOpt<T>>`. That rewrite is structural, so it cannot see through
+/// a type parameter: for `data Wrap a = Wrap { value : Optional a }`
+/// instantiated at `Wrap (Optional Text)`, the nesting exists on the wire but
+/// not in the spelled-out type, and the emitted `Option<Option<String>>` would
+/// serialize the inner layer as `null` instead of `[]`.
+///
+/// Encoding that correctly needs the instantiation site to know how the target
+/// uses its parameter, and a distinct IR node for "this `Optional` is nested".
+/// Until then the case is refused rather than emitted wrong — it does not occur
+/// anywhere in the Splice corpus, so nothing real is lost.
+///
+/// Which parameters land under an `Optional` is
+/// [`parameters_used_under_optional`]'s answer.
 fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
     let nests_parameter = parameters_used_under_optional(krate);
 
@@ -475,6 +477,7 @@ fn collect_type_refs_of_data_type<'a>(data_type: &'a DataType, out: &mut Vec<&'a
     }
 }
 
+/// [`collect_type_refs_of_data_type`] for one type.
 fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
     match ty {
         DamlType::Ref(reference) => {
@@ -501,16 +504,6 @@ fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
     }
 }
 
-/// Remove declarations that reference a type which was skipped, repeating until
-/// nothing changes.
-///
-/// Lowering is best-effort, so an unrepresentable type is skipped with a
-/// warning — but a *surviving* type that mentioned it still emits
-/// `crate::pkg::Mod::Gone` in a field, and the crate handed to the user fails
-/// to compile (E0425) with nothing tying the error back to the warning. A
-/// binding that cannot compile is worth no more than the one that was skipped,
-/// so its dependents go the same way, each reported with the name it was
-/// waiting on.
 /// The path key of every declaration the crate emits under its own name. An
 /// interface is absent on purpose: its key belongs to the marker `struct` in
 /// `data_types`, which is what a `ContractId<Iface>` resolves to.
@@ -548,6 +541,16 @@ fn still_declares(module: &Module, key: &str, at: &impl Fn(&str) -> String) -> b
         || module.templates.iter().any(|t| at(&t.name) == key)
 }
 
+/// Remove declarations that reference a type which was skipped, repeating until
+/// nothing changes.
+///
+/// Lowering is best-effort, so an unrepresentable type is skipped with a
+/// warning — but a *surviving* type that mentioned it still emits
+/// `crate::pkg::Mod::Gone` in a field, and the crate handed to the user fails
+/// to compile (E0425) with nothing tying the error back to the warning. A
+/// binding that cannot compile is worth no more than the one that was skipped,
+/// so its dependents go the same way, each reported with the name it was
+/// waiting on.
 fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
     let mut declared = declared_keys(krate);
 
@@ -1339,11 +1342,17 @@ impl Lowering<'_> {
     }
 
     /// The Rust path segments for a type constructor reference. Local when not
-    /// qualifying; otherwise `["crate", <package>, <module>, <Type>]`. The target
-    /// package is resolved from the reference's package identity, which comes in
-    /// three forms: **self**, an **imported** package by its interned id-hash, or
-    /// a Smart Contract Upgrade reference that names the package (resolved to the
-    /// bundled version via the referenced module).
+    /// qualifying; otherwise `["crate", <package>, <module>, <Type>]`.
+    ///
+    /// The target package is resolved from the reference's package identity,
+    /// which LF spells three ways — **self**, an **imported** package by its
+    /// interned id-hash, and (newer LF) an index into the explicit import table
+    /// — each of which ends at an id hash, and from there at the package's Rust
+    /// module name.
+    ///
+    /// Not a fourth way: the `#<package-name>` form of Smart Contract Upgrade is
+    /// a Ledger API spelling for a template id, not an LF type reference, and
+    /// never reaches here.
     fn con_path(&self, tycon: &lf::TypeConId) -> Result<Vec<String>, SkippedType> {
         use lf::self_or_imported_package_id::Sum;
 
