@@ -63,7 +63,12 @@ is included; nothing from it was removed or changed in signature.
   credentials in the endpoint URL. Both now have hand-written `Debug` that
   reports presence and length. Five error paths across `canton-core`,
   `canton-auth` and `canton-ledger` that quoted a URL verbatim now run it
-  through `canton_core::redact_url`.
+  through `canton_core::redact_url`. Two more types held the same secret behind
+  a `Debug` and were missed the first time: `JsonClient` derived one and printed
+  its `base_url` — userinfo included — and `OidcConfig` redacted its
+  `client_secret` field while printing a `token_url` that, for a provider taking
+  client credentials as basic auth, *is* the secret. `TokenResponse` no longer
+  derives `Debug` at all; it is one bearer token, and nothing should print it.
 - **`canton-daml`:** a type mismatch no longer copies the offending value into
   the error message. `mismatch()` formatted it with prost's `Debug`, so
   decoding a payload as the wrong type put the whole record — parties, amounts,

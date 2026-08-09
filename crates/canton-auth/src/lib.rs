@@ -168,7 +168,10 @@ impl OidcConfig {
 impl fmt::Debug for OidcConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OidcConfig")
-            .field("token_url", &self.token_url)
+            // Redacted for the same reason the secret is: an identity provider
+            // that takes client credentials as basic auth is configured as
+            // `https://id:secret@idp/token`, which puts the secret in the URL.
+            .field("token_url", &canton_core::redact_url(&self.token_url))
             .field("client_id", &self.client_id)
             .field("client_secret", &"<redacted>")
             .field("scope", &self.scope)
@@ -176,7 +179,10 @@ impl fmt::Debug for OidcConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
+/// No `Debug`: the struct is one bearer token and a number, so deriving it
+/// would leave a `{resp:?}` one edit away from putting a live credential in a
+/// log line. Nothing prints it today, and nothing should need to.
+#[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
     #[serde(default)]
@@ -378,6 +384,28 @@ mod tests {
         );
         assert!(rendered.contains("<redacted>"));
         assert!(rendered.contains("my-client"));
+    }
+
+    /// The dedicated `client_secret` field is not the only way a secret gets
+    /// into this type. Providers that take client credentials as basic auth are
+    /// configured as `https://id:secret@idp/token`, and that URL was being
+    /// printed whole.
+    #[test]
+    fn debug_redacts_a_secret_carried_in_the_token_url() {
+        let config = OidcConfig::new(
+            "https://my-client:URL-EMBEDDED-SECRET@idp.example/realms/r/token",
+            "my-client",
+            "TOP-SECRET-VALUE",
+        );
+        let rendered = format!("{config:?}");
+        assert!(
+            !rendered.contains("URL-EMBEDDED-SECRET"),
+            "leaked via the token url: {rendered}"
+        );
+        assert!(
+            rendered.contains("idp.example"),
+            "should keep the provider host: {rendered}"
+        );
     }
 
     #[test]

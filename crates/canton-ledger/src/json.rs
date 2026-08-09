@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 /// A client for the Canton **JSON** Ledger API over HTTP.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct JsonClient {
     base_url: String,
     http: reqwest::Client,
@@ -36,6 +36,28 @@ pub struct JsonClient {
     /// WS lane has a ceiling to raise: `reqwest` puts no limit on an HTTP
     /// response body, so the `POST` lane reads whatever the participant sends.
     max_decoding_message_size: usize,
+}
+
+/// Hand-written for the same reason [`Config`]'s is: a base URL can carry
+/// credentials in its userinfo (`https://user:secret@host`), and the derived
+/// `Debug` printed them verbatim — one `tracing` field holding a client, or one
+/// `{:?}` in a log line, was enough.
+///
+/// The `reqwest` client is left out entirely — `finish_non_exhaustive` says so
+/// rather than pretending otherwise — because its internals describe a
+/// connection pool, not this client.
+///
+/// [`Config`]: canton_core::Config
+impl std::fmt::Debug for JsonClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsonClient")
+            .field("base_url", &canton_core::redact_url(&self.base_url))
+            .field("auth", &self.auth)
+            .field("tls", &self.tls)
+            .field("retry", &self.retry)
+            .field("max_decoding_message_size", &self.max_decoding_message_size)
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Deserialize)]
@@ -984,6 +1006,37 @@ mod tests {
     fn with_limit_appends_only_when_set() {
         assert_eq!(with_limit("/v2/updates", None), "/v2/updates");
         assert_eq!(with_limit("/v2/updates", Some(5)), "/v2/updates?limit=5");
+    }
+
+    /// A client is the thing a caller is most likely to put in a `tracing`
+    /// field or a `{:?}`, and its base URL is the one place a credential can
+    /// hide in plain sight. `Config` has redacted its endpoint since the
+    /// mutual-TLS fix; this type held the same secret behind a derived `Debug`.
+    #[test]
+    fn debug_does_not_print_credentials_carried_in_the_base_url() {
+        let secret = "s3cr3t-p@ssw0rd";
+        let client = JsonClient::new(format!("https://svc-account:{secret}@ledger.example:3975"))
+            .with_token("eyJhbGciOiJSUzI1NiJ9.PAYLOAD.SIG");
+        let rendered = format!("{client:?}");
+
+        assert!(
+            !rendered.contains(secret),
+            "leaked the password: {rendered}"
+        );
+        assert!(
+            !rendered.contains("svc-account"),
+            "leaked the user: {rendered}"
+        );
+        assert!(
+            !rendered.contains("PAYLOAD"),
+            "leaked the token: {rendered}"
+        );
+        // Still useful: the host has to survive, or the output tells a reader
+        // nothing about which participant this client talks to.
+        assert!(
+            rendered.contains("ledger.example:3975"),
+            "should keep the host: {rendered}"
+        );
     }
 
     /// The WS lane must not silently inherit `tungstenite`'s ceiling: 64 MiB
