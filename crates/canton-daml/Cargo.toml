@@ -17,10 +17,12 @@ include      = ["src/**/*", "README.md", "LICENSE"]
 canton-core  = { workspace = true }
 canton-proto = { workspace = true }
 serde        = { workspace = true }
+# Not only for tests: the LF-JSON side of this crate's job needs a JSON value
+# type, and `serde` alone has none. `Template::from_json_created_event` takes
+# one, and generated code already derives `Deserialize` unconditionally, so no
+# consumer gains a dependency it did not already have transitively.
+serde_json   = { workspace = true }
 time         = { workspace = true }
-
-[dev-dependencies]
-serde_json = { workspace = true }
 
 [lints]
 workspace = true

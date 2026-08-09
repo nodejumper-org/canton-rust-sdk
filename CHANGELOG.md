@@ -140,6 +140,17 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-daml` (typed read on JSON):** `Template::from_json_created_event`
+  is the JSON counterpart of `from_created_event`, which was gRPC-only. Both
+  transports carry the same contract for the same bindings, so an application
+  may write over one and read over the other — but on the JSON lane a caller
+  had to reach into `event["CreatedEvent"]["createArgument"]` themselves, and
+  nothing then checked that the event was that template at all. A party's
+  stream carries every template it sees, and where two payloads share a field
+  shape, decoding one as the other succeeds and is wrong. Accepts the event
+  wrapped (`CreatedEvent` / `createdEvent`) or bare, and compares module and
+  entity but not the package id, matching the gRPC path under Smart Contract
+  Upgrade.
 - **`canton-codegen` (hostile DAR):** a type that resolves to itself is
   refused instead of overflowing the stack. Interned types are a flat table of
   indices, so `interned_types[0] = Interned(0)` — or two entries pointing at

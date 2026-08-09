@@ -228,9 +228,13 @@ async fn run_json(
     // other — and until this decoded, nothing said the node's LF-JSON and our
     // `Deserialize` agreed. The round-trip earlier in this file cannot say it:
     // it feeds our own serialisation back to ourselves.
-    let payload = json_created_payload(&response.transaction.events)
-        .ok_or_else(|| Error::UnexpectedResponse("no CreatedEvent payload".to_string()))?;
-    let read_back: AppInstallRequest = serde_json::from_value(payload.clone())?;
+    let created_event = response
+        .transaction
+        .events
+        .iter()
+        .find(|event| event.get("CreatedEvent").is_some())
+        .ok_or_else(|| Error::UnexpectedResponse("no CreatedEvent in the response".to_string()))?;
+    let read_back = AppInstallRequest::from_json_created_event(created_event)?;
     assert_eq!(
         &read_back, request,
         "the typed value decoded from the node's JSON matches the submit"
@@ -248,18 +252,6 @@ async fn run_json(
 
 /// The contract ids created by a JSON transaction's events
 /// (`{"CreatedEvent": {"contractId": …}}`).
-/// The `createArgument` of the first `CreatedEvent` in a JSON transaction —
-/// the LF-JSON payload, which is what a generated type deserializes from.
-///
-/// `createArgument`, singular: the gRPC field is `create_arguments` and the
-/// JSON one is not, which is the kind of difference only reading a real
-/// response settles. Confirmed against a 3.5.7 participant.
-fn json_created_payload(events: &[serde_json::Value]) -> Option<&serde_json::Value> {
-    events
-        .iter()
-        .find_map(|event| event.get("CreatedEvent")?.get("createArgument"))
-}
-
 fn json_created_contract_ids(events: &[serde_json::Value]) -> Vec<String> {
     events
         .iter()

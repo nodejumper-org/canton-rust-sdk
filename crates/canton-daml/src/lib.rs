@@ -99,7 +99,10 @@ mod tests {
     // As-if-generated shapes: a payload using the runtime types, its
     // `ToValue`/`FromValue` written exactly as the generator emits them (via
     // `record` / `record_field`), and a choice argument with its `Choice` impl.
-    #[derive(Clone, Debug, PartialEq)]
+    // The serde derives are part of "as the generator emits": every generated
+    // payload carries them, and leaving them off here let the JSON half of the
+    // codec go untested against the shape it is meant to mirror.
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct AppInstall {
         provider: Party,
         amount: Numeric,
@@ -819,5 +822,63 @@ mod tests {
             error.message().contains("tags"),
             "error should name the missing field: {error}"
         );
+    }
+
+    /// The JSON counterpart of the typed read path, including the check that
+    /// makes it safe to run over a stream carrying other templates.
+    #[test]
+    fn from_json_created_event_decodes_and_refuses_the_wrong_template() {
+        use serde_json::json;
+
+        let payload = json!({
+            "provider": "alice::1220ab",
+            "amount": "1.5",
+            "tags": ["a"],
+            "note": null
+        });
+
+        // Wrapped the way a transaction's `events` are.
+        let event = json!({"CreatedEvent": {
+            "contractId": "00abc",
+            "templateId": "somepackage:Licensing.AppInstall:AppInstall",
+            "createArgument": payload,
+        }});
+        let decoded = AppInstall::from_json_created_event(&event).unwrap();
+        assert_eq!(decoded.provider, Party::new("alice::1220ab"));
+        assert_eq!(decoded.amount, Numeric::from_wire("1.5"));
+
+        // Bare, the way an ACS entry's `createdEvent` arrives once unwrapped.
+        let bare = json!({
+            "templateId": "somepackage:Licensing.AppInstall:AppInstall",
+            "createArgument": payload,
+        });
+        assert!(AppInstall::from_json_created_event(&bare).is_ok());
+
+        // A different template whose payload happens to fit. Without the
+        // identity check this decodes cleanly and is the wrong contract — the
+        // whole reason the gRPC path checks, and the reason this one must.
+        let impostor = json!({"CreatedEvent": {
+            "templateId": "somepackage:Other.Module:SomethingElse",
+            "createArgument": payload,
+        }});
+        let error = AppInstall::from_json_created_event(&impostor)
+            .expect_err("a different template must not decode");
+        assert!(error.to_string().contains("Other.Module"), "{error}");
+        assert!(
+            error.to_string().contains("Licensing.AppInstall"),
+            "{error}"
+        );
+
+        // The package id is not compared: under SCU the ledger reports whichever
+        // version it vetted, so pinning it would reject a legitimate upgrade.
+        let upgraded = json!({"CreatedEvent": {
+            "templateId": "adifferentpackageid:Licensing.AppInstall:AppInstall",
+            "createArgument": payload,
+        }});
+        assert!(AppInstall::from_json_created_event(&upgraded).is_ok());
+
+        // No payload at all is an error, not a default-constructed value.
+        let empty = json!({"CreatedEvent": {"contractId": "00abc"}});
+        assert!(AppInstall::from_json_created_event(&empty).is_err());
     }
 }

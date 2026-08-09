@@ -86,6 +86,77 @@ pub trait Template: Contract + ToValue + FromValue {
             .ok_or_else(|| ValueError::new("created event carries no create_arguments payload"))?;
         crate::value::from_record(record)
     }
+
+    /// [`Template::from_created_event`] for the **JSON** Ledger API: decode a
+    /// created event from a JSON transaction, ACS entry, or `submit-and-wait`
+    /// response into this template's typed payload.
+    ///
+    /// ```ignore
+    /// for event in &response.transaction.events {
+    ///     if let Ok(install) = AppInstall::from_json_created_event(event) {
+    ///         println!("{}", install.provider);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Both transports carry the same contract for the same bindings, and until
+    /// this existed only one of them could read one back as a type. On the JSON
+    /// lane a caller had to reach into `event["CreatedEvent"]["createArgument"]`
+    /// themselves — and, having done so, had nothing checking that the event was
+    /// this template at all. A party's stream carries events for every template
+    /// it sees; where two payloads happen to share a field shape, decoding one
+    /// as the other succeeds and is wrong.
+    ///
+    /// Accepts the created event either bare or wrapped, because the API hands
+    /// it out both ways: a transaction's `events` are
+    /// `{"CreatedEvent": {…}}`, an ACS entry nests `createdEvent`. There is no
+    /// ambiguity — a created event does not itself have those keys.
+    ///
+    /// The module and entity of `templateId` are checked, and the package id is
+    /// deliberately not, for the reason given on
+    /// [`Template::from_created_event`].
+    ///
+    /// # Errors
+    /// Returns [`ValueError`] if the value is not a created event, is a
+    /// different template, carries no `createArgument`, or its payload does not
+    /// deserialize as `Self`.
+    fn from_json_created_event(event: &serde_json::Value) -> Result<Self, ValueError>
+    where
+        Self: serde::de::DeserializeOwned,
+    {
+        let created = ["CreatedEvent", "createdEvent"]
+            .iter()
+            .find_map(|key| event.get(key))
+            .unwrap_or(event);
+
+        if let Some(id) = created
+            .get("templateId")
+            .and_then(serde_json::Value::as_str)
+        {
+            // `<package>:<Module>:<Entity>` — the package part is whatever
+            // version the ledger vetted, so only the last two are compared.
+            let mut parts = id.rsplit(':');
+            let entity = parts.next().unwrap_or_default();
+            let module = parts.next().unwrap_or_default();
+            if entity != Self::ENTITY_NAME || module != Self::MODULE_NAME {
+                return Err(ValueError::new(format!(
+                    "event is {module}:{entity}, expected {}:{}",
+                    Self::MODULE_NAME,
+                    Self::ENTITY_NAME,
+                )));
+            }
+        }
+
+        let payload = created.get("createArgument").ok_or_else(|| {
+            // Singular: the gRPC field is `create_arguments` and this one is
+            // not, which is the sort of thing only a real response settles.
+            ValueError::new("created event carries no createArgument payload")
+        })?;
+        serde_json::from_value(payload.clone())
+            // The serde error names the field it failed on but not the value,
+            // which is the same bargain the gRPC codec strikes.
+            .map_err(|error| ValueError::new(format!("payload did not decode: {error}")))
+    }
 }
 
 /// A Daml interface: a [`Contract`] identified by a marker type (held via
