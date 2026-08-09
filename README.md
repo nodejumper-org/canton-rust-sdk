@@ -148,6 +148,12 @@ Nothing here is devkit-specific beyond the variable names, and `CANTON_ENDPOINT`
 / `CANTON_TOKEN` override them for an environment that is not a LocalNet. The
 full contract is in [`canton_core::localnet`](crates/canton-core/src/localnet.rs).
 
+Verified against a live Canton 3.5.7 participant reached through those exported
+shapes — scheme-less gRPC URL, vhost hostnames, ready-made bearer token — on
+both transports. What that does *not* yet cover is a `localnet up` of our own:
+the contract is read and exercised, the orchestration around it is the devkit
+project's to vouch for.
+
 ## Typed bindings from your DAR (codegen)
 
 Turn any DAR into a typed crate — templates become structs, choices become
@@ -234,9 +240,25 @@ export CANTON_TEST_LICENSING_PKG='#quickstart-licensing'
 cargo test -p canton-ledger --all-features --test live -- --nocapture
 ```
 
-**Bringing up a node.** Any Canton 3.5 participant works; three paths, least
+**Credentials.** The suite takes whichever the environment offers: the OIDC
+client-credentials flow where there is an issuer (`CANTON_TEST_TOKEN_URL` and
+friends), otherwise a ready-made bearer token — which is what a Splice LocalNet
+exports, having no issuer to exchange credentials with. Two tests genuinely need
+an issuer (`ledger_end_with_oidc_auth`, and party management, which needs a
+token carrying `ParticipantAdmin`); those say so when they step aside. The rest
+run either way.
+
+**Bringing up a node.** Any Canton 3.5 participant works; four paths, least
 setup first:
 
+- [canton-devkit](https://github.com/bitdynamics-ab/canton-devkit) — one binary:
+  `canton-devkit localnet up demo`, then `eval "$(canton-devkit localnet env
+  demo)"` exports endpoints, tokens and party ids under the names
+  [`canton_core::localnet`](crates/canton-core/src/localnet.rs) reads, so the
+  suite needs no `CANTON_TEST_*` at all. It allocates its own ports, so pass
+  `--port-base` or read the exported values rather than assuming `3901`.
+  Authentication is Splice's `unsafe-jwt-hmac-256`, so the two issuer-dependent
+  tests skip; `localnet dar upload` supplies a package for the rest.
 - [Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
   — the least to install: `canton builder start` brings up a LocalNet (its guide
   says about five minutes the first time, faster after), and
@@ -249,9 +271,10 @@ setup first:
   (`3901` gRPC, `3902` admin, `3975` JSON), so `CANTON_TEST_ENDPOINT` and
   `CANTON_TEST_JSON_ENDPOINT` need no changes. It runs **unauthenticated** by
   default — its only other profile is `unsafe-jwt-hmac-256`, an HMAC secret you
-  sign tokens with yourself — so there is no OIDC token endpoint: the tests
-  gated on `CANTON_TEST_TOKEN_URL` skip, as do the command-submission ones,
-  which also want the licensing package. Use `cn-quickstart` for those.
+  sign tokens with yourself — so there is no OIDC token endpoint. Set the token
+  you signed as `CANTON_TOKEN` and everything except the two issuer-dependent
+  tests runs; the command-submission ones additionally want a package, which is
+  what `cn-quickstart` supplies.
 - [`cn-quickstart`](https://github.com/digital-asset/cn-quickstart)
   (`make setup && make build && make start`) — the same LocalNet plus the
   licensing sample app, which is where `CANTON_TEST_LICENSING_PKG` /
@@ -287,6 +310,17 @@ Ledger-Client-Standard conformance suite.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
 [SECURITY.md](SECURITY.md) for private vulnerability reporting. Notable
 changes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
+## Acknowledgements
+
+Built on the Ledger API and Daml-LF work of the
+[Canton](https://github.com/digital-asset/canton) and
+[Splice](https://github.com/canton-network/splice) teams.
+
+The local-development path reads the environment
+[canton-devkit](https://github.com/bitdynamics-ab/canton-devkit) exports, and
+reading its DAR container taught us that a per-entry decompression cap bounds
+nothing on its own — an archive is now bounded in total as well.
 
 ## License
 
