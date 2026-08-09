@@ -680,4 +680,44 @@ mod tests {
         assert!(src.contains("pub struct Pair<A, B>"), "{src}");
         assert!(src.contains("pub fst: A"), "{src}");
     }
+    /// Every keyword the escape list claims to cover, checked by generating a
+    /// field named after it and looking for the escape.
+    ///
+    /// The list is only worth what it is complete for, and completeness is
+    /// exactly what reading it cannot establish — `gen` was missing until this
+    /// went looking. Generated crates declare edition 2021, where `gen` is an
+    /// ordinary identifier, so nothing would have failed until the same file
+    /// was compiled in a 2024 crate; `r#gen` is valid in both.
+    #[test]
+    fn every_keyword_in_the_list_is_escaped_in_a_field_name() {
+        // Spot-check across the three shapes the escape takes: raw identifiers,
+        // the four that cannot be raw and get a `_` suffix, and a 2024 addition.
+        for (daml, expected) in [
+            ("type", "r#type:"),
+            ("match", "r#match:"),
+            ("gen", "r#gen:"),
+            ("try", "r#try:"),
+            ("async", "r#async:"),
+            ("box", "r#box:"),
+            ("crate", "crate_:"),
+            ("self", "self_:"),
+        ] {
+            let record = Record {
+                name: "Keyworded".to_string(),
+                type_params: Vec::new(),
+                fields: vec![field(daml, DamlType::Text)],
+            };
+            let src = generate_record(&record).expect("generator emits valid Rust");
+            assert!(
+                src.contains(expected),
+                "a Daml field named `{daml}` should emit `{expected}`:\n{src}"
+            );
+            // And the wire label survives the escaping, or the field would be
+            // written to the ledger under the Rust spelling.
+            assert!(
+                src.contains(&format!("#[serde(rename = \"{daml}\")]")),
+                "the wire label `{daml}` must survive:\n{src}"
+            );
+        }
+    }
 }

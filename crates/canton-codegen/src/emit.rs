@@ -759,5 +759,10 @@ fn is_keyword(name: &str) -> bool {
             | "virtual"
             | "yield"
             | "try"
+            // Reserved by the 2024 edition. A generated crate declares 2021, so
+            // a Daml field named `gen` compiles there today — but the same file
+            // in a 2024 crate would not, and `r#gen` is valid in both. The
+            // `serde(rename)` beside it keeps the wire label either way.
+            | "gen"
     )
 }
