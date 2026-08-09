@@ -19,7 +19,27 @@ use canton_admin::{AdminClient, Config, Store, TopologyClient};
 use canton_auth::{OidcConfig, TokenProvider};
 
 fn endpoint() -> Option<String> {
-    std::env::var("CANTON_TEST_ENDPOINT").ok()
+    std::env::var("CANTON_TEST_ENDPOINT")
+        .ok()
+        .or_else(|| canton_core::localnet::grpc_endpoint(None))
+}
+
+/// A client with whatever ordinary credentials the environment offers: the
+/// OIDC client-credentials flow where there is an issuer (cn-quickstart runs
+/// Keycloak), otherwise the ready-made token a Splice LocalNet exports.
+///
+/// Deliberately **not** used for the party-management tests. Those need the
+/// `ParticipantAdmin` right, which here comes from a second, differently
+/// privileged OIDC client — and nothing establishes that a LocalNet's exported
+/// token carries it. A test that runs and fails with `PermissionDenied` is
+/// worse than one that says it is skipping.
+fn ordinary_client() -> Option<AdminClient> {
+    let config = Config::new(endpoint()?);
+    let config = match oidc() {
+        Some(oidc) => config.with_oidc(TokenProvider::new(oidc)),
+        None => config.with_token(canton_core::localnet::token(None)?),
+    };
+    AdminClient::connect_lazy(config).ok()
 }
 
 fn admin_endpoint() -> Option<String> {
@@ -50,14 +70,10 @@ fn admin_client(config: OidcConfig) -> Option<AdminClient> {
 
 #[tokio::test]
 async fn user_self_inspect_reports_the_authenticated_user() {
-    let (Some(oidc_config), Some(client)) = (oidc(), oidc().and_then(admin_client)) else {
-        eprintln!(
-            "skipping user_self_inspect: set CANTON_TEST_ENDPOINT + \
-             CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET"
-        );
+    let Some(client) = ordinary_client() else {
+        eprintln!("skipping user_self_inspect: no endpoint or credentials in the environment");
         return;
     };
-    let _ = oidc_config;
 
     let user = client.current_user().await.expect("current_user");
     assert!(!user.id.is_empty(), "authenticated user should have an id");
@@ -74,8 +90,10 @@ async fn user_self_inspect_reports_the_authenticated_user() {
 
 #[tokio::test]
 async fn participant_id_is_returned() {
-    let Some(client) = oidc().and_then(admin_client) else {
-        eprintln!("skipping participant_id_is_returned: set CANTON_TEST_ENDPOINT + token env");
+    let Some(client) = ordinary_client() else {
+        eprintln!(
+            "skipping participant_id_is_returned: no endpoint or credentials in the environment"
+        );
         return;
     };
 
@@ -214,8 +232,8 @@ fn uuid_like() -> String {
 async fn packages_read_lists_and_reports_status() {
     use canton_admin::PackageStatus;
 
-    let Some(client) = oidc().and_then(admin_client) else {
-        eprintln!("skipping packages_read_lists_and_reports_status: set endpoint + token env");
+    let Some(client) = ordinary_client() else {
+        eprintln!("skipping packages_read_lists_and_reports_status: no endpoint or credentials");
         return;
     };
 
