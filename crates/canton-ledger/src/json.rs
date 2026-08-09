@@ -32,6 +32,10 @@ pub struct JsonClient {
     /// its TLS settings into `http` at `with_tls` time.
     tls: Option<canton_core::TlsConfig>,
     retry: Option<canton_core::RetryConfig>,
+    /// The largest WebSocket frame this client will accept, in bytes. Only the
+    /// WS lane has a ceiling to raise: `reqwest` puts no limit on an HTTP
+    /// response body, so the `POST` lane reads whatever the participant sends.
+    max_decoding_message_size: usize,
 }
 
 #[derive(Deserialize)]
@@ -344,7 +348,27 @@ impl JsonClient {
             auth: Auth::None,
             tls: None,
             retry: None,
+            max_decoding_message_size: canton_core::DEFAULT_MAX_DECODING_MESSAGE_SIZE,
         }
+    }
+
+    /// The largest WebSocket message this client will accept, in bytes —
+    /// the JSON lane's counterpart to [`Config::with_max_decoding_message_size`],
+    /// and the same default.
+    ///
+    /// A WS stream carries the same payloads the gRPC one does, so it needs the
+    /// same ceiling. Left alone, `tungstenite` applies its own: 64 MiB per
+    /// message and **16 MiB per frame**, the second of which is the one a large
+    /// update meets first. Both are set from this value, so a frame is capped
+    /// only by what the caller asked for.
+    ///
+    /// Does not affect the HTTP (`POST`) lane, which has no ceiling to raise.
+    ///
+    /// [`Config::with_max_decoding_message_size`]: canton_core::Config::with_max_decoding_message_size
+    #[must_use]
+    pub fn with_max_decoding_message_size(mut self, bytes: usize) -> Self {
+        self.max_decoding_message_size = bytes;
+        self
     }
 
     /// Retry requests on retriable errors (category-first classification of
@@ -632,6 +656,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/updates",
                 request,
             )
@@ -659,6 +684,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/updates",
                 request.json_body(),
             )
@@ -691,6 +717,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/state/active-contracts",
                 request,
             )
@@ -716,6 +743,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/state/active-contracts",
                 request.json_body(),
             )
@@ -743,6 +771,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/commands/command-completions",
                 request,
             )
@@ -770,6 +799,7 @@ impl JsonClient {
                 &self.base_url,
                 &self.auth,
                 self.tls.as_ref(),
+                self.max_decoding_message_size,
                 "/v2/commands/command-completions",
                 request.json_body(),
             )
@@ -796,13 +826,21 @@ impl JsonClient {
         let base_url = self.base_url.clone();
         let auth = self.auth.clone();
         let tls = self.tls.clone();
+        let max_decoding_message_size = self.max_decoding_message_size;
         async_stream::stream! {
             let mut offset = begin_exclusive;
             let mut reconnects = 0u32;
             loop {
                 // Unbounded tail (no end): a close means the connection dropped.
                 let request = updates_request(&parties, offset, None);
-                match crate::ws::subscribe(&base_url, &auth, tls.as_ref(), "/v2/updates", request).await {
+                match crate::ws::subscribe(
+                    &base_url,
+                    &auth,
+                    tls.as_ref(),
+                    max_decoding_message_size,
+                    "/v2/updates",
+                    request,
+                ).await {
                     Ok(inner) => {
                         tokio::pin!(inner);
                         loop {
@@ -946,6 +984,24 @@ mod tests {
     fn with_limit_appends_only_when_set() {
         assert_eq!(with_limit("/v2/updates", None), "/v2/updates");
         assert_eq!(with_limit("/v2/updates", Some(5)), "/v2/updates?limit=5");
+    }
+
+    /// The WS lane must not silently inherit `tungstenite`'s ceiling: 64 MiB
+    /// per message and 16 MiB per *frame*, neither of them anything the caller
+    /// asked for. A JSON client carries the same limit the gRPC one does, and
+    /// raising it is the caller's to do.
+    #[test]
+    fn the_ws_lane_starts_at_the_sdk_size_limit_not_tungstenites() {
+        let client = JsonClient::new("http://localhost:3975");
+        assert_eq!(
+            client.max_decoding_message_size,
+            canton_core::DEFAULT_MAX_DECODING_MESSAGE_SIZE,
+        );
+        // Well clear of both tungstenite defaults, which is the whole point.
+        assert!(client.max_decoding_message_size > 64 << 20);
+
+        let raised = client.with_max_decoding_message_size(256 << 20);
+        assert_eq!(raised.max_decoding_message_size, 256 << 20);
     }
 
     #[test]

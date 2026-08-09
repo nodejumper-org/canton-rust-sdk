@@ -190,6 +190,7 @@ pub(crate) async fn subscribe(
     base_url: &str,
     auth: &Auth,
     tls: Option<&TlsConfig>,
+    max_decoding_message_size: usize,
     path: &str,
     request: Value,
 ) -> Result<impl Stream<Item = Result<Value>> + Send + use<>> {
@@ -206,16 +207,29 @@ pub(crate) async fn subscribe(
         builder = builder.with_header("Authorization", format!("Bearer {token}"));
     }
 
+    // Left to its own defaults tungstenite caps an incoming message at 64 MiB
+    // and a single frame at 16 MiB — a ceiling on ledger data that the caller
+    // never chose and, until now, could not raise. Both come from the client's
+    // configured size so the frame limit, which a large update meets first, is
+    // never the tighter of the two.
+    let ws_config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
+        .max_message_size(Some(max_decoding_message_size))
+        .max_frame_size(Some(max_decoding_message_size));
+
     let connector = build_connector(tls)?;
-    let (mut socket, _response) =
-        tokio_tungstenite::connect_async_tls_with_config(builder, None, false, connector)
-            .await
-            .map_err(|e| {
-                Error::Connection(format!(
-                    "ws connect to {} failed: {e}",
-                    canton_core::redact_url(&url)
-                ))
-            })?;
+    let (mut socket, _response) = tokio_tungstenite::connect_async_tls_with_config(
+        builder,
+        Some(ws_config),
+        false,
+        connector,
+    )
+    .await
+    .map_err(|e| {
+        Error::Connection(format!(
+            "ws connect to {} failed: {e}",
+            canton_core::redact_url(&url)
+        ))
+    })?;
 
     // A single subscription frame (same JSON as the equivalent HTTP POST body).
     socket

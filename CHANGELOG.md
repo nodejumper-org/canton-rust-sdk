@@ -79,7 +79,13 @@ is included; nothing from it was removed or changed in signature.
   was reachable in ordinary use and surfaced as a client-side `OUT_OF_RANGE`
   that reads like a server fault. Applied at all 24 service-client
   constructions across `canton-ledger` and `canton-admin` through one macro per
-  crate, so a newly added RPC cannot pick the default back up.
+  crate, so a newly added RPC cannot pick the default back up. The WebSocket
+  lane had the same problem one layer down and no way to fix it:
+  `tungstenite`'s defaults cap a message at 64 MiB and a single **frame** at
+  16 MiB. `JsonClient::with_max_decoding_message_size` now sets both, and
+  defaults them to the same 128 MiB, so one transport cannot quietly be
+  stricter than the other. (The HTTP lane needs nothing — `reqwest` puts no
+  limit on a response body.)
 - **`canton-core` (errors):** `Error::resource_info()` exposes the
   `google.rpc.ResourceInfo` Canton attaches to failures where "which one?" is
   the first question — `CONTRACT_NOT_FOUND` names the contract id. A `Vec`
@@ -94,7 +100,10 @@ is included; nothing from it was removed or changed in signature.
   build was not compiled against is refused instead of decoded. prost drops
   fields from a schema it does not know, so a newer minor yielded a package
   quietly missing template fields. Accepts `2.1` and `2.2`, which is what the
-  available corpus contains (648 packages across 18 DARs).
+  available corpus contains (648 packages across 18 DARs). The **major**
+  version is decided first: an LF 1 archive — every DAR a Daml 2.x SDK built —
+  was being reported as an unsupported *LF 2 minor*, telling the reader to
+  upgrade an SDK that will never read it.
 - **`canton-codegen` (decode errors):** generated `FromValue` bodies attach the
   field name to a failure, so a mismatch inside a nested record reports
   `meta.values` instead of a bare "expected Text". `ValueError::at` existed and
