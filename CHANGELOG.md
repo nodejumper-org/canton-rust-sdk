@@ -140,6 +140,16 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-codegen` (manifest injection):** the DAR's package version is
+  validated before it reaches the generated `Cargo.toml`. It was interpolated
+  raw, so a version of the form `0.1.0"` + newline + `[dependencies.evil]` +
+  `git = "…` closed the string and opened a table — an arbitrary git dependency
+  in a manifest the caller then compiles, which is code execution from an
+  archive. The archive-integrity guards do not stop it: the package id is the
+  hash of whatever payload its author chose, so an authored DAR passes them
+  all. The crate name beside it was already validated and the runtime path
+  beside it already escaped; the version was the third field in the same
+  manifest and the one that was missed.
 - **`canton-codegen` (drift guard):** the guard that keeps the committed
   bindings honest now runs in CI. The four existing ones need a DAR from a
   Splice or cn-quickstart checkout, so on a machine without one they skip — and
