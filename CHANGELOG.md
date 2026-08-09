@@ -140,6 +140,15 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-codegen` (hostile DAR):** a type that resolves to itself is
+  refused instead of overflowing the stack. Interned types are a flat table of
+  indices, so `interned_types[0] = Interned(0)` — or two entries pointing at
+  each other — is not malformed to prost, which bounds nested *messages* and
+  has no view of the table. Following it recursed until the stack ended, and a
+  stack overflow aborts the process rather than failing the DAR: the one input
+  in this reader that still killed the caller after the zip-bomb, entry-size,
+  archive-size, package-id and LF-version guards. Bounded at 256 levels, where
+  the deepest type in the 648-package corpus resolves in 15.
 - **`canton-lf` (archive integrity):** a package's payload is hashed and checked
   against the id it declares before it is parsed, and a `hash_function` other
   than SHA-256 is refused rather than assumed. That id is embedded in generated

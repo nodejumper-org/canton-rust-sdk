@@ -128,6 +128,7 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
                 module_names: &module_names,
                 current_id: id,
             }),
+            depth: std::cell::Cell::new(0),
         };
         let mut package_module = PackageModule {
             name: module_names[id.as_str()].clone(),
@@ -861,6 +862,38 @@ struct Lowering<'a> {
     /// `None` → local references (bare type name). `Some` → fully-qualified
     /// paths resolved through the DAR's package map.
     qualify: Option<Qualify<'a>>,
+    /// How many frames of [`Lowering::apply`] are currently on the stack.
+    ///
+    /// Held here rather than passed as an argument so the eleven call sites of
+    /// `type_`/`apply` keep their signatures; `Lowering` is used from one thread
+    /// for the length of one package.
+    depth: std::cell::Cell<u32>,
+}
+
+/// How deep type resolution may go before the DAR is refused.
+///
+/// Every other axis of this recursion is already bounded: prost caps nested
+/// messages, so a type nested inside a type inside a type runs out long before
+/// the stack does. Interned types are the exception, and they are not nested at
+/// all — they are a flat table of indices, so `interned_types[0]` may be
+/// `Interned(0)`, or two entries may point at each other, and prost sees
+/// nothing to object to. Resolving that recurses until the stack ends, and a
+/// stack overflow **aborts the process** rather than failing the DAR: the one
+/// place in this reader where hostile input still killed the caller after the
+/// zip-bomb, entry-size, archive-size, package-id and LF-version guards.
+///
+/// Far above anything real: the deepest type across the 648-package corpus
+/// resolves in 15 levels, so this leaves seventeen times the headroom and only
+/// ever fires on an archive built to fire it.
+const MAX_TYPE_DEPTH: u32 = 256;
+
+/// Decrements [`Lowering::depth`] however the frame it guards is left.
+struct DepthGuard<'a>(&'a std::cell::Cell<u32>);
+
+impl Drop for DepthGuard<'_> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() - 1);
+    }
 }
 
 /// The context for qualifying a reference to a fully-qualified Rust path.
@@ -1214,11 +1247,33 @@ impl Lowering<'_> {
         self.apply(ty, &[])
     }
 
+    /// Claim one frame of type-resolution depth, or refuse the type.
+    ///
+    /// Refusing is a `SkippedType`, which is how every other unrepresentable
+    /// type is reported: the DAR still generates, minus the type that could not
+    /// be resolved and — through the existing dependent-skip pass — anything
+    /// that referred to it. The alternative on this path is not a worse error
+    /// message, it is `SIGABRT`.
+    fn enter(&self) -> Result<DepthGuard<'_>, SkippedType> {
+        let depth = self.depth.get();
+        if depth >= MAX_TYPE_DEPTH {
+            return Err(SkippedType::new(format!(
+                "type nests deeper than {MAX_TYPE_DEPTH} levels, or its interned \
+                 types refer to each other in a cycle"
+            )));
+        }
+        self.depth.set(depth + 1);
+        Ok(DepthGuard(&self.depth))
+    }
+
     /// Lower `ty` applied to `extra` type arguments. This unifies the flattened
     /// form (`Con`/`Builtin` with an `args` list) and the curried `TApp` form
     /// (LF 2.dev): `TApp(lhs, rhs)` applies `lhs` to `rhs` prepended to `extra`,
     /// so `((f a) b)` collapses to `f` applied to `[a, b]` regardless of shape.
     fn apply(&self, ty: &lf::Type, extra: &[&lf::Type]) -> Result<DamlType, SkippedType> {
+        // Held for the whole frame, so the count unwinds with every early
+        // return below as well as the successful one.
+        let _guard = self.enter()?;
         let Some(sum) = &ty.sum else {
             return Err(SkippedType::new("empty type"));
         };
@@ -2773,6 +2828,91 @@ mod tests {
             krate.packages.len(),
             src.len(),
             errors.len(),
+        );
+    }
+
+    /// An interned type that resolves to itself. prost cannot object: the
+    /// interned table is a flat list of indices, not nested messages, so
+    /// nothing about the archive is malformed until something follows the
+    /// index. Following it used to recurse until the stack ended, and a stack
+    /// overflow aborts the process — the DAR does not fail, the caller dies.
+    ///
+    /// A `.dalf` like this is not something `daml build` emits; it is something
+    /// a person writes. The archive-integrity guards do not help, because the
+    /// package id is the hash of whatever payload the author chose.
+    #[test]
+    fn an_interned_type_cycle_is_refused_instead_of_overflowing_the_stack() {
+        let mut package = package_with(&["M.T"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        // interned_types[0] = Interned(0)
+        package.interned_types = vec![lf::Type {
+            sum: Some(lf::r#type::Sum::Interned(0)),
+        }];
+        let mut def = record_def(0, label);
+        if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
+            fields.fields[0].r#type = Some(lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            });
+        }
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![def],
+            ..lf::Module::default()
+        }];
+
+        // Reaching this line at all is the assertion: before the depth bound
+        // the process aborted here with SIGABRT.
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped.iter().any(|s| s.to_string().contains("cycle")),
+            "should be reported as a skipped type: {skipped:?}"
+        );
+        // And the type it defeated is not emitted half-formed.
+        let emitted: usize = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .map(|m| m.module.data_types.len())
+            .sum();
+        assert_eq!(
+            emitted, 0,
+            "a type that could not be resolved is not emitted"
+        );
+    }
+
+    /// Two interned types pointing at each other — the same defect one step
+    /// removed, and the shape a counter that only watched the direct
+    /// `Interned` arm would miss.
+    #[test]
+    fn an_indirect_interned_cycle_is_refused_too() {
+        let mut package = package_with(&["M.T"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.interned_types = vec![
+            lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(1)),
+            },
+            lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            },
+        ];
+        let mut def = record_def(0, label);
+        if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
+            fields.fields[0].r#type = Some(lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            });
+        }
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![def],
+            ..lf::Module::default()
+        }];
+
+        let (_krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped.iter().any(|s| s.to_string().contains("cycle")),
+            "{skipped:?}"
         );
     }
 }
