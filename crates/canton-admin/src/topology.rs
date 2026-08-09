@@ -67,6 +67,22 @@ pub struct TopologyClient {
     config: Arc<Config>,
 }
 
+/// Build a gRPC service client on the authenticated channel, with this
+/// client's decode limit applied.
+///
+/// A macro rather than a function because `max_decoding_message_size` is an
+/// inherent method on each generated client — tonic exposes no trait for it —
+/// so there is nothing to be generic over. Keeping every construction site
+/// behind one expansion is the point: `tonic`'s 4 MiB default is small enough
+/// that a real ACS page trips it, and a new RPC added later would otherwise
+/// pick the default up silently.
+macro_rules! service {
+    ($self:ident, $ctor:expr) => {
+        $ctor($self.intercepted().await?)
+            .max_decoding_message_size($self.config.max_decoding_message_size())
+    };
+}
+
 impl TopologyClient {
     /// Build a lazily-connected client for the admin API endpoint (e.g.
     /// `http://localhost:3902`).
@@ -126,8 +142,7 @@ impl TopologyClient {
                     filter_participant.clone(),
                 );
                 async move {
-                    let mut client =
-                        TopologyManagerReadServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, TopologyManagerReadServiceClient::new);
                     let response = client
                         .list_party_to_participant(topo::ListPartyToParticipantRequest {
                             base_query: Some(Self::base_query(&store)),
@@ -167,8 +182,7 @@ impl TopologyClient {
                     filter_target_key_fingerprint.clone(),
                 );
                 async move {
-                    let mut client =
-                        TopologyManagerReadServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, TopologyManagerReadServiceClient::new);
                     let response = client
                         .list_namespace_delegation(topo::ListNamespaceDelegationRequest {
                             base_query: Some(Self::base_query(&store)),
@@ -206,8 +220,7 @@ impl TopologyClient {
             self.with_retry(|| {
                 let (store, filter_participant) = (store.clone(), filter_participant.clone());
                 async move {
-                    let mut client =
-                        TopologyManagerReadServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, TopologyManagerReadServiceClient::new);
                     let response = client
                         .list_vetted_packages(topo::ListVettedPackagesRequest {
                             base_query: Some(Self::base_query(&store)),

@@ -53,6 +53,22 @@ fn update_offset(update: &pb::get_updates_response::Update) -> i64 {
     }
 }
 
+/// Build a gRPC service client on the authenticated channel, with this
+/// client's decode limit applied.
+///
+/// A macro rather than a function because `max_decoding_message_size` is an
+/// inherent method on each generated client — tonic exposes no trait for it —
+/// so there is nothing to be generic over. Keeping every construction site
+/// behind one expansion is the point: `tonic`'s 4 MiB default is small enough
+/// that a real ACS page trips it, and a new RPC added later would otherwise
+/// pick the default up silently.
+macro_rules! service {
+    ($self:ident, $ctor:expr) => {
+        $ctor($self.intercepted().await?)
+            .max_decoding_message_size($self.config.max_decoding_message_size())
+    };
+}
+
 /// An async client for the Canton Ledger API over gRPC.
 ///
 /// The client owns a lazily-connected [`Channel`]; cloning it is cheap and
@@ -99,9 +115,8 @@ impl CantonClient {
     pub async fn version(&self) -> Result<String> {
         telemetry::instrument("version", TRANSPORT_GRPC, async {
             self.with_retry(|| async {
-                let mut client = pb::version_service_client::VersionServiceClient::new(
-                    self.intercepted().await?,
-                );
+                let mut client =
+                    service!(self, pb::version_service_client::VersionServiceClient::new);
                 let response = client
                     .get_ledger_api_version(pb::GetLedgerApiVersionRequest {})
                     .await?
@@ -125,8 +140,7 @@ impl CantonClient {
     pub async fn health_check(&self) -> Result<ServingStatus> {
         telemetry::instrument("health_check", TRANSPORT_GRPC, async {
             self.with_retry(|| async {
-                let mut client =
-                    health_pb::health_client::HealthClient::new(self.intercepted().await?);
+                let mut client = service!(self, health_pb::health_client::HealthClient::new);
                 // Empty `service` = the server's overall status (Canton does not
                 // register per-service health entries on the Ledger API port).
                 let response = client
@@ -161,10 +175,10 @@ impl CantonClient {
             self.with_retry(|| {
                 let commands = commands.clone();
                 async move {
-                    let mut client =
-                        pb::command_submission_service_client::CommandSubmissionServiceClient::new(
-                            self.intercepted().await?,
-                        );
+                    let mut client = service!(
+                        self,
+                        pb::command_submission_service_client::CommandSubmissionServiceClient::new
+                    );
                     client
                         .submit(pb::SubmitRequest {
                             commands: Some(commands),
@@ -201,9 +215,8 @@ impl CantonClient {
             self.with_retry(|| {
                 let request = request.clone();
                 async move {
-                    let mut client = pb::command_service_client::CommandServiceClient::new(
-                        self.intercepted().await?,
-                    );
+                    let mut client =
+                        service!(self, pb::command_service_client::CommandServiceClient::new);
                     Ok(client.submit_and_wait(request).await?.into_inner())
                 }
             })
@@ -271,8 +284,9 @@ impl CantonClient {
                     .with_retry(|| {
                         let request = request.clone();
                         async move {
-                            let mut client = pb::command_service_client::CommandServiceClient::new(
-                                self.intercepted().await?,
+                            let mut client = service!(
+                                self,
+                                pb::command_service_client::CommandServiceClient::new
                             );
                             Ok(client
                                 .submit_and_wait_for_transaction(request)
@@ -320,10 +334,10 @@ impl CantonClient {
         request: crate::request::CompletionsRequest,
     ) -> Result<impl Stream<Item = Result<pb::Completion>> + Send + use<>> {
         telemetry::instrument("completions", TRANSPORT_GRPC, async move {
-            let mut client =
-                pb::command_completion_service_client::CommandCompletionServiceClient::new(
-                    self.intercepted().await?,
-                );
+            let mut client = service!(
+                self,
+                pb::command_completion_service_client::CommandCompletionServiceClient::new
+            );
             let stream = client
                 .completion_stream(request.into_grpc())
                 .await?
@@ -404,8 +418,7 @@ impl CantonClient {
     pub async fn ledger_end(&self) -> Result<i64> {
         telemetry::instrument("ledger_end", TRANSPORT_GRPC, async {
             self.with_retry(|| async {
-                let mut client =
-                    pb::state_service_client::StateServiceClient::new(self.intercepted().await?);
+                let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
                 let response = client
                     .get_ledger_end(pb::GetLedgerEndRequest {})
                     .await?
@@ -433,8 +446,9 @@ impl CantonClient {
     ) -> Result<pb::GetEventsByContractIdResponse> {
         let contract_id = contract_id.into();
         telemetry::instrument("events_by_contract_id", TRANSPORT_GRPC, async move {
-            let mut client = pb::event_query_service_client::EventQueryServiceClient::new(
-                self.intercepted().await?,
+            let mut client = service!(
+                self,
+                pb::event_query_service_client::EventQueryServiceClient::new
             );
             Ok(client
                 .get_events_by_contract_id(pb::GetEventsByContractIdRequest {
@@ -479,8 +493,7 @@ impl CantonClient {
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<pb::ActiveContract>, Option<Vec<u8>>)> {
         telemetry::instrument("active_contracts_page", TRANSPORT_GRPC, async move {
-            let mut client =
-                pb::state_service_client::StateServiceClient::new(self.intercepted().await?);
+            let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
             let response = client
                 .get_active_contracts_page(pb::GetActiveContractsPageRequest {
                     active_at_offset: Some(request.active_at_offset),
@@ -556,8 +569,7 @@ impl CantonClient {
             ));
         };
         telemetry::instrument("updates_page", TRANSPORT_GRPC, async move {
-            let mut client =
-                pb::update_service_client::UpdateServiceClient::new(self.intercepted().await?);
+            let mut client = service!(self, pb::update_service_client::UpdateServiceClient::new);
             let response = client
                 .get_updates_page(pb::GetUpdatesPageRequest {
                     begin_offset_exclusive: Some(begin_exclusive),
@@ -604,8 +616,7 @@ impl CantonClient {
         request: crate::request::ActiveContractsRequest,
     ) -> Result<impl Stream<Item = Result<pb::ActiveContract>> + Send + use<>> {
         telemetry::instrument("active_contracts", TRANSPORT_GRPC, async move {
-            let mut client =
-                pb::state_service_client::StateServiceClient::new(self.intercepted().await?);
+            let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
             let stream = client
                 .get_active_contracts(pb::GetActiveContractsRequest {
                     active_at_offset: request.active_at_offset,
@@ -748,8 +759,7 @@ impl CantonClient {
             ));
         }
         telemetry::instrument("updates", TRANSPORT_GRPC, async move {
-            let mut client =
-                pb::update_service_client::UpdateServiceClient::new(self.intercepted().await?);
+            let mut client = service!(self, pb::update_service_client::UpdateServiceClient::new);
             let stream = client.get_updates(request.into_grpc()).await?.into_inner();
 
             Ok(stream.filter_map(|item| match item {

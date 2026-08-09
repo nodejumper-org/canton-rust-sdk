@@ -26,6 +26,22 @@ pub struct AdminClient {
     config: Arc<Config>,
 }
 
+/// Build a gRPC service client on the authenticated channel, with this
+/// client's decode limit applied.
+///
+/// A macro rather than a function because `max_decoding_message_size` is an
+/// inherent method on each generated client — tonic exposes no trait for it —
+/// so there is nothing to be generic over. Keeping every construction site
+/// behind one expansion is the point: `tonic`'s 4 MiB default is small enough
+/// that a real ACS page trips it, and a new RPC added later would otherwise
+/// pick the default up silently.
+macro_rules! service {
+    ($self:ident, $ctor:expr) => {
+        $ctor($self.intercepted().await?)
+            .max_decoding_message_size($self.config.max_decoding_message_size())
+    };
+}
+
 impl AdminClient {
     /// Build a lazily-connected client. Returns immediately; the TCP/TLS
     /// handshake happens on the first RPC.
@@ -64,7 +80,7 @@ impl AdminClient {
     pub async fn participant_id(&self) -> Result<String> {
         telemetry::instrument("participant_id", TRANSPORT_GRPC, async {
             self.with_retry(|| async {
-                let mut client = PartyManagementServiceClient::new(self.intercepted().await?);
+                let mut client = service!(self, PartyManagementServiceClient::new);
                 Ok(client
                     .get_participant_id(pb::GetParticipantIdRequest {})
                     .await?
@@ -90,7 +106,7 @@ impl AdminClient {
     pub async fn allocate_party(&self, party_id_hint: Option<&str>) -> Result<pb::PartyDetails> {
         let party_id_hint = party_id_hint.unwrap_or_default().to_string();
         telemetry::instrument("allocate_party", TRANSPORT_GRPC, async move {
-            let mut client = PartyManagementServiceClient::new(self.intercepted().await?);
+            let mut client = service!(self, PartyManagementServiceClient::new);
             let response = client
                 .allocate_party(pb::AllocatePartyRequest {
                     party_id_hint,
@@ -119,7 +135,7 @@ impl AdminClient {
             self.with_retry(|| {
                 let page_token = page_token.clone().unwrap_or_default();
                 async move {
-                    let mut client = PartyManagementServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, PartyManagementServiceClient::new);
                     let response = client
                         .list_known_parties(pb::ListKnownPartiesRequest {
                             page_token,
@@ -153,8 +169,7 @@ impl AdminClient {
                     .with_retry(|| {
                         let page_token = sent.clone();
                         async move {
-                            let mut client =
-                                PartyManagementServiceClient::new(self.intercepted().await?);
+                            let mut client = service!(self, PartyManagementServiceClient::new);
                             let response = client
                                 .list_known_parties(pb::ListKnownPartiesRequest {
                                     page_token,
@@ -197,7 +212,7 @@ impl AdminClient {
             self.with_retry(|| {
                 let parties = parties.clone();
                 async move {
-                    let mut client = PartyManagementServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, PartyManagementServiceClient::new);
                     Ok(client
                         .get_parties(pb::GetPartiesRequest {
                             parties,
@@ -235,7 +250,7 @@ impl AdminClient {
             self.with_retry(|| {
                 let user_id = user_id.clone();
                 async move {
-                    let mut client = UserManagementServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, UserManagementServiceClient::new);
                     let response = client
                         .get_user(pb::GetUserRequest {
                             user_id,
@@ -273,7 +288,7 @@ impl AdminClient {
             self.with_retry(|| {
                 let user_id = user_id.clone();
                 async move {
-                    let mut client = UserManagementServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, UserManagementServiceClient::new);
                     Ok(client
                         .list_user_rights(pb::ListUserRightsRequest {
                             user_id,
@@ -299,7 +314,7 @@ impl AdminClient {
     pub async fn list_packages(&self) -> Result<Vec<String>> {
         telemetry::instrument("list_packages", TRANSPORT_GRPC, async {
             self.with_retry(|| async {
-                let mut client = PackageServiceClient::new(self.intercepted().await?);
+                let mut client = service!(self, PackageServiceClient::new);
                 Ok(client
                     .list_packages(lapi::ListPackagesRequest {})
                     .await?
@@ -323,7 +338,7 @@ impl AdminClient {
             self.with_retry(|| {
                 let package_id = package_id.clone();
                 async move {
-                    let mut client = PackageServiceClient::new(self.intercepted().await?);
+                    let mut client = service!(self, PackageServiceClient::new);
                     let response = client
                         .get_package_status(lapi::GetPackageStatusRequest { package_id })
                         .await?

@@ -204,7 +204,23 @@ pub struct Config {
     retry: Option<RetryConfig>,
     tls: Option<TlsConfig>,
     timeout: Option<Duration>,
+    max_decoding_message_size: usize,
 }
+
+/// The largest gRPC response this SDK will decode, unless configured otherwise.
+///
+/// `tonic` defaults to 4 MiB, which a Ledger API client meets in ordinary use:
+/// one `GetActiveContractsPageResponse` carries a whole page, the participant
+/// permits page sizes up to 10 000, and a page of that size on a modest ledger
+/// is several times over the limit. It surfaces as a client-side
+/// `OUT_OF_RANGE` — "decoded message length too large" — which reads like a
+/// server fault and is not retriable, so the caller has nothing useful to do
+/// with it.
+///
+/// 128 MiB is a bound that a real page, transaction or created-event blob
+/// stays under while still refusing a response large enough to be a memory
+/// problem.
+pub const DEFAULT_MAX_DECODING_MESSAGE_SIZE: usize = 128 * 1024 * 1024;
 
 /// Hand-written so the endpoint's userinfo is redacted. `auth` and `tls` redact
 /// themselves; the endpoint was the remaining way a credential reached a log
@@ -218,6 +234,7 @@ impl std::fmt::Debug for Config {
             .field("retry", &self.retry)
             .field("tls", &self.tls)
             .field("timeout", &self.timeout)
+            .field("max_decoding_message_size", &self.max_decoding_message_size)
             .finish()
     }
 }
@@ -232,6 +249,7 @@ impl Config {
             retry: None,
             tls: None,
             timeout: None,
+            max_decoding_message_size: DEFAULT_MAX_DECODING_MESSAGE_SIZE,
         }
     }
 
@@ -270,6 +288,23 @@ impl Config {
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
+    }
+
+    /// The largest gRPC response to decode, in bytes
+    /// (default [`DEFAULT_MAX_DECODING_MESSAGE_SIZE`], 128 MiB).
+    ///
+    /// Raise it for a participant that returns very large ACS pages or
+    /// transactions; lower it to bound the memory a single response can claim.
+    #[must_use]
+    pub fn with_max_decoding_message_size(mut self, bytes: usize) -> Self {
+        self.max_decoding_message_size = bytes;
+        self
+    }
+
+    /// The largest gRPC response this configuration will decode, in bytes.
+    #[must_use]
+    pub fn max_decoding_message_size(&self) -> usize {
+        self.max_decoding_message_size
     }
 
     /// The gRPC endpoint of the target service, e.g. `http://localhost:3901`.
@@ -345,6 +380,36 @@ fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
         (format!("https://{}", &endpoint[7..]), true)
     } else {
         (endpoint.to_string(), want_tls)
+    }
+}
+
+#[cfg(test)]
+mod decode_limit_tests {
+    use super::*;
+
+    #[test]
+    fn the_default_is_far_above_what_a_real_page_needs() {
+        // tonic's own default is 4 MiB. A `GetActiveContractsPageResponse`
+        // carries a whole page in one message and the participant allows page
+        // sizes up to 10 000, so the default is reachable in ordinary use —
+        // measured against a live 3.5.7 participant, 627 trivial contracts with
+        // created-event blobs already fill a quarter of it.
+        assert_eq!(DEFAULT_MAX_DECODING_MESSAGE_SIZE, 128 * 1024 * 1024);
+        const { assert!(DEFAULT_MAX_DECODING_MESSAGE_SIZE > 4 * 1024 * 1024) };
+        assert_eq!(
+            Config::new("http://localhost:3901").max_decoding_message_size(),
+            DEFAULT_MAX_DECODING_MESSAGE_SIZE
+        );
+    }
+
+    #[test]
+    fn the_limit_is_configurable_in_both_directions() {
+        // Raise it for a participant returning very large pages…
+        let big = Config::new("http://x").with_max_decoding_message_size(512 * 1024 * 1024);
+        assert_eq!(big.max_decoding_message_size(), 512 * 1024 * 1024);
+        // …or lower it to bound what one response can claim.
+        let small = Config::new("http://x").with_max_decoding_message_size(1024);
+        assert_eq!(small.max_decoding_message_size(), 1024);
     }
 }
 
