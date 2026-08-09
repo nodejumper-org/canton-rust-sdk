@@ -5,16 +5,61 @@ use std::fmt;
 use std::marker::PhantomData;
 
 /// A Daml `Party` identifier.
+///
+/// **Validation is asymmetric, the same way [`Numeric`]'s is.** A party id that
+/// came off the wire is taken as-is by [`Party::new`] — the participant is the
+/// authority on what it issued, and rejecting one it vouched for would break
+/// decoding of a payload the ledger considers valid. A party id a *caller*
+/// supplies goes through [`Party::parse`] (or `str::parse`), which refuses the
+/// ones the ledger will refuse anyway.
+///
+/// That matters because the failure is otherwise mute. An empty party id — the
+/// shape `std::env::var` hands back for `PARTY=`, since a set-but-empty
+/// variable reads as a value — reaches the participant, is rejected as
+/// `PermissionDenied`, and the error names nothing at all.
 #[derive(
     Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
 #[serde(transparent)]
 pub struct Party(pub(crate) String);
 
+/// The longest party id Canton issues.
+const PARTY_MAX_LEN: usize = 255;
+
+/// The characters a Canton party id is built from: `<hint>::<fingerprint>`,
+/// where the hint is caller-chosen and the fingerprint is hex.
+const fn is_party_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, ':' | '-' | '_' | ' ')
+}
+
 impl Party {
-    /// Wrap a party-id string.
+    /// Wrap a party-id string **without validating it** — for values that came
+    /// off the wire, where the participant has already vouched for them.
+    /// Prefer [`Party::parse`] for a value a caller supplied.
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
+    }
+
+    /// Wrap a party-id string a caller supplied, refusing what the participant
+    /// would refuse.
+    ///
+    /// # Errors
+    /// Returns [`PartyParseError`] when the id is empty, longer than 255
+    /// characters, or contains a character outside `[A-Za-z0-9:_\- ]`.
+    pub fn parse(id: impl Into<String>) -> Result<Self, PartyParseError> {
+        let id = id.into();
+        if id.is_empty() {
+            return Err(PartyParseError::Empty);
+        }
+        if id.chars().count() > PARTY_MAX_LEN {
+            return Err(PartyParseError::TooLong {
+                length: id.chars().count(),
+            });
+        }
+        if let Some(c) = id.chars().find(|c| !is_party_char(*c)) {
+            return Err(PartyParseError::UnexpectedCharacter { character: c });
+        }
+        Ok(Self(id))
     }
 
     /// The party id.
@@ -39,13 +84,6 @@ impl fmt::Display for Party {
 impl AsRef<str> for Party {
     fn as_ref(&self) -> &str {
         &self.0
-    }
-}
-
-impl std::str::FromStr for Party {
-    type Err = std::convert::Infallible;
-    fn from_str(id: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(id))
     }
 }
 
@@ -204,6 +242,57 @@ impl Numeric {
     /// trailing zeros), or `None` when the content is not a decimal literal.
     fn canonical(&self) -> Option<String> {
         canonical_decimal(&self.0)
+    }
+}
+
+/// A string that is not a Canton party id.
+///
+/// Deliberately does not echo the rejected value: a party id names a real
+/// participant of the ledger, and this error travels wherever the application
+/// logs. The reason is enough to fix the input.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PartyParseError {
+    /// The id was empty — most often a set-but-empty environment variable,
+    /// which `std::env::var` reports as a value.
+    Empty,
+    /// Longer than Canton issues.
+    TooLong {
+        /// The rejected length.
+        length: usize,
+    },
+    /// A character Canton does not use in a party id.
+    UnexpectedCharacter {
+        /// The first offending character.
+        character: char,
+    },
+}
+
+// Written by hand rather than derived: this crate is the runtime every
+// generated binding depends on, and it does not carry `thiserror`.
+impl fmt::Display for PartyParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => f.write_str("a party id cannot be empty"),
+            Self::TooLong { length } => write!(
+                f,
+                "a party id cannot exceed {PARTY_MAX_LEN} characters (got {length})"
+            ),
+            Self::UnexpectedCharacter { character } => write!(
+                f,
+                "`{character}` is not valid in a party id \
+                 (expected letters, digits, `:`, `-`, `_`)"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for PartyParseError {}
+
+impl std::str::FromStr for Party {
+    type Err = PartyParseError;
+    fn from_str(id: &str) -> Result<Self, Self::Err> {
+        Self::parse(id)
     }
 }
 

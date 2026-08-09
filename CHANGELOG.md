@@ -140,6 +140,15 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-daml` (party ids):** `Party::parse` / `"…".parse::<Party>()`
+  validate a party id a caller supplies — refusing empty, over-long, and
+  characters Canton does not use — while `Party::new` still takes a wire value
+  as-is, the same asymmetry `Numeric` already had. `FromStr` was `Infallible`,
+  so `"".parse::<Party>()` succeeded and the failure surfaced only at the
+  participant, as a `PermissionDenied` naming nothing. An empty party id is the
+  shape `std::env::var` returns for `PARTY=`, which is how it happens in
+  practice. Idea taken from zenith-network/canton-rs, which validates its
+  identifier types.
 - **`canton-codegen` (submit vs read):** the two encoders a generated template
   carries are now pinned to agree. The emitter writes the payload's field list
   twice — in `ToValue` and in `Template::to_record` — and they are different

@@ -57,8 +57,8 @@ mod value;
 pub use choice::Choice;
 pub use commands::{create_command, exercise_by_key_command, exercise_command};
 pub use primitives::{
-    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, NumericParseError, Party, TextMap,
-    Timestamp, Unit,
+    ContractId, Date, GenMap, Int64, NestedOpt, Numeric, NumericParseError, Party, PartyParseError,
+    TextMap, Timestamp, Unit,
 };
 pub use template::{Contract, Interface, Template, WithKey};
 pub use value::{FromValue, ToValue, ValueError, from_record};
@@ -974,5 +974,45 @@ mod tests {
                     .map_err(|e| e.at("holders"))?,
             })
         }
+    }
+    /// A party id a caller supplies is checked; one the ledger issued is not.
+    ///
+    /// The asymmetry is the same as `Numeric`'s and for the same reason: the
+    /// participant is the authority on what it issued, so refusing a value it
+    /// vouched for would break decoding a payload the ledger considers valid.
+    /// What a caller types has no such authority behind it.
+    #[test]
+    fn a_party_id_a_caller_supplies_is_validated() {
+        // The shape that costs a debugging session: `PARTY=` in the
+        // environment is `Ok("")`, which reaches the participant, comes back
+        // `PermissionDenied`, and names nothing.
+        assert_eq!("".parse::<Party>(), Err(PartyParseError::Empty));
+
+        assert_eq!(
+            "alice\nbob".parse::<Party>(),
+            Err(PartyParseError::UnexpectedCharacter { character: '\n' })
+        );
+        assert!(matches!(
+            "x".repeat(256).parse::<Party>(),
+            Err(PartyParseError::TooLong { length: 256 })
+        ));
+
+        // A real party id from a 3.5.7 participant must pass, or the check is
+        // stricter than the ledger and rejects legitimate input.
+        let real = "app_provider_quickstart-dimakozoliy-1::\
+                    12204a2925a78214d3a4c81f3b425f89894a42858b9e8f13a8427c68513232cdf640";
+        assert!(real.parse::<Party>().is_ok(), "{real}");
+        assert_eq!(real.parse::<Party>().unwrap().as_str(), real);
+
+        // And the wire path stays permissive: whatever the participant sent
+        // decodes, checked or not.
+        let odd = Party::new("something\nthe ledger vouched for");
+        let value = odd.to_value();
+        assert_eq!(<Party as FromValue>::from_value(&value).unwrap(), odd);
+
+        // The error says what is wrong without repeating the party id, which
+        // names a real participant of the ledger.
+        let message = PartyParseError::Empty.to_string();
+        assert!(message.contains("cannot be empty"), "{message}");
     }
 }
