@@ -164,23 +164,39 @@ cargo install canton-codegen-cli          # provides `dpm-codegen-rust`
 dpm-codegen-rust --dar path/to/my-app-0.1.0.dar --out my-app-bindings
 ```
 
-Or call it from a build script, the way `prost-build` is used — the pipeline is
-the `canton-codegen` library, so no CLI dependency is needed:
+The output is a self-contained crate (`Cargo.toml` + `src/lib.rs`). **Commit it**
+and depend on it by path — that is how the `canton-splice-*` crates in this
+repository are built, and it keeps the generated code reviewable in a diff:
 
-```rust,ignore
-// build.rs
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:rerun-if-changed=dars/my-app-0.1.0.dar");
-    canton_codegen::generate(&canton_codegen::Options::new(
-        "dars/my-app-0.1.0.dar",
-        "my-app-bindings",
-    ))?;
-    Ok(())
-}
+```toml
+my-app-bindings = { path = "my-app-bindings" }
 ```
 
-The output is a self-contained crate (`Cargo.toml` + `src/lib.rs`). Add it to
-your project and submit typed commands:
+To keep it in step with the DAR, regenerate in CI and fail on a diff, rather
+than generating during the build:
+
+```sh
+dpm-codegen-rust --dar dars/my-app-0.1.0.dar --out my-app-bindings
+git diff --exit-code my-app-bindings
+```
+
+No `--force` is needed to regenerate over the tool's own output; it is there to
+overwrite files this tool did **not** write, which is a thing to do on purpose
+and not a flag to carry around.
+
+Generating from a **build script** does not work, and it is worth saying why
+rather than leaving it to be discovered: Cargo resolves path dependencies before
+it runs build scripts, so on a clean checkout `my-app-bindings` does not exist
+yet and the build fails before the script that would create it has run. The
+`prost-build` arrangement — write into `OUT_DIR`, `include!` it — does not apply
+either: the emitted tree spans several packages and refers between them by
+`crate::`-qualified paths, which resolve to the *including* crate's root rather
+than the module they were placed in.
+
+`canton_codegen::generate` is a library call for exactly the CI step above, and
+for tooling that produces a crate directory.
+
+Then submit typed commands:
 
 ```rust,ignore
 use my_app_bindings::my_app::My_Module::{Asset, Asset_Transfer};
