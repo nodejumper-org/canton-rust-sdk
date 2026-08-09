@@ -194,9 +194,12 @@ pub(crate) async fn subscribe(
     request: Value,
 ) -> Result<impl Stream<Item = Result<Value>> + Send + use<>> {
     let url = ws_url(base_url, path);
-    let uri: Uri = url
-        .parse()
-        .map_err(|e| Error::InvalidRequest(format!("invalid ws url {url}: {e}")))?;
+    let uri: Uri = url.parse().map_err(|e| {
+        Error::InvalidRequest(format!(
+            "invalid ws url {}: {e}",
+            canton_core::redact_url(&url)
+        ))
+    })?;
 
     let mut builder = ClientRequestBuilder::new(uri).with_sub_protocol(WS_SUBPROTOCOL);
     if let Some(token) = auth.bearer().await? {
@@ -207,13 +210,23 @@ pub(crate) async fn subscribe(
     let (mut socket, _response) =
         tokio_tungstenite::connect_async_tls_with_config(builder, None, false, connector)
             .await
-            .map_err(|e| Error::Connection(format!("ws connect to {url} failed: {e}")))?;
+            .map_err(|e| {
+                Error::Connection(format!(
+                    "ws connect to {} failed: {e}",
+                    canton_core::redact_url(&url)
+                ))
+            })?;
 
     // A single subscription frame (same JSON as the equivalent HTTP POST body).
     socket
         .send(Message::text(request.to_string()))
         .await
-        .map_err(|e| Error::Connection(format!("ws send to {url} failed: {e}")))?;
+        .map_err(|e| {
+            Error::Connection(format!(
+                "ws send to {} failed: {e}",
+                canton_core::redact_url(&url)
+            ))
+        })?;
 
     Ok(async_stream::try_stream! {
         while let Some(message) = socket.next().await {

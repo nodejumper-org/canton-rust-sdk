@@ -13,6 +13,6 @@ mod error;
 pub mod retry;
 pub mod telemetry;
 
-pub use config::{Auth, Config, TlsConfig, TokenSource};
+pub use config::{Auth, Config, TlsConfig, TokenSource, redact_url};
 pub use error::{Error, ErrorCategory, ErrorInfo, ResourceInfo, Result};
 pub use retry::RetryConfig;

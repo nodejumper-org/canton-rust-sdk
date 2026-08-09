@@ -295,7 +295,10 @@ impl TokenProvider {
             .send()
             .await
             .map_err(|e| {
-                Error::Connection(format!("token request to {} failed: {e}", config.token_url))
+                Error::Connection(format!(
+                    "token request to {} failed: {e}",
+                    canton_core::redact_url(&config.token_url)
+                ))
             })?;
 
         // A credential rejection (401/403, e.g. `invalid_client`) is a definite
