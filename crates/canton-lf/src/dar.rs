@@ -15,6 +15,19 @@ use std::path::Path;
 /// applies the same kind of per-entry threshold.)
 const MAX_ENTRY_BYTES: u64 = 256 * 1024 * 1024;
 
+/// The most an **entire** DAR may decompress to (2 GiB).
+///
+/// A per-entry cap alone bounds nothing: every `.dalf` is read into memory, so
+/// an archive of a thousand entries each just under [`MAX_ENTRY_BYTES`] passes
+/// every individual check and still asks for hundreds of gigabytes — and
+/// because zeros DEFLATE at roughly 1000:1, the file on disk stays small enough
+/// to arrive over a network without notice.
+///
+/// The ceiling is far above anything real: the largest available corpus is
+/// 41 MiB of package payload across 18 DARs, so this is ~50× the whole of it in
+/// a single archive.
+const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
 /// An error opening or reading a DAR.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -35,6 +48,17 @@ pub enum DarError {
     #[error("archive entry `{name}` exceeds the {MAX_ENTRY_BYTES}-byte limit")]
     EntryTooLarge {
         /// The offending entry's path within the archive.
+        name: String,
+    },
+    /// The archive's entries decompress to more, in total, than the
+    /// archive-wide limit — no single one of them need be oversized.
+    #[error(
+        "DAR decompresses to more than the {MAX_TOTAL_BYTES}-byte limit in total \
+         (reached at entry `{name}`)"
+    )]
+    ArchiveTooLarge {
+        /// The entry the budget ran out on. Not the culprit on its own — the
+        /// ones before it spent the budget — but the place to start looking.
         name: String,
     },
 }
@@ -61,29 +85,58 @@ impl Dar {
     /// # Errors
     /// Returns [`DarError`] if the bytes are not a valid DAR.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, DarError> {
+        Self::read(bytes, MAX_TOTAL_BYTES)
+    }
+
+    /// The reader, with the archive-wide budget as a parameter so a test can
+    /// exercise the exhaustion path on kilobytes instead of gigabytes. Every
+    /// caller outside the tests passes [`MAX_TOTAL_BYTES`].
+    fn read(bytes: &[u8], total_budget: u64) -> Result<Self, DarError> {
         let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
             .map_err(|error| DarError::NotADar(error.to_string()))?;
 
         let mut manifest = BTreeMap::new();
         let mut saw_manifest = false;
         let mut dalfs = BTreeMap::new();
+        // What is left of the archive-wide budget. Every entry read is capped
+        // by whichever of this and the per-entry ceiling is smaller, so a read
+        // can never allocate past the total even once.
+        let mut remaining = total_budget;
+
         for index in 0..archive.len() {
             let entry = archive.by_index(index)?;
             if !entry.is_file() {
                 continue;
             }
             let name = entry.name().to_string();
-            if name == "META-INF/MANIFEST.MF" {
+            let is_manifest = name == "META-INF/MANIFEST.MF";
+            let is_dalf = Path::new(&name)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("dalf"));
+            if !is_manifest && !is_dalf {
+                continue;
+            }
+
+            let cap = MAX_ENTRY_BYTES.min(remaining);
+            let data = read_capped(entry, cap).map_err(|why| match why {
+                TooLarge::Io(error) => DarError::Io(error),
+                // Which limit bit is decided here, where both are known: a cap
+                // the budget shrank means the archive as a whole is too big,
+                // and blaming this entry for it would be a lie.
+                TooLarge::Refused if cap < MAX_ENTRY_BYTES => {
+                    DarError::ArchiveTooLarge { name: name.clone() }
+                }
+                TooLarge::Refused => DarError::EntryTooLarge { name: name.clone() },
+            })?;
+            remaining -= data.len() as u64;
+
+            if is_manifest {
                 saw_manifest = true;
-                let text = String::from_utf8(read_capped(entry, &name)?).map_err(|_| {
+                let text = String::from_utf8(data).map_err(|_| {
                     DarError::Manifest("META-INF/MANIFEST.MF is not valid UTF-8".to_string())
                 })?;
                 manifest = parse_manifest(&text);
-            } else if Path::new(&name)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("dalf"))
-            {
-                let data = read_capped(entry, &name)?;
+            } else {
                 dalfs.insert(name, data);
             }
         }
@@ -166,24 +219,37 @@ impl Dar {
     }
 }
 
-/// Read a zip entry fully, enforcing [`MAX_ENTRY_BYTES`] on both the declared
-/// and the actual decompressed size (a hostile header can under-declare).
-fn read_capped(mut entry: zip::read::ZipFile<'_>, name: &str) -> Result<Vec<u8>, DarError> {
-    if entry.size() > MAX_ENTRY_BYTES {
-        return Err(DarError::EntryTooLarge {
-            name: name.to_string(),
-        });
+/// Read a zip entry fully, refusing to decompress more than `cap` bytes.
+///
+/// `cap` is checked against both the declared and the actual size: a hostile
+/// header can under-declare, so the declared size being small proves nothing.
+/// The caller decides what `cap` is — the per-entry ceiling, or whatever is
+/// left of the archive's budget when that is smaller — which is what keeps a
+/// single read from over-allocating past the total.
+///
+/// `Err(TooLarge)` carries nothing: only the caller knows which of the two
+/// limits was the binding one, and saying the wrong one sends the reader to
+/// look at an entry that is not the problem.
+fn read_capped(mut entry: zip::read::ZipFile<'_>, cap: u64) -> Result<Vec<u8>, TooLarge> {
+    if entry.size() > cap {
+        return Err(TooLarge::Refused);
     }
     let mut data = Vec::new();
     // `take` one byte past the cap: hitting it means the entry lied about its
     // size and is over the limit.
-    Read::take(&mut entry, MAX_ENTRY_BYTES + 1).read_to_end(&mut data)?;
-    if data.len() as u64 > MAX_ENTRY_BYTES {
-        return Err(DarError::EntryTooLarge {
-            name: name.to_string(),
-        });
+    Read::take(&mut entry, cap + 1)
+        .read_to_end(&mut data)
+        .map_err(TooLarge::Io)?;
+    if data.len() as u64 > cap {
+        return Err(TooLarge::Refused);
     }
     Ok(data)
+}
+
+/// Why [`read_capped`] stopped: over the cap, or the read itself failed.
+enum TooLarge {
+    Refused,
+    Io(std::io::Error),
 }
 
 /// Parse a JAR-style manifest into key → value pairs, un-wrapping continuation
@@ -323,6 +389,68 @@ mod tests {
             Dar::from_bytes(&bytes),
             Err(DarError::EntryTooLarge { name }) if name == "bomb.dalf"
         ));
+    }
+
+    /// The shape a per-entry cap cannot see: every entry is legal on its own.
+    ///
+    /// Each `.dalf` here is well under any per-entry ceiling, and there is
+    /// nothing to object to until they are added up — which is the whole point,
+    /// because every one of them is read into memory. Zeros DEFLATE at roughly
+    /// 1000:1, so the archive that asks for all of it arrives as a small file.
+    #[test]
+    fn many_legal_entries_that_together_exceed_the_budget_are_refused() {
+        use std::io::Write as _;
+
+        const ENTRY: usize = 512 * 1024;
+        const BUDGET: u64 = 1024 * 1024; // room for two entries, not four
+
+        let mut cursor = Cursor::new(Vec::new());
+        let mut writer = zip::ZipWriter::new(&mut cursor);
+        let options = zip::write::SimpleFileOptions::default();
+        writer.start_file("META-INF/MANIFEST.MF", options).unwrap();
+        writer.write_all(b"Main-Dalf: a.dalf\n").unwrap();
+        let zeros = vec![0_u8; ENTRY];
+        for name in ["a.dalf", "b.dalf", "c.dalf", "d.dalf"] {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(&zeros).unwrap();
+        }
+        writer.finish().unwrap();
+        let bytes = cursor.into_inner();
+
+        // Small enough to hand around unnoticed — that is what makes it worth
+        // guarding against rather than assuming nobody would send it.
+        assert!(bytes.len() < 64 * 1024, "archive is {} bytes", bytes.len());
+
+        let error = Dar::read(&bytes, BUDGET).expect_err("four entries exceed the budget");
+        assert!(
+            matches!(&error, DarError::ArchiveTooLarge { .. }),
+            "the total is what was exceeded, not any one entry: {error}"
+        );
+        // And it says so: blaming a single 512 KiB entry would send the reader
+        // to look at something that is not the problem.
+        assert!(error.to_string().contains("in total"), "{error}");
+
+        // The same archive is fine when the budget covers it, so the guard is
+        // not simply refusing everything.
+        assert!(Dar::read(&bytes, BUDGET * 8).is_ok());
+    }
+
+    /// The real corpus has to keep working: a guard that fires on a legitimate
+    /// DAR is worse than no guard, because it is the one people meet.
+    #[test]
+    fn a_real_dar_is_nowhere_near_the_budget() {
+        let Ok(path) = std::env::var("CANTON_TEST_DAR") else {
+            return;
+        };
+        let Ok(bytes) = std::fs::read(&path) else {
+            return;
+        };
+        let dar = Dar::from_bytes(&bytes).expect("a real DAR");
+        let total: usize = dar.package_bytes().map(<[u8]>::len).sum();
+        assert!(
+            (total as u64) < MAX_TOTAL_BYTES / 10,
+            "{path} decompresses to {total} bytes, within 10x of the budget"
+        );
     }
 
     #[test]

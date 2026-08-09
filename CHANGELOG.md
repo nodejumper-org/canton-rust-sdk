@@ -73,6 +73,17 @@ is included; nothing from it was removed or changed in signature.
 
 ### Security
 
+- **`canton-lf` (zip bomb):** a DAR is now bounded **in total**, not only per
+  entry. Every `.dalf` is read into memory, so an archive of many entries each
+  legal on its own — a thousand at 256 MiB — passed every check and still asked
+  for hundreds of gigabytes; zeros DEFLATE at roughly 1000:1, so the file
+  carrying that request arrives small enough to go unnoticed. Each read is now
+  capped by whichever of the per-entry ceiling and the remaining archive budget
+  (2 GiB) is smaller, and the error says which limit was reached. The ceiling is
+  ~50× the entire available corpus (41 MiB across 18 DARs), so it cannot fire on
+  a real DAR. Found by reading canton-devkit's DAR reader, which has had the
+  aggregate cap all along.
+
 - **`canton-core`:** the mutual-TLS private key no longer reaches logs.
   `TlsConfig` derived `Debug` and holds `client_identity_pem`, so
   `format!("{config:?}")` — or one `tracing` field capturing a `Config` —
