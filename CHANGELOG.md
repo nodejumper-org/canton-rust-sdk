@@ -54,6 +54,52 @@ is included; nothing from it was removed or changed in signature.
   compiles for all corpus DARs, and the sample's typed create commits and is read
   back from the ACS on both transports.
 
+### Security
+
+- **`canton-core`:** the mutual-TLS private key no longer reaches logs.
+  `TlsConfig` derived `Debug` and holds `client_identity_pem`, so
+  `format!("{config:?}")` — or one `tracing` field capturing a `Config` —
+  printed the key byte by byte; `Config` leaked it too, along with any
+  credentials in the endpoint URL. Both now have hand-written `Debug` that
+  reports presence and length. Five error paths across `canton-core`,
+  `canton-auth` and `canton-ledger` that quoted a URL verbatim now run it
+  through `canton_core::redact_url`.
+- **`canton-daml`:** a type mismatch no longer copies the offending value into
+  the error message. `mismatch()` formatted it with prost's `Debug`, so
+  decoding a payload as the wrong type put the whole record — parties, amounts,
+  free text — into a string that travels into the application's traces and
+  metrics. It now names the kind and stops.
+
+### Fixed — from an external review of the M1 client
+
+- **`canton-core` (message size):** the gRPC decode limit is raised off tonic's
+  4 MiB default to 128 MiB, configurable via
+  `Config::with_max_decoding_message_size`. One ACS page arrives as a single
+  message and the participant permits page sizes up to 10 000, so the default
+  was reachable in ordinary use and surfaced as a client-side `OUT_OF_RANGE`
+  that reads like a server fault. Applied at all 24 service-client
+  constructions across `canton-ledger` and `canton-admin` through one macro per
+  crate, so a newly added RPC cannot pick the default back up.
+- **`canton-core` (errors):** `Error::resource_info()` exposes the
+  `google.rpc.ResourceInfo` Canton attaches to failures where "which one?" is
+  the first question — `CONTRACT_NOT_FOUND` names the contract id. A `Vec`
+  rather than an `Option`, because the JSON transport carries a list.
+- **`canton-lf` (archive integrity):** a package's payload is hashed and checked
+  against the id it declares before it is parsed, and a `hash_function` other
+  than SHA-256 is refused rather than assumed. That id is embedded in generated
+  bindings as `PACKAGE_ID` and is what cross-package references resolve
+  through, so a DAR whose id does not match its bytes previously produced
+  bindings naming a package its contents do not answer to.
+- **`canton-lf` (LF version):** an archive declaring a Daml-LF 2.x minor this
+  build was not compiled against is refused instead of decoded. prost drops
+  fields from a schema it does not know, so a newer minor yielded a package
+  quietly missing template fields. Accepts `2.1` and `2.2`, which is what the
+  available corpus contains (648 packages across 18 DARs).
+- **`canton-codegen` (decode errors):** generated `FromValue` bodies attach the
+  field name to a failure, so a mismatch inside a nested record reports
+  `meta.values` instead of a bare "expected Text". `ValueError::at` existed and
+  was documented as being used by generated code; it was not.
+
 ### Fixed — pre-release hardening (M2 quality audit)
 
 - **Recursion is now Rust-sound.** `Optional` self-recursion (`data Tree = Node

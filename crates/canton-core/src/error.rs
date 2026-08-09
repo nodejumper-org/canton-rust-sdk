@@ -709,6 +709,63 @@ mod tests {
         assert_eq!(ErrorCategory::from_i32(15), None);
     }
 
+    /// Canton strips the detail from security-sensitive failures — auth,
+    /// permission, internal — and tells the caller to ask the operator. Every
+    /// accessor must degrade to "nothing" rather than mislead, and the one
+    /// thing that survives must keep surviving: without the correlation id
+    /// there is no way to ask.
+    ///
+    /// Both fixtures are the real shapes, taken from a live 3.5.7 participant
+    /// answering with an invalid token.
+    #[test]
+    fn a_redacted_status_yields_nothing_except_the_correlation_id() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        // gRPC: no ErrorInfo, no RetryInfo, no ResourceInfo — only RequestInfo.
+        let mut details = ErrorDetails::new();
+        details.set_request_info("93199811c5b2090c51cf45fe8c88060c", "");
+        let status = tonic::Status::with_error_details(
+            tonic::Code::Unauthenticated,
+            "An error occurred. Please contact the operator and inquire about the request \
+             93199811c5b2090c51cf45fe8c88060c",
+            details,
+        );
+        let err = Error::from(status);
+
+        assert_eq!(err.category(), None, "a redacted status has no category");
+        assert_eq!(err.error_info(), None);
+        assert!(err.resource_info().is_empty());
+        assert_eq!(err.retry_delay(), None);
+        assert_eq!(
+            err.correlation_id().as_deref(),
+            Some("93199811c5b2090c51cf45fe8c88060c"),
+            "the correlation id is the only actionable thing left"
+        );
+        // Classification falls back to the code, which is the right answer:
+        // bad credentials will not become good on a retry.
+        assert!(!err.is_retriable());
+
+        // JSON: the category is reported as -1 rather than omitted, which must
+        // not be mistaken for a real category.
+        let body = r#"{"code":"NA","cause":"An error occurred. Please contact the operator",
+            "errorCategory":-1,"retryInfo":null,"resources":[],
+            "correlationId":"41f217564e4e76f6cbc853a94a82fa80",
+            "traceId":"41f217564e4e76f6cbc853a94a82fa80"}"#;
+        let err = Error::Http {
+            status: 401,
+            body: body.to_string(),
+        };
+
+        assert_eq!(err.category(), None, "-1 is not a category");
+        assert!(err.resource_info().is_empty());
+        assert_eq!(err.retry_delay(), None);
+        assert_eq!(
+            err.correlation_id().as_deref(),
+            Some("41f217564e4e76f6cbc853a94a82fa80")
+        );
+        assert!(!err.is_retriable(), "401 is not transient");
+    }
+
     #[test]
     fn resource_info_names_what_the_error_is_about() {
         use tonic_types::{ErrorDetails, StatusExt as _};
