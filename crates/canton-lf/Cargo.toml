@@ -17,6 +17,7 @@ include      = ["src/**/*", "proto/**/*", "build.rs", "README.md", "LICENSE"]
 zip       = { workspace = true }
 thiserror = { workspace = true }
 prost     = { workspace = true }
+sha2      = { workspace = true }
 
 [dev-dependencies]
 # The conformance oracle test renders the decoded signature surface as JSON and

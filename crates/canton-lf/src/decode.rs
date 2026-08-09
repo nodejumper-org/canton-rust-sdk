@@ -9,7 +9,8 @@ use prost::Message;
 
 use crate::dar::{Dar, DarError};
 use crate::pb::daml_lf_2::Package;
-use crate::pb::daml_lf_dev::{Archive, ArchivePayload, archive_payload};
+use crate::pb::daml_lf_dev::{Archive, ArchivePayload, HashFunction, archive_payload};
+use sha2::{Digest as _, Sha256};
 
 /// An error decoding Daml-LF package bytes.
 #[derive(Debug, thiserror::Error)]
@@ -24,6 +25,21 @@ pub enum DecodeError {
     /// The package is not Daml-LF 2.x (this decoder only supports LF 2.x).
     #[error("unsupported Daml-LF version (only LF 2.x is supported)")]
     UnsupportedVersion,
+    /// The archive's payload does not hash to the package id it declares.
+    /// Refused: that id is the package's identity — it is what generated
+    /// bindings embed as `PACKAGE_ID` and what cross-package references resolve
+    /// through — so accepting a mismatch means addressing a package by a name
+    /// its contents do not answer to.
+    #[error("archive payload does not match its declared package id {declared}")]
+    PackageIdMismatch {
+        /// The id the archive claims.
+        declared: String,
+        /// The SHA-256 of the payload actually present.
+        computed: String,
+    },
+    /// The archive declares a hash function this build does not implement.
+    #[error("unsupported archive hash function {0} (only SHA-256 is defined)")]
+    UnsupportedHashFunction(i32),
     /// The package is LF 2.x, but a **minor** this decoder was not built
     /// against. Refused rather than decoded: prost drops fields it does not
     /// know, so a newer minor would otherwise yield silently incomplete
@@ -68,13 +84,52 @@ pub fn decode_main_package(dar: &Dar) -> Result<(Package, String), DecodeError> 
 /// See [`decode_main_package`].
 pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeError> {
     let archive = Archive::decode(archive_bytes)?;
-    let package_id = archive.hash;
+    let package_id = verified_package_id(&archive)?;
     let payload = ArchivePayload::decode(archive.payload.as_slice())?;
     check_minor(&payload.minor)?;
     match payload.sum {
         Some(archive_payload::Sum::DamlLf2(package)) => Ok((package, package_id)),
         _ => Err(DecodeError::UnsupportedVersion),
     }
+}
+
+/// The package id of an archive, checked against its contents rather than
+/// taken on trust.
+///
+/// The id is the SHA-256 of the payload, and it is load-bearing: generated
+/// bindings embed it as `Contract::PACKAGE_ID`, and every cross-package
+/// reference in the DAR resolves through it. A DAR whose declared id does not
+/// match its bytes — corrupted in transit, or assembled by hand — would
+/// otherwise produce bindings that name a package by an id its contents do not
+/// answer to, and nothing downstream would notice.
+fn verified_package_id(archive: &Archive) -> Result<String, DecodeError> {
+    // The enum has exactly one member today; anything else is a scheme this
+    // build cannot check, and an unchecked hash is the thing being fixed here.
+    if archive.hash_function != HashFunction::Sha256 as i32 {
+        return Err(DecodeError::UnsupportedHashFunction(archive.hash_function));
+    }
+
+    let computed = hex(&Sha256::digest(&archive.payload));
+    if computed == archive.hash {
+        Ok(computed)
+    } else {
+        Err(DecodeError::PackageIdMismatch {
+            declared: archive.hash.clone(),
+            computed,
+        })
+    }
+}
+
+/// Lower-case hex, the spelling Daml-LF uses for a package id.
+fn hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .fold(String::with_capacity(bytes.len() * 2), |mut out, byte| {
+            use std::fmt::Write as _;
+            // Infallible: writing to a String cannot fail.
+            let _ = write!(out, "{byte:02x}");
+            out
+        })
 }
 
 /// The Daml-LF 2.x minor versions this build decodes.
@@ -179,19 +234,92 @@ pub fn package_version(package: &Package) -> Option<&str> {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+mod hash_tests {
+    use super::*;
+
+    /// An archive whose declared id is the real SHA-256 of its payload.
+    fn honest_archive() -> Archive {
+        let payload = ArchivePayload {
+            minor: "1".to_string(),
+            sum: Some(archive_payload::Sum::DamlLf2(Package::default())),
+        }
+        .encode_to_vec();
+        let hash = hex(&Sha256::digest(&payload));
+        Archive {
+            hash_function: HashFunction::Sha256 as i32,
+            payload,
+            hash,
+        }
+    }
+
+    #[test]
+    fn an_archive_that_hashes_to_its_id_decodes_and_returns_that_id() {
+        let archive = honest_archive();
+        let expected = archive.hash.clone();
+        let (_package, id) = decode_package(&archive.encode_to_vec()).expect("honest archive");
+        assert_eq!(id, expected);
+        assert_eq!(id.len(), 64, "a SHA-256 in hex");
+    }
+
+    /// The id is the package's identity: generated bindings embed it as
+    /// `PACKAGE_ID` and cross-package references resolve through it. Taking a
+    /// mismatched one on trust means addressing a package by a name its
+    /// contents do not answer to.
+    #[test]
+    fn a_payload_that_does_not_match_its_declared_id_is_refused() {
+        let mut archive = honest_archive();
+        archive.hash = "0".repeat(64);
+        let err = decode_package(&archive.encode_to_vec()).expect_err("must not decode");
+        assert!(
+            matches!(err, DecodeError::PackageIdMismatch { .. }),
+            "{err}"
+        );
+        // Both sides belong in the message: without them a reader cannot tell a
+        // corrupted download from a hand-assembled DAR.
+        let message = err.to_string();
+        assert!(message.contains(&"0".repeat(64)), "{message}");
+
+        // The same when the payload is what changed, which is the realistic
+        // shape of the failure.
+        let mut tampered = honest_archive();
+        tampered.payload.extend_from_slice(b"extra");
+        assert!(matches!(
+            decode_package(&tampered.encode_to_vec()),
+            Err(DecodeError::PackageIdMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn an_unknown_hash_function_is_refused_rather_than_assumed_to_be_sha256() {
+        let mut archive = honest_archive();
+        archive.hash_function = 7;
+        let err = decode_package(&archive.encode_to_vec()).expect_err("must not decode");
+        assert!(
+            matches!(err, DecodeError::UnsupportedHashFunction(7)),
+            "{err}"
+        );
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod minor_tests {
     use super::*;
 
-    /// Build an `Archive` declaring `minor`, with an empty LF2 package inside.
+    /// Build a **well-formed** `Archive` declaring `minor`: the id is the real
+    /// SHA-256 of the payload, so these tests exercise the minor gate rather
+    /// than tripping the hash gate that runs before it.
     fn archive_with_minor(minor: &str) -> Vec<u8> {
         let payload = ArchivePayload {
             minor: minor.to_string(),
             sum: Some(archive_payload::Sum::DamlLf2(Package::default())),
-        };
+        }
+        .encode_to_vec();
+        let hash = hex(&Sha256::digest(&payload));
         Archive {
-            hash: "0".repeat(64),
-            payload: payload.encode_to_vec(),
-            ..Archive::default()
+            hash_function: HashFunction::Sha256 as i32,
+            payload,
+            hash,
         }
         .encode_to_vec()
     }
