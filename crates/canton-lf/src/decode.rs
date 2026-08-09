@@ -46,14 +46,17 @@ pub enum DecodeError {
     /// bindings — a template missing a field decodes, compiles, and then fails
     /// on the wire.
     #[error(
-        "Daml-LF 2.{minor} is newer than this SDK supports (2.{supported}); \
-         the protos are pinned to a Canton release, so use a DAR built for it \
-         or upgrade the SDK"
+        "Daml-LF 2.{minor} is not a version this build was compiled against \
+         (it reads {supported}); the LF protos are pinned to a Canton release, \
+         so use a DAR built for that release or upgrade the SDK"
     )]
     UnsupportedMinor {
         /// The minor version the archive declares.
         minor: String,
-        /// The minors this build accepts, comma-separated.
+        /// The versions this build accepts, comma-separated and fully spelled
+        /// (`"2.1, 2.2"`). Spelled in full rather than as bare minors because
+        /// the message renders it verbatim: a `2.` prefix in the template
+        /// would attach to the first entry only.
         supported: String,
     },
     /// A decode failure attributed to a specific package in the DAR.
@@ -86,11 +89,16 @@ pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeE
     let archive = Archive::decode(archive_bytes)?;
     let package_id = verified_package_id(&archive)?;
     let payload = ArchivePayload::decode(archive.payload.as_slice())?;
+    // Major first: a minor only means something once the major is LF 2. An LF 1
+    // archive — which is every DAR a Daml 2.x SDK built — carries minors like
+    // "15", and judging it by the minor gate would tell the reader that
+    // "Daml-LF 2.15" is unsupported and to upgrade the SDK. No version of this
+    // decoder will ever read it; the major is the thing to say.
+    let Some(archive_payload::Sum::DamlLf2(package)) = payload.sum else {
+        return Err(DecodeError::UnsupportedVersion);
+    };
     check_minor(&payload.minor)?;
-    match payload.sum {
-        Some(archive_payload::Sum::DamlLf2(package)) => Ok((package, package_id)),
-        _ => Err(DecodeError::UnsupportedVersion),
-    }
+    Ok((package, package_id))
 }
 
 /// The package id of an archive, checked against its contents rather than
@@ -158,7 +166,11 @@ fn check_minor(minor: &str) -> Result<(), DecodeError> {
     }
     Err(DecodeError::UnsupportedMinor {
         minor: minor.to_string(),
-        supported: SUPPORTED_LF2_MINORS.join(", "),
+        supported: SUPPORTED_LF2_MINORS
+            .iter()
+            .map(|minor| format!("2.{minor}"))
+            .collect::<Vec<_>>()
+            .join(", "),
     })
 }
 
@@ -330,6 +342,39 @@ mod minor_tests {
         .encode_to_vec()
     }
 
+    /// An LF **1.x** archive is the likeliest wrong input there is — every DAR
+    /// built by a Daml 2.x SDK is one — so it has to be told the truth: this
+    /// decoder handles LF 2 only. Diagnosing it by minor instead would print
+    /// "unsupported Daml-LF minor 2.15 … upgrade the SDK", sending the reader
+    /// to rebuild a DAR whose major version will never be right.
+    #[test]
+    fn an_lf1_archive_is_diagnosed_by_its_major_not_its_minor() {
+        let payload = ArchivePayload {
+            // LF 1.15 was the last LF 1 minor, so this is a real DAR's shape.
+            minor: "15".to_string(),
+            sum: Some(archive_payload::Sum::DamlLf1(vec![1, 2, 3])),
+        }
+        .encode_to_vec();
+        let hash = hex(&Sha256::digest(&payload));
+        let bytes = Archive {
+            hash_function: HashFunction::Sha256 as i32,
+            payload,
+            hash,
+        }
+        .encode_to_vec();
+
+        let err = decode_package(&bytes).expect_err("LF 1 is not decodable here");
+        let message = err.to_string();
+        assert!(
+            matches!(err, DecodeError::UnsupportedVersion),
+            "should name the major version: {message}"
+        );
+        assert!(
+            !message.contains("2.15"),
+            "must not report an LF 1 minor as an LF 2 one: {message}"
+        );
+    }
+
     #[test]
     fn the_minor_this_build_targets_decodes() {
         for minor in SUPPORTED_LF2_MINORS {
@@ -358,10 +403,15 @@ mod minor_tests {
             // The message has to name what was found and what is accepted,
             // or the reader cannot tell whether to rebuild the DAR or the SDK.
             assert!(message.contains(&format!("2.{minor}")), "{message}");
-            assert!(
-                message.contains("2.1"),
-                "should name what we support: {message}"
-            );
+            // *Every* accepted version, spelled in full. Asserting only the
+            // first let "(2.1, 2)" — a `2.` prefix that reached one entry of
+            // the list — pass for as long as the list had one entry.
+            for supported in SUPPORTED_LF2_MINORS {
+                assert!(
+                    message.contains(&format!("2.{supported}")),
+                    "should name 2.{supported} as supported: {message}"
+                );
+            }
         }
     }
 }
