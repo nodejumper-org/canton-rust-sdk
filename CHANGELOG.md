@@ -95,6 +95,14 @@ is included; nothing from it was removed or changed in signature.
   `google.rpc.ResourceInfo` Canton attaches to failures where "which one?" is
   the first question — `CONTRACT_NOT_FOUND` names the contract id. A `Vec`
   rather than an `Option`, because the JSON transport carries a list.
+- **`canton-ledger` (unbounded waits):** the JSON lane had no timeout at all.
+  `reqwest` applies none unless asked, so a participant that accepted the
+  connection and then went quiet held the caller's task open for the life of
+  the process — while the gRPC channel beside it had bounded the same call at
+  30s since M1. `JsonClient::with_timeout` sets it, defaulting to that same
+  30s, applied per request so it holds whatever order the builders were called
+  in. The WebSocket **handshake** is bounded by the same value; the stream that
+  follows is a live tail and deliberately is not.
 - **`canton-core` (transport parity):** `Error::error_info()` and
   `Error::code()` now answer on the JSON transport too. Both returned `None`
   there while returning the real thing over gRPC — so an application that

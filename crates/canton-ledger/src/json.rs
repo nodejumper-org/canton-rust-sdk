@@ -36,7 +36,19 @@ pub struct JsonClient {
     /// WS lane has a ceiling to raise: `reqwest` puts no limit on an HTTP
     /// response body, so the `POST` lane reads whatever the participant sends.
     max_decoding_message_size: usize,
+    /// How long one HTTP attempt may take. Applied per request rather than on
+    /// the `reqwest` client, so it holds however the client was built and
+    /// whatever order the builders were called in.
+    timeout: std::time::Duration,
 }
+
+/// How long one JSON request may take before it is abandoned.
+///
+/// The same 30 seconds the gRPC channel uses, and for the same reason: without
+/// it there is no bound at all. `reqwest` applies no timeout unless asked, so a
+/// participant that accepts the connection and then stops answering holds the
+/// caller's task open for as long as the process runs.
+const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Hand-written for the same reason [`Config`]'s is: a base URL can carry
 /// credentials in its userinfo (`https://user:secret@host`), and the derived
@@ -371,7 +383,28 @@ impl JsonClient {
             tls: None,
             retry: None,
             max_decoding_message_size: canton_core::DEFAULT_MAX_DECODING_MESSAGE_SIZE,
+            timeout: DEFAULT_TIMEOUT,
         }
+    }
+
+    /// How long one HTTP attempt may take (default 30s), the JSON lane's
+    /// counterpart to [`Config::with_timeout`].
+    ///
+    /// `reqwest` imposes no timeout of its own, so without this a request to a
+    /// participant that accepts the connection and then goes quiet never
+    /// returns. Applied per attempt: under [`Self::with_retry`] each try gets
+    /// the full budget, matching how the gRPC channel's timeout composes with
+    /// its retries.
+    ///
+    /// The clock covers the whole exchange — connecting, sending, and reading
+    /// the response body — so it is a real bound rather than a bound on the
+    /// first byte.
+    ///
+    /// [`Config::with_timeout`]: canton_core::Config::with_timeout
+    #[must_use]
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 
     /// The largest WebSocket message this client will accept, in bytes —
@@ -463,9 +496,26 @@ impl JsonClient {
         self
     }
 
+    /// The WS lane's view of this client. One place, so a setting added to the
+    /// transport reaches every subscription rather than the ones someone
+    /// remembered.
+    #[cfg(feature = "ws")]
+    fn ws_transport(&self) -> crate::ws::WsTransport<'_> {
+        crate::ws::WsTransport {
+            base_url: &self.base_url,
+            auth: &self.auth,
+            tls: self.tls.as_ref(),
+            max_decoding_message_size: self.max_decoding_message_size,
+            timeout: self.timeout,
+        }
+    }
+
     async fn get<T: for<'de> Deserialize<'de>>(&self, path: &str) -> Result<T> {
         canton_core::retry::run_with_retry(self.retry.as_ref(), || async {
-            let mut request = self.http.get(format!("{}{path}", self.base_url));
+            let mut request = self
+                .http
+                .get(format!("{}{path}", self.base_url))
+                .timeout(self.timeout);
             if let Some(token) = self.auth.bearer().await? {
                 request = request.bearer_auth(token);
             }
@@ -488,6 +538,7 @@ impl JsonClient {
             let mut request = self
                 .http
                 .post(format!("{}{path}", self.base_url))
+                .timeout(self.timeout)
                 .json(body);
             if let Some(token) = self.auth.bearer().await? {
                 request = request.bearer_auth(token);
@@ -674,15 +725,7 @@ impl JsonClient {
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_updates", TRANSPORT_JSON, async move {
             let request = updates_request(&parties, begin_exclusive, end_inclusive);
-            let inner = crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
-                "/v2/updates",
-                request,
-            )
-            .await?;
+            let inner = crate::ws::subscribe(&self.ws_transport(), "/v2/updates", request).await?;
             Ok(crate::ws::filter_checkpoints(inner))
         })
         .await
@@ -702,15 +745,9 @@ impl JsonClient {
         request: &crate::request::UpdatesRequest,
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_updates", TRANSPORT_JSON, async move {
-            let inner = crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
-                "/v2/updates",
-                request.json_body(),
-            )
-            .await?;
+            let inner =
+                crate::ws::subscribe(&self.ws_transport(), "/v2/updates", request.json_body())
+                    .await?;
             Ok(crate::ws::filter_checkpoints(inner))
         })
         .await
@@ -735,15 +772,7 @@ impl JsonClient {
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_active_contracts", TRANSPORT_JSON, async move {
             let request = active_contracts_request(&parties, active_at_offset);
-            crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
-                "/v2/state/active-contracts",
-                request,
-            )
-            .await
+            crate::ws::subscribe(&self.ws_transport(), "/v2/state/active-contracts", request).await
         })
         .await
     }
@@ -762,10 +791,7 @@ impl JsonClient {
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_active_contracts", TRANSPORT_JSON, async move {
             crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
+                &self.ws_transport(),
                 "/v2/state/active-contracts",
                 request.json_body(),
             )
@@ -790,10 +816,7 @@ impl JsonClient {
         telemetry::instrument("ws_completions", TRANSPORT_JSON, async move {
             let request = completions_request(&parties, begin_exclusive);
             let inner = crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
+                &self.ws_transport(),
                 "/v2/commands/command-completions",
                 request,
             )
@@ -818,10 +841,7 @@ impl JsonClient {
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_completions", TRANSPORT_JSON, async move {
             let inner = crate::ws::subscribe(
-                &self.base_url,
-                &self.auth,
-                self.tls.as_ref(),
-                self.max_decoding_message_size,
+                &self.ws_transport(),
                 "/v2/commands/command-completions",
                 request.json_body(),
             )
@@ -849,20 +869,21 @@ impl JsonClient {
         let auth = self.auth.clone();
         let tls = self.tls.clone();
         let max_decoding_message_size = self.max_decoding_message_size;
+        let timeout = self.timeout;
         async_stream::stream! {
             let mut offset = begin_exclusive;
             let mut reconnects = 0u32;
             loop {
                 // Unbounded tail (no end): a close means the connection dropped.
                 let request = updates_request(&parties, offset, None);
-                match crate::ws::subscribe(
-                    &base_url,
-                    &auth,
-                    tls.as_ref(),
+                let transport = crate::ws::WsTransport {
+                    base_url: &base_url,
+                    auth: &auth,
+                    tls: tls.as_ref(),
                     max_decoding_message_size,
-                    "/v2/updates",
-                    request,
-                ).await {
+                    timeout,
+                };
+                match crate::ws::subscribe(&transport, "/v2/updates", request).await {
                     Ok(inner) => {
                         tokio::pin!(inner);
                         loop {
@@ -1006,6 +1027,50 @@ mod tests {
     fn with_limit_appends_only_when_set() {
         assert_eq!(with_limit("/v2/updates", None), "/v2/updates");
         assert_eq!(with_limit("/v2/updates", Some(5)), "/v2/updates?limit=5");
+    }
+
+    /// A participant that accepts the connection and then says nothing is the
+    /// case no status code covers, and `reqwest` waits for it forever unless
+    /// told not to. The gRPC lane has bounded this at 30s since M1; this one
+    /// had no bound and no knob.
+    ///
+    /// The listener here accepts and never answers, which is the only way to
+    /// tell a timeout that works from a request that happened to be fast.
+    #[tokio::test]
+    async fn a_request_to_a_silent_participant_gives_up_instead_of_hanging() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        // Hold every accepted connection open, answering nothing.
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((socket, _)) = listener.accept().await {
+                held.push(socket);
+            }
+        });
+
+        let client = JsonClient::new(format!("http://{addr}"))
+            .with_timeout(std::time::Duration::from_millis(250));
+
+        // The outer bound is what makes this a test rather than a hang: with no
+        // per-request timeout the call never returns at all, and a CI job that
+        // stops responding says less than one that fails.
+        let outcome =
+            tokio::time::timeout(std::time::Duration::from_secs(5), client.version()).await;
+        let Ok(result) = outcome else {
+            panic!("the request never returned — the per-request timeout is not being applied");
+        };
+
+        let error = result.unwrap_err();
+        assert!(
+            error.is_retriable(),
+            "a timeout is transient and should be retriable: {error}"
+        );
+
+        // And the default is a real bound, not `None` dressed up as one.
+        assert_eq!(
+            JsonClient::new("http://localhost:3975").timeout,
+            DEFAULT_TIMEOUT
+        );
     }
 
     /// A client is the thing a caller is most likely to put in a `tracing`

@@ -179,21 +179,49 @@ pub(crate) fn filter_checkpoints(
     }
 }
 
+/// Everything the WS lane takes from its [`JsonClient`], gathered into one
+/// value.
+///
+/// These used to be positional arguments to [`subscribe`]. Adding the fifth
+/// meant editing seven call sites, one of which — the reconnecting stream —
+/// builds its arguments from clones inside an async block and was only caught
+/// because the parameter was mandatory. A struct makes the next setting one
+/// edit instead of seven.
+///
+/// [`JsonClient`]: crate::JsonClient
+pub(crate) struct WsTransport<'a> {
+    /// The HTTP(S) base URL; rewritten to `ws(s)` per request.
+    pub base_url: &'a str,
+    /// Bearer credentials for the handshake.
+    pub auth: &'a Auth,
+    /// TLS material for a `wss` handshake.
+    pub tls: Option<&'a TlsConfig>,
+    /// The ceiling on an incoming message *and* a single frame.
+    pub max_decoding_message_size: usize,
+    /// How long the handshake may take before it is abandoned.
+    pub timeout: std::time::Duration,
+}
+
 /// Open a WS subscription at `path` with `request` as the single subscription
 /// frame, and yield each response frame as JSON.
 ///
 /// # Errors
 /// Returns an [`Error`] if the URL is invalid, auth fails, or the handshake
-/// fails. The returned stream yields `Err` on a participant error frame or a
-/// transport failure.
+/// fails or times out. The returned stream yields `Err` on a participant error
+/// frame or a transport failure.
 pub(crate) async fn subscribe(
-    base_url: &str,
-    auth: &Auth,
-    tls: Option<&TlsConfig>,
-    max_decoding_message_size: usize,
+    transport: &WsTransport<'_>,
     path: &str,
     request: Value,
 ) -> Result<impl Stream<Item = Result<Value>> + Send + use<>> {
+    let &WsTransport {
+        base_url,
+        auth,
+        tls,
+        max_decoding_message_size,
+        timeout,
+    } = transport;
+
     let url = ws_url(base_url, path);
     let uri: Uri = url.parse().map_err(|e| {
         Error::InvalidRequest(format!(
@@ -217,19 +245,31 @@ pub(crate) async fn subscribe(
         .max_frame_size(Some(max_decoding_message_size));
 
     let connector = build_connector(tls)?;
-    let (mut socket, _response) = tokio_tungstenite::connect_async_tls_with_config(
+    // The handshake is bounded for the same reason the HTTP lane's requests
+    // are: a participant that accepts the socket and never completes the
+    // upgrade would otherwise hold the caller's task open indefinitely, and
+    // tungstenite imposes no deadline of its own. Only the handshake — the
+    // stream that follows is a live tail with no deadline to speak of.
+    let connect = tokio_tungstenite::connect_async_tls_with_config(
         builder,
         Some(ws_config),
         false,
         connector,
-    )
-    .await
-    .map_err(|e| {
-        Error::Connection(format!(
-            "ws connect to {} failed: {e}",
-            canton_core::redact_url(&url)
-        ))
-    })?;
+    );
+    let (mut socket, _response) = tokio::time::timeout(timeout, connect)
+        .await
+        .map_err(|_| {
+            Error::Connection(format!(
+                "ws handshake with {} did not complete within {timeout:?}",
+                canton_core::redact_url(&url)
+            ))
+        })?
+        .map_err(|e| {
+            Error::Connection(format!(
+                "ws connect to {} failed: {e}",
+                canton_core::redact_url(&url)
+            ))
+        })?;
 
     // A single subscription frame (same JSON as the equivalent HTTP POST body).
     socket
