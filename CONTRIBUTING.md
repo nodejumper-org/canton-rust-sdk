@@ -39,6 +39,12 @@ Guidelines:
   editing an old one.
 - **Versioning**: all `canton-*` crates release in lockstep with one shared
   version ([ADR-0005](docs/adr/0005-lockstep-versioning.md)).
+- **CI actions are pinned to a commit**, with the human-readable version in a
+  trailing comment (`actions/checkout@11d5960… # v4`). A tag is mutable: whoever
+  controls the action's repository can repoint `v4` at anything, and it would
+  run with our checkout and our secrets. To bump one, resolve the new tag
+  (`gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq .object.sha`) and update
+  both the SHA and the comment.
 
 ## Security issues
 
