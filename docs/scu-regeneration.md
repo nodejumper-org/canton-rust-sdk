@@ -65,6 +65,53 @@ If the DAR bundles *both* versions (the SCU deployment shape), the two package
 modules appear side by side as `quickstart_licensing_0_0_1` and
 `quickstart_licensing_0_0_2` instead.
 
-> Not yet run in this repo (no second-version DAR is checked in, and building one
-> needs the Daml toolchain). The mechanics above are verified; this runbook is the
-> end-to-end demonstration for the M2 review.
+## Result (run 2026-08-09)
+
+Run without the Daml toolchain, which is not installed here. A version bump
+lives in one place — `PackageMetadata.version_interned_str` inside the main
+package — so the bump was applied there and the DAR rebuilt around it:
+`crates/canton-lf/examples/bump_version.rs` rewrites the version, re-hashes the
+payload into a new package id, and repacks the archive with the renamed entries
+and manifest.
+
+That is deliberately *not* a recompile. The Daml source is untouched and only
+the declared version moves, which isolates the version change from every other
+difference `daml build` would introduce — and the version change is what the
+property is about.
+
+```
+version    0.0.1 -> 0.0.2
+package id edd5a8d8…a919a -> 340f3c57…df589
+```
+
+Regenerating from both DARs and diffing the output:
+
+| | v0.0.1 | v0.0.2 | differing |
+|---|---|---|---|
+| differing lines, whole file | | | **8** |
+| …all of them | `const PACKAGE_ID` | | |
+| `pub mod` | 49 | 49 | 0 |
+| `pub struct` | 75 | 75 | 0 |
+| `pub enum` | 8 | 8 | 0 |
+| `#[serde(rename …)]` | 370 | 370 | 0 |
+| `ENTITY_NAME` / `MODULE_NAME` / `PACKAGE_NAME` | 8 / 8 / 8 | 8 / 8 / 8 | 0 |
+
+And the consumer side, which is the claim that matters: one unchanged program —
+building a payload, a create command, a typed exercise, and both codecs —
+compiles and runs against **both** sets of bindings, and emits the same
+version-independent template id:
+
+```
+against v0.0.1:  #quickstart-licensing:Licensing.AppInstall:AppInstallRequest
+                 pinned package id edd5a8d8…a919a
+against v0.0.2:  #quickstart-licensing:Licensing.AppInstall:AppInstallRequest
+                 pinned package id 340f3c57…df589
+```
+
+Not one character of the consumer changed. That is "an SCU version bump
+regenerates compatible code".
+
+**What this does not cover:** a real `daml build` of a modified package, where
+the Daml source itself changes (a field added, a choice added). SCU's
+compatibility rules for *that* are the participant's to enforce, and
+demonstrating it needs the Daml toolchain and a deployed upgrade.
