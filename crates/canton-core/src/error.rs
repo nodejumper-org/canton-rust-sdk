@@ -81,11 +81,20 @@ pub enum Error {
 }
 
 impl Error {
-    /// The gRPC status code, if this error originates from a gRPC status.
+    /// The gRPC status code the participant answered with, on **either**
+    /// transport.
+    ///
+    /// The JSON Ledger API reports it numerically as `grpcCodeValue`, so the
+    /// same failure yields the same code whichever lane carried it — the HTTP
+    /// status alone does not, since Canton maps several codes onto one status.
+    /// `None` when there is no participant verdict to report: a transport
+    /// failure, a timeout, or an HTTP body that is not a Canton error object
+    /// (a proxy's error page, say).
     #[must_use]
     pub fn code(&self) -> Option<tonic::Code> {
         match self {
             Error::Status(status) => Some(status.code()),
+            Error::Http { body, .. } => http_grpc_code(body),
             _ => None,
         }
     }
@@ -215,11 +224,23 @@ impl Error {
         }
     }
 
-    /// The structured `google.rpc.ErrorInfo` carried by a gRPC status, when
-    /// present. Canton populates this with the machine-readable error `reason`
-    /// (e.g. `DUPLICATE_COMMAND`) plus context `metadata` — prefer it over
-    /// string-matching [`Display`](std::fmt::Display) output. Returns `None` for
-    /// non-status errors or statuses without an `ErrorInfo` detail.
+    /// The machine-readable identity of the failure: Canton's error `reason`
+    /// (e.g. `DUPLICATE_COMMAND`) plus its context `metadata`. Prefer it over
+    /// string-matching [`Display`](std::fmt::Display) output.
+    ///
+    /// Available on **either** transport. gRPC carries it as a
+    /// `google.rpc.ErrorInfo` detail; the JSON Ledger API spells the same two
+    /// things as `code` and `context`, and this reads whichever is there. That
+    /// matters because the alternative on the JSON lane was the string matching
+    /// this method exists to replace.
+    ///
+    /// `None` when the participant published no identity to report: a transport
+    /// failure, a status without the detail, or a **redacted** error — Canton
+    /// answers a security-sensitive failure with the literal `"NA"`, which is
+    /// the absence of an error id rather than an error id.
+    ///
+    /// `domain` is empty on the JSON lane, and Canton leaves it empty on gRPC
+    /// too.
     #[must_use]
     pub fn error_info(&self) -> Option<ErrorInfo> {
         match self {
@@ -234,6 +255,7 @@ impl Error {
                         metadata: info.metadata.clone(),
                     })
             }
+            Error::Http { body, .. } => http_error_info(body),
             _ => None,
         }
     }
@@ -291,6 +313,59 @@ fn http_resource_info(body: &str) -> Vec<ResourceInfo> {
             })
         })
         .collect()
+}
+
+/// The `grpcCodeValue` of a JSON Ledger API error body — the numeric gRPC code
+/// the participant would have answered with over the other transport.
+///
+/// Only reported when the field is actually there: `tonic::Code::from` maps an
+/// unknown number to `Unknown`, and manufacturing `Unknown` for a body that
+/// never carried a code would claim a verdict the participant never gave.
+fn http_grpc_code(body: &str) -> Option<tonic::Code> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    let value = body.get("grpcCodeValue")?.as_i64()?;
+    Some(tonic::Code::from(i32::try_from(value).ok()?))
+}
+
+/// The `code` and `context` of a JSON Ledger API error body, as the
+/// `ErrorInfo` the gRPC lane carries as a status detail.
+///
+/// `"NA"` is Canton's placeholder on a redacted (security-sensitive) error and
+/// is treated as no id at all — reporting it would hand the caller a string
+/// that looks like an error code and matches nothing.
+///
+/// A context value that is not a string keeps its JSON spelling rather than
+/// being dropped: `metadata` is a string map, and losing a field silently is
+/// worse than rendering it.
+fn http_error_info(body: &str) -> Option<ErrorInfo> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    let reason = body.get("code")?.as_str()?;
+    if reason.is_empty() || reason == "NA" {
+        return None;
+    }
+    let metadata = body
+        .get("context")
+        .and_then(serde_json::Value::as_object)
+        .map(|context| {
+            context
+                .iter()
+                .map(|(key, value)| {
+                    let value = match value.as_str() {
+                        Some(text) => text.to_string(),
+                        None => value.to_string(),
+                    };
+                    (key.clone(), value)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(ErrorInfo {
+        reason: reason.to_string(),
+        // Canton sets no domain on either transport, and the JSON body has no
+        // field for one. Empty here says the same thing gRPC says.
+        domain: String::new(),
+        metadata,
+    })
 }
 
 /// The `correlationId` (or, failing that, `traceId`) of a JSON Ledger API
@@ -646,6 +721,23 @@ mod tests {
             Some("36a33702b2fa7908a7349be166ccfa38")
         );
 
+        // The same failure over gRPC yields OutOfRange and an ErrorInfo naming
+        // OFFSET_AFTER_LEDGER_END. The JSON body spells both — `grpcCodeValue`
+        // and `code`/`context` — so both accessors must answer here too, or a
+        // caller on this transport is left with the string matching
+        // `error_info` exists to replace.
+        assert_eq!(err.code(), Some(tonic::Code::OutOfRange));
+        let info = err.error_info().expect("the body names the error");
+        assert_eq!(info.reason, "OFFSET_AFTER_LEDGER_END");
+        assert_eq!(
+            info.metadata.get("category").map(String::as_str),
+            Some("12")
+        );
+        assert_eq!(
+            info.metadata.get("participant").map(String::as_str),
+            Some("'app-provider'")
+        );
+
         // A non-retryable category on a retryable-looking HTTP status: the
         // category still wins (e.g. a 503 whose body says "invalid argument").
         let err = Error::Http {
@@ -759,6 +851,8 @@ mod tests {
         assert_eq!(err.category(), None, "-1 is not a category");
         assert!(err.resource_info().is_empty());
         assert_eq!(err.retry_delay(), None);
+        // `"NA"` is Canton saying it withheld the id, not an id spelled "NA".
+        assert_eq!(err.error_info(), None, "\"NA\" is not an error id");
         assert_eq!(
             err.correlation_id().as_deref(),
             Some("41f217564e4e76f6cbc853a94a82fa80")

@@ -854,6 +854,98 @@ async fn json_bad_token_is_an_http_error() {
     println!("json bad-token — {error}");
 }
 
+/// The two transports must describe the *same failure* the same way.
+///
+/// Not a nicety: an application that classifies errors — retry here, alert
+/// there — is written once and must keep working if it is pointed at the other
+/// lane. Each accessor is a separate parse (a `google.rpc` status detail on one
+/// side, a JSON field on the other), so parity is something that holds only
+/// while someone checks it, which is how `error_info` and `code` came to answer
+/// on gRPC and return `None` on JSON.
+///
+/// Reading past the ledger end is the right probe: it is a self-service error
+/// (so nothing is redacted), it carries a category, a retry delay and an error
+/// id, and it needs no write.
+#[tokio::test]
+async fn both_transports_describe_the_same_failure_identically() {
+    use canton_ledger::UpdatesRequest;
+    use tokio_stream::StreamExt as _;
+
+    const PAST_THE_END: i64 = 999_999_999;
+
+    let (Some((client, party, _)), Ok(json_url), Some(oidc_config)) = (
+        full_setup(),
+        std::env::var("CANTON_TEST_JSON_ENDPOINT"),
+        oidc(),
+    ) else {
+        eprintln!("skipping both_transports_describe_the_same_failure_identically: env not set");
+        return;
+    };
+    let json = JsonClient::new(&json_url).with_oidc(TokenProvider::new(oidc_config));
+
+    let request = UpdatesRequest::new(vec![party.clone()], PAST_THE_END).until(PAST_THE_END);
+
+    // gRPC rejects at the stream rather than at the call, so drain until it does.
+    let grpc_error = match client.updates_with(request).await {
+        Err(error) => error,
+        Ok(stream) => {
+            let mut stream = Box::pin(stream);
+            loop {
+                match stream.next().await {
+                    Some(Err(error)) => break error,
+                    Some(Ok(_)) => {}
+                    None => panic!("reading past the ledger end should fail"),
+                }
+            }
+        }
+    };
+    let json_error = json
+        .updates(vec![party], PAST_THE_END, None, Some(1))
+        .await
+        .expect_err("reading past the ledger end should fail");
+
+    assert_eq!(grpc_error.code(), json_error.code(), "gRPC code");
+    assert_eq!(grpc_error.category(), json_error.category(), "category");
+    assert_eq!(
+        grpc_error.is_retriable(),
+        json_error.is_retriable(),
+        "retriability"
+    );
+    assert_eq!(
+        grpc_error.retry_delay(),
+        json_error.retry_delay(),
+        "retry delay"
+    );
+
+    let grpc_info = grpc_error.error_info().expect("gRPC names the error");
+    let json_info = json_error.error_info().expect("JSON names the error too");
+    assert_eq!(grpc_info.reason, json_info.reason, "error id");
+    // The correlation id is per-request, so compare the keys and the rest of
+    // the values rather than the whole map.
+    let keys = |info: &canton_core::ErrorInfo| {
+        let mut keys: Vec<_> = info.metadata.keys().cloned().collect();
+        keys.sort();
+        keys
+    };
+    assert_eq!(keys(&grpc_info), keys(&json_info), "metadata keys");
+    assert_eq!(
+        grpc_info.metadata.get("category"),
+        json_info.metadata.get("category"),
+    );
+
+    // The correlation id is what the operator is asked for, so both lanes have
+    // to produce one — they just won't be the same request.
+    assert!(grpc_error.correlation_id().is_some(), "gRPC correlation id");
+    assert!(json_error.correlation_id().is_some(), "JSON correlation id");
+
+    println!(
+        "both lanes: {:?} / {:?} / {}",
+        grpc_error.code(),
+        grpc_error.category(),
+        grpc_info.reason
+    );
+}
+
 #[tokio::test]
 async fn grpc_and_json_transports_agree() {
     let (Some((client, _, _)), Ok(json_url)) =

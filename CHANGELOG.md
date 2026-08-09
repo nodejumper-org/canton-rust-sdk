@@ -95,6 +95,15 @@ is included; nothing from it was removed or changed in signature.
   `google.rpc.ResourceInfo` Canton attaches to failures where "which one?" is
   the first question — `CONTRACT_NOT_FOUND` names the contract id. A `Vec`
   rather than an `Option`, because the JSON transport carries a list.
+- **`canton-core` (transport parity):** `Error::error_info()` and
+  `Error::code()` now answer on the JSON transport too. Both returned `None`
+  there while returning the real thing over gRPC — so an application that
+  classified errors by error id, exactly as `error_info`'s documentation tells
+  it to, silently fell back to string-matching the display text the moment it
+  was pointed at the JSON lane. The body spells both (`code`/`context` and
+  `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
+  id rather than as one. A live test now asserts that both lanes describe the
+  same failure identically, so this cannot drift apart again unnoticed.
 - **`canton-lf` (archive integrity):** a package's payload is hashed and checked
   against the id it declares before it is parsed, and a `hash_function` other
   than SHA-256 is refused rather than assumed. That id is embedded in generated
