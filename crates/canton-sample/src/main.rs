@@ -219,6 +219,24 @@ async fn run_json(
     println!("read back — our create present: {found}");
     assert!(found, "the committed transaction should contain our create");
 
+    // The typed READ path, which the gRPC lane has and this one did not.
+    //
+    // Everything above only shows a contract id turning up in a blob of JSON;
+    // it never asks the generated type to make sense of what the participant
+    // actually sent. Both transports carry the same contract for the same
+    // bindings, so an application is free to write over one and read over the
+    // other — and until this decoded, nothing said the node's LF-JSON and our
+    // `Deserialize` agreed. The round-trip earlier in this file cannot say it:
+    // it feeds our own serialisation back to ourselves.
+    let payload = json_created_payload(&response.transaction.events)
+        .ok_or_else(|| Error::UnexpectedResponse("no CreatedEvent payload".to_string()))?;
+    let read_back: AppInstallRequest = serde_json::from_value(payload.clone())?;
+    assert_eq!(
+        &read_back, request,
+        "the typed value decoded from the node's JSON matches the submit"
+    );
+    println!("typed read-back over JSON: matches the submitted payload");
+
     // …and the ACS snapshot is a non-empty bounded read.
     let acs = client
         .active_contracts(vec![party.to_string()], offset, Some(200))
@@ -230,6 +248,18 @@ async fn run_json(
 
 /// The contract ids created by a JSON transaction's events
 /// (`{"CreatedEvent": {"contractId": …}}`).
+/// The `createArgument` of the first `CreatedEvent` in a JSON transaction —
+/// the LF-JSON payload, which is what a generated type deserializes from.
+///
+/// `createArgument`, singular: the gRPC field is `create_arguments` and the
+/// JSON one is not, which is the kind of difference only reading a real
+/// response settles. Confirmed against a 3.5.7 participant.
+fn json_created_payload(events: &[serde_json::Value]) -> Option<&serde_json::Value> {
+    events
+        .iter()
+        .find_map(|event| event.get("CreatedEvent")?.get("createArgument"))
+}
+
 fn json_created_contract_ids(events: &[serde_json::Value]) -> Vec<String> {
     events
         .iter()
