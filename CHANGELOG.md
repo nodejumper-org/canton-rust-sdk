@@ -140,6 +140,14 @@ is included; nothing from it was removed or changed in signature.
   `grpcCodeValue`); a redacted error's literal `"NA"` is reported as no error
   id rather than as one. A live test now asserts that both lanes describe the
   same failure identically, so this cannot drift apart again unnoticed.
+- **`canton-codegen` (submit vs read):** the two encoders a generated template
+  carries are now pinned to agree. The emitter writes the payload's field list
+  twice — in `ToValue` and in `Template::to_record` — and they are different
+  paths at runtime: `create_command` submits `to_record`, while a contract read
+  back arrives through `from_value`. A template whose two lists drifted would
+  write one shape to the ledger and expect another, and nothing compared them:
+  every round-trip test goes `to_value` → `from_value`, which is the half the
+  submit path does not use.
 - **`canton-daml` (decode errors in containers):** a failure inside a `List`,
   `TextMap` or `GenMap` now names the element. Generated records attach the
   field name to every decode, but containers dropped everything below it, so
