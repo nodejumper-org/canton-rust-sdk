@@ -121,6 +121,123 @@ impl AdminClient {
         .await
     }
 
+    /// Ask the participant what allocating an external party for `public_key`
+    /// would look like, without allocating it.
+    ///
+    /// The first half of external-party onboarding. The participant computes
+    /// the key's fingerprint and the party id derived from it, builds the
+    /// onboarding topology transactions, and returns one hash over them. None
+    /// of it is submitted: that is [`allocate_external_party`], after the key
+    /// has signed the hash.
+    ///
+    /// [`allocate_external_party`]: Self::allocate_external_party
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails, or [`Error::UnexpectedResponse`]
+    /// if the participant answers without a hash to sign or without the
+    /// fingerprint — either of which would leave the caller unable to sign as
+    /// this party at all.
+    pub async fn generate_external_party_topology(
+        &self,
+        synchronizer: &str,
+        party_hint: &str,
+        public_key: &canton_signer::PublicKey,
+    ) -> Result<crate::external_party::ExternalPartyTopology> {
+        let request = pb::GenerateExternalPartyTopologyRequest {
+            synchronizer: synchronizer.to_string(),
+            party_hint: party_hint.to_string(),
+            public_key: Some(public_key.into()),
+            ..Default::default()
+        };
+        telemetry::instrument(
+            "generate_external_party_topology",
+            TRANSPORT_GRPC,
+            async move {
+                let response = self
+                    .with_retry(|| {
+                        let request = request.clone();
+                        async move {
+                            let mut client = service!(self, PartyManagementServiceClient::new);
+                            Ok(client
+                                .generate_external_party_topology(request)
+                                .await?
+                                .into_inner())
+                        }
+                    })
+                    .await?;
+                crate::external_party::ExternalPartyTopology::from_response(response)
+            },
+        )
+        .await
+    }
+
+    /// Allocate the external party described by `topology`, authorized by
+    /// `signer`.
+    ///
+    /// The second half. The signature is over
+    /// [`multi_hash`](crate::external_party::ExternalPartyTopology::multi_hash)
+    /// — one hash covering every onboarding transaction, so one signature
+    /// authorizes the whole set — and it is what proves the party controls the
+    /// key being registered for it.
+    ///
+    /// `user_id` gets `act_as` rights on the new party; empty grants none.
+    ///
+    /// Returns the allocated party id. This waits for the allocation to reach
+    /// the synchronizer, so the party is usable when it returns.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if signing fails or the RPC does. A signature made
+    /// by a key other than the one in the topology is rejected by the
+    /// participant, not here.
+    pub async fn allocate_external_party(
+        &self,
+        synchronizer: &str,
+        topology: &crate::external_party::ExternalPartyTopology,
+        signer: &dyn canton_signer::Signer,
+        user_id: &str,
+    ) -> Result<String> {
+        let signature = signer.sign(topology.multi_hash()).await?;
+        let request = pb::AllocateExternalPartyRequest {
+            synchronizer: synchronizer.to_string(),
+            onboarding_transactions: topology
+                .transactions()
+                .iter()
+                .map(
+                    |transaction| pb::allocate_external_party_request::SignedTransaction {
+                        transaction: transaction.clone(),
+                        // The multi-hash signature below covers every transaction,
+                        // so none needs one of its own.
+                        signatures: Vec::new(),
+                    },
+                )
+                .collect(),
+            multi_hash_signatures: vec![(&signature).into()],
+            identity_provider_id: String::new(),
+            // The party is not usable until it is on the synchronizer, and a
+            // caller that just allocated it is about to use it.
+            wait_for_allocation: Some(true),
+            user_id: user_id.to_string(),
+        };
+        telemetry::instrument("allocate_external_party", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client = service!(self, PartyManagementServiceClient::new);
+                        Ok(client.allocate_external_party(request).await?.into_inner())
+                    }
+                })
+                .await?;
+            if response.party_id.is_empty() {
+                return Err(Error::UnexpectedResponse(
+                    "allocate_external_party returned no party id".to_string(),
+                ));
+            }
+            Ok(response.party_id)
+        })
+        .await
+    }
+
     /// List one page of known parties (`ListKnownParties`). Pass the returned
     /// token to fetch the next page; `page_size` `0` uses the server default.
     ///

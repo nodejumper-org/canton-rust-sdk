@@ -40,6 +40,34 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   `canton-splice-api-token-metadata-v1` 134 KB → 12 KB,
   `canton-splice-wallet` 310 KB → 189 KB, `canton-splice-amulet` 556 KB → 435 KB.
 
+### Added — interactive submission with a pluggable signer
+
+- **`canton-signer`** (new) — `Signer`, an object-safe async trait for signing a
+  prepared transaction's hash, so an HSM or KMS fits behind it. `Ed25519Key` is
+  the in-memory implementation, on `ring`, behind a default `ed25519` feature an
+  HSM implementer can turn off.
+- A key is not yet an identity: Canton addresses a key by a fingerprint it
+  computes itself, so `Ed25519Key` cannot sign for the ledger until
+  `into_signer(fingerprint)` gives it one. The ordering the types enforce is the
+  real one.
+- **`canton-ledger`** — `prepare_submission`, `execute_submission`,
+  `execute_submission_and_wait`, `execute_submission_and_wait_for_transaction`,
+  with the flow as a type per stage: `Prepare` → `Prepared` → `Executable`.
+  Nothing unsigned can be executed, because there is no such value. Signing
+  refuses a party that is not acting, and `unsigned_parties` answers "who is
+  still missing" without a round trip.
+- **`canton-ledger`** — `connected_synchronizers`, so "which synchronizer?" is a
+  question the participant answers rather than configuration.
+- **`canton-admin`** — `generate_external_party_topology` and
+  `allocate_external_party`: onboarding a party whose key the participant does
+  not hold, which is two calls with a signature over the onboarding multi-hash
+  in between.
+- **Verified live** on a Canton 3.5.7 participant: an external party is
+  onboarded by signing its own topology, a command is prepared, signed off the
+  participant and committed, and a signature from the wrong key is refused —
+  `Received 0 valid signatures from distinct keys (1 invalid)`. That last one is
+  the control: it is what shows the signature is carrying the authorization.
+
 ### Added — codegen
 
 - `Selection` and `lower_dar_selecting`: generate a crate from part of a DAR.

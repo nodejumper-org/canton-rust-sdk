@@ -34,11 +34,13 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod client;
+mod external_party;
 mod topology;
 
 pub use canton_core::{Config, Error, Result, RetryConfig, TlsConfig};
 pub use canton_proto::com::daml::ledger::api::v2::PackageStatus;
 pub use client::AdminClient;
+pub use external_party::ExternalPartyTopology;
 pub use topology::{Entry, Store, TopologyClient};
 
 /// Generated Ledger API admin protobuf types (party & user management).

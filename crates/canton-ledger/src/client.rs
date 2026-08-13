@@ -304,6 +304,42 @@ impl CantonClient {
         .await
     }
 
+    /// The synchronizers this participant is connected to for `party`.
+    ///
+    /// Allocating an external party and preparing a submission both name a
+    /// synchronizer, and a caller has no other way to discover one — so this
+    /// is what turns "which synchronizer?" from configuration into a question
+    /// the participant answers.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails.
+    pub async fn connected_synchronizers(
+        &self,
+        party: &str,
+    ) -> Result<Vec<pb::get_connected_synchronizers_response::ConnectedSynchronizer>> {
+        let request = pb::GetConnectedSynchronizersRequest {
+            party: party.to_string(),
+            ..Default::default()
+        };
+        telemetry::instrument("connected_synchronizers", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client =
+                            service!(self, pb::state_service_client::StateServiceClient::new);
+                        Ok(client
+                            .get_connected_synchronizers(request)
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            Ok(response.connected_synchronizers)
+        })
+        .await
+    }
+
     /// Interpret a submission without authorizing it, returning the transaction
     /// and the hash to sign.
     ///

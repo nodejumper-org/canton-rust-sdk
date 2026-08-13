@@ -51,6 +51,10 @@ ws = [
 otel = ["canton-core/otel"]
 
 [dev-dependencies]
+# The interactive-submission live test allocates an external party, which is
+# an admin RPC. No cycle: canton-admin does not depend on this crate.
+canton-admin = { workspace = true }
+
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 # Server stubs (dev-only) so in-process gRPC test servers can be built.
 canton-proto = { workspace = true, features = ["server"] }
