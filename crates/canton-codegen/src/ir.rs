@@ -49,6 +49,7 @@ pub enum DamlType {
 
 /// A reference to a named Daml data type, with any applied type arguments.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TypeRef {
     /// The Rust path to the referenced type, as segments. A local reference is a
     /// single segment (`["Foo"]`); a qualified one carries its full path
@@ -72,6 +73,7 @@ impl TypeRef {
 
 /// One field of a record.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Field {
     /// The Daml field label, in its source casing (usually camelCase).
     pub label: String,
@@ -82,6 +84,7 @@ pub struct Field {
 /// A record data type. Template payloads are records too, so this is reused for
 /// both a plain `data … = … with` record and a `template … with` payload.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Record {
     /// The type name (PascalCase, as in Daml).
     pub name: String,
@@ -110,6 +113,7 @@ pub enum DataType {
 
 /// A variant (sum) type: named constructors, each optionally carrying a payload.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Variant {
     /// The type name (PascalCase).
     pub name: String,
@@ -121,6 +125,7 @@ pub struct Variant {
 
 /// One constructor of a [`Variant`].
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct VariantConstructor {
     /// The constructor name (PascalCase).
     pub name: String,
@@ -130,6 +135,7 @@ pub struct VariantConstructor {
 
 /// An enumeration: named constructors that carry no payload.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Enum {
     /// The type name (PascalCase).
     pub name: String,
@@ -139,6 +145,7 @@ pub struct Enum {
 
 /// A template: its payload fields, its choices, and an optional contract key.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Template {
     /// The template name (PascalCase) — also the Rust payload struct name.
     pub name: String,
@@ -162,6 +169,7 @@ pub struct Template {
 
 /// A choice on a [`Template`].
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Choice {
     /// The choice name (PascalCase).
     pub name: String,
@@ -176,6 +184,7 @@ pub struct Choice {
 /// A module's worth of generated declarations: its data types, templates, and
 /// interfaces.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct Module {
     /// The named data types (records, variants, enums).
     pub data_types: Vec<DataType>,
@@ -192,6 +201,7 @@ pub struct Module {
 /// emitted from the interface's `DataCons::Interface` data type; this adds the
 /// `Interface`/`Choice` impls on that marker.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Interface {
     /// The interface name (PascalCase) — also the marker struct's name.
     pub name: String,
@@ -211,6 +221,7 @@ pub struct Interface {
 /// (so cross-module and cross-package references resolve, and names from
 /// different modules cannot collide).
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct Crate {
     /// The packages, each a top-level module in the generated crate.
     pub packages: Vec<PackageModule>,
@@ -219,6 +230,7 @@ pub struct Crate {
 /// One package rendered as a Rust module (`pub mod <name> { … }`), containing a
 /// submodule per Daml module.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct PackageModule {
     /// The Rust module name for this package (derived from its name + version).
     pub name: String,
@@ -228,9 +240,177 @@ pub struct PackageModule {
 
 /// A Daml module rendered as a Rust submodule.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct NamedModule {
     /// The Rust module name for this Daml module (dotted name, `.` → `_`).
     pub name: String,
     /// The module's declarations.
     pub module: Module,
+}
+
+// ---- constructors ------------------------------------------------------------
+//
+// The types above are `#[non_exhaustive]`, so a struct literal only works inside
+// this crate. That is deliberate: this IR gains fields as Daml-LF does — it took
+// forty of them during Milestone 2 alone — and once the crate is published, one
+// more would be a breaking change for everyone who wrote a literal.
+//
+// Fields stay public, so the documented use (lower a DAR, then post-process the
+// IR) still reads and mutates them freely. Only construction goes through these,
+// which take what a value cannot exist without and leave the rest empty.
+
+impl TypeRef {
+    /// A reference to the type at `path`, with no type arguments.
+    #[must_use]
+    pub fn new(path: Vec<String>) -> Self {
+        Self {
+            path,
+            args: Vec::new(),
+        }
+    }
+}
+
+impl Field {
+    /// A field named `label` of type `ty`.
+    #[must_use]
+    pub fn new(label: impl Into<String>, ty: DamlType) -> Self {
+        Self {
+            label: label.into(),
+            ty,
+        }
+    }
+}
+
+impl Record {
+    /// An empty, non-generic record named `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_params: Vec::new(),
+            fields: Vec::new(),
+        }
+    }
+}
+
+impl Variant {
+    /// A variant named `name` with no constructors yet.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_params: Vec::new(),
+            constructors: Vec::new(),
+        }
+    }
+}
+
+impl VariantConstructor {
+    /// A constructor carrying no payload.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            payload: None,
+        }
+    }
+
+    /// A constructor carrying `payload`.
+    #[must_use]
+    pub fn with_payload(name: impl Into<String>, payload: DamlType) -> Self {
+        Self {
+            name: name.into(),
+            payload: Some(payload),
+        }
+    }
+}
+
+impl Enum {
+    /// An enumeration of `constructors`.
+    #[must_use]
+    pub fn new(name: impl Into<String>, constructors: Vec<String>) -> Self {
+        Self {
+            name: name.into(),
+            constructors,
+        }
+    }
+}
+
+impl Template {
+    /// A template with its on-ledger identity, and no fields, choices or key
+    /// yet.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        module_name: impl Into<String>,
+        package_id: impl Into<String>,
+        package_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            module_name: module_name.into(),
+            package_id: package_id.into(),
+            package_name: package_name.into(),
+            fields: Vec::new(),
+            choices: Vec::new(),
+            key: None,
+        }
+    }
+}
+
+impl Choice {
+    /// A non-consuming choice. Set `consuming` on the value to change that —
+    /// it is a plain field, and a bool argument here would read as
+    /// `Choice::new(name, arg, ret, true)` at every call site.
+    #[must_use]
+    pub fn new(name: impl Into<String>, argument: DamlType, returns: DamlType) -> Self {
+        Self {
+            name: name.into(),
+            consuming: false,
+            argument,
+            returns,
+        }
+    }
+}
+
+impl Interface {
+    /// An interface with its on-ledger identity, no view and no choices yet.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        module_name: impl Into<String>,
+        package_id: impl Into<String>,
+        package_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            module_name: module_name.into(),
+            package_id: package_id.into(),
+            package_name: package_name.into(),
+            view: None,
+            choices: Vec::new(),
+        }
+    }
+}
+
+impl PackageModule {
+    /// A package with no modules yet.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            modules: Vec::new(),
+        }
+    }
+}
+
+impl NamedModule {
+    /// `module`, to be emitted as the Rust module `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>, module: Module) -> Self {
+        Self {
+            name: name.into(),
+            module,
+        }
+    }
 }

@@ -127,6 +127,17 @@ jobs:
           # No Cargo.lock is generated for the output crate, so --locked could
           # only ever fail here.
           cd "$RUNNER_TEMP/bindings" && cargo check
+      - name: The generated crate compiles and round-trips against the runtime
+        env:
+          CODEGEN_COMPILE_TEST: "1"
+        run: |
+          # Gated on this variable because it spawns cargo, and nothing set it —
+          # so the one test that proves generated code *compiles and runs*
+          # skipped on every push, and went stale without anybody seeing it.
+          cargo test -p canton-codegen --test compile -- --nocapture | tee /tmp/compile.log
+          grep -qE 'test result: ok\. [1-9]' /tmp/compile.log || {
+            echo "::error::the codegen compile test did not run"; exit 1; }
+
       - name: The emitter still produces the committed fixture
         run: |
           # The four drift guards over the published bindings crates need a DAR

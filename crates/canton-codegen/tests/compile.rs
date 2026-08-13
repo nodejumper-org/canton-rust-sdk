@@ -14,14 +14,23 @@ use canton_codegen::ir::{
 use canton_codegen::{generate_crate, generate_module};
 
 fn field(label: &str, ty: DamlType) -> Field {
-    Field {
-        label: label.to_string(),
-        ty,
-    }
+    Field::new(label, ty)
 }
 
 fn reference(name: &str, args: Vec<DamlType>) -> DamlType {
     DamlType::Ref(TypeRef::local(name, args))
+}
+
+/// A record with type parameters and fields, built the way a consumer of this
+/// crate has to build one: a constructor, then the optional parts assigned.
+/// The IR types are `#[non_exhaustive]`, so a struct literal is not available
+/// outside the crate — this test is also the check that the constructors are
+/// usable enough to write with.
+fn record(name: &str, type_params: Vec<&str>, fields: Vec<Field>) -> Record {
+    let mut record = Record::new(name);
+    record.type_params = type_params.into_iter().map(str::to_string).collect();
+    record.fields = fields;
+    record
 }
 
 #[test]
@@ -34,59 +43,49 @@ fn generated_module_compiles_and_round_trips_against_runtime() {
     // A module exercising every shape: an enum, a variant (payload + nullary), a
     // generic record, and a record whose fields reference all of them plus a
     // GenMap and a nested Optional.
-    let module = Module {
-        data_types: vec![
-            DataType::Enum(Enum {
-                name: "DayOfWeek".to_string(),
-                constructors: vec!["Monday".to_string(), "Tuesday".to_string()],
-            }),
-            DataType::Variant(Variant {
-                name: "Shape".to_string(),
-                type_params: Vec::new(),
-                constructors: vec![
-                    VariantConstructor {
-                        name: "Circle".to_string(),
-                        payload: Some(DamlType::Numeric(10)),
-                    },
-                    VariantConstructor {
-                        name: "Point".to_string(),
-                        payload: None,
-                    },
-                ],
-            }),
-            DataType::Record(Record {
-                name: "Pair".to_string(),
-                type_params: vec!["a".to_string(), "b".to_string()],
-                fields: vec![
-                    field("fst", DamlType::Var("a".to_string())),
-                    field("snd", DamlType::Var("b".to_string())),
-                ],
-            }),
-            DataType::Record(Record {
-                name: "Payload".to_string(),
-                type_params: Vec::new(),
-                fields: vec![
-                    field("owner", DamlType::Party),
-                    field("day", reference("DayOfWeek", Vec::new())),
-                    field("shape", reference("Shape", Vec::new())),
-                    field(
-                        "pair",
-                        reference("Pair", vec![DamlType::Int64, DamlType::Text]),
-                    ),
-                    field(
-                        "attrs",
-                        DamlType::GenMap(Box::new(DamlType::Text), Box::new(DamlType::Int64)),
-                    ),
-                    field(
-                        "maybe",
-                        DamlType::Optional(Box::new(DamlType::Optional(Box::new(DamlType::Text)))),
-                    ),
-                ],
-            }),
-        ],
-        templates: Vec::new(),
-        interfaces: Vec::new(),
-    };
+    let mut shape = Variant::new("Shape");
+    shape.constructors = vec![
+        VariantConstructor::with_payload("Circle", DamlType::Numeric(10)),
+        VariantConstructor::new("Point"),
+    ];
+
+    let mut module = Module::default();
+    module.data_types = vec![
+        DataType::Enum(Enum::new(
+            "DayOfWeek",
+            vec!["Monday".to_string(), "Tuesday".to_string()],
+        )),
+        DataType::Variant(shape),
+        DataType::Record(record(
+            "Pair",
+            vec!["a", "b"],
+            vec![
+                field("fst", DamlType::Var("a".to_string())),
+                field("snd", DamlType::Var("b".to_string())),
+            ],
+        )),
+        DataType::Record(record(
+            "Payload",
+            Vec::new(),
+            vec![
+                field("owner", DamlType::Party),
+                field("day", reference("DayOfWeek", Vec::new())),
+                field("shape", reference("Shape", Vec::new())),
+                field(
+                    "pair",
+                    reference("Pair", vec![DamlType::Int64, DamlType::Text]),
+                ),
+                field(
+                    "attrs",
+                    DamlType::GenMap(Box::new(DamlType::Text), Box::new(DamlType::Int64)),
+                ),
+                field(
+                    "maybe",
+                    DamlType::Optional(Box::new(DamlType::Optional(Box::new(DamlType::Text)))),
+                ),
+            ],
+        )),
+    ];
     let generated = generate_module(&module).unwrap();
 
     let daml = concat!(env!("CARGO_MANIFEST_DIR"), "/../canton-daml");
@@ -109,12 +108,18 @@ fn generated_module_compiles_and_round_trips_against_runtime() {
     let test = r#"
 #[test]
 fn round_trip() {
+    // Built through the public API only — this is the check that a consumer of
+    // the runtime can construct what the generator emits. Several of these
+    // types keep their field private, so a tuple-struct literal compiles
+    // nowhere but inside `canton-daml`.
+    let mut attrs = rt::GenMap::new();
+    attrs.insert("k".to_string(), rt::Int64(1));
     let payload = Payload {
         owner: rt::Party::new("alice::1"),
         day: DayOfWeek::Monday,
-        shape: Shape::Circle(rt::Numeric("1.5".to_string())),
+        shape: Shape::Circle(rt::Numeric::from_wire("1.5")),
         pair: Pair { fst: rt::Int64(7), snd: "x".to_string() },
-        attrs: rt::GenMap(vec![("k".to_string(), rt::Int64(1))]),
+        attrs,
         maybe: Some(rt::NestedOpt(None)),
     };
     let back = <Payload as rt::FromValue>::from_value(&rt::ToValue::to_value(&payload)).unwrap();

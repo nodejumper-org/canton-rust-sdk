@@ -182,6 +182,20 @@ is included; nothing from it was removed or changed in signature.
   `.at(label)` on each field decode, the serde derives, and the per-field
   renames — and each drift quietly removed a path from coverage while every
   test stayed green.
+- **`canton-codegen` (IR semver):** every public IR struct is
+  `#[non_exhaustive]`, with a constructor for each. The IR is documented as
+  something a caller lowers and then post-processes, its fields are public, and
+  it gained **forty fields during Milestone 2 alone** — so once the crate is on
+  crates.io, one more field would be a breaking change for anyone who wrote a
+  struct literal, and adding `#[non_exhaustive]` afterwards is itself breaking.
+  Fields stay public, so reading and mutating a lowered IR is unchanged; only
+  construction goes through `Record::new`, `Template::new` and the rest.
+- **`canton-codegen` (a test that had stopped compiling):** the end-to-end test
+  that generates a crate, builds it and round-trips both codecs was gated on
+  `CODEGEN_COMPILE_TEST`, which nothing set — so it skipped on every push and
+  went stale when the runtime made `Numeric` and `GenMap`'s fields private. It
+  now builds its values through the public API, the way a consumer must, and CI
+  sets the variable and asserts the test ran.
 - **`canton-codegen` (manifest injection):** the DAR's package version is
   validated before it reaches the generated `Cargo.toml`. It was interpolated
   raw, so a version of the form `0.1.0"` + newline + `[dependencies.evil]` +
