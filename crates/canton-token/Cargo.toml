@@ -1,0 +1,43 @@
+[package]
+name         = "canton-token"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = "README.md"
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["api-bindings", "asynchronous"]
+keywords     = ["canton", "daml", "token-standard", "cip-56", "splice"]
+description  = "Canton Network token-standard workflows (CIP-56): registry client, choice contexts, transfers and allocations."
+include      = ["src/**/*", "README.md", "LICENSE"]
+
+[dependencies]
+canton-core   = { workspace = true }
+canton-proto  = { workspace = true }
+canton-ledger = { workspace = true }
+canton-daml   = { workspace = true }
+
+# The token-standard types are generated, not re-declared here. These crates
+# *are* the standard — one crate per Daml package, so the `Holding` this crate
+# names is the same Rust type an application reads out of the ledger.
+canton-splice-api-token-metadata-v1               = { workspace = true }
+canton-splice-api-token-holding-v1                = { workspace = true }
+canton-splice-api-token-transfer-instruction-v1   = { workspace = true }
+canton-splice-api-token-allocation-v1             = { workspace = true }
+canton-splice-api-token-allocation-instruction-v1 = { workspace = true }
+
+reqwest    = { workspace = true, features = ["json", "rustls-tls"] }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+# A registry returns `createdEventBlob` base64-encoded, as JSON must; the gRPC
+# `DisclosedContract` takes bytes.
+base64     = { workspace = true }
+tracing    = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true
