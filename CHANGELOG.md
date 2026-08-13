@@ -68,6 +68,29 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   `Received 0 valid signatures from distinct keys (1 invalid)`. That last one is
   the control: it is what shows the signature is carrying the authorization.
 
+### Added — token standard (CIP-56)
+
+- **`canton-token`** (new) — the *workflow* over the generated token-standard
+  types, which it does not re-declare: `RegistryClient` for the off-ledger API,
+  choice contexts with their disclosures, `TransferFactory_Transfer`, and the
+  allocate path with execute / withdraw / cancel.
+- Every path and payload comes from the standard's OpenAPI documents. Two are
+  vendored in cn-quickstart; the other two were taken from the pinned upstream
+  commit those copies name.
+- The standard specifies `choiceArguments` as the choice "encoded using the Daml
+  JSON API, with `extraArgs.context` and `extraArgs.meta` set to the empty
+  object", and returns the context the same way — which is what `canton-daml`
+  implements. So a generated choice serializes straight onto the wire and the
+  reply deserializes straight into the generated `ChoiceContext`.
+- `TokenCommand` keeps a command and its disclosures together and converts into
+  either an ordinary or an *interactive* submission, so a token transfer can be
+  signed by a party whose key the participant does not hold.
+- Each choice on an allocation fetches its own context: the standard says a
+  context may be specific to the choice, so sharing one is a bug that works
+  until a registry starts distinguishing them.
+- **Not yet covered:** CIP-0112 (V2). The pinned DAR corpus contains no V2
+  package at all — every one is `-v1` — so V2 waits on re-pinning it.
+
 ### Added — codegen
 
 - `Selection` and `lower_dar_selecting`: generate a crate from part of a DAR.
