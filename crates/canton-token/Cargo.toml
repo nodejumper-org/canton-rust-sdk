@@ -11,7 +11,7 @@ homepage     = { workspace = true }
 categories   = ["api-bindings", "asynchronous"]
 keywords     = ["canton", "daml", "token-standard", "cip-56", "splice"]
 description  = "Canton Network token-standard workflows (CIP-56): registry client, choice contexts, transfers and allocations."
-include      = ["src/**/*", "README.md", "LICENSE"]
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-core   = { workspace = true }
@@ -37,7 +37,12 @@ base64     = { workspace = true }
 tracing    = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"] }
+# The in-process registry stub speaks HTTP/1.1 over a TCP socket: one request,
+# one response, and no server framework the published crate would not carry.
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net", "io-util"] }
+# The example authenticates and submits, so it needs the pieces a real
+# application uses; the library itself needs neither.
+canton-auth = { workspace = true }
 
 [lints]
 workspace = true

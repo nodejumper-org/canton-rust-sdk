@@ -475,6 +475,7 @@ name = "canton-token"
 version = "0.3.0"
 dependencies = [
  "base64",
+ "canton-auth",
  "canton-core",
  "canton-daml",
  "canton-ledger",
