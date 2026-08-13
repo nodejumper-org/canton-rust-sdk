@@ -21,6 +21,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-lf` | Daml-LF archive reader/decoder (the codegen front-end), built on the official `daml-lf-archive` schema and held to the official JVM reader by a conformance oracle. Internal. |
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | Pre-built typed bindings for the Splice protocol DARs, regenerated per release ("DAR as a crate"). |
 | `canton-splice-api-token-*`, `canton-splice-api-featured-app-v1` | The token-standard and featured-app packages, one crate each. The crates above reference these rather than copying them, so a `Holding` is the same Rust type whichever crate you reach it through. |
+| `canton-daml-stdlib` | The Daml standard library (`daml-stdlib`, `daml-prim`, `ghc-stdlib`), which every DAR carries and no DAR ships. Every bindings crate references it, so a `RelTime` is one type rather than one per crate. |
 | `canton-quickstart-licensing` | The same, for the cn-quickstart licensing DAR. **Not published** — it backs the reference app and the end-to-end tests; generate your own with the CLI. |
 
 ## Compatibility
@@ -28,7 +29,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
 | 0.1.4 (released) | 3.5.7 (pinned protos) | v2 | 1.88 |
-| 0.2.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.3.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
 supported Canton range re-vendors them in a new SDK minor (see the stability

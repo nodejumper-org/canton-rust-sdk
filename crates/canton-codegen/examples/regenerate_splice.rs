@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
-    for (crate_name, source, externals) in CRATES {
+    for (crate_name, source, externals, emits) in CRATES {
         let Some(path) = dar_path(*source) else {
             println!("{crate_name:<52} skipped — its DAR is not configured");
             continue;
@@ -40,7 +40,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // *user's* crate, not for one of ours: it would drop all of that and
         // take the version from the DAR instead of the workspace.
         let dar = canton_lf::Dar::open(&path)?;
-        let (krate, skipped) = canton_codegen::lower_dar_with(&dar, &externals_for(externals))?;
+        let (krate, skipped) = canton_codegen::lower_dar_selecting(
+            &dar,
+            &selection_for(*emits),
+            &externals_for(externals, *emits),
+        )?;
         let source = canton_codegen::generate_crate(&krate)?;
         let out = format!("{root}/crates/{crate_name}/src");
         std::fs::create_dir_all(&out)?;
@@ -51,6 +55,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             source.len() / 1024,
             skipped.len()
         );
+        if std::env::var_os("SHOW_SKIPPED").is_some() {
+            for s in &skipped {
+                println!("      skipped: {s}");
+            }
+        }
     }
     Ok(())
 }

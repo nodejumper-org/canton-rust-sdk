@@ -240,7 +240,11 @@ jobs:
           # the failure mode it exists to remove. The list is derived from the
           # crates that are actually in the tree, so adding one without adding
           # its DAR above fails here rather than passing unnoticed.
-          for crate in $(ls -d crates/canton-splice-* | xargs -n1 basename); do
+          # `canton-daml-stdlib` is generated from the DAR committed here, so
+          # its guard runs with no checkout at all — but it is still named,
+          # because a guard that silently stopped running is the failure this
+          # assertion exists to catch.
+          for crate in $(ls -d crates/canton-splice-* | xargs -n1 basename) canton-daml-stdlib; do
             grep -q "bindings agreement: ${crate} ok" /tmp/drift.log || {
               echo "::error::the ${crate} drift guard did not run"; exit 1; }
           done

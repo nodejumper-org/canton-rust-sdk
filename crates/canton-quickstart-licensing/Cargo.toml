@@ -19,6 +19,7 @@ publish      = false
 # keeps it in sync with the DAR.
 [dependencies]
 canton-daml = { workspace = true }
+canton-daml-stdlib = { path = "../canton-daml-stdlib", version = "0.3.0" }
 
 # The token-API packages this DAR depends on. They are referenced rather than
 # copied in, so a `Holding` read through this crate is the same Rust type as one

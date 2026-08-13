@@ -18,7 +18,7 @@ include!("../examples/shared/splice_crates.rs");
 
 #[test]
 fn every_committed_bindings_crate_is_up_to_date() {
-    for (crate_name, source, externals) in CRATES {
+    for (crate_name, source, externals, emits) in CRATES {
         let Some(path) = dar_path(*source) else {
             // stdout, not stderr: CI pipes this into a log and asserts that
             // nothing skipped. On stderr the assertion could never fire.
@@ -26,8 +26,12 @@ fn every_committed_bindings_crate_is_up_to_date() {
             continue;
         };
         let dar = Dar::open(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
-        let (krate, _) =
-            canton_codegen::lower_dar_with(&dar, &externals_for(externals)).expect("lower");
+        let (krate, _) = canton_codegen::lower_dar_selecting(
+            &dar,
+            &selection_for(*emits),
+            &externals_for(externals, *emits),
+        )
+        .expect("lower");
         let regenerated = generate_crate(&krate).expect("generate");
 
         let committed_path = format!("{}/../{crate_name}/src/lib.rs", env!("CARGO_MANIFEST_DIR"));

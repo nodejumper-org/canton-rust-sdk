@@ -21,6 +21,7 @@ include      = ["src/**/*", "README.md", "LICENSE"]
 # type across the whole set. An env-gated drift test guards it against the DAR.
 [dependencies]
 canton-daml = { workspace = true }
+canton-daml-stdlib = { path = "../canton-daml-stdlib", version = "0.3.0" }
 canton-splice-api-featured-app-v1 = { path = "../canton-splice-api-featured-app-v1", version = "0.3.0" }
 canton-splice-api-token-allocation-instruction-v1 = { path = "../canton-splice-api-token-allocation-instruction-v1", version = "0.3.0" }
 canton-splice-api-token-allocation-v1 = { path = "../canton-splice-api-token-allocation-v1", version = "0.3.0" }

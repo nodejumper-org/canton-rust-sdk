@@ -29,8 +29,32 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   the package ids, template ids and wire encodings are identical.
 - `splice-util` is unchanged — it ships no DAR of its own, so it stays inside
   `canton-splice-amulet`, and `canton-splice-wallet` reaches it from there.
+- **`canton-daml-stdlib`** (new) owns the Daml standard library — `daml-stdlib`,
+  `daml-prim`, `ghc-stdlib` and their per-module packages — and every bindings
+  crate references it. The same defect applied to those: `RelTime` appears in
+  public field types (`HoldingView`'s lock expiry, `AnyValue::AV_RelTime`), and
+  each crate declared its own. The standard library ships no DAR, so this crate
+  is generated from a *selection* of packages out of the DAR committed to this
+  repository — which means its drift guard needs no external checkout.
+- Every crate shrank by the standard library it no longer carries:
+  `canton-splice-api-token-metadata-v1` 134 KB → 12 KB,
+  `canton-splice-wallet` 310 KB → 189 KB, `canton-splice-amulet` 556 KB → 435 KB.
+
+### Added — codegen
+
+- `Selection` and `lower_dar_selecting`: generate a crate from part of a DAR.
+  A reference that leaves the selection is reported as a skipped type rather
+  than emitted, since the path would name a module the crate does not have —
+  it would compile where it is generated and fail in the consumer.
+- `Selection::and_prefixed` and `ExternalPackages::with_prefixed` take package
+  **name prefixes**, for a family that arrives as many packages. The standard
+  library is some thirty of them, and which ones a DAR carries depends on what
+  its Daml source touched, so an exact list is right for one DAR and wrong for
+  the next. A prefix matches at a `-` boundary: `daml-prim` does not also match
+  a `daml-primary`.
 
 > **Publish order** (extends 0.2.0's): the new bindings go out leaves-first —
+> `canton-daml-stdlib` (everything references it) →
 > `canton-splice-api-token-metadata-v1` and `canton-splice-api-featured-app-v1`
 > → `-holding-v1` → `-allocation-v1` → `-allocation-instruction-v1`,
 > `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1` →
@@ -42,9 +66,11 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - The packaging check derives its crate list from `cargo metadata` rather than
   a hand-written one, so a crate added to the workspace cannot be left out of
   it — the previous list silently stopped covering the eight crates above.
-- The bindings drift guard checks all twelve generated crates (it checked
+- The bindings drift guard checks all thirteen generated crates (it checked
   three), reading the crate/DAR/external-package table from the same file the
-  regeneration example uses so the two cannot disagree.
+  regeneration example uses so the two cannot disagree. `canton-daml-stdlib` is
+  generated from the DAR committed here, so that one is guarded in CI with no
+  checkout at all.
 
 ## [0.2.0] — unreleased
 
