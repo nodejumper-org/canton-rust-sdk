@@ -25,9 +25,11 @@
 
 mod context;
 mod registry;
+pub mod transfer;
 
 pub use context::{ChoiceContext, ChoiceContextRequest, WireChoiceContext, WireDisclosedContract};
 pub use registry::{
     AllocationChoice, FactoryWithContext, Instrument, RegistryClient, RegistryInfo,
     TransferInstructionChoice, TransferKind,
 };
+pub use transfer::{TokenCommand, transfer};

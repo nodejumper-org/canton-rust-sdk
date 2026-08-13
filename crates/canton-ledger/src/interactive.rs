@@ -242,6 +242,16 @@ impl Prepare {
         &self.act_as
     }
 
+    /// The contracts this will disclose.
+    ///
+    /// A token-standard choice is meaningless without the registry's
+    /// disclosures, so a caller assembling one wants to see them before
+    /// sending, not after a rejection.
+    #[must_use]
+    pub fn disclosed_contracts(&self) -> &[pb::DisclosedContract] {
+        &self.disclosed_contracts
+    }
+
     /// Build the wire request, returning the command id that went into it.
     ///
     /// The id is returned rather than read back off the request so it survives
