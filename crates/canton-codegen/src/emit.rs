@@ -250,9 +250,11 @@ fn record_codecs(record: &Record) -> TokenStream {
         }
     });
 
+    let used = used_params(record.fields.iter().map(|f| &f.ty));
     let (impl_generics, ty, to_where) =
-        codec_header(&name, &record.type_params, &quote!(rt::ToValue));
-    let (_, _, from_where) = codec_header(&name, &record.type_params, &quote!(rt::FromValue));
+        codec_header(&name, &record.type_params, &used, &quote!(rt::ToValue));
+    let (_, _, from_where) =
+        codec_header(&name, &record.type_params, &used, &quote!(rt::FromValue));
     let phantom = phantom_init(&record.type_params, record.fields.iter().map(|f| &f.ty));
     // A record with no fields never reads the wire value.
     let value_binding = ident(if record.fields.is_empty() {
@@ -280,6 +282,7 @@ fn record_codecs(record: &Record) -> TokenStream {
 fn codec_header(
     name: &Ident,
     type_params: &[String],
+    used: &std::collections::BTreeSet<String>,
     trait_bound: &TokenStream,
 ) -> (TokenStream, TokenStream, TokenStream) {
     if type_params.is_empty() {
@@ -291,8 +294,34 @@ fn codec_header(
         .collect::<Vec<_>>();
     let impl_generics = quote!(<#(#params),*>);
     let ty = quote!(#name<#(#params),*>);
-    let where_clause = quote!(where #(#params: #trait_bound),*);
+    // Bound only the parameters the codec actually touches. Daml permits a
+    // phantom parameter — declared but used in no field — and bounding one
+    // would demand a codec from a type this impl never encodes. Interface
+    // markers are exactly such a type: they carry no codec by design, so
+    // `Wrapper Holding` for a phantom `Wrapper a` would generate Rust that does
+    // not compile.
+    let bounded = type_params
+        .iter()
+        .filter(|param| used.contains(*param))
+        .map(|param| type_var_ident(param))
+        .collect::<Vec<_>>();
+    let where_clause = if bounded.is_empty() {
+        TokenStream::new()
+    } else {
+        quote!(where #(#bounded: #trait_bound),*)
+    };
     (impl_generics, ty, where_clause)
+}
+
+/// The type variables a set of field/payload types actually mentions.
+fn used_params<'a>(
+    types: impl Iterator<Item = &'a DamlType>,
+) -> std::collections::BTreeSet<String> {
+    let mut used = std::collections::BTreeSet::new();
+    for ty in types {
+        collect_type_vars(ty, &mut used);
+    }
+    used
 }
 
 /// Emit a variant (sum) type as a Rust `enum` — one variant per constructor,
@@ -364,9 +393,16 @@ fn variant_codecs(variant: &Variant) -> TokenStream {
         }
     });
 
+    let used = used_params(
+        variant
+            .constructors
+            .iter()
+            .filter_map(|c| c.payload.as_ref()),
+    );
     let (impl_generics, ty, to_where) =
-        codec_header(&name, &variant.type_params, &quote!(rt::ToValue));
-    let (_, _, from_where) = codec_header(&name, &variant.type_params, &quote!(rt::FromValue));
+        codec_header(&name, &variant.type_params, &used, &quote!(rt::ToValue));
+    let (_, _, from_where) =
+        codec_header(&name, &variant.type_params, &used, &quote!(rt::FromValue));
     quote! {
         impl #impl_generics rt::ToValue for #ty #to_where {
             fn to_value(&self) -> rt::Value {

@@ -182,6 +182,15 @@ is included; nothing from it was removed or changed in signature.
   `.at(label)` on each field decode, the serde derives, and the per-field
   renames — and each drift quietly removed a path from coverage while every
   test stayed green.
+- **`canton-codegen` (phantom type parameters):** a generated codec bounds only
+  the type parameters it actually encodes. Daml permits a phantom parameter —
+  declared but used in no field — and the emitter required `T: ToValue` for
+  every declared one, so instantiating a phantom parameter with an **interface
+  marker** produced Rust that does not compile. Markers carry no codec by
+  design: they exist only as the tag of a `ContractId`. Valid Daml therefore
+  generated invalid Rust, with the error landing in code the reader did not
+  write. Four types across the published bindings carried the spurious bound
+  and have been regenerated without it.
 - **`canton-codegen` (IR semver):** every public IR struct is
   `#[non_exhaustive]`, with a constructor for each. The IR is documented as
   something a caller lowers and then post-processes, its fields are public, and

@@ -9095,10 +9095,7 @@ pub mod splice_amulet {
             #[serde(skip)]
             pub _phantom: ::core::marker::PhantomData<(Unit,)>,
         }
-        impl<Unit> rt::ToValue for TransferConfig<Unit>
-        where
-            Unit: rt::ToValue,
-        {
+        impl<Unit> rt::ToValue for TransferConfig<Unit> {
             fn to_value(&self) -> rt::Value {
                 rt::record(::std::vec![
                     ("createFee", rt::ToValue::to_value(&self.create_fee)),
@@ -9124,10 +9121,7 @@ pub mod splice_amulet {
                 ])
             }
         }
-        impl<Unit> rt::FromValue for TransferConfig<Unit>
-        where
-            Unit: rt::FromValue,
-        {
+        impl<Unit> rt::FromValue for TransferConfig<Unit> {
             fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
                     create_fee: rt::FromValue::from_value(rt::required_field(

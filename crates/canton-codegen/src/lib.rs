@@ -195,7 +195,7 @@ pub fn generate_crate(krate: &Crate) -> Result<String, CodegenError> {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::ir::{DamlType, Field, Record, TypeRef};
+    use crate::ir::{DamlType, Field, Record, TypeRef, Variant, VariantConstructor};
 
     fn field(label: &str, ty: DamlType) -> Field {
         Field {
@@ -719,5 +719,50 @@ mod tests {
                 "the wire label `{daml}` must survive:\n{src}"
             );
         }
+    }
+    /// A Daml type parameter that no field uses must not be forced to carry a
+    /// codec.
+    ///
+    /// Daml permits a phantom parameter, and the natural thing to instantiate
+    /// one with is an interface marker — which by design has no codec at all,
+    /// because it exists only as the tag of a `ContractId`. Bounding every
+    /// declared parameter therefore emitted Rust that is valid until somebody
+    /// writes `Wrapper Holding`, and then does not compile, with the error
+    /// landing in generated code the reader did not write.
+    #[test]
+    fn a_phantom_type_parameter_is_not_forced_to_carry_a_codec() {
+        let mut record = Record::new("Wrapper");
+        record.type_params = vec!["a".to_string(), "b".to_string()];
+        // Only `b` is used by a field; `a` is phantom.
+        record.fields = vec![Field::new("value", DamlType::Var("b".to_string()))];
+
+        let src = generate_data_type(&DataType::Record(record)).unwrap();
+        assert!(
+            src.contains("B: rt::ToValue"),
+            "the used parameter is bounded: {src}"
+        );
+        assert!(
+            !src.contains("A: rt::ToValue"),
+            "the phantom parameter must not be bounded: {src}"
+        );
+        // It still appears as a parameter of the type, and in the PhantomData.
+        assert!(src.contains("pub struct Wrapper<A, B>"), "{src}");
+        assert!(src.contains("PhantomData"), "{src}");
+    }
+
+    /// The same for a variant: only the parameters a constructor payload
+    /// mentions get the bound.
+    #[test]
+    fn a_variants_phantom_parameter_is_not_bounded_either() {
+        let mut variant = Variant::new("Choice");
+        variant.type_params = vec!["a".to_string(), "b".to_string()];
+        variant.constructors = vec![
+            VariantConstructor::with_payload("Some", DamlType::Var("b".to_string())),
+            VariantConstructor::new("None"),
+        ];
+
+        let src = generate_data_type(&DataType::Variant(variant)).unwrap();
+        assert!(src.contains("B: rt::ToValue"), "{src}");
+        assert!(!src.contains("A: rt::ToValue"), "{src}");
     }
 }
