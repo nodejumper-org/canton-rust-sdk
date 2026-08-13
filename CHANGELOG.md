@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.3.0] — unreleased
+
+### Changed — one crate per Daml package (**breaking**)
+
+- The eight token-standard and featured-app packages are now crates of their
+  own: `canton-splice-api-token-metadata-v1`, `-holding-v1`, `-allocation-v1`,
+  `-allocation-instruction-v1`, `-allocation-request-v1`, `-burn-mint-v1`,
+  `-transfer-instruction-v1` and `canton-splice-api-featured-app-v1`.
+  `canton-splice-amulet`, `-wallet`, `-wallet-payments` and
+  `canton-quickstart-licensing` reference them instead of carrying copies.
+- **Why it is breaking:** those packages previously existed once inside *each*
+  crate that depended on them, and Rust treats the copies as unrelated types.
+  A `ContractId<Holding>` read through `canton-splice-amulet` did not typecheck
+  against the `Holding` of `canton-splice-wallet`, so no program could use both
+  crates together. They are now one type.
+- **Migration:** a path that went through the containing crate now goes through
+  the package's own crate — `canton_splice_amulet::splice_api_token_holding_v1::…`
+  becomes `canton_splice_api_token_holding_v1::splice_api_token_holding_v1::…`,
+  and the new crate is added to `Cargo.toml`. Nothing changes on the ledger:
+  the package ids, template ids and wire encodings are identical.
+- `splice-util` is unchanged — it ships no DAR of its own, so it stays inside
+  `canton-splice-amulet`, and `canton-splice-wallet` reaches it from there.
+
+> **Publish order** (extends 0.2.0's): the new bindings go out leaves-first —
+> `canton-splice-api-token-metadata-v1` and `canton-splice-api-featured-app-v1`
+> → `-holding-v1` → `-allocation-v1` → `-allocation-instruction-v1`,
+> `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1` →
+> `canton-splice-amulet` → `canton-splice-wallet-payments` →
+> `canton-splice-wallet`.
+
+### Changed — CI
+
+- The packaging check derives its crate list from `cargo metadata` rather than
+  a hand-written one, so a crate added to the workspace cannot be left out of
+  it — the previous list silently stopped covering the eight crates above.
+- The bindings drift guard checks all twelve generated crates (it checked
+  three), reading the crate/DAR/external-package table from the same file the
+  regeneration example uses so the two cannot disagree.
+
 ## [0.2.0] — unreleased
 
 All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with

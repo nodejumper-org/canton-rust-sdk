@@ -19,13 +19,13 @@ include      = ["src/**/*", "README.md", "LICENSE"]
 # keeps it in sync with the DAR.
 [dependencies]
 canton-daml = { workspace = true }
-canton-splice-amulet = { path = "../canton-splice-amulet", version = "0.2.0" }
-canton-splice-api-featured-app-v1 = { path = "../canton-splice-api-featured-app-v1", version = "0.2.0" }
-canton-splice-api-token-allocation-instruction-v1 = { path = "../canton-splice-api-token-allocation-instruction-v1", version = "0.2.0" }
-canton-splice-api-token-allocation-v1 = { path = "../canton-splice-api-token-allocation-v1", version = "0.2.0" }
-canton-splice-api-token-holding-v1 = { path = "../canton-splice-api-token-holding-v1", version = "0.2.0" }
-canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1", version = "0.2.0" }
-canton-splice-api-token-transfer-instruction-v1 = { path = "../canton-splice-api-token-transfer-instruction-v1", version = "0.2.0" }
-canton-splice-wallet-payments = { path = "../canton-splice-wallet-payments", version = "0.2.0" }
+canton-splice-amulet = { path = "../canton-splice-amulet", version = "0.3.0" }
+canton-splice-api-featured-app-v1 = { path = "../canton-splice-api-featured-app-v1", version = "0.3.0" }
+canton-splice-api-token-allocation-instruction-v1 = { path = "../canton-splice-api-token-allocation-instruction-v1", version = "0.3.0" }
+canton-splice-api-token-allocation-v1 = { path = "../canton-splice-api-token-allocation-v1", version = "0.3.0" }
+canton-splice-api-token-holding-v1 = { path = "../canton-splice-api-token-holding-v1", version = "0.3.0" }
+canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1", version = "0.3.0" }
+canton-splice-api-token-transfer-instruction-v1 = { path = "../canton-splice-api-token-transfer-instruction-v1", version = "0.3.0" }
+canton-splice-wallet-payments = { path = "../canton-splice-wallet-payments", version = "0.3.0" }
 
 # No `[lints]`: generated code carries its own `#![allow(…)]`.

@@ -21,7 +21,7 @@ include      = ["src/**/*", "README.md", "LICENSE"]
 # type across the whole set.
 [dependencies]
 canton-daml = { workspace = true }
-canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1", version = "0.2.0" }
-canton-splice-api-token-holding-v1 = { path = "../canton-splice-api-token-holding-v1", version = "0.2.0" }
+canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1", version = "0.3.0" }
+canton-splice-api-token-holding-v1 = { path = "../canton-splice-api-token-holding-v1", version = "0.3.0" }
 
 # No `[lints]`: this crate is generated code and carries its own `#![allow(…)]`.
