@@ -23,6 +23,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod allocation;
 mod context;
 mod registry;
 pub mod transfer;
@@ -33,3 +34,7 @@ pub use registry::{
     TransferInstructionChoice, TransferKind,
 };
 pub use transfer::{TokenCommand, transfer};
+
+/// The `Holding` interface, re-exported so a caller naming holdings does not
+/// have to depend on the generated crate directly.
+pub use canton_splice_api_token_holding_v1::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding;

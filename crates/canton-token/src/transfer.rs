@@ -38,6 +38,18 @@ pub struct TokenCommand {
 }
 
 impl TokenCommand {
+    pub(crate) fn new(
+        command: pb::Command,
+        disclosed_contracts: Vec<pb::DisclosedContract>,
+        transfer_kind: Option<TransferKind>,
+    ) -> Self {
+        Self {
+            command,
+            disclosed_contracts,
+            transfer_kind,
+        }
+    }
+
     /// The command itself.
     #[must_use]
     pub fn command(&self) -> &pb::Command {
@@ -141,11 +153,11 @@ pub async fn transfer(
     };
     let factory_id = rt::ContractId::<ti::TransferFactory>::new(factory.factory_id);
 
-    Ok(TokenCommand {
-        command: rt::exercise_command(&factory_id, &choice),
-        transfer_kind: factory.transfer_kind,
-        disclosed_contracts: factory.context.into_disclosed_contracts(),
-    })
+    Ok(TokenCommand::new(
+        rt::exercise_command(&factory_id, &choice),
+        factory.context.into_disclosed_contracts(),
+        factory.transfer_kind,
+    ))
 }
 
 #[cfg(test)]
@@ -250,11 +262,11 @@ mod tests {
             created_event_blob: vec![1, 2],
             synchronizer_id: "sync".to_string(),
         }];
-        let command = TokenCommand {
-            command: pb::Command { command: None },
-            disclosed_contracts: disclosed.clone(),
-            transfer_kind: Some(TransferKind::Direct),
-        };
+        let command = TokenCommand::new(
+            pb::Command { command: None },
+            disclosed.clone(),
+            Some(TransferKind::Direct),
+        );
 
         assert_eq!(command.transfer_kind(), Some(TransferKind::Direct));
         assert_eq!(command.disclosed_contracts().len(), 1);
