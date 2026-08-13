@@ -97,9 +97,15 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Every publishable crate packages cleanly
         run: |
-          for crate in canton-proto canton-core canton-auth canton-lf canton-daml \
-                       canton-ledger canton-admin canton-codegen canton-codegen-cli canton \
-                       canton-splice-amulet canton-splice-wallet canton-splice-wallet-payments; do
+          set -euo pipefail
+          # Derived, not listed. A hand-written list silently stops covering a
+          # crate the moment one is added — and the first sign of that is a
+          # failed `cargo publish` with half the release already live. Cargo
+          # renders `publish = false` as an empty list.
+          cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.publish != []) | .name' > /tmp/publishable.txt
+          echo "checking: $(tr '\n' ' ' < /tmp/publishable.txt)"
+          for crate in $(cat /tmp/publishable.txt); do
             cargo package --no-verify --list -p "$crate" > /tmp/files.txt
             grep -qx 'LICENSE' /tmp/files.txt || { echo "::error::$crate ships no LICENSE"; exit 1; }
             grep -qx 'README.md' /tmp/files.txt || { echo "::error::$crate ships no README"; exit 1; }
@@ -109,7 +115,7 @@ jobs:
             ! grep -q '^tests/' /tmp/files.txt || { echo "::error::$crate ships integration tests"; exit 1; }
           done
 
-  # The four committed binding crates prove that *some* past generator emitted
+  # The committed binding crates prove that *some* past generator emitted
   # compilable code. This proves the one on this commit does.
   codegen-output:
     runs-on: ubuntu-latest
@@ -208,6 +214,14 @@ jobs:
           48aaa72dfc992c6c89d5bfa84aece9fd9dad992e281252674fe33e203b2a391b  splice-amulet-0.1.14.dar
           f5897dbe3a8c6da1ce1b25f46ab739777a70c0ed0e4057d6336c77cab9a7d6fc  splice-wallet-0.1.14.dar
           e12ab52b325f488e87adcd4143058e16341c001bb77eb0adc0715bf5badee457  splice-wallet-payments-0.1.14.dar
+          01df2e1b86e3a1b9ab55e97e42f280563c9d1fbe909963c74bef62dd642aa3ee  splice-api-featured-app-v1-1.0.0.dar
+          e2607ca3a1d735a82d3066b78132aa8f94b1886c99a5f14148742d252c7220a2  splice-api-token-allocation-instruction-v1-1.0.0.dar
+          5aed3f7e69a2c84b2be9d2033c07029fcde375d5041db264e58f44c8c7538303  splice-api-token-allocation-request-v1-1.0.0.dar
+          c3f3b447142577ea4fa7d912ca11cd6821de7588e324e8877425932a02fccaa1  splice-api-token-allocation-v1-1.0.0.dar
+          a18e85c4841a278bce000df8329c3f0e2fee3b30b55dd6a31492d10a72b4f9c1  splice-api-token-burn-mint-v1-1.0.0.dar
+          ef75f8eb41a65810221784fdb78bb9dfac7cb22245aba14fa7cb7f69c34e0175  splice-api-token-holding-v1-1.0.0.dar
+          455eb160cb5abd4ae9918a6fbb9dad471f721adda39f0e5c76feef08d05637fc  splice-api-token-metadata-v1-1.0.0.dar
+          e4c73aa7ae73fb2fc330b938ffb99f568792321640ba4b9472902aa8d742c994  splice-api-token-transfer-instruction-v1-1.0.0.dar
           SUMS
           sed -i 's/^ *//' "$RUNNER_TEMP/dars/SHA256SUMS"
           cd "$RUNNER_TEMP/dars"
@@ -217,20 +231,23 @@ jobs:
           sha256sum -c SHA256SUMS
       - name: The emitter still produces the committed crates
         env:
-          CANTON_SPLICE_AMULET_DAR: ${{ runner.temp }}/dars/splice-amulet-0.1.14.dar
-          CANTON_SPLICE_WALLET_DAR: ${{ runner.temp }}/dars/splice-wallet-0.1.14.dar
-          CANTON_SPLICE_WALLET_PAYMENTS_DAR: ${{ runner.temp }}/dars/splice-wallet-payments-0.1.14.dar
+          SPLICE_DARS: ${{ runner.temp }}/dars
         run: |
           set -euo pipefail
           cargo test -p canton-codegen --test up_to_date -- --nocapture | tee /tmp/drift.log
-          # Assert each guard ran. Without this the job is green when a variable
-          # is misspelled, which is the failure mode it exists to remove.
-          for var in CANTON_SPLICE_AMULET_DAR CANTON_SPLICE_WALLET_DAR \
-                     CANTON_SPLICE_WALLET_PAYMENTS_DAR; do
-            grep -q "bindings agreement: ${var} ok" /tmp/drift.log || {
-              echo "::error::the ${var} drift guard did not run"; exit 1; }
+          # Assert each guard ran. Without this the job is green when the
+          # directory is wrong or a crate quietly leaves the table — which is
+          # the failure mode it exists to remove. The list is derived from the
+          # crates that are actually in the tree, so adding one without adding
+          # its DAR above fails here rather than passing unnoticed.
+          for crate in $(ls -d crates/canton-splice-* | xargs -n1 basename); do
+            grep -q "bindings agreement: ${crate} ok" /tmp/drift.log || {
+              echo "::error::the ${crate} drift guard did not run"; exit 1; }
           done
-          ! grep -q 'skipping: set CANTON_SPLICE' /tmp/drift.log || {
+          # `canton-quickstart-licensing` is generated from a DAR that
+          # cn-quickstart builds from source rather than commits, so there is
+          # nothing to pin and nothing to fetch. That one guard stays local.
+          ! grep -q 'skipping canton-splice' /tmp/drift.log || {
             echo "::error::a guard skipped despite its DAR being present"; exit 1; }
 
   # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
