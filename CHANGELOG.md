@@ -91,6 +91,26 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - **Not yet covered:** CIP-0112 (V2). The pinned DAR corpus contains no V2
   package at all — every one is `-v1` — so V2 waits on re-pinning it.
 
+### Added — the Participant Query Store
+
+- **`canton-pqs`** (new) — a typed read client for PQS/Scribe. A query names its
+  template by *type*: the qname is `PACKAGE_NAME:MODULE_NAME:ENTITY_NAME`, read
+  off the generated `Contract`, and it is the package **name**, so a query
+  survives an upgrade instead of pinning one build.
+- PQS stores payloads in the Daml JSON encoding, which `canton-daml` implements,
+  so a contract read from Postgres deserializes into the same generated type a
+  transaction stream yields. Two ways in, one set of types.
+- Predicates compile to parameterized statements. Every value is a parameter and
+  so is every JSON field path — bound as `text[]` and applied with `#>` — so the
+  statement text depends on a query's shape and never on its data.
+- Ordered comparisons on numbers are numeric: LF-JSON carries `Int64` and
+  `Numeric` as strings, so comparing lexically would sort `"9"` after `"10"`.
+- `tls` feature for `connect_tls`; off by default, since PQS is usually inside a
+  trust boundary.
+- **Verified live** against a running Scribe 3.5.4 store: 969 active contracts
+  read as typed payloads, payload and party-column predicates filtering in the
+  database, containment, lookup by id, and a pinned-offset read.
+
 ### Added — codegen
 
 - `Selection` and `lower_dar_selecting`: generate a crate from part of a DAR.

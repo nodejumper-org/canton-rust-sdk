@@ -1,0 +1,47 @@
+[package]
+name         = "canton-pqs"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = "README.md"
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["database", "api-bindings"]
+keywords     = ["canton", "daml", "pqs", "postgres", "scribe"]
+description  = "Typed read client for the Daml Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries."
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
+
+[dependencies]
+canton-core = { workspace = true }
+canton-daml = { workspace = true }
+
+# PQS is Postgres. `tokio-postgres` is the async driver; pooling is left to the
+# application, as telemetry is — a `Client` already pipelines concurrent queries
+# over one connection.
+tokio-postgres = { workspace = true, features = ["with-serde_json-1", "with-time-0_3"] }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+time           = { workspace = true }
+tracing        = { workspace = true }
+tokio          = { workspace = true, features = ["rt"] }
+
+# TLS for the database connection. Off by default: PQS is usually reached
+# inside a trust boundary, and a crate that forces a TLS stack on a deployment
+# that does not use one is charging for nothing.
+tokio-postgres-rustls = { workspace = true, optional = true }
+rustls                = { workspace = true, optional = true }
+rustls-native-certs   = { workspace = true, optional = true }
+
+[features]
+default = []
+tls     = ["dep:tokio-postgres-rustls", "dep:rustls", "dep:rustls-native-certs"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+serde_json = { workspace = true }
+canton-quickstart-licensing = { path = "../canton-quickstart-licensing" }
+
+[lints]
+workspace = true

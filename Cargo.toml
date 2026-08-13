@@ -23,6 +23,7 @@ canton-ledger = { path = "crates/canton-ledger", version = "0.3.0" }
 canton-admin  = { path = "crates/canton-admin",  version = "0.3.0" }
 canton-signer = { path = "crates/canton-signer", version = "0.3.0" }
 canton-token  = { path = "crates/canton-token",  version = "0.3.0" }
+canton-pqs    = { path = "crates/canton-pqs",    version = "0.3.0" }
 canton-splice-api-token-metadata-v1 = { path = "crates/canton-splice-api-token-metadata-v1", version = "0.3.0" }
 canton-splice-api-token-holding-v1 = { path = "crates/canton-splice-api-token-holding-v1", version = "0.3.0" }
 canton-splice-api-token-transfer-instruction-v1 = { path = "crates/canton-splice-api-token-transfer-instruction-v1", version = "0.3.0" }
@@ -41,6 +42,10 @@ prost        = { version = "0.14" }
 sha2         = { version = "0.10", default-features = false }
 ring         = { version = "0.17" }
 base64       = { version = "0.22" }
+# `runtime` (a default) carries the TLS plumbing `tokio-postgres-rustls`
+# implements against, so it stays on.
+tokio-postgres = { version = "0.7" }
+tokio-postgres-rustls = { version = "0.13" }
 prost-types  = { version = "0.14" }
 tokio        = { version = "1", default-features = false }
 tower        = { version = "0.5" }
