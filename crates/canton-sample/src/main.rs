@@ -20,7 +20,10 @@ use canton_ledger::{CantonClient, Config, JsonClient, JsonCommands, Submit};
 use canton_quickstart_licensing::quickstart_licensing::Licensing_AppInstall::{
     AppInstallRequest, AppInstallRequest_Reject,
 };
-use canton_quickstart_licensing::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata;
+// `Metadata` comes from the crate that owns that Daml package, not from a
+// copy inside the app's own bindings — so the value built here is the same
+// Rust type every other crate in the ecosystem names.
+use canton_splice_api_token_metadata_v1::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata;
 use rt::Template as _;
 
 // The whole app runs on the SDK's own error type: the ledger client, the typed

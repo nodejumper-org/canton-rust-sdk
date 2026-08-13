@@ -19,6 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 canton-quickstart-licensing = { path = "../canton-quickstart-licensing" }
+canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1" }
 canton-daml                 = { workspace = true }
 canton-ledger               = { workspace = true }
 tokio                       = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
