@@ -219,15 +219,17 @@ impl AdminClient {
             user_id: user_id.to_string(),
         };
         telemetry::instrument("allocate_external_party", TRANSPORT_GRPC, async move {
-            let response = self
-                .with_retry(|| {
-                    let request = request.clone();
-                    async move {
-                        let mut client = service!(self, PartyManagementServiceClient::new);
-                        Ok(client.allocate_external_party(request).await?.into_inner())
-                    }
-                })
-                .await?;
+            // Deliberately not retried, exactly as `allocate_party` is not.
+            // `AllocateExternalPartyRequest` carries no command or submission
+            // id, so there is no idempotency key that would make a second
+            // attempt a duplicate — and `wait_for_allocation` makes the call
+            // long enough that losing the response to a committed allocation is
+            // realistic. Retrying would be a guess about Canton's behaviour
+            // dressed up as resilience.
+            let response = {
+                let mut client = service!(self, PartyManagementServiceClient::new);
+                client.allocate_external_party(request).await?.into_inner()
+            };
             if response.party_id.is_empty() {
                 return Err(Error::UnexpectedResponse(
                     "allocate_external_party returned no party id".to_string(),

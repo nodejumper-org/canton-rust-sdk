@@ -261,31 +261,47 @@ pub struct Query<T> {
 }
 
 impl<T: canton_daml::Contract> Query<T> {
-    /// Contracts of this template that are active.
+    /// Contracts of this template that are active now.
     #[must_use]
     pub fn active() -> Self {
-        Self::from_source(Source::Active)
+        Self::from_source(Source::Active, None, None)
     }
 
-    /// Contracts of this template created in a range of offsets.
+    /// Contracts of this template that were active **as of** an offset.
+    ///
+    /// What makes a paged or repeated read consistent: the ACS at a point,
+    /// rather than a target that moves between calls.
     #[must_use]
-    pub fn creates() -> Self {
-        Self::from_source(Source::Creates)
+    pub fn active_at(offset: i64) -> Self {
+        Self::from_source(Source::Active, Some(offset), None)
     }
 
-    /// Contracts of this template archived in a range of offsets.
+    /// Contracts of this template created between two offsets.
+    ///
+    /// `None` on either side keeps the store's own default — its oldest
+    /// retained offset, and its latest.
     #[must_use]
-    pub fn archives() -> Self {
-        Self::from_source(Source::Archives)
+    pub fn creates(from: Option<i64>, to: Option<i64>) -> Self {
+        Self::from_source(Source::Creates, None, Some((from, to)))
     }
 
-    fn from_source(source: Source) -> Self {
+    /// Contracts of this template archived between two offsets.
+    #[must_use]
+    pub fn archives(from: Option<i64>, to: Option<i64>) -> Self {
+        Self::from_source(Source::Archives, None, Some((from, to)))
+    }
+
+    fn from_source(
+        source: Source,
+        at_offset: Option<i64>,
+        offset_bounds: Option<(Option<i64>, Option<i64>)>,
+    ) -> Self {
         Self {
             source,
             predicates: Vec::new(),
             limit: None,
-            offset_bounds: None,
-            at_offset: None,
+            offset_bounds,
+            at_offset,
             marker: std::marker::PhantomData,
         }
     }
@@ -310,24 +326,6 @@ impl<T: canton_daml::Contract> Query<T> {
     #[must_use]
     pub fn limit(mut self, rows: i64) -> Self {
         self.limit = Some(rows);
-        self
-    }
-
-    /// Read the ACS as of an offset rather than the latest one.
-    ///
-    /// Only meaningful for [`Source::Active`]; the range sources take
-    /// [`between`](Self::between).
-    #[must_use]
-    pub fn at_offset(mut self, offset: i64) -> Self {
-        self.at_offset = Some(offset);
-        self
-    }
-
-    /// Bound a range source. `None` on either side keeps the function's own
-    /// default, which is the oldest or the latest offset.
-    #[must_use]
-    pub fn between(mut self, from: Option<i64>, to: Option<i64>) -> Self {
-        self.offset_bounds = Some((from, to));
         self
     }
 
@@ -607,7 +605,7 @@ mod tests {
 
     #[test]
     fn an_offset_pins_the_acs_to_a_point_in_time() {
-        let sql = Query::<AppInstallRequest>::active().at_offset(42).compile();
+        let sql = Query::<AppInstallRequest>::active_at(42).compile();
         assert_eq!(sql.text, "SELECT * FROM active($1, $2)");
         assert_eq!(sql.params[1], Param::Offset(42));
     }
@@ -617,17 +615,13 @@ mod tests {
     /// what it passes — not a guess.
     #[test]
     fn an_upper_bound_alone_still_names_the_lower_one() {
-        let sql = Query::<AppInstallRequest>::creates()
-            .between(None, Some(99))
-            .compile();
+        let sql = Query::<AppInstallRequest>::creates(None, Some(99)).compile();
         assert_eq!(sql.text, "SELECT * FROM creates($1, oldest_offset(), $2)");
         assert_eq!(sql.params[1], Param::Offset(99));
 
         // And archives starts at the pruning boundary, because rows before it
         // are not there to be read.
-        let sql = Query::<AppInstallRequest>::archives()
-            .between(None, Some(99))
-            .compile();
+        let sql = Query::<AppInstallRequest>::archives(None, Some(99)).compile();
         assert_eq!(
             sql.text,
             "SELECT * FROM archives($1, COALESCE(pruned_offset(), oldest_offset()), $2)"
@@ -636,9 +630,7 @@ mod tests {
 
     #[test]
     fn both_bounds_are_parameters_when_both_are_given() {
-        let sql = Query::<AppInstallRequest>::creates()
-            .between(Some(10), Some(20))
-            .compile();
+        let sql = Query::<AppInstallRequest>::creates(Some(10), Some(20)).compile();
         assert_eq!(sql.text, "SELECT * FROM creates($1, $2, $3)");
         assert_eq!(sql.params[1], Param::Offset(10));
         assert_eq!(sql.params[2], Param::Offset(20));

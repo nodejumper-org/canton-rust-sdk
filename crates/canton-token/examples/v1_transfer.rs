@@ -35,11 +35,14 @@ fn var(name: &str) -> Result<String, String> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let registry = RegistryClient::new(var("CANTON_TOKEN_REGISTRY_URL")?)?;
+    let registry = RegistryClient::new(&var("CANTON_TOKEN_REGISTRY_URL")?)?;
 
-    // Who administers the instrument. The choice names this party, which is
-    // what stops a registry substituting a different administrator — so it is
-    // read once and passed in explicitly.
+    // Who administers the instrument. Read from the registry here for brevity,
+    // which only checks that it did not change between this call and the
+    // factory call. Naming the administrator in the choice protects against a
+    // registry substituting one — but only when the value comes from somewhere
+    // the caller trusts, such as configuration, rather than from the registry
+    // being checked.
     let info = registry.info().await?;
     let admin = rt::Party::parse(&info.admin_id)?;
     println!("registry admin: {}", info.admin_id);
@@ -48,11 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match registry.instrument(&instrument_id).await? {
         Some(instrument) => println!(
             "instrument:     {} ({}), {} decimals",
-            instrument.name,
-            instrument.symbol,
-            instrument
-                .decimals
-                .map_or_else(|| "unspecified".to_string(), |d| d.to_string())
+            instrument.name, instrument.symbol, instrument.decimals
         ),
         None => println!("instrument:     {instrument_id} — this registry does not issue it"),
     }

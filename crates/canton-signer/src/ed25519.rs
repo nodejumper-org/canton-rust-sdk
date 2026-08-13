@@ -16,6 +16,9 @@ use crate::{KeyFormat, KeySpec, PublicKey, Signature, SignatureFormat, Signer, S
 /// The length of an Ed25519 seed, and of its public key.
 const SEED_LEN: usize = 32;
 
+/// `r || s` — what an Ed25519 signature is, and therefore what one must be.
+pub(crate) const SIGNATURE_LEN: usize = 64;
+
 /// An Ed25519 key pair, before the participant has told it who it is.
 ///
 /// It can produce its public key — which is what
@@ -172,13 +175,16 @@ impl Signer for Ed25519Signer {
     fn sign(&self, hash: &[u8]) -> Pin<Box<dyn Future<Output = Result<Signature>> + Send + '_>> {
         // Ed25519 signs the message it is given; the participant already
         // hashed the transaction, so this must not hash again.
+        // `ring` produces exactly 64 bytes, so the length check inside
+        // `Signature::new` cannot fail here — but it is the same constructor an
+        // HSM implementation calls, where it can.
         let signature = Signature::new(
             SignatureFormat::Concat,
             self.key.sign_raw(hash),
             self.fingerprint.clone(),
             SigningAlgorithm::Ed25519,
         );
-        Box::pin(std::future::ready(Ok(signature)))
+        Box::pin(std::future::ready(signature))
     }
 }
 
@@ -188,6 +194,16 @@ mod tests {
     use super::*;
 
     const SEED: [u8; SEED_LEN] = [9; SEED_LEN];
+
+    /// Removes the directory even when an assertion panics first — which is
+    /// when leaving a private key behind matters most.
+    struct Cleanup(std::path::PathBuf);
+
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).ok();
+        }
+    }
 
     #[test]
     fn a_seed_gives_the_same_key_every_time() {
@@ -280,8 +296,17 @@ mod tests {
 
     #[test]
     fn a_file_holding_either_form_is_read() {
-        let dir = std::env::temp_dir().join("canton-signer-key-forms");
+        // A unique directory per run, and no key material left behind: two
+        // concurrent cargo invocations (the feature-powerset gate runs several)
+        // would otherwise race on one path, and a panic before the cleanup
+        // would leave a usable private key at a predictable location.
+        let dir = std::env::temp_dir().join(format!(
+            "canton-signer-key-forms-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
         std::fs::create_dir_all(&dir).expect("temp dir");
+        let _cleanup = Cleanup(dir.clone());
 
         let seed_path = dir.join("seed.bin");
         std::fs::write(&seed_path, SEED).expect("write");
@@ -302,8 +327,6 @@ mod tests {
                 .expect("pkcs8")
                 .public_key()
         );
-
-        std::fs::remove_dir_all(&dir).ok();
     }
 
     /// A `Debug` derive on a type holding a private key is how one reaches a

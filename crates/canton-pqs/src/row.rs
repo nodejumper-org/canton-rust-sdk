@@ -25,6 +25,7 @@ pub struct Contract<T> {
     archived_effective_at: Option<time::OffsetDateTime>,
     signatories: Vec<String>,
     observers: Vec<String>,
+    witnesses: Vec<String>,
     package_name: String,
     package_version: String,
     package_id: String,
@@ -55,20 +56,30 @@ impl<T> Contract<T> {
         self.created_at_offset
     }
 
-    /// The offset it was archived at, if it has been.
+    /// The offset it was archived at, if it has been archived at all.
     ///
-    /// `active()` never returns an archived contract, but `creates()` over a
-    /// range does — so this is how a caller tells a contract that is still
-    /// live from one that was created and archived within the window.
+    /// **Being set does not mean the contract was inactive for the read that
+    /// returned it.** `active_at(o)` selects contracts whose lifetime *covers*
+    /// `o`, so a contract that was live then and archived afterwards comes back
+    /// with this set — filtering those out would drop exactly the rows the
+    /// query asked for. Compare it against the offset that was read at:
+    /// [`was_active_at`](Self::was_active_at) does that.
     #[must_use]
     pub fn archived_at_offset(&self) -> Option<i64> {
         self.archived_at_offset
     }
 
-    /// Whether the contract is still active.
+    /// Whether the contract was active at `offset`.
+    ///
+    /// There is no offset-free answer to "is this active": it depends on when
+    /// you are asking about. A contract read by `active_at(o)` was active at
+    /// `o` whatever this says about later offsets.
     #[must_use]
-    pub fn is_active(&self) -> bool {
-        self.archived_at_offset.is_none()
+    pub fn was_active_at(&self, offset: i64) -> bool {
+        self.created_at_offset <= offset
+            && self
+                .archived_at_offset
+                .is_none_or(|archived| archived > offset)
     }
 
     /// Ledger effective time of the creation.
@@ -93,6 +104,13 @@ impl<T> Contract<T> {
     #[must_use]
     pub fn observers(&self) -> &[String] {
         &self.observers
+    }
+
+    /// Every party that witnessed it — the column `Predicate::witness` filters
+    /// on, so selecting by it and then not being able to see it made no sense.
+    #[must_use]
+    pub fn witnesses(&self) -> &[String] {
+        &self.witnesses
     }
 
     /// The Daml package name — stable across an upgrade.
@@ -224,6 +242,7 @@ impl<T: serde::de::DeserializeOwned> Contract<T> {
             archived_effective_at: column(row, "archived_effective_at")?,
             signatories: column(row, "signatories")?,
             observers: column(row, "observers")?,
+            witnesses: column(row, "witnesses")?,
             package_name: column(row, "package_name")?,
             package_version: column(row, "package_version")?,
             package_id: column(row, "package_id")?,

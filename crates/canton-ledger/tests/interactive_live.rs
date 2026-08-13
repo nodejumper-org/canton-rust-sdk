@@ -113,8 +113,18 @@ async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
 
     // Any party the participant already hosts will do to ask which
     // synchronizers it is connected to.
-    let synchronizers = ledger.connected_synchronizers("").await.ok()?;
-    let synchronizer = synchronizers.first()?.synchronizer_id.clone();
+    // Not `.ok()?`: turning an RPC failure into a skip made a permission or
+    // connectivity problem indistinguishable from "not configured", and the
+    // whole suite reported green while exercising nothing.
+    let synchronizers = ledger
+        .connected_synchronizers("")
+        .await
+        .expect("the participant lists its synchronizers");
+    let synchronizer = synchronizers
+        .first()
+        .expect("the participant is connected to at least one synchronizer")
+        .synchronizer_id
+        .clone();
 
     let key = Ed25519Key::generate().expect("a random source");
     let topology = admin
@@ -280,5 +290,14 @@ async fn signing__a_signature_from_another_key_is_rejected() {
         .execute_submission_and_wait(executable)
         .await
         .expect_err("a signature from the wrong key must not authorize anything");
+
+    // Any error would have passed before, including a timeout or an unrelated
+    // interpretation failure — which would leave the suite's whole security
+    // claim resting on nothing. It has to be a *signature* rejection.
+    let message = err.to_string();
+    assert!(
+        message.contains("FAILED_TO_EXECUTE_TRANSACTION") || message.contains("valid signatures"),
+        "the rejection must be about the signature, not something else: {message}"
+    );
     println!("rejected as expected: {err}");
 }

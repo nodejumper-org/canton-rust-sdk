@@ -174,6 +174,10 @@ impl Prepare {
     #[must_use]
     pub fn with_min_ledger_time_abs(mut self, time: prost_types::Timestamp) -> Self {
         self.min_ledger_time_abs = Some(time);
+        // Clearing the other one is what makes "the later call wins" true. The
+        // wire has a `oneof`, so keeping both would mean silently dropping
+        // whichever this code happened to prefer.
+        self.min_ledger_time_rel = None;
         self
     }
 
@@ -184,6 +188,7 @@ impl Prepare {
     #[must_use]
     pub fn with_min_ledger_time_rel(mut self, duration: std::time::Duration) -> Self {
         self.min_ledger_time_rel = Some(duration);
+        self.min_ledger_time_abs = None;
         self
     }
 
@@ -242,6 +247,12 @@ impl Prepare {
         &self.act_as
     }
 
+    /// The parties this will read as, beyond those acting.
+    #[must_use]
+    pub fn read_as(&self) -> &[String] {
+        &self.read_as
+    }
+
     /// The contracts this will disclose.
     ///
     /// A token-standard choice is meaningless without the registry's
@@ -254,9 +265,12 @@ impl Prepare {
 
     /// Build the wire request, returning the command id that went into it.
     ///
-    /// The id is returned rather than read back off the request so it survives
-    /// into [`Executable`]: the change ID it belongs to is what makes a repeated
-    /// execution a duplicate instead of a second transaction.
+    /// The id is returned rather than read back off the request so a caller can
+    /// still name the change ID after preparation — to recover a completion, or
+    /// to prepare the same command again deliberately. Execution does not carry
+    /// it as a field: the participant reads it from the prepared transaction's
+    /// own `submitter_info`, which is what makes a repeated execution a
+    /// duplicate rather than a second transaction.
     pub(crate) fn into_request(self) -> (String, Option<String>, ipb::PrepareSubmissionRequest) {
         let command_id = self
             .command_id
@@ -324,6 +338,24 @@ fn min_ledger_time(
 ///
 /// [`hash`](Self::hash) is what gets signed — it is the participant's hash of
 /// the transaction, not a message to hash again.
+///
+/// # What signing this does and does not prove
+///
+/// The hash is the **preparing participant's word**. This crate does not
+/// recompute it from [`transaction`](Self::transaction), so signing a
+/// `Prepared` authorizes whatever that participant hashed, which is not
+/// necessarily what [`transaction`](Self::transaction) shows.
+///
+/// The Ledger API is explicit about the two obligations that follow, and both
+/// are the caller's:
+///
+/// * show the transaction to whoever authorizes it, before signing;
+/// * **recompute the hash from the transaction if the participant is not
+///   trusted** — the API calls the hash "provided for convenience" for exactly
+///   this reason.
+///
+/// Interactive submission keeps the key away from the participant. It does not,
+/// on its own, make a dishonest participant harmless.
 #[derive(Clone, Debug)]
 pub struct Prepared {
     transaction: Option<ipb::PreparedTransaction>,
@@ -332,6 +364,7 @@ pub struct Prepared {
     hashing_details: Option<String>,
     cost_estimation: Option<ipb::CostEstimation>,
     act_as: Vec<String>,
+    read_as: Vec<String>,
     command_id: String,
     user_id: Option<String>,
 }
@@ -340,9 +373,21 @@ impl Prepared {
     pub(crate) fn from_response(
         response: ipb::PrepareSubmissionResponse,
         act_as: Vec<String>,
+        read_as: Vec<String>,
         command_id: String,
         user_id: Option<String>,
     ) -> Result<Self> {
+        // The transaction is what the proto marks `Required`, and it is where
+        // the change ID lives — without it an execute request is invalid and
+        // de-duplicates against nothing. The hash beside it is documented as
+        // "provided for convenience" and "may be removed in future versions",
+        // so checking only that one guards the wrong field.
+        if response.prepared_transaction.is_none() {
+            return Err(Error::UnexpectedResponse(
+                "prepare returned no prepared transaction, so there is nothing to execute"
+                    .to_string(),
+            ));
+        }
         if response.prepared_transaction_hash.is_empty() {
             return Err(Error::UnexpectedResponse(
                 "prepare returned no transaction hash".to_string(),
@@ -355,6 +400,7 @@ impl Prepared {
             hashing_details: response.hashing_details,
             cost_estimation: response.cost_estimation,
             act_as,
+            read_as,
             command_id,
             user_id,
         })
@@ -463,6 +509,12 @@ impl Prepared {
             signatures: vec![pb::Signature::from(&signature)],
         })
     }
+
+    /// Every party this reads as, beyond those acting.
+    #[must_use]
+    pub fn read_as(&self) -> &[String] {
+        &self.read_as
+    }
 }
 
 /// How long a change ID stays a duplicate.
@@ -493,8 +545,27 @@ impl Executable {
     /// As [`Prepared::sign_as`].
     pub async fn and_sign_as(mut self, party: &str, signer: &dyn Signer) -> Result<Self> {
         let signature = self.prepared.sign_one(party, signer).await?;
-        self.signatures.push(signature);
+        self.add(signature);
         Ok(self)
+    }
+
+    /// Fold a signature into the entry for its party.
+    ///
+    /// The wire has one entry per party carrying *several* signatures — which
+    /// is how a party whose topology sets a threshold above one authorizes at
+    /// all. Pushing a second entry for the same party would send a shape the
+    /// standard does not describe, and would make the threshold case
+    /// unreachable.
+    fn add(&mut self, signature: ipb::SinglePartySignatures) {
+        if let Some(existing) = self
+            .signatures
+            .iter_mut()
+            .find(|entry| entry.party == signature.party)
+        {
+            existing.signatures.extend(signature.signatures);
+        } else {
+            self.signatures.push(signature);
+        }
     }
 
     /// Attach a signature produced elsewhere — an offline ceremony, or a
@@ -514,7 +585,7 @@ impl Executable {
                 self.prepared.act_as.join(", ")
             )));
         }
-        self.signatures.push(ipb::SinglePartySignatures {
+        self.add(ipb::SinglePartySignatures {
             party: party.to_string(),
             signatures: vec![pb::Signature::from(signature)],
         });
@@ -541,7 +612,12 @@ impl Executable {
         self
     }
 
-    /// Set the submission id. Left unset, a fresh UUID is generated.
+    /// Set the submission id — the identifier that distinguishes completions
+    /// for different submissions of the same change ID.
+    ///
+    /// Left unset, a fresh UUID is generated **per attempt**, which is what the
+    /// Ledger API expects of a retried submission. Setting one fixes it across
+    /// retries, which is a deliberate choice rather than a default.
     #[must_use]
     pub fn with_submission_id(mut self, submission_id: impl Into<String>) -> Self {
         self.submission_id = Some(submission_id.into());
@@ -557,6 +633,18 @@ impl Executable {
     pub fn with_transaction_shape(mut self, shape: crate::request::TransactionShape) -> Self {
         self.transaction_shape = shape;
         self
+    }
+
+    /// The command id, carried from preparation.
+    ///
+    /// One component of the change ID (`user_id`, `act_as`, `command_id`), and
+    /// what [`await_completion`](crate::CantonClient::await_completion) matches
+    /// on — so a caller using the fire-and-forget
+    /// [`execute_submission`](crate::CantonClient::execute_submission) needs it
+    /// to recover the outcome.
+    #[must_use]
+    pub fn command_id(&self) -> &str {
+        &self.prepared.command_id
     }
 
     /// The parties that have signed so far.
@@ -591,9 +679,12 @@ impl Executable {
         crate::request::TransactionShape,
         Option<Deduplication>,
     ) {
-        let submission_id = self
-            .submission_id
-            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        // Left as the caller set it — possibly empty. The client fills a fresh
+        // UUID per *attempt*, because the proto says "applications are expected
+        // to use a different UUID for each retry of a submission with the same
+        // change ID". Baking one in here would give every retry the same id and
+        // defeat the field's only purpose: telling those completions apart.
+        let submission_id = self.submission_id.unwrap_or_default();
         (
             self.prepared.transaction,
             Some(ipb::PartySignatures {
@@ -668,10 +759,17 @@ impl Executable {
         }
     }
 
-    /// The acting parties, for building the event format an
-    /// `…_and_wait_for_transaction` call needs.
-    pub(crate) fn act_as(&self) -> Vec<String> {
-        self.prepared.act_as.clone()
+    /// Every party the returned transaction should be filtered for.
+    ///
+    /// `act_as` *and* `read_as`: the Ledger API documents its default event
+    /// format as covering both, so filtering on the acting parties alone would
+    /// drop events only a reading party witnesses.
+    pub(crate) fn witnesses(&self) -> Vec<String> {
+        let mut parties = self.prepared.act_as.clone();
+        parties.extend(self.prepared.read_as.iter().cloned());
+        parties.sort_unstable();
+        parties.dedup();
+        parties
     }
 }
 
@@ -691,17 +789,30 @@ mod tests {
         let act_as: Vec<String> = act_as.iter().map(ToString::to_string).collect();
         Prepared::from_response(
             ipb::PrepareSubmissionResponse {
-                prepared_transaction: None,
+                // A real transaction, because `from_response` now requires one:
+                // it is where the change ID lives, and the fixture previously
+                // let six tests assert on execute requests that had none.
+                prepared_transaction: Some(ipb::PreparedTransaction {
+                    transaction: None,
+                    metadata: Some(ipb::Metadata {
+                        submitter_info: Some(ipb::metadata::SubmitterInfo {
+                            act_as: act_as.clone(),
+                            command_id: "command-1".to_string(),
+                        }),
+                        ..Default::default()
+                    }),
+                }),
                 prepared_transaction_hash: vec![1, 2, 3],
                 hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
                 hashing_details: None,
                 cost_estimation: None,
             },
             act_as,
+            Vec::new(),
             "command-1".to_string(),
             Some("user-1".to_string()),
         )
-        .expect("a response carrying a hash")
+        .expect("a response carrying a transaction and a hash")
     }
 
     /// A response with no hash leaves nothing to sign, so it is an error here
@@ -710,18 +821,43 @@ mod tests {
     fn a_prepare_response_without_a_hash_is_refused() {
         let err = Prepared::from_response(
             ipb::PrepareSubmissionResponse {
-                prepared_transaction: None,
+                prepared_transaction: Some(ipb::PreparedTransaction::default()),
                 prepared_transaction_hash: Vec::new(),
                 hashing_scheme_version: 0,
                 hashing_details: None,
                 cost_estimation: None,
             },
             vec!["alice".to_string()],
+            Vec::new(),
             "c".to_string(),
             None,
         )
         .expect_err("no hash");
         assert!(err.to_string().contains("no transaction hash"), "{err}");
+    }
+
+    /// And a response with no *transaction* is refused too — that is the field
+    /// the API marks required, and it carries the change ID. Checking only the
+    /// hash guarded the field the API calls "provided for convenience" and
+    /// documents as removable, while letting the required one through as an
+    /// execute request that de-duplicates against nothing.
+    #[test]
+    fn a_prepare_response_without_a_transaction_is_refused() {
+        let err = Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: None,
+                prepared_transaction_hash: vec![1, 2, 3],
+                hashing_scheme_version: 0,
+                hashing_details: None,
+                cost_estimation: None,
+            },
+            vec!["alice".to_string()],
+            Vec::new(),
+            "c".to_string(),
+            None,
+        )
+        .expect_err("no transaction");
+        assert!(err.to_string().contains("nothing to execute"), "{err}");
     }
 
     #[tokio::test]
@@ -762,6 +898,51 @@ mod tests {
         assert_eq!(executable.signed_by(), vec!["alice", "bob"]);
     }
 
+    /// A party with a signing threshold above one provides several signatures,
+    /// and the wire carries them inside that party's single entry. Pushing a
+    /// second entry for the same party sent a shape the API does not describe —
+    /// and left the threshold case unreachable.
+    #[tokio::test]
+    async fn several_signatures_for_one_party_share_its_entry() {
+        let executable = prepared(&["alice"])
+            .sign_as("alice", &signer("1220aa"))
+            .await
+            .expect("first key")
+            .and_sign_as("alice", &signer("1220bb"))
+            .await
+            .expect("second key");
+
+        assert_eq!(executable.signed_by(), vec!["alice"], "one entry");
+        let wire = executable.into_execute_request();
+        let signatures = wire.party_signatures.expect("signatures").signatures;
+        assert_eq!(signatures.len(), 1, "one entry per party");
+        assert_eq!(signatures[0].signatures.len(), 2, "both keys inside it");
+        assert_eq!(signatures[0].signatures[0].signed_by, "1220aa");
+        assert_eq!(signatures[0].signatures[1].signed_by, "1220bb");
+    }
+
+    /// Setting one bound clears the other, so "the later call wins" is true
+    /// rather than aspirational — the wire has a `oneof` and one of the two had
+    /// to be dropped.
+    #[test]
+    fn the_later_min_ledger_time_wins_in_either_order() {
+        use ipb::min_ledger_time::Time;
+        let abs_then_rel = Prepare::new("alice")
+            .with_min_ledger_time_abs(prost_types::Timestamp {
+                seconds: 42,
+                nanos: 0,
+            })
+            .with_min_ledger_time_rel(std::time::Duration::from_secs(30))
+            .into_request()
+            .2
+            .min_ledger_time
+            .and_then(|t| t.time);
+        assert!(
+            matches!(abs_then_rel, Some(Time::MinLedgerTimeRel(_))),
+            "rel was set last: {abs_then_rel:?}"
+        );
+    }
+
     /// The change ID is `(user_id, act_as, command_id)`. If the command id did
     /// not survive preparation, executing twice would commit twice instead of
     /// being de-duplicated — the failure mode the id exists to prevent.
@@ -780,7 +961,24 @@ mod tests {
             .await
             .expect("sign");
         let wire = executable.into_execute_request();
-        assert_eq!(wire.user_id, "user-1", "the user id is half the change ID");
+        assert_eq!(
+            wire.user_id, "user-1",
+            "the user id is part of the change ID"
+        );
+
+        // And the rest of the change ID travels inside the prepared
+        // transaction, which is where the participant reads it from — not in a
+        // field of the execute request. Asserting on the user id alone let this
+        // test pass with `Prepared::command_id` deleted entirely.
+        let submitter = wire
+            .prepared_transaction
+            .expect("the transaction is required")
+            .metadata
+            .expect("metadata")
+            .submitter_info
+            .expect("submitter info");
+        assert_eq!(submitter.command_id, "command-1");
+        assert_eq!(submitter.act_as, ["alice"]);
     }
 
     /// Left unset it is still stable across a retry, because it is generated
@@ -845,7 +1043,8 @@ mod tests {
             vec![8; 64],
             "1220cc",
             canton_signer::SigningAlgorithm::Ed25519,
-        );
+        )
+        .expect("a well-formed signature");
         let executable = prepared(&["alice", "bob"])
             .sign_as("alice", &signer("1220aa"))
             .await
@@ -870,7 +1069,8 @@ mod tests {
             vec![8; 64],
             "1220cc",
             canton_signer::SigningAlgorithm::Ed25519,
-        );
+        )
+        .expect("a well-formed signature");
         let err = prepared(&["alice"])
             .sign_as("alice", &signer("1220aa"))
             .await

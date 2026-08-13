@@ -188,8 +188,15 @@ impl PqsClient {
                 params: Vec::new(),
             })
             .await?;
-        rows.first()
-            .and_then(|row| row.try_get::<_, Option<i64>>(0).ok().flatten())
+        let row = rows.first().ok_or_else(|| {
+            Error::UnexpectedResponse("PQS answered latest_offset() with no row".to_string())
+        })?;
+        row.try_get::<_, Option<i64>>(0)
+            .map_err(|e| {
+                Error::UnexpectedResponse(format!(
+                    "PQS returned a latest offset this cannot read: {e}"
+                ))
+            })?
             .ok_or_else(|| {
                 Error::UnexpectedResponse(
                     "PQS reported no latest offset, so it has ingested nothing".to_string(),
@@ -227,7 +234,7 @@ impl PqsClient {
         self.client
             .query(sql.text.as_str(), &borrowed)
             .await
-            .map_err(|e| Error::Connection(format!("PQS query failed: {}", detail(&e))))
+            .map_err(|e| classify(&e))
     }
 }
 
@@ -239,6 +246,22 @@ impl PqsClient {
 #[must_use]
 pub fn active_signed_by<T: ContractType>(party: &str) -> Query<T> {
     Query::<T>::active().filter(Predicate::signatory(party))
+}
+
+/// Tell a failed *statement* from a failed *connection*.
+///
+/// This decides whether the SDK reports the failure as retriable, and getting
+/// it wrong is not cosmetic: `Error::Connection` is retriable, so mapping every
+/// Postgres error to it makes an application that loops on `is_retriable()`
+/// spin forever on a mistyped predicate. A database error carries a SQLSTATE —
+/// the server understood the statement and refused it — and no amount of
+/// retrying changes that.
+fn classify(error: &tokio_postgres::Error) -> Error {
+    if error.code().is_some() {
+        Error::InvalidRequest(format!("PQS rejected the query: {}", detail(error)))
+    } else {
+        Error::Connection(format!("PQS query failed: {}", detail(error)))
+    }
 }
 
 /// A `tokio_postgres::Error` prints as "db error" and keeps what the database

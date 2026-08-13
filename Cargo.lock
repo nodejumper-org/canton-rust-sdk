@@ -187,6 +187,9 @@ dependencies = [
  "canton-core",
  "canton-daml",
  "canton-ledger",
+ "canton-pqs",
+ "canton-signer",
+ "canton-token",
 ]
 
 [[package]]

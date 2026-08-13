@@ -45,6 +45,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &selection_for(*emits),
             &externals_for(externals, *emits),
         )?;
+        if krate.packages.is_empty() {
+            // A misspelled package name resolves to nothing and would otherwise
+            // write an empty crate and print " 0 packages" on its way past. The
+            // drift guard catches it afterwards; saying so here names the cause.
+            return Err(format!(
+                "{crate_name}: the selection matched no package in {path} — check the names in \
+                 examples/shared/splice_crates.rs against the DAR"
+            )
+            .into());
+        }
         let source = canton_codegen::generate_crate(&krate)?;
         let out = format!("{root}/crates/{crate_name}/src");
         std::fs::create_dir_all(&out)?;

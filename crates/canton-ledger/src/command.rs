@@ -167,6 +167,17 @@ impl Submit {
         self
     }
 
+    /// The contracts this will disclose.
+    ///
+    /// A token-standard choice is meaningless without the registry's
+    /// disclosures, so a caller assembling one wants to see them before
+    /// sending — and a test that claims to check they were attached needs to be
+    /// able to look.
+    #[must_use]
+    pub fn disclosed_contracts(&self) -> &[pb::DisclosedContract] {
+        &self.disclosed_contracts
+    }
+
     /// Restrict package selection for interpretation to these package ids
     /// (at most one preference per package name) — the SCU upgrade pin.
     #[must_use]

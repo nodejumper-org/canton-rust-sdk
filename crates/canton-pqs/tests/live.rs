@@ -12,18 +12,33 @@
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use canton_pqs::{Op, PqsClient, Predicate, Query};
+use canton_pqs::{PqsClient, Predicate, Query};
 use canton_quickstart_licensing::quickstart_licensing::Licensing_AppInstall::AppInstallRequest;
 
 async fn client() -> Option<PqsClient> {
     let url = std::env::var("CANTON_PQS_URL").ok()?;
-    match PqsClient::connect(&url).await {
-        Ok(client) => Some(client),
-        Err(e) => {
-            eprintln!("skipping: cannot reach PQS: {e}");
-            None
-        }
-    }
+    // Configured but unreachable is a failure, not a skip. Treating it as a
+    // skip meant a run against a broken store reported six passes.
+    Some(
+        PqsClient::connect(&url)
+            .await
+            .expect("CANTON_PQS_URL is set, so PQS must be reachable"),
+    )
+}
+
+/// The store must hold the contracts these tests read, or they assert nothing.
+///
+/// Returned rather than skipped: "no rows" and "nothing was checked" look
+/// identical in a passing run, and five of these tests used to end that way.
+async fn require_sample(client: &PqsClient) -> canton_pqs::Contract<AppInstallRequest> {
+    let contracts = client
+        .active::<AppInstallRequest>()
+        .await
+        .expect("the query runs");
+    contracts.into_iter().next().expect(
+        "this store holds no AppInstallRequest, so these tests would assert nothing — \
+         point CANTON_PQS_URL at a store with the reference app's contracts",
+    )
 }
 
 /// The store says how far it has ingested. Everything else reads against it.
@@ -53,10 +68,9 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
         .expect("the query runs");
 
     println!("active AppInstallRequest: {}", contracts.len());
-    let Some(contract) = contracts.first() else {
-        eprintln!("skipping the assertions: this store holds none");
-        return;
-    };
+    let contract = contracts
+        .first()
+        .expect("this store holds no AppInstallRequest, so nothing would be asserted");
 
     // The payload is typed, not a JSON blob.
     let payload: &AppInstallRequest = contract.payload();
@@ -68,8 +82,11 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
     );
 
     assert!(!contract.contract_id().as_str().is_empty());
-    assert!(contract.is_active(), "active() returns only live contracts");
-    assert_eq!(contract.archived_at_offset(), None);
+    assert_eq!(
+        contract.archived_at_offset(),
+        None,
+        "read at the latest offset"
+    );
     assert!(contract.created_at_offset() > 0);
     assert!(
         contract.created_effective_at().is_some(),
@@ -91,14 +108,7 @@ async fn a_payload_predicate_filters_in_the_database() {
         eprintln!("skipping: set CANTON_PQS_URL");
         return;
     };
-    let all = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
-    let Some(sample) = all.first() else {
-        eprintln!("skipping: this store holds no AppInstallRequest");
-        return;
-    };
+    let sample = require_sample(&client).await;
     let user = sample.payload().user.to_string();
 
     let matching = client
@@ -134,14 +144,7 @@ async fn containment_and_party_columns_work_against_the_real_schema() {
         eprintln!("skipping: set CANTON_PQS_URL");
         return;
     };
-    let all = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
-    let Some(sample) = all.first() else {
-        eprintln!("skipping: this store holds no AppInstallRequest");
-        return;
-    };
+    let sample = require_sample(&client).await;
     let user = sample.payload().user.to_string();
 
     let by_containment = client
@@ -171,20 +174,72 @@ async fn an_ordered_comparison_is_a_statement_postgres_accepts() {
         eprintln!("skipping: set CANTON_PQS_URL");
         return;
     };
-    // No AppInstallRequest field is numeric, so this asserts the *statement* is
-    // valid rather than that it matches: a bad cast is a database error, and a
-    // database error is what this would surface.
-    let rows = client
-        .run(
-            &Query::<AppInstallRequest>::active().filter(Predicate::compare(
-                ["meta", "values", "count"],
-                Op::Gt,
-                0,
-            )),
-        )
+    // Against a real numeric field, on contracts that exist. Pointed at a path
+    // no contract has, this returned zero rows whether the comparison was
+    // numeric or lexical — it could not tell the bug it names from correct
+    // behaviour.
+    //
+    // Amulet amounts are LF-JSON strings like "504680.1600000000", which is
+    // exactly where a lexical comparison goes wrong.
+    let amounts = client
+        .query(&canton_pqs::Sql {
+            text: "SELECT payload #>> ARRAY['amount','initialAmount'] AS a \
+                   FROM active('splice-amulet:Splice.Amulet:Amulet') LIMIT 1"
+                .to_string(),
+            params: Vec::new(),
+        })
         .await
-        .expect("Postgres accepts the cast");
-    println!("rows matching a numeric comparison: {}", rows.len());
+        .expect("the store is readable");
+    let Some(amount) = amounts
+        .first()
+        .and_then(|row| row.try_get::<_, Option<String>>("a").ok().flatten())
+    else {
+        eprintln!("skipping: this store holds no Amulet to compare against");
+        return;
+    };
+    let amount: f64 = amount.parse().expect("an amulet amount is a number");
+    println!("comparing against an amulet amount of {amount}");
+
+    let matching = |sql: String, threshold: String| {
+        let client = client.clone();
+        async move {
+            let rows = client
+                .query(&canton_pqs::Sql {
+                    text: sql,
+                    params: vec![canton_pqs::Param::Text(threshold)],
+                })
+                .await
+                .expect("Postgres accepts the statement");
+            rows[0].try_get::<_, i64>("n").expect("a count")
+        }
+    };
+
+    // The threshold is a single digit larger than the amount's first: "9".
+    // Numerically 504680.16 > 9; as text, "504680.16" < "9" because '5' < '9'.
+    // That is the whole bug in one comparison — the reason "9" sorts after "10"
+    // — so the two must disagree here or the cast is not doing anything.
+    let numeric = matching(
+        "SELECT count(*) AS n FROM active('splice-amulet:Splice.Amulet:Amulet') \
+         WHERE (payload #>> ARRAY['amount','initialAmount'])::numeric > $1::text::numeric"
+            .to_string(),
+        "9".to_string(),
+    )
+    .await;
+    let lexical = matching(
+        "SELECT count(*) AS n FROM active('splice-amulet:Splice.Amulet:Amulet') \
+         WHERE payload #>> ARRAY['amount','initialAmount'] > $1"
+            .to_string(),
+        "9".to_string(),
+    )
+    .await;
+
+    assert!(numeric > 0, "{amount} compared numerically must exceed 9");
+    println!("numeric matched {numeric}, lexical matched {lexical}");
+    assert_ne!(
+        numeric, lexical,
+        "if the two agree on this store the test proves nothing about the cast — \
+         pick a threshold where they differ"
+    );
 }
 
 /// `lookup_contract` finds a contract by id whether or not it is still active,
@@ -195,14 +250,7 @@ async fn a_contract_is_found_by_id() {
         eprintln!("skipping: set CANTON_PQS_URL");
         return;
     };
-    let all = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
-    let Some(sample) = all.first() else {
-        eprintln!("skipping: this store holds no AppInstallRequest");
-        return;
-    };
+    let sample = require_sample(&client).await;
 
     let found = client
         .lookup::<AppInstallRequest>(sample.contract_id().as_str())
@@ -232,7 +280,7 @@ async fn the_acs_can_be_read_as_of_an_offset() {
         .await
         .expect("the query runs");
     let pinned = client
-        .run(&Query::<AppInstallRequest>::active().at_offset(offset))
+        .run(&Query::<AppInstallRequest>::active_at(offset))
         .await
         .expect("the pinned query runs");
 
@@ -247,7 +295,7 @@ async fn the_acs_can_be_read_as_of_an_offset() {
     // and "I cannot tell you what was active then" are different facts, and a
     // caller paging backwards needs to know which it got.
     let err = client
-        .run(&Query::<AppInstallRequest>::active().at_offset(1))
+        .run(&Query::<AppInstallRequest>::active_at(1))
         .await
         .expect_err("an offset before the oldest is refused");
     let message = err.to_string();

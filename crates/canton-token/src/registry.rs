@@ -19,9 +19,15 @@ use serde::{Deserialize, Serialize};
 use crate::context::{ChoiceContext, ChoiceContextRequest, WireChoiceContext};
 
 /// A client for one registry's off-ledger API.
+/// How long to wait on a registry that accepts the connection and then says
+/// nothing. `reqwest`'s own default is unbounded, which turns an unresponsive
+/// registry into a transfer that never returns.
+const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// A client for one registry's off-ledger API.
 #[derive(Clone, Debug)]
 pub struct RegistryClient {
-    base_url: String,
+    base: reqwest::Url,
     http: reqwest::Client,
 }
 
@@ -54,11 +60,21 @@ pub struct Instrument {
     #[serde(default)]
     pub total_supply_as_of: Option<String>,
     /// How many decimal places amounts of this instrument carry.
-    #[serde(default)]
-    pub decimals: Option<i32>,
+    ///
+    /// The standard marks this required with a default of 10, so an absent
+    /// field means ten places — not "unknown". Reporting it as unknown pushes a
+    /// display-precision decision about money onto a caller who has no better
+    /// information than this default.
+    #[serde(default = "default_decimals")]
+    pub decimals: i32,
     /// Which token-standard APIs apply to this instrument.
     #[serde(default)]
     pub supported_apis: std::collections::BTreeMap<String, i32>,
+}
+
+/// The standard's default for `decimals`.
+fn default_decimals() -> i32 {
+    10
 }
 
 #[derive(Debug, Deserialize)]
@@ -87,6 +103,15 @@ pub enum TransferKind {
     Direct,
     /// The receiver is offered the transfer and it completes only if accepted.
     Offer,
+    /// A kind this build does not know.
+    ///
+    /// Without this, a registry that adds a fourth kind makes the whole factory
+    /// response fail to decode and *every* transfer stop — including the ones
+    /// whose kind is perfectly understood. `#[non_exhaustive]` promises a
+    /// caller their match will keep compiling; this is what makes the promise
+    /// reach runtime.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A factory contract together with the context for exercising its choice.
@@ -101,12 +126,23 @@ pub struct FactoryWithContext {
     pub context: ChoiceContext,
 }
 
+/// `TransferFactoryWithChoiceContext` — `transferKind` is `required` here.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WireTransferFactory {
+    factory_id: String,
+    transfer_kind: TransferKind,
+    choice_context: WireChoiceContext,
+}
+
+/// `FactoryWithChoiceContext` — the allocation API has no `transferKind` at
+/// all. Kept separate from the transfer factory so that "this API does not
+/// classify the workflow" and "a registry omitted a required field" cannot
+/// arrive as the same value.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WireFactory {
     factory_id: String,
-    #[serde(default)]
-    transfer_kind: Option<TransferKind>,
     choice_context: WireChoiceContext,
 }
 
@@ -130,25 +166,52 @@ struct GetFactoryRequest<'a> {
 impl RegistryClient {
     /// A client for the registry served at `base_url`.
     ///
+    /// The URL is parsed here rather than at the first request, so a typo is a
+    /// configuration error the caller sees immediately — and not, as it was, a
+    /// `Connection` failure that the SDK reports as retriable and an
+    /// application retries forever.
+    ///
     /// # Errors
-    /// [`Error::InvalidRequest`] if an HTTP client cannot be built.
-    pub fn new(base_url: impl Into<String>) -> Result<Self> {
-        Ok(Self {
-            base_url: base_url.into().trim_end_matches('/').to_string(),
-            http: reqwest::Client::builder()
-                .build()
-                .map_err(|e| Error::InvalidRequest(format!("cannot build an HTTP client: {e}")))?,
-        })
+    /// [`Error::InvalidRequest`] if `base_url` is not a URL, or an HTTP client
+    /// cannot be built.
+    pub fn new(base_url: &str) -> Result<Self> {
+        let http = reqwest::Client::builder()
+            .timeout(DEFAULT_TIMEOUT)
+            .build()
+            .map_err(|e| Error::InvalidRequest(format!("cannot build an HTTP client: {e}")))?;
+        Self::with_http_client(base_url, http)
     }
 
     /// A client using an HTTP client the caller has already configured —
     /// timeouts, proxies, a custom TLS root store.
-    #[must_use]
-    pub fn with_http_client(base_url: impl Into<String>, http: reqwest::Client) -> Self {
-        Self {
-            base_url: base_url.into().trim_end_matches('/').to_string(),
-            http,
-        }
+    ///
+    /// # Errors
+    /// [`Error::InvalidRequest`] if `base_url` is not a URL.
+    pub fn with_http_client(base_url: &str, http: reqwest::Client) -> Result<Self> {
+        // A trailing slash matters to `Url::join`, and the paths below are
+        // relative, so it is normalised here once.
+        let normalised = format!("{}/", base_url.trim_end_matches('/'));
+        let base = reqwest::Url::parse(&normalised).map_err(|e| {
+            Error::InvalidRequest(format!("`{base_url}` is not a registry URL: {e}"))
+        })?;
+        Ok(Self { base, http })
+    }
+
+    /// Build a URL from path segments.
+    ///
+    /// Every segment is **percent-encoded**. Interpolating them into a string
+    /// let a caller-supplied id change which resource was addressed: an
+    /// instrument id of `a?b` fetched instrument `a` and returned its name,
+    /// symbol and decimals with no error at all, and `../../info` walked out of
+    /// the collection entirely. Instrument ids are admin-assigned free-form
+    /// strings, so nothing upstream rules that out.
+    fn url(&self, segments: &[&str]) -> Result<reqwest::Url> {
+        let mut url = self.base.clone();
+        url.path_segments_mut()
+            .map_err(|()| Error::InvalidRequest("the registry URL cannot have a path".to_string()))?
+            .pop_if_empty()
+            .extend(segments);
+        Ok(url)
     }
 
     /// The registry's own description of itself — including `admin_id`, which
@@ -158,7 +221,8 @@ impl RegistryClient {
     /// As any HTTP call, plus [`Error::UnexpectedResponse`] on a body that does
     /// not match the standard.
     pub async fn info(&self) -> Result<RegistryInfo> {
-        self.get("/registry/metadata/v1/info").await
+        self.get(self.url(&["registry", "metadata", "v1", "info"])?)
+            .await
     }
 
     /// One page of the instruments this registry issues.
@@ -172,19 +236,20 @@ impl RegistryClient {
         page_size: Option<u32>,
         page_token: Option<&str>,
     ) -> Result<(Vec<Instrument>, Option<String>)> {
-        let mut path = "/registry/metadata/v1/instruments".to_string();
-        let mut query = Vec::new();
-        if let Some(size) = page_size {
-            query.push(format!("pageSize={size}"));
+        let mut url = self.url(&["registry", "metadata", "v1", "instruments"])?;
+        {
+            // Encoded, not formatted: a page token is an instrument id by the
+            // standard's own definition, so one containing `&` would otherwise
+            // split into extra query parameters.
+            let mut query = url.query_pairs_mut();
+            if let Some(size) = page_size {
+                query.append_pair("pageSize", &size.to_string());
+            }
+            if let Some(token) = page_token {
+                query.append_pair("pageToken", token);
+            }
         }
-        if let Some(token) = page_token {
-            query.push(format!("pageToken={token}"));
-        }
-        if !query.is_empty() {
-            path.push('?');
-            path.push_str(&query.join("&"));
-        }
-        let response: ListInstrumentsResponse = self.get(&path).await?;
+        let response: ListInstrumentsResponse = self.get(url).await?;
         Ok((response.instruments, response.next_page_token))
     }
 
@@ -194,20 +259,17 @@ impl RegistryClient {
     /// As [`info`](Self::info). A `404` is not an error here: not issuing an
     /// instrument is an answer.
     pub async fn instrument(&self, instrument_id: &str) -> Result<Option<Instrument>> {
-        let url = format!(
-            "{}/registry/metadata/v1/instruments/{instrument_id}",
-            self.base_url
-        );
+        let url = self.url(&["registry", "metadata", "v1", "instruments", instrument_id])?;
         let response = self
             .http
-            .get(&url)
+            .get(url.clone())
             .send()
             .await
             .map_err(|e| connection(&e))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
         }
-        Ok(Some(Self::decode(response, &url).await?))
+        Ok(Some(Self::decode(response, url.as_str()).await?))
     }
 
     /// Resolve the transfer factory for a transfer, with its choice context.
@@ -221,11 +283,13 @@ impl RegistryClient {
         &self,
         choice_arguments: &serde_json::Value,
     ) -> Result<FactoryWithContext> {
-        self.factory(
-            "/registry/transfer-instruction/v1/transfer-factory",
-            choice_arguments,
-        )
-        .await
+        let url = self.url(&["registry", "transfer-instruction", "v1", "transfer-factory"])?;
+        let wire: WireTransferFactory = self.post_factory(url, choice_arguments).await?;
+        Ok(FactoryWithContext {
+            factory_id: wire.factory_id,
+            transfer_kind: Some(wire.transfer_kind),
+            context: ChoiceContext::from_wire(wire.choice_context)?,
+        })
     }
 
     /// Resolve the allocation factory, with its choice context.
@@ -236,11 +300,18 @@ impl RegistryClient {
         &self,
         choice_arguments: &serde_json::Value,
     ) -> Result<FactoryWithContext> {
-        self.factory(
-            "/registry/allocation-instruction/v1/allocation-factory",
-            choice_arguments,
-        )
-        .await
+        let url = self.url(&[
+            "registry",
+            "allocation-instruction",
+            "v1",
+            "allocation-factory",
+        ])?;
+        let wire: WireFactory = self.post_factory(url, choice_arguments).await?;
+        Ok(FactoryWithContext {
+            factory_id: wire.factory_id,
+            transfer_kind: None,
+            context: ChoiceContext::from_wire(wire.choice_context)?,
+        })
     }
 
     /// The context for a choice on an existing transfer instruction.
@@ -254,10 +325,14 @@ impl RegistryClient {
         request: &ChoiceContextRequest,
     ) -> Result<ChoiceContext> {
         self.choice_context(
-            &format!(
-                "/registry/transfer-instruction/v1/{transfer_instruction_id}/choice-contexts/{}",
-                choice.path()
-            ),
+            self.url(&[
+                "registry",
+                "transfer-instruction",
+                "v1",
+                transfer_instruction_id,
+                "choice-contexts",
+                choice.path(),
+            ])?,
             request,
         )
         .await
@@ -274,24 +349,27 @@ impl RegistryClient {
         request: &ChoiceContextRequest,
     ) -> Result<ChoiceContext> {
         self.choice_context(
-            &format!(
-                "/registry/allocations/v1/{allocation_id}/choice-contexts/{}",
-                choice.path()
-            ),
+            self.url(&[
+                "registry",
+                "allocations",
+                "v1",
+                allocation_id,
+                "choice-contexts",
+                choice.path(),
+            ])?,
             request,
         )
         .await
     }
 
-    async fn factory(
+    async fn post_factory<T: serde::de::DeserializeOwned>(
         &self,
-        path: &str,
+        url: reqwest::Url,
         choice_arguments: &serde_json::Value,
-    ) -> Result<FactoryWithContext> {
-        let url = format!("{}{path}", self.base_url);
+    ) -> Result<T> {
         let response = self
             .http
-            .post(&url)
+            .post(url.clone())
             .json(&GetFactoryRequest {
                 choice_arguments,
                 // The debug fields are explicitly untrustworthy unless the
@@ -302,40 +380,33 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| connection(&e))?;
-        let wire: WireFactory = Self::decode(response, &url).await?;
-        Ok(FactoryWithContext {
-            factory_id: wire.factory_id,
-            transfer_kind: wire.transfer_kind,
-            context: ChoiceContext::from_wire(wire.choice_context)?,
-        })
+        Self::decode(response, url.as_str()).await
     }
 
     async fn choice_context(
         &self,
-        path: &str,
+        url: reqwest::Url,
         request: &ChoiceContextRequest,
     ) -> Result<ChoiceContext> {
-        let url = format!("{}{path}", self.base_url);
         let response = self
             .http
-            .post(&url)
+            .post(url.clone())
             .json(request)
             .send()
             .await
             .map_err(|e| connection(&e))?;
-        let wire: WireChoiceContext = Self::decode(response, &url).await?;
+        let wire: WireChoiceContext = Self::decode(response, url.as_str()).await?;
         ChoiceContext::from_wire(wire)
     }
 
-    async fn get<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
-        let url = format!("{}{path}", self.base_url);
+    async fn get<T: serde::de::DeserializeOwned>(&self, url: reqwest::Url) -> Result<T> {
         let response = self
             .http
-            .get(&url)
+            .get(url.clone())
             .send()
             .await
             .map_err(|e| connection(&e))?;
-        Self::decode(response, &url).await
+        Self::decode(response, url.as_str()).await
     }
 
     /// One place where a non-success status becomes an error and a body becomes
@@ -457,7 +528,53 @@ mod tests {
     #[test]
     fn a_trailing_slash_on_the_base_url_does_not_double_up() {
         let client = RegistryClient::new("https://scan.example.com/").unwrap();
-        assert_eq!(client.base_url, "https://scan.example.com");
+        assert_eq!(
+            client
+                .url(&["registry", "metadata", "v1", "info"])
+                .unwrap()
+                .as_str(),
+            "https://scan.example.com/registry/metadata/v1/info"
+        );
+    }
+
+    /// A path segment from outside must not be able to change which resource is
+    /// addressed. Formatted into a string, an instrument id of `a?b` fetched
+    /// instrument `a` and returned its name, symbol and decimals with no error
+    /// — and `../../info` walked out of the collection entirely.
+    #[test]
+    fn a_hostile_path_segment_cannot_redirect_the_request() {
+        let client = RegistryClient::new("https://scan.example.com").unwrap();
+        for hostile in ["a?b", "a#b", "../../info", "a/b"] {
+            let url = client
+                .url(&["registry", "metadata", "v1", "instruments", hostile])
+                .unwrap();
+            assert_eq!(
+                url.query(),
+                None,
+                "`{hostile}` must not become a query: {url}"
+            );
+            assert_eq!(
+                url.path_segments().map(Iterator::count),
+                Some(5),
+                "`{hostile}` must stay one segment: {url}"
+            );
+            assert!(
+                url.as_str()
+                    .starts_with("https://scan.example.com/registry/metadata/v1/instruments/"),
+                "`{hostile}` escaped the collection: {url}"
+            );
+        }
+    }
+
+    /// A base URL that is not a URL is a configuration mistake, and it has to
+    /// arrive as one. Left to surface from the first request it became
+    /// `Error::Connection`, which the SDK reports as retriable — so an
+    /// application would retry a typo forever.
+    #[test]
+    fn a_base_url_that_is_not_a_url_is_refused_immediately() {
+        let err = RegistryClient::new("not a url").expect_err("not a URL");
+        assert!(!err.is_retriable(), "a typo is not worth retrying: {err}");
+        assert!(err.to_string().contains("not a url"), "{err}");
     }
 
     #[test]
@@ -493,26 +610,61 @@ mod tests {
                 }]
             }
         });
-        let wire: WireFactory = serde_json::from_value(json).expect("decodes");
+        let wire: WireTransferFactory = serde_json::from_value(json).expect("decodes");
         assert_eq!(wire.factory_id, "00factory");
-        assert_eq!(wire.transfer_kind, Some(TransferKind::Direct));
+        assert_eq!(wire.transfer_kind, TransferKind::Direct);
 
         let context = ChoiceContext::from_wire(wire.choice_context).expect("translates");
         assert_eq!(context.disclosed_contracts().len(), 1);
         assert_eq!(context.disclosed_contracts()[0].created_event_blob, [1, 2]);
     }
 
-    /// The allocation factory's response carries no `transferKind` — its API
-    /// does not classify a workflow — so the field must be optional rather than
-    /// a decode failure.
+    /// The allocation factory's response has no `transferKind` at all, and it
+    /// is a different type for that reason: "this API does not classify the
+    /// workflow" and "a registry omitted a field its spec requires" must not
+    /// arrive as the same value.
     #[test]
-    fn a_factory_without_a_transfer_kind_still_decodes() {
+    fn the_allocation_factory_response_has_no_transfer_kind() {
         let json = serde_json::json!({
             "factoryId": "00factory",
             "choiceContext": { "choiceContextData": {}, "disclosedContracts": [] }
         });
         let wire: WireFactory = serde_json::from_value(json).expect("decodes");
-        assert_eq!(wire.transfer_kind, None);
+        assert_eq!(wire.factory_id, "00factory");
+
+        // And the transfer factory refuses the same body, because its spec
+        // marks the field required.
+        let json = serde_json::json!({
+            "factoryId": "00factory",
+            "choiceContext": { "choiceContextData": {}, "disclosedContracts": [] }
+        });
+        assert!(serde_json::from_value::<WireTransferFactory>(json).is_err());
+    }
+
+    /// A registry that adds a fourth kind must not break the transfers whose
+    /// kind this build understands perfectly well.
+    #[test]
+    fn an_unknown_transfer_kind_decodes_instead_of_failing_the_response() {
+        let json = serde_json::json!({
+            "factoryId": "00factory",
+            "transferKind": "escrow-something-new",
+            "choiceContext": { "choiceContextData": {}, "disclosedContracts": [] }
+        });
+        let wire: WireTransferFactory =
+            serde_json::from_value(json).expect("an unknown kind is a value, not a decode failure");
+        assert_eq!(wire.transfer_kind, TransferKind::Unknown);
+    }
+
+    /// The standard marks `decimals` required with a default of ten, so an
+    /// absent field means ten places — not "unknown". It is what a wallet
+    /// formats an amount with.
+    #[test]
+    fn an_absent_decimals_is_the_standards_default_and_not_unknown() {
+        let instrument: Instrument = serde_json::from_value(serde_json::json!({
+            "id": "Amulet", "name": "Canton Coin", "symbol": "CC"
+        }))
+        .expect("decodes");
+        assert_eq!(instrument.decimals, 10);
     }
 
     #[test]
@@ -524,6 +676,7 @@ mod tests {
         assert_eq!(response.instruments.len(), 1);
         assert_eq!(response.instruments[0].id, "Amulet");
         assert_eq!(response.instruments[0].total_supply, None);
+        assert_eq!(response.instruments[0].decimals, 10);
         assert_eq!(response.next_page_token, None);
     }
 }

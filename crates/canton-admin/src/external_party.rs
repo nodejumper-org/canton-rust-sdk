@@ -53,6 +53,13 @@ impl ExternalPartyTopology {
                     .to_string(),
             ));
         }
+        if response.topology_transactions.is_empty() {
+            return Err(canton_core::Error::UnexpectedResponse(
+                "the participant returned no onboarding transactions, so there would be \
+                 nothing to submit and the multi-hash would cover nothing"
+                    .to_string(),
+            ));
+        }
         Ok(Self {
             party_id: response.party_id,
             public_key_fingerprint: response.public_key_fingerprint,

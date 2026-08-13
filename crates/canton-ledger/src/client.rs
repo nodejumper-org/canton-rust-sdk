@@ -42,6 +42,41 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
     }
 }
 
+/// Give an execute request a submission id if it has none.
+///
+/// The change ID de-duplicates a submission; the submission id only tells the
+/// completions of separate *attempts* apart, and the Ledger API asks for a
+/// different one on each retry. Generating it per attempt rather than when the
+/// request is built is what makes attempts distinguishable while leaving the
+/// change ID — and therefore the de-duplication — untouched.
+trait HasSubmissionId {
+    fn submission_id_mut(&mut self) -> &mut String;
+}
+
+macro_rules! has_submission_id {
+    ($($t:ty),+) => {$(
+        impl HasSubmissionId for $t {
+            fn submission_id_mut(&mut self) -> &mut String {
+                &mut self.submission_id
+            }
+        }
+    )+};
+}
+
+has_submission_id!(
+    pb::interactive::ExecuteSubmissionRequest,
+    pb::interactive::ExecuteSubmissionAndWaitRequest,
+    pb::interactive::ExecuteSubmissionAndWaitForTransactionRequest
+);
+
+fn fresh_submission_id<T: HasSubmissionId>(mut request: T) -> T {
+    let id = request.submission_id_mut();
+    if id.is_empty() {
+        *id = uuid::Uuid::new_v4().to_string();
+    }
+    request
+}
+
 /// The offset of an update, for resumable-stream position tracking.
 fn update_offset(update: &pb::get_updates_response::Update) -> i64 {
     use pb::get_updates_response::Update;
@@ -361,6 +396,10 @@ impl CantonClient {
         // command id — the change ID stays stable and the submission remains
         // de-duplication-safe across attempts, exactly as `submit` does.
         let act_as = prepare.act_as().to_vec();
+        // Carried through: the Ledger API's default event format for
+        // `…_and_wait_for_transaction` covers `act_as` *and* `read_as`, so
+        // dropping it here would silently return a narrower transaction.
+        let read_as = prepare.read_as().to_vec();
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -375,7 +414,7 @@ impl CantonClient {
                     }
                 })
                 .await?;
-            crate::interactive::Prepared::from_response(response, act_as, command_id, user_id)
+            crate::interactive::Prepared::from_response(response, act_as, read_as, command_id, user_id)
         })
         .await
     }
@@ -397,7 +436,7 @@ impl CantonClient {
         let request = executable.into_execute_request();
         telemetry::instrument("execute_submission", TRANSPORT_GRPC, async move {
             self.with_retry(|| {
-                let request = request.clone();
+                let request = fresh_submission_id(request.clone());
                 async move {
                     let mut client = service!(
                         self,
@@ -425,7 +464,7 @@ impl CantonClient {
         telemetry::instrument("execute_submission_and_wait", TRANSPORT_GRPC, async move {
             let response = self
                 .with_retry(|| {
-                    let request = request.clone();
+                    let request = fresh_submission_id(request.clone());
                     async move {
                         let mut client = service!(
                             self,
@@ -456,7 +495,7 @@ impl CantonClient {
         &self,
         executable: crate::interactive::Executable,
     ) -> Result<pb::Transaction> {
-        let event_format = wildcard_event_format(&executable.act_as());
+        let event_format = wildcard_event_format(&executable.witnesses());
         let request = executable.into_execute_and_wait_for_transaction_request(event_format);
         telemetry::instrument(
             "execute_submission_and_wait_for_transaction",
@@ -464,7 +503,7 @@ impl CantonClient {
             async move {
                 let response = self
                     .with_retry(|| {
-                        let request = request.clone();
+                        let request = fresh_submission_id(request.clone());
                         async move {
                             let mut client = service!(
                                 self,

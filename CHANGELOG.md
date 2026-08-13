@@ -70,6 +70,10 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ### Added — token standard (CIP-56)
 
+- The `canton` facade re-exports the three new crates as `canton::signer`,
+  `canton::token` and `canton::pqs`. Without that, `cargo add canton` — which
+  the README describes as getting "everything below as one version-locked set" —
+  delivered none of this milestone.
 - **`canton-token`** (new) — the *workflow* over the generated token-standard
   types, which it does not re-declare: `RegistryClient` for the off-ledger API,
   choice contexts with their disclosures, `TransferFactory_Transfer`, and the
@@ -124,13 +128,22 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   the next. A prefix matches at a `-` boundary: `daml-prim` does not also match
   a `daml-primary`.
 
-> **Publish order** (extends 0.2.0's): the new bindings go out leaves-first —
-> `canton-daml-stdlib` (everything references it) →
-> `canton-splice-api-token-metadata-v1` and `canton-splice-api-featured-app-v1`
+> **Publish order — this replaces 0.2.0's, which no longer works.**
+> `canton-ledger` and `canton-admin` now depend on `canton-signer`, so it has to
+> go out before them rather than not at all:
+>
+> `canton-proto` → `canton-core` → `canton-auth` → `canton-lf` → `canton-daml`
+> → **`canton-signer`** → `canton-ledger` → `canton-admin` → `canton-codegen` →
+> `canton-codegen-cli` → **`canton-pqs`**
+> → `canton-daml-stdlib` (every binding references it)
+> → `canton-splice-api-token-metadata-v1`, `canton-splice-api-featured-app-v1`
 > → `-holding-v1` → `-allocation-v1` → `-allocation-instruction-v1`,
-> `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1` →
-> `canton-splice-amulet` → `canton-splice-wallet-payments` →
-> `canton-splice-wallet`.
+> `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1`
+> → `canton-splice-amulet` → `canton-splice-wallet-payments` →
+> `canton-splice-wallet` → **`canton-token`** → `canton` (last: the facade
+> re-exports everything above).
+>
+> `canton-sample` and `canton-quickstart-licensing` stay unpublished.
 
 ### Changed — CI
 

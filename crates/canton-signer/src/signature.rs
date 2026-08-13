@@ -24,6 +24,10 @@ pub enum SigningAlgorithm {
     EcDsaSha256,
     /// ECDSA with SHA-384.
     EcDsaSha384,
+    /// ML-DSA-65. `KeySpec` could already name this key; without the matching
+    /// algorithm a signer holding one had to declare a signature it did not
+    /// produce.
+    MlDsa65,
 }
 
 /// How a signature's bytes are laid out.
@@ -123,19 +127,41 @@ pub struct Signature {
 
 impl Signature {
     /// A signature from its parts.
-    #[must_use]
+    ///
+    /// # Errors
+    /// [`Error::InvalidRequest`] if the bytes cannot be what they claim: empty
+    /// — which the Ledger API marks as required non-empty — or the wrong length
+    /// for an Ed25519 `Concat` signature. A truncated reply from a signing
+    /// service is worth catching here rather than as a verification failure
+    /// with nothing to point at.
     pub fn new(
         format: SignatureFormat,
         bytes: Vec<u8>,
         signed_by: impl Into<String>,
         algorithm: SigningAlgorithm,
-    ) -> Self {
-        Self {
+    ) -> canton_core::Result<Self> {
+        if bytes.is_empty() {
+            return Err(canton_core::Error::InvalidRequest(
+                "a signature cannot be empty".to_string(),
+            ));
+        }
+        #[cfg(feature = "ed25519")]
+        if algorithm == SigningAlgorithm::Ed25519
+            && format == SignatureFormat::Concat
+            && bytes.len() != crate::ed25519::SIGNATURE_LEN
+        {
+            return Err(canton_core::Error::InvalidRequest(format!(
+                "an Ed25519 `r || s` signature is {} bytes, got {}",
+                crate::ed25519::SIGNATURE_LEN,
+                bytes.len()
+            )));
+        }
+        Ok(Self {
             format,
             bytes,
             signed_by: signed_by.into(),
             algorithm,
-        }
+        })
     }
 
     /// How [`bytes`](Self::bytes) is laid out.
@@ -169,6 +195,7 @@ impl From<SigningAlgorithm> for pb::SigningAlgorithmSpec {
             SigningAlgorithm::Ed25519 => Self::Ed25519,
             SigningAlgorithm::EcDsaSha256 => Self::EcDsaSha256,
             SigningAlgorithm::EcDsaSha384 => Self::EcDsaSha384,
+            SigningAlgorithm::MlDsa65 => Self::MlDsa65,
         }
     }
 }
@@ -248,6 +275,10 @@ mod tests {
             pb::SigningAlgorithmSpec::EcDsaSha384
         );
         assert_eq!(
+            pb::SigningAlgorithmSpec::from(SigningAlgorithm::MlDsa65),
+            pb::SigningAlgorithmSpec::MlDsa65
+        );
+        assert_eq!(
             pb::SignatureFormat::from(SignatureFormat::Concat),
             pb::SignatureFormat::Concat
         );
@@ -294,6 +325,7 @@ mod tests {
             SigningAlgorithm::Ed25519,
             SigningAlgorithm::EcDsaSha256,
             SigningAlgorithm::EcDsaSha384,
+            SigningAlgorithm::MlDsa65,
         ] {
             assert_ne!(
                 pb::SigningAlgorithmSpec::from(algorithm),
@@ -339,7 +371,8 @@ mod tests {
             vec![7; 64],
             "1220abcd",
             SigningAlgorithm::Ed25519,
-        );
+        )
+        .expect("a well-formed signature");
         let wire = pb::Signature::from(&signature);
         assert_eq!(wire.signature, vec![7; 64]);
         assert_eq!(wire.signed_by, "1220abcd");
@@ -351,5 +384,40 @@ mod tests {
         assert_eq!(wire.key_data, vec![3; 32]);
         assert_ne!(wire.format, 0, "key format left unset");
         assert_ne!(wire.key_spec, 0, "key spec left unset");
+    }
+
+    /// A signature that cannot be what it claims never reaches the wire: the
+    /// Ledger API marks the bytes required non-empty, and a truncated reply
+    /// from a signing service is better caught here than as a verification
+    /// failure with nothing to point at.
+    #[test]
+    fn a_signature_that_cannot_be_what_it_claims_is_refused() {
+        let err = Signature::new(
+            SignatureFormat::Concat,
+            Vec::new(),
+            "1220abcd",
+            SigningAlgorithm::Ed25519,
+        )
+        .expect_err("empty");
+        assert!(err.to_string().contains("cannot be empty"), "{err}");
+
+        let err = Signature::new(
+            SignatureFormat::Concat,
+            vec![7; 63],
+            "1220abcd",
+            SigningAlgorithm::Ed25519,
+        )
+        .expect_err("truncated");
+        assert!(err.to_string().contains("64 bytes, got 63"), "{err}");
+
+        // An ECDSA signature is DER and varies in length, so the check applies
+        // only where a length is actually fixed.
+        Signature::new(
+            SignatureFormat::Der,
+            vec![7; 63],
+            "1220abcd",
+            SigningAlgorithm::EcDsaSha256,
+        )
+        .expect("a DER signature has no fixed length");
     }
 }

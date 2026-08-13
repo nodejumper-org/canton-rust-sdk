@@ -19,6 +19,9 @@ canton-auth   = { workspace = true }
 canton-ledger = { workspace = true }
 canton-admin  = { workspace = true }
 canton-daml   = { workspace = true }
+canton-signer = { workspace = true }
+canton-token  = { workspace = true }
+canton-pqs    = { workspace = true }
 
 [features]
 # Forwarded to the crates that implement them, so `canton = { features = [..] }`

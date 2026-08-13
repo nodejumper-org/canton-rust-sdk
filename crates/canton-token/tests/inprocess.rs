@@ -149,7 +149,7 @@ fn a_factory_response() -> serde_json::Value {
 #[tokio::test]
 async fn the_factory_is_asked_the_way_the_standard_says_to_ask() {
     let (base, recorded) = registry(a_factory_response()).await;
-    let client = RegistryClient::new(base).expect("client");
+    let client = RegistryClient::new(&base).expect("client");
 
     canton_token::transfer(&client, &party("dso::1220ef"), a_transfer())
         .await
@@ -184,7 +184,7 @@ async fn the_factory_is_asked_the_way_the_standard_says_to_ask() {
 #[tokio::test]
 async fn what_the_registry_returns_reaches_the_ledger() {
     let (base, _) = registry(a_factory_response()).await;
-    let client = RegistryClient::new(base).expect("client");
+    let client = RegistryClient::new(&base).expect("client");
 
     let command = canton_token::transfer(&client, &party("dso::1220ef"), a_transfer())
         .await
@@ -227,7 +227,7 @@ async fn what_the_registry_returns_reaches_the_ledger() {
 #[tokio::test]
 async fn the_disclosures_are_attached_to_whichever_submission_is_used() {
     let (base, _) = registry(a_factory_response()).await;
-    let client = RegistryClient::new(base).expect("client");
+    let client = RegistryClient::new(&base).expect("client");
     let command = canton_token::transfer(&client, &party("dso::1220ef"), a_transfer())
         .await
         .expect("the transfer resolves");
@@ -258,7 +258,7 @@ async fn a_failing_registry_reports_its_own_message() {
         socket.write_all(http.as_bytes()).await.expect("write");
     });
 
-    let client = RegistryClient::new(format!("http://127.0.0.1:{port}")).expect("client");
+    let client = RegistryClient::new(&format!("http://127.0.0.1:{port}")).expect("client");
     let err = canton_token::transfer(&client, &party("dso::1220ef"), a_transfer())
         .await
         .expect_err("the registry refused");
@@ -279,7 +279,7 @@ async fn the_registry_describes_itself_and_its_instruments() {
         "supportedApis": { "splice-api-token-metadata-v1": 1 }
     }))
     .await;
-    let info = RegistryClient::new(base)
+    let info = RegistryClient::new(&base)
         .expect("client")
         .info()
         .await
@@ -292,17 +292,133 @@ async fn the_registry_describes_itself_and_its_instruments() {
         "nextPageToken": "page-2"
     }))
     .await;
-    let (instruments, next) = RegistryClient::new(base)
+    let (instruments, next) = RegistryClient::new(&base)
         .expect("client")
         .list_instruments(Some(50), None)
         .await
         .expect("instruments");
     assert_eq!(instruments.len(), 1);
     assert_eq!(instruments[0].symbol, "CC");
-    assert_eq!(instruments[0].decimals, Some(10));
+    assert_eq!(instruments[0].decimals, 10);
     assert_eq!(next.as_deref(), Some("page-2"));
     assert!(
         recorded.lock().expect("lock").path.contains("pageSize=50"),
         "the page size must reach the query string"
     );
+}
+
+/// Every registry path, observed. `/registry/allocations/v1/` is plural and
+/// `/registry/allocation-instruction/v1/` is singular — the two easiest things
+/// in this crate to get wrong, and only the transfer factory was checked.
+#[tokio::test]
+async fn every_registry_path_is_the_one_the_standard_publishes() {
+    let empty = serde_json::json!({
+        "factoryId": "00f",
+        "choiceContext": { "choiceContextData": {}, "disclosedContracts": [] }
+    });
+    let (base, recorded) = registry(empty).await;
+    canton_token::RegistryClient::new(&base)
+        .expect("client")
+        .allocation_factory(&serde_json::json!({}))
+        .await
+        .expect("resolves");
+    assert_eq!(
+        recorded.lock().expect("lock").path,
+        "/registry/allocation-instruction/v1/allocation-factory"
+    );
+
+    let context = serde_json::json!({ "choiceContextData": {}, "disclosedContracts": [] });
+    for (choice, expected) in [
+        (
+            canton_token::AllocationChoice::ExecuteTransfer,
+            "/registry/allocations/v1/00alloc/choice-contexts/execute-transfer",
+        ),
+        (
+            canton_token::AllocationChoice::Withdraw,
+            "/registry/allocations/v1/00alloc/choice-contexts/withdraw",
+        ),
+        (
+            canton_token::AllocationChoice::Cancel,
+            "/registry/allocations/v1/00alloc/choice-contexts/cancel",
+        ),
+    ] {
+        let (base, recorded) = registry(context.clone()).await;
+        canton_token::RegistryClient::new(&base)
+            .expect("client")
+            .allocation_context(
+                "00alloc",
+                choice,
+                &canton_token::ChoiceContextRequest::default(),
+            )
+            .await
+            .expect("resolves");
+        assert_eq!(recorded.lock().expect("lock").path, expected);
+    }
+
+    for (choice, expected) in [
+        (
+            canton_token::TransferInstructionChoice::Accept,
+            "/registry/transfer-instruction/v1/00inst/choice-contexts/accept",
+        ),
+        (
+            canton_token::TransferInstructionChoice::Reject,
+            "/registry/transfer-instruction/v1/00inst/choice-contexts/reject",
+        ),
+        (
+            canton_token::TransferInstructionChoice::Withdraw,
+            "/registry/transfer-instruction/v1/00inst/choice-contexts/withdraw",
+        ),
+    ] {
+        let (base, recorded) = registry(context.clone()).await;
+        canton_token::RegistryClient::new(&base)
+            .expect("client")
+            .transfer_instruction_context(
+                "00inst",
+                choice,
+                &canton_token::ChoiceContextRequest::default(),
+            )
+            .await
+            .expect("resolves");
+        assert_eq!(recorded.lock().expect("lock").path, expected);
+    }
+}
+
+/// A page token is an instrument id by the standard's own definition, so it can
+/// contain anything an id can. Formatted into the query string, one containing
+/// `&` split into extra parameters; this is the branch that was never sent.
+#[tokio::test]
+async fn a_page_token_is_encoded_rather_than_formatted() {
+    let (base, recorded) = registry(serde_json::json!({ "instruments": [] })).await;
+    canton_token::RegistryClient::new(&base)
+        .expect("client")
+        .list_instruments(Some(10), Some("a&pageSize=1&b"))
+        .await
+        .expect("the query runs");
+
+    let path = recorded.lock().expect("lock").path.clone();
+    assert!(
+        path.contains("pageToken=a%26pageSize%3D1%26b"),
+        "the token must be one encoded value: {path}"
+    );
+    assert_eq!(
+        path.matches("pageSize=").count(),
+        1,
+        "a token cannot introduce a second pageSize: {path}"
+    );
+}
+
+/// A token-standard command is meaningless without its disclosures, and both
+/// submission paths must carry them. The ordinary one could not be checked at
+/// all until `Submit` gained a reader, so a `TokenCommand` that dropped every
+/// disclosure on that path would have left the suite green.
+#[tokio::test]
+async fn the_ordinary_submission_path_carries_the_disclosures_too() {
+    let (base, _) = registry(a_factory_response()).await;
+    let client = RegistryClient::new(&base).expect("client");
+    let command = canton_token::transfer(&client, &party("dso::1220ef"), a_transfer())
+        .await
+        .expect("the transfer resolves");
+
+    let submit = command.into_submit("alice::1220ab");
+    assert_eq!(submit.disclosed_contracts().len(), 2);
 }

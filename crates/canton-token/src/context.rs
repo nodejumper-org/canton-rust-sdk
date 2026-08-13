@@ -153,12 +153,15 @@ impl ChoiceContext {
 
 /// `<package>:<Module>:<Entity>` — the Ledger API's three fields in one string.
 ///
-/// A module name may itself contain dots (`Splice.Api.Token.HoldingV1`), but
-/// never colons, so splitting on the first and last colon is unambiguous.
+/// A module name may itself contain dots (`Splice.Api.Token.HoldingV1`) but
+/// never colons, so exactly three parts is the only well-formed shape. A fourth
+/// is rejected rather than folded into the entity name, where it would reach
+/// the participant as a template that does not exist and come back as an
+/// unrelated interpretation error.
 fn identifier(template_id: &str) -> Result<pb::Identifier> {
-    let mut parts = template_id.splitn(3, ':');
-    match (parts.next(), parts.next(), parts.next()) {
-        (Some(package_id), Some(module_name), Some(entity_name))
+    let mut parts = template_id.split(':');
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(package_id), Some(module_name), Some(entity_name), None)
             if !package_id.is_empty() && !module_name.is_empty() && !entity_name.is_empty() =>
         {
             Ok(pb::Identifier {

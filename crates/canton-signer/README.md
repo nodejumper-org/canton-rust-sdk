@@ -45,8 +45,10 @@ let topology = admin
     .generate_external_party_topology(synchronizer, "alice", &key.public_key())
     .await?;
 
-let signer = key.into_signer(&topology.public_key_fingerprint);
-let party = admin.allocate_external_party(synchronizer, &topology, &signer).await?;
+let signer = key.into_signer(topology.public_key_fingerprint());
+let party = admin
+    .allocate_external_party(synchronizer, &topology, &signer, user_id)
+    .await?;
 
 let prepared = client.prepare_submission(Prepare::new(&party).add_command(cmd)).await?;
 let tx = client.execute_submission_and_wait_for_transaction(

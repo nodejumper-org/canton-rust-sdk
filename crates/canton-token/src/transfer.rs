@@ -22,7 +22,7 @@ use canton_proto::com::daml::ledger::api::v2 as pb;
 use canton_splice_api_token_metadata_v1::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1 as md;
 use canton_splice_api_token_transfer_instruction_v1::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1 as ti;
 
-use crate::registry::{RegistryClient, TransferKind};
+use crate::registry::{RegistryClient, TransferInstructionChoice, TransferKind};
 
 /// A command that carries the contracts it needs disclosed.
 ///
@@ -114,11 +114,12 @@ pub fn empty_extra_args() -> md::ExtraArgs {
 /// Resolve the transfer factory and build the exercise that performs
 /// `transfer`.
 ///
-/// `expected_admin` is the registry's `admin_id` — see
-/// [`RegistryClient::info`]. Naming it in the choice is what stops a registry
-/// from substituting a different administrator behind the caller's back, so it
-/// is a required argument rather than something read from the same response
-/// that could be forged.
+/// `expected_admin` is the administrator the caller expects — see
+/// [`RegistryClient::info`] for what a registry claims. Naming it in the choice
+/// is what stops a *substituted* administrator from being accepted, so it is a
+/// required argument: passing a value the same registry just returned proves
+/// only that it did not change its answer between two calls. A caller who wants
+/// the protection takes it from configuration.
 ///
 /// # Errors
 /// As any registry call, plus [`canton_core::Error::UnexpectedResponse`] if the
@@ -157,6 +158,94 @@ pub async fn transfer(
         rt::exercise_command(&factory_id, &choice),
         factory.context.into_disclosed_contracts(),
         factory.transfer_kind,
+    ))
+}
+
+/// Accept an offered transfer — the receiver's move.
+///
+/// A [`TransferKind::Offer`] transfer does not settle on submission: it creates
+/// a `TransferInstruction` that waits for this. Without it the crate could tell
+/// a caller their transfer was pending and give them no way to finish it.
+///
+/// # Errors
+/// As any registry call.
+pub async fn accept(
+    registry: &RegistryClient,
+    instruction_id: &rt::ContractId<ti::TransferInstruction>,
+) -> Result<TokenCommand> {
+    on_instruction(
+        registry,
+        instruction_id,
+        TransferInstructionChoice::Accept,
+        |extra_args| ti::TransferInstruction_Accept { extra_args },
+    )
+    .await
+}
+
+/// Reject an offered transfer — the receiver's move.
+///
+/// # Errors
+/// As any registry call.
+pub async fn reject(
+    registry: &RegistryClient,
+    instruction_id: &rt::ContractId<ti::TransferInstruction>,
+) -> Result<TokenCommand> {
+    on_instruction(
+        registry,
+        instruction_id,
+        TransferInstructionChoice::Reject,
+        |extra_args| ti::TransferInstruction_Reject { extra_args },
+    )
+    .await
+}
+
+/// Withdraw an offered transfer — the sender's move, before it is accepted.
+///
+/// # Errors
+/// As any registry call.
+pub async fn withdraw(
+    registry: &RegistryClient,
+    instruction_id: &rt::ContractId<ti::TransferInstruction>,
+) -> Result<TokenCommand> {
+    on_instruction(
+        registry,
+        instruction_id,
+        TransferInstructionChoice::Withdraw,
+        |extra_args| ti::TransferInstruction_Withdraw { extra_args },
+    )
+    .await
+}
+
+/// The shape the three choices on an existing instruction share.
+///
+/// One context per choice, never shared: the standard says a context may be
+/// specific to the choice being exercised.
+async fn on_instruction<C>(
+    registry: &RegistryClient,
+    instruction_id: &rt::ContractId<ti::TransferInstruction>,
+    choice: TransferInstructionChoice,
+    build: impl FnOnce(md::ExtraArgs) -> C,
+) -> Result<TokenCommand>
+where
+    C: rt::Choice<ti::TransferInstruction> + rt::ToValue,
+{
+    let context = registry
+        .transfer_instruction_context(
+            instruction_id.as_str(),
+            choice,
+            &crate::ChoiceContextRequest::default(),
+        )
+        .await?;
+    let argument = build(md::ExtraArgs {
+        context: context.decode()?,
+        meta: md::Metadata {
+            values: rt::TextMap::new(),
+        },
+    });
+    Ok(TokenCommand::new(
+        rt::exercise_command(instruction_id, &argument),
+        context.into_disclosed_contracts(),
+        None,
     ))
 }
 

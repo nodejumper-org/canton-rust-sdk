@@ -33,7 +33,7 @@ pub use registry::{
     AllocationChoice, FactoryWithContext, Instrument, RegistryClient, RegistryInfo,
     TransferInstructionChoice, TransferKind,
 };
-pub use transfer::{TokenCommand, transfer};
+pub use transfer::{TokenCommand, accept, reject, transfer, withdraw};
 
 /// The `Holding` interface, re-exported so a caller naming holdings does not
 /// have to depend on the generated crate directly.
