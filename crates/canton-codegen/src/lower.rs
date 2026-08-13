@@ -19,7 +19,7 @@
 //! `crate::<package>::<module>::<Type>` — so cross-module and cross-package
 //! references resolve and names from different modules can never collide.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use heck::ToUpperCamelCase;
 
@@ -116,7 +116,104 @@ pub fn lower_dar_with(
     dar: &Dar,
     external: &ExternalPackages,
 ) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
-    Ok(lower_crate_with(&decode_all(dar)?, external))
+    lower_dar_selecting(dar, &Selection::everything(), external)
+}
+
+/// The same, emitting only the packages a [`Selection`] names.
+///
+/// A DAR is generated whole because that is what a DAR describes. Some packages
+/// have no DAR of their own, though — `daml-stdlib` and `daml-prim` arrive only
+/// as somebody else's dependency — and publishing *those* as a crate means
+/// choosing a subset of a DAR that happens to contain them.
+///
+/// A reference out of the selection that is not covered by `external` is
+/// reported as a skipped type rather than emitted, because the path would name
+/// a module this crate does not have.
+///
+/// # Errors
+/// As [`lower_dar`].
+pub fn lower_dar_selecting(
+    dar: &Dar,
+    selection: &Selection,
+    external: &ExternalPackages,
+) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
+    Ok(lower_crate_selecting(
+        &decode_all(dar)?,
+        selection,
+        external,
+    ))
+}
+
+/// Which of a DAR's packages a crate emits.
+///
+/// Keys are package **names** or package **ids**, as for [`ExternalPackages`],
+/// and the name form is the one to prefer for the same reason.
+#[derive(Clone, Debug, Default)]
+pub struct Selection {
+    /// `None` — every package in the DAR, which is the ordinary case.
+    keys: Option<Vec<String>>,
+    /// Name prefixes, for a family of packages nobody wants to enumerate.
+    prefixes: Vec<String>,
+}
+
+impl Selection {
+    /// Emit every package in the DAR.
+    #[must_use]
+    pub fn everything() -> Self {
+        Self {
+            keys: None,
+            prefixes: Vec::new(),
+        }
+    }
+
+    /// Emit only the packages named here.
+    #[must_use]
+    pub fn only<K: Into<String>>(keys: impl IntoIterator<Item = K>) -> Self {
+        Self {
+            keys: Some(keys.into_iter().map(Into::into).collect()),
+            prefixes: Vec::new(),
+        }
+    }
+
+    /// Also emit every package whose name is `prefix`, or begins with
+    /// `prefix-`.
+    ///
+    /// The standard library arrives as some thirty packages — `daml-stdlib`,
+    /// `daml-stdlib-DA-Time-Types`, `daml-prim-GHC-Types`, … — and which ones a
+    /// DAR carries depends on what its Daml source happened to touch. Listing
+    /// them by hand produces a list that is wrong for the next DAR; the family
+    /// is what is meant, so the family is what is written.
+    ///
+    /// The `-` is required so that `daml-prim` does not also select a package
+    /// called `daml-primary`.
+    ///
+    /// This *narrows*: applied to [`Selection::everything`] it stops meaning
+    /// "the whole DAR" and starts meaning "these families".
+    #[must_use]
+    pub fn and_prefixed<K: Into<String>>(mut self, prefixes: impl IntoIterator<Item = K>) -> Self {
+        self.keys.get_or_insert_with(Vec::new);
+        self.prefixes.extend(prefixes.into_iter().map(Into::into));
+        self
+    }
+
+    /// Resolve to the ids actually present, or `None` for "everything".
+    fn resolve(&self, packages: &[(String, lf::Package)]) -> Option<HashSet<String>> {
+        let keys = self.keys.as_ref()?;
+        let mut ids = HashSet::new();
+        for (id, package) in packages {
+            let name = canton_lf::package_name(package);
+            let named = keys
+                .iter()
+                .any(|k| k == id || name.is_some_and(|n| n == k.as_str()))
+                || self.prefixes.iter().any(|p| {
+                    name.is_some_and(|n| n == p.as_str() || n.starts_with(&format!("{p}-")))
+                });
+            if named {
+                ids.insert(id.clone());
+            }
+        }
+        Some(ids)
+    }
 }
 
 /// Packages to reference rather than generate, keyed by package **id** or
@@ -129,6 +226,8 @@ pub fn lower_dar_with(
 #[derive(Clone, Debug, Default)]
 pub struct ExternalPackages {
     by_key: HashMap<String, String>,
+    /// `(name prefix, crate)`, for a family of packages nobody wants to list.
+    by_prefix: Vec<(String, String)>,
 }
 
 impl ExternalPackages {
@@ -146,11 +245,33 @@ impl ExternalPackages {
         self
     }
 
+    /// Reference every package whose name is `prefix`, or begins with
+    /// `prefix-`, at `crate_name`.
+    ///
+    /// For a family that arrives as many packages — the standard library is
+    /// some thirty, and which of them a DAR carries depends on what its Daml
+    /// source touched. An exact list is right for one DAR and wrong for the
+    /// next; the family is what is meant.
+    #[must_use]
+    pub fn with_prefixed(
+        mut self,
+        prefix: impl Into<String>,
+        crate_name: impl Into<String>,
+    ) -> Self {
+        self.by_prefix.push((prefix.into(), crate_name.into()));
+        self
+    }
+
     /// The crate names named here, sorted — what a generated manifest must
     /// depend on.
     #[must_use]
     pub fn crate_names(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.by_key.values().cloned().collect();
+        let mut names: Vec<String> = self
+            .by_key
+            .values()
+            .chain(self.by_prefix.iter().map(|(_, c)| c))
+            .cloned()
+            .collect();
         names.sort_unstable();
         names.dedup();
         names
@@ -161,9 +282,16 @@ impl ExternalPackages {
     fn resolve(&self, packages: &[(String, lf::Package)]) -> HashMap<String, String> {
         let mut resolved = HashMap::new();
         for (id, package) in packages {
+            let name = canton_lf::package_name(package);
             let by_id = self.by_key.get(id.as_str());
-            let by_name = canton_lf::package_name(package).and_then(|n| self.by_key.get(n));
-            if let Some(crate_name) = by_id.or(by_name) {
+            let by_name = name.and_then(|n| self.by_key.get(n));
+            let by_prefix = self.by_prefix.iter().find_map(|(prefix, krate)| {
+                name.filter(|n| *n == prefix || n.starts_with(&format!("{prefix}-")))
+                    .map(|_| krate)
+            });
+            // An exact key wins over a prefix: naming one package of a family
+            // is how a caller says "that one lives somewhere else".
+            if let Some(crate_name) = by_id.or(by_name).or(by_prefix) {
                 resolved.insert(id.clone(), crate_name.clone());
             }
         }
@@ -181,14 +309,20 @@ impl ExternalPackages {
 /// The no-externals form, which is what the tests exercise.
 #[cfg(test)]
 pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<SkippedType>) {
-    lower_crate_with(packages, &ExternalPackages::default())
+    lower_crate_selecting(
+        packages,
+        &Selection::everything(),
+        &ExternalPackages::default(),
+    )
 }
 
-pub(crate) fn lower_crate_with(
+pub(crate) fn lower_crate_selecting(
     packages: &[(String, lf::Package)],
+    selection: &Selection,
     external: &ExternalPackages,
 ) -> (Crate, Vec<SkippedType>) {
     let external = external.resolve(packages);
+    let selected = selection.resolve(packages);
     let module_names = package_module_names(packages);
 
     let mut krate = Crate::default();
@@ -211,12 +345,17 @@ pub(crate) fn lower_crate_with(
         if external.contains_key(id.as_str()) {
             continue;
         }
+        // Outside this crate's selection: another crate emits it.
+        if selected.as_ref().is_some_and(|ids| !ids.contains(id)) {
+            continue;
+        }
         let lowering = Lowering {
             package,
             qualify: Some(Qualify {
                 module_names: &module_names,
                 current_id: id,
                 external: &external,
+                selected: selected.as_ref(),
             }),
             depth: std::cell::Cell::new(0),
         };
@@ -1015,6 +1154,13 @@ struct Qualify<'a> {
     /// package id → the crate that already publishes it. A reference to one of
     /// these points at that crate; its modules are not emitted here.
     external: &'a HashMap<String, String>,
+    /// The package ids this crate emits, when it emits only some of them.
+    /// `None` means the whole DAR, which is the ordinary case.
+    ///
+    /// A reference to a package that is neither emitted here nor external has
+    /// nowhere to resolve, so it is reported rather than written out as a path
+    /// into a module that does not exist.
+    selected: Option<&'a HashSet<String>>,
 }
 
 impl Lowering<'_> {
@@ -1533,6 +1679,18 @@ impl Lowering<'_> {
                 module_dotted.replace('.', "_"),
                 type_name,
             ]);
+        }
+
+        // In the DAR, but not in this crate and not published as another one:
+        // the path below would name a module this crate never emits. Report it
+        // instead of emitting code that does not compile.
+        if let Some(selected) = qualify.selected
+            && !selected.contains(&target_id)
+        {
+            return Err(SkippedType::new(format!(
+                "reference to {package_module}, which this crate neither \
+                 generates nor references as an external package"
+            )));
         }
 
         Ok(vec![
