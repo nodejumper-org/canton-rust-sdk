@@ -21,6 +21,7 @@ canton-core   = { path = "crates/canton-core",   version = "0.3.0" }
 canton-auth   = { path = "crates/canton-auth",   version = "0.3.0" }
 canton-ledger = { path = "crates/canton-ledger", version = "0.3.0" }
 canton-admin  = { path = "crates/canton-admin",  version = "0.3.0" }
+canton-signer = { path = "crates/canton-signer", version = "0.3.0" }
 # M2 crates
 canton-lf      = { path = "crates/canton-lf",      version = "0.3.0" }
 canton-daml    = { path = "crates/canton-daml",    version = "0.3.0" }
@@ -32,6 +33,7 @@ tonic-prost  = { version = "0.14" }
 tonic-types  = { version = "0.14" }
 prost        = { version = "0.14" }
 sha2         = { version = "0.10", default-features = false }
+ring         = { version = "0.17" }
 prost-types  = { version = "0.14" }
 tokio        = { version = "1", default-features = false }
 tower        = { version = "0.5" }

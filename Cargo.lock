@@ -336,6 +336,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "canton-signer"
+version = "0.3.0"
+dependencies = [
+ "canton-core",
+ "canton-proto",
+ "ring",
+ "tokio",
+]
+
+[[package]]
 name = "canton-splice-amulet"
 version = "0.3.0"
 dependencies = [

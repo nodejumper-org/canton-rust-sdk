@@ -1,0 +1,36 @@
+[package]
+name         = "canton-signer"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = "README.md"
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["cryptography", "api-bindings"]
+keywords     = ["canton", "daml", "signing", "hsm", "kms"]
+description  = "Pluggable transaction signing for Canton interactive submission (HSM/KMS-compatible)."
+include      = ["src/**/*", "README.md", "LICENSE"]
+
+[dependencies]
+canton-core  = { workspace = true }
+# The signature types are defined by the Ledger API, so the conversion to it is
+# written once, here, rather than in each crate that submits. That is also what
+# lets a test assert the mirror enums map to the right proto variants.
+canton-proto = { workspace = true }
+
+# The in-memory key. `ring` is already in this workspace's dependency tree
+# (rustls uses it), so the default implementation adds no second crypto stack.
+# Turn the feature off to bring only the trait, for an HSM or KMS signer.
+ring = { workspace = true, optional = true }
+
+[features]
+default  = ["ed25519"]
+ed25519  = ["dep:ring"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true
