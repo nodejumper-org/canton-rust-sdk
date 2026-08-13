@@ -281,7 +281,7 @@ impl fmt::Display for PartyParseError {
             Self::UnexpectedCharacter { character } => write!(
                 f,
                 "`{character}` is not valid in a party id \
-                 (expected letters, digits, `:`, `-`, `_`)"
+                 (expected letters, digits, `:`, `-`, `_`, space)"
             ),
         }
     }
@@ -820,11 +820,20 @@ impl<'de> serde::Deserialize<'de> for Date {
 /// as [`Option`], but its LF-JSON encoding is the nested-optional *list* form
 /// (`None → []`, `Some(x) → [x]`) instead of `null`/value.
 ///
-/// The Daml-LF JSON spec keeps the top-level Optional as `null`/value, but every
-/// Optional below it must use the list form so `Some None` (encoded `[]`) is
-/// distinguishable from `None` (encoded `null`). Codegen wraps each nested
-/// Optional layer in `NestedOpt`; the gRPC (`Value`) encoding is identical to
-/// `Option` (a proto `Optional`), so only the JSON form differs.
+/// The Daml-LF JSON spec keeps the top-level Optional as `null`/value, and uses
+/// the list form for an Optional **directly** inside another, so `Some None`
+/// (encoded `[]`) is distinguishable from `None` (encoded `null`).
+///
+/// "Directly" is the whole rule: nesting resets as soon as anything else
+/// intervenes. In `Optional (List (Optional Text))` the inner Optional is a
+/// plain `null`/value again, because the `List` broke the chain — the same for
+/// a `TextMap`, a `GenMap`, or a record field. Only `Optional (Optional a)`
+/// puts the inner one in list form. Codegen applies exactly that rule
+/// (`map.rs` recurses through `Optional` and nothing else), so wrap a layer in
+/// `NestedOpt` only where its parent is itself an Optional.
+///
+/// The gRPC (`Value`) encoding is identical to `Option` (a proto `Optional`),
+/// so only the JSON form differs.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct NestedOpt<T>(pub Option<T>);
 

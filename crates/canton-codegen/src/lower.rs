@@ -138,12 +138,24 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
         // both become `pub mod A_B`. Detect it here rather than emitting a
         // crate that fails to compile.
         let colliding_modules = colliding_module_names(package);
+        // The same guard the package-id loop above carries, one level down. Two
+        // modules declaring the identical dotted name emit `pub mod M` twice
+        // (E0428) — and the flattening collision check cannot see it, because
+        // it groups *distinct* dotted names that flatten together and a
+        // duplicate is not distinct.
+        let mut seen_modules: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for lf_module in &package.modules {
             let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
                 errors.push(SkippedType::new("unresolved module name"));
                 continue;
             };
+            if !seen_modules.insert(dotted.clone()) {
+                errors.push(SkippedType::new(format!(
+                    "module `{dotted}` is declared more than once in this package"
+                )));
+                continue;
+            }
             let module_ident = dotted.replace('.', "_");
             if !is_rust_ident(&module_ident) {
                 errors.push(SkippedType::new(format!(
@@ -949,9 +961,26 @@ impl Lowering<'_> {
         let mut module = Module::default();
         // Payload records held aside for their template (name → fields).
         let mut payloads: HashMap<String, Vec<Field>> = HashMap::new();
+        // Two declarations under one name is the shape the flattening check
+        // cannot catch: it groups *distinct* dotted names that collide after
+        // flattening, and a duplicate is the same name, not a distinct one. The
+        // consequence is worse than a redefinition, because when the name is
+        // also a template's, the payload map takes the last writer and the
+        // template is emitted with another type's fields — wrong commands, and
+        // it compiles.
+        let mut seen_types: std::collections::HashSet<String> = std::collections::HashSet::new();
         for data_type in &lf_module.data_types {
             match self.data_type(data_type) {
                 Ok(Some(lowered)) if skip(data_type_name(&lowered)) => {}
+                Ok(Some(lowered)) if !seen_types.insert(data_type_name(&lowered).to_string()) => {
+                    errors.push(
+                        SkippedType::new(format!(
+                            "`{}` is declared more than once in this module",
+                            data_type_name(&lowered)
+                        ))
+                        .in_module(module_dotted),
+                    );
+                }
                 Ok(Some(DataType::Record(record))) if template_names.contains(&record.name) => {
                     payloads.insert(record.name, record.fields);
                 }
@@ -2923,5 +2952,80 @@ mod tests {
             skipped.iter().any(|s| s.to_string().contains("cycle")),
             "{skipped:?}"
         );
+    }
+    /// Two declarations under one name, where that name is also a template's.
+    ///
+    /// The flattening collision check cannot see this: it groups *distinct*
+    /// dotted names that collide once `.` becomes `_`, and a duplicate is the
+    /// same name, not a distinct one. So nothing was reported, both records
+    /// were folded into the payload map, and the last writer won — the template
+    /// came out carrying another type's fields. That is the exact outcome the
+    /// collision check's own comment says it exists to prevent: wrong commands,
+    /// and it compiles.
+    #[test]
+    fn a_name_declared_twice_is_refused_rather_than_silently_resolved() {
+        let mut package = package_with(&["M", "T"]);
+        package.interned_strings.push("a".to_string());
+        let a = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.interned_strings.push("b".to_string());
+        let b = i32::try_from(package.interned_strings.len() - 1).unwrap();
+
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(1, a), record_def(1, b)],
+            templates: vec![lf::DefTemplate {
+                tycon_interned_dname: 1,
+                ..lf::DefTemplate::default()
+            }],
+            ..lf::Module::default()
+        }];
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("declared more than once")),
+            "the duplicate must be reported: {reasons:?}"
+        );
+        // And no template is emitted carrying a payload it cannot be sure of.
+        let templates: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .flat_map(|m| &m.module.templates)
+            .flat_map(|t| t.fields.iter().map(|f| f.label.as_str()))
+            .collect();
+        assert!(
+            templates.is_empty() || templates == ["a"],
+            "a template must not silently take the second declaration's fields: {templates:?}"
+        );
+    }
+
+    /// The same one level up: two modules under one dotted name emit `pub mod M`
+    /// twice, which is E0428 in the crate handed to the user — reported as a
+    /// successful generation, because `syn::parse_file` accepts duplicate items.
+    #[test]
+    fn a_module_declared_twice_is_refused() {
+        let mut package = package_with(&["M"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        let module = lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(0, label)],
+            ..lf::Module::default()
+        };
+        package.modules = vec![module.clone(), module];
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("declared more than once")),
+            "{reasons:?}"
+        );
+        let modules: usize = krate.packages.iter().map(|p| p.modules.len()).sum();
+        assert_eq!(modules, 1, "only one module may be emitted");
     }
 }

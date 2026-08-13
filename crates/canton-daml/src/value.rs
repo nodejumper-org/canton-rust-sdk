@@ -353,6 +353,10 @@ impl FromValue for bool {
     }
 }
 
+/// **gRPC only.** The wire form here is right, but `i64`'s serde half is std's:
+/// it writes a JSON *number* and refuses the string the Ledger API sends. Use
+/// [`Int64`](crate::Int64) for anything that also travels as JSON — which is
+/// what generated code uses, and why that newtype exists.
 impl ToValue for i64 {
     fn to_value(&self) -> pb::Value {
         wrap(pb::value::Sum::Int64(*self))
@@ -395,6 +399,9 @@ impl FromValue for String {
     }
 }
 
+/// **gRPC only.** As with `i64`: correct on the wire, but `()` serializes to
+/// JSON `null` where Daml `Unit` is `{}`. Use [`Unit`](crate::Unit) for the
+/// JSON lane.
 impl ToValue for () {
     fn to_value(&self) -> pb::Value {
         wrap(pb::value::Sum::Unit(()))

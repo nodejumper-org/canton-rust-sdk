@@ -29,8 +29,17 @@ type Error = canton_ledger::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let party =
-        std::env::var("LEDGER_PARTY").unwrap_or_else(|_| "app_provider::example".to_string());
+    // `unwrap_or_else` fires on `Err`, and `LEDGER_PARTY=` is `Ok("")` — so the
+    // default never applied and an empty party reached the participant, which
+    // answers `PermissionDenied` naming nothing. `Party::parse` is the half of
+    // the API that refuses it; this is a value a caller supplied, not one the
+    // ledger vouched for.
+    let party = std::env::var("LEDGER_PARTY")
+        .ok()
+        .filter(|party| !party.trim().is_empty())
+        .unwrap_or_else(|| "app_provider::example".to_string());
+    let party = rt::Party::parse(&party).map_err(|e| Error::InvalidRequest(e.to_string()))?;
+    let party = party.into_string();
     let request = AppInstallRequest {
         provider: rt::Party::new(party.clone()),
         user: rt::Party::new(party.clone()),
