@@ -61,6 +61,7 @@ proc-macro2  = { version = "1" }
 quote        = { version = "1" }
 syn          = { version = "2", features = ["full", "parsing"] }
 prettyplease = { version = "0.2" }
+semver       = { version = "1", default-features = false }
 heck         = { version = "0.5" }
 # Daml-LF archive reader (M2): DAR is a JAR-style zip of .dalf packages
 zip          = { version = "2", default-features = false, features = ["deflate"] }

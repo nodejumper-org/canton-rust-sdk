@@ -65,13 +65,22 @@ pub enum GenerateError {
     /// generated `Cargo.toml`, and a DAR is not necessarily something the
     /// caller wrote.
     #[error(
-        "the DAR declares the package version `{version}`, which is not a Cargo version \
-         (ASCII letters, digits, `.`, `-`, `+`, `_`). Pass an explicit crate version, or \
-         rebuild the DAR with a plain version"
+        "the DAR declares the package version `{version}`, which is not a semantic \
+         version Cargo will accept (`MAJOR.MINOR.PATCH`, optionally `-pre` and \
+         `+build`). Rebuild the DAR with a plain version"
     )]
     InvalidCrateVersion {
         /// The rejected version, as the DAR declared it.
         version: String,
+    },
+    /// The `canton-daml` version requirement is not one Cargo can parse.
+    #[error(
+        "`{requirement}` is not a Cargo version requirement (e.g. `0.2`, `^0.2`, \
+         `>=0.2, <0.4`)"
+    )]
+    InvalidRuntimeRequirement {
+        /// The rejected requirement.
+        requirement: String,
     },
     /// An output file exists and was not written by this tool.
     #[error(
@@ -248,6 +257,9 @@ pub fn generate(opts: &Options) -> Result<Stats, GenerateError> {
     })?;
     let version = crate_version(&dar);
     validate_crate_version(&version)?;
+    if let Runtime::Version(requirement) = &opts.runtime {
+        validate_runtime_requirement(requirement)?;
+    }
     let manifest = cargo_toml(opts, &crate_name, &version);
     fs::write(&cargo_toml_path, manifest).map_err(|source| GenerateError::Write {
         path: cargo_toml_path,
@@ -292,14 +304,43 @@ fn crate_version(dar: &Dar) -> String {
     decode_main_package(dar)
         .ok()
         .and_then(|(package, _)| package_version(&package).map(str::to_string))
-        .unwrap_or_else(|| "0.0.0".to_string())
+        .map_or_else(|| "0.0.0".to_string(), |version| pad_to_semver(&version))
+}
+
+/// Complete a short but otherwise numeric version: `2.0` becomes `2.0.0`.
+///
+/// Cargo requires all three components — it rejects `2.0`, `0.1` and `1` — and
+/// Daml does not. Refusing the whole DAR over that would leave the caller
+/// stuck, since the version belongs to somebody else's package and they cannot
+/// change it. Anything that is not simply *short* is left exactly as it is, for
+/// [`validate_crate_version`] to refuse.
+fn pad_to_semver(version: &str) -> String {
+    let parts: Vec<&str> = version.split('.').collect();
+    let numeric = parts.len() < 3
+        && !parts.is_empty()
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()));
+    if numeric {
+        let mut padded = parts.join(".");
+        for _ in parts.len()..3 {
+            padded.push_str(".0");
+        }
+        padded
+    } else {
+        version.to_string()
+    }
 }
 
 /// The `Cargo.toml` for the generated crate: a publishable manifest depending
 /// on the `canton-daml` runtime.
 fn cargo_toml(opts: &Options, crate_name: &str, version: &str) -> String {
     let dependency = match &opts.runtime {
-        Runtime::Version(requirement) => format!("canton-daml = \"{requirement}\""),
+        // Escaped for the same reason the path below is: both are interpolated
+        // into a quoted TOML string, and only one of them used to be.
+        Runtime::Version(requirement) => {
+            format!("canton-daml = \"{}\"", toml_escape(requirement))
+        }
         Runtime::Path(path) => {
             // A relative path would silently re-anchor at the *output* crate;
             // resolve it against the invoking directory instead. Escaped as a
@@ -328,7 +369,26 @@ fn cargo_toml(opts: &Options, crate_name: &str, version: &str) -> String {
 
 /// Escape a string for a double-quoted TOML basic string.
 fn toml_escape(raw: &str) -> String {
-    raw.replace('\\', "\\\\").replace('"', "\\\"")
+    // A quote is not the only way out of a basic string. A raw newline ends it
+    // too — TOML forbids one inside — so escaping only `"` left an input able
+    // to put its own text on the next line of the manifest. Control characters
+    // are escaped as TOML spells them.
+    raw.chars()
+        .fold(String::with_capacity(raw.len()), |mut out, c| {
+            match c {
+                '\\' => out.push_str("\\\\"),
+                '"' => out.push_str("\\\""),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c if c.is_control() => {
+                    use std::fmt::Write as _;
+                    let _ = write!(out, "\\u{:04X}", c as u32);
+                }
+                c => out.push(c),
+            }
+            out
+        })
 }
 
 /// Error unless `name` is a valid Cargo package name: non-empty ASCII
@@ -347,20 +407,36 @@ fn toml_escape(raw: &str) -> String {
 /// already escaped, for this reason. This is the third field in the same
 /// manifest and the one that was missed.
 ///
-/// The charset admits everything a real version carries — semver, pre-release
-/// tags, build metadata — and nothing that can leave a TOML basic string.
+/// Parsed as a semantic version rather than screened by charset, because
+/// blocking the injection is only half the job: a charset wide enough to admit
+/// every real version also admits `hello`, `1..2` and `1.0_bad`, and those
+/// write a manifest that generation calls a success and every later `cargo`
+/// command fails to parse. `semver` is the crate Cargo itself uses, so this
+/// accepts exactly what a `package.version` may be.
 fn validate_crate_version(version: &str) -> Result<(), GenerateError> {
-    let valid = !version.is_empty()
-        && version
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+' | '_'));
-    if valid {
-        Ok(())
-    } else {
-        Err(GenerateError::InvalidCrateVersion {
+    semver::Version::parse(version)
+        .map(|_| ())
+        .map_err(|_| GenerateError::InvalidCrateVersion {
             version: version.to_string(),
         })
-    }
+}
+
+/// The `canton-daml` version requirement, checked the same way and for the same
+/// two reasons.
+///
+/// It reaches the manifest through the identical `format!`, so a quote or a
+/// newline in it opens a table exactly as the package version did. And a
+/// requirement that is merely mistyped — `--runtime-version 0..2` — otherwise
+/// produces a crate that generates cleanly and cannot be built.
+///
+/// Unlike a version, a *requirement* may carry an operator (`^0.2`, `>=0.2,
+/// <0.4`), so it parses as `VersionReq`.
+fn validate_runtime_requirement(requirement: &str) -> Result<(), GenerateError> {
+    semver::VersionReq::parse(requirement)
+        .map(|_| ())
+        .map_err(|_| GenerateError::InvalidRuntimeRequirement {
+            requirement: requirement.to_string(),
+        })
 }
 
 fn validate_crate_name(name: &str) -> Result<(), GenerateError> {
@@ -551,6 +627,23 @@ mod tests {
         assert!(validate_crate_version("0.1.0\nx = 1").is_err());
         assert!(validate_crate_version("").is_err());
 
+        // Cargo itself rejects a two-component version, so this must too —
+        // `2.0` is completed to `2.0.0` upstream, in `crate_version`, not
+        // waved through here.
+        assert!(validate_crate_version("2.0").is_err());
+        assert_eq!(pad_to_semver("2.0"), "2.0.0");
+        assert_eq!(pad_to_semver("1"), "1.0.0");
+        assert_eq!(
+            pad_to_semver("0.1.14"),
+            "0.1.14",
+            "a complete version is untouched"
+        );
+        assert_eq!(
+            pad_to_semver("hello"),
+            "hello",
+            "padding never rescues a non-version"
+        );
+
         // Everything a real package carries still passes.
         for good in [
             "0.0.0",
@@ -558,12 +651,80 @@ mod tests {
             "0.1.14",
             "1.0.0-SNAPSHOT",
             "1.0.0-rc.1+build.5",
-            "2.0",
         ] {
             assert!(
                 validate_crate_version(good).is_ok(),
                 "{good} should be accepted"
             );
         }
+    }
+    /// Both fields that reach the manifest as text, checked the way Cargo
+    /// checks them.
+    ///
+    /// A charset was enough to stop the injection and not enough to stop a
+    /// broken manifest: it admitted `hello` and `1..2`, which generate cleanly
+    /// and then fail every later `cargo` command with a parse error nowhere
+    /// near its cause.
+    #[test]
+    fn a_manifest_is_never_written_with_a_version_cargo_cannot_read() {
+        // Rejected: not versions at all.
+        for bad in ["hello", "1..2", "1.0_bad", "", "1.0", "v1.0.0"] {
+            assert!(
+                validate_crate_version(bad).is_err(),
+                "`{bad}` is not a Cargo package version"
+            );
+        }
+        // Accepted: every shape a real DAR carries, plus the semver extras.
+        for good in [
+            "0.0.1",
+            "0.1.14",
+            "1.0.0",
+            "1.0.6",
+            "1.0.0-SNAPSHOT",
+            "1.0.0-rc.1+build.5",
+        ] {
+            assert!(validate_crate_version(good).is_ok(), "{good}");
+        }
+
+        // The requirement is a *requirement*, so operators are legal here and
+        // a bare `0.2` — what this crate emits by default — must pass.
+        for good in [DEFAULT_RUNTIME_REQ, "0.2", "^0.2", ">=0.2, <0.4", "*"] {
+            assert!(validate_runtime_requirement(good).is_ok(), "{good}");
+        }
+        for bad in ["0..2", "hello", "", ">>0.2"] {
+            assert!(validate_runtime_requirement(bad).is_err(), "`{bad}`");
+        }
+    }
+
+    /// The two arms of one `match` disagreed: the path was escaped, the version
+    /// requirement three lines above it was not. Both reach the same quoted
+    /// TOML string.
+    #[test]
+    fn a_runtime_requirement_cannot_inject_into_the_manifest() {
+        let hostile = "0.2\"\n[dependencies.evil]\ngit = \"https://example.invalid/repo";
+        assert!(
+            validate_runtime_requirement(hostile).is_err(),
+            "must be refused before it reaches the manifest"
+        );
+
+        // And if it somehow did, the escape is now there too — no unescaped
+        // quote survives into the file.
+        let opts = Options::new("x.dar", "out").with_runtime(Runtime::Version(hostile.to_string()));
+        let manifest = cargo_toml(&opts, "bindings", "1.0.0");
+        // The text may survive as *content* of the escaped string — harmless.
+        // What must not happen is a line of the manifest starting with it,
+        // which is what a table header is.
+        assert!(
+            !manifest
+                .lines()
+                .any(|l| l.trim_start().starts_with('[') && l.contains("evil")),
+            "escaped output opened a table:\n{manifest}"
+        );
+        // And nothing may break out of the dependency line at all.
+        let dependency = manifest
+            .lines()
+            .find(|l| l.starts_with("canton-daml"))
+            .expect("the dependency line");
+        assert!(!dependency.contains('\n'));
     }
 }
