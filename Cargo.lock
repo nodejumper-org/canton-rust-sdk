@@ -264,6 +264,7 @@ dependencies = [
  "canton-auth",
  "canton-core",
  "canton-proto",
+ "canton-signer",
  "futures-core",
  "futures-util",
  "prost-types",

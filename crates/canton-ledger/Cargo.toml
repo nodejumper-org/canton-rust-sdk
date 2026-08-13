@@ -17,6 +17,7 @@ include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 canton-proto = { workspace = true }
 canton-core  = { workspace = true }
 canton-auth  = { workspace = true }
+canton-signer = { workspace = true }
 tonic        = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
 tonic-prost  = { workspace = true }
 prost-types  = { workspace = true }

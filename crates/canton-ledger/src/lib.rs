@@ -23,6 +23,7 @@
 
 mod client;
 mod command;
+pub mod interactive;
 mod json;
 pub mod request;
 #[cfg(feature = "ws")]
@@ -30,8 +31,10 @@ mod ws;
 
 pub use canton_core::{Config, Error, ErrorCategory, Result, RetryConfig, TlsConfig};
 pub use canton_proto::grpc::health::v1::health_check_response::ServingStatus;
+pub use canton_signer::{Signature, Signer};
 pub use client::CantonClient;
 pub use command::{Submit, create, exercise, identifier, record, value};
+pub use interactive::{Executable, Prepare, Prepared};
 pub use json::{JsonClient, JsonCommands, JsonSubmitResponse, JsonTransaction};
 pub use request::{ActiveContractsRequest, CompletionsRequest, TransactionShape, UpdatesRequest};
 

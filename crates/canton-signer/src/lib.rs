@@ -76,35 +76,3 @@ pub trait Signer: Send + Sync + fmt::Debug {
     /// external party allocation it is the response's `multi_hash`.
     fn sign(&self, hash: &[u8]) -> Pin<Box<dyn Future<Output = Result<Signature>> + Send + '_>>;
 }
-
-/// A `Signer` shared by reference signs exactly as the thing it points at.
-///
-/// Without this, `Arc<dyn Signer>` satisfies a `&dyn Signer` parameter but not
-/// an `impl Signer` one, and callers end up writing `&*signer` at each site.
-impl<T: Signer + ?Sized> Signer for &T {
-    fn public_key(&self) -> PublicKey {
-        (**self).public_key()
-    }
-
-    fn fingerprint(&self) -> &str {
-        (**self).fingerprint()
-    }
-
-    fn sign(&self, hash: &[u8]) -> Pin<Box<dyn Future<Output = Result<Signature>> + Send + '_>> {
-        (**self).sign(hash)
-    }
-}
-
-impl<T: Signer + ?Sized> Signer for std::sync::Arc<T> {
-    fn public_key(&self) -> PublicKey {
-        (**self).public_key()
-    }
-
-    fn fingerprint(&self) -> &str {
-        (**self).fingerprint()
-    }
-
-    fn sign(&self, hash: &[u8]) -> Pin<Box<dyn Future<Output = Result<Signature>> + Send + '_>> {
-        (**self).sign(hash)
-    }
-}

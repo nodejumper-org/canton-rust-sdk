@@ -304,6 +304,152 @@ impl CantonClient {
         .await
     }
 
+    /// Interpret a submission without authorizing it, returning the transaction
+    /// and the hash to sign.
+    ///
+    /// The first half of interactive submission: the participant works out what
+    /// the commands do, and hands back a hash for the party's key — which it
+    /// does not hold — to sign. See [`crate::interactive`] for the flow, and
+    /// for how long a prepared transaction stays executable.
+    ///
+    /// Retried like any other read: preparation commits nothing.
+    ///
+    /// # Errors
+    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
+    /// returns no hash — which would leave nothing to sign.
+    pub async fn prepare_submission(
+        &self,
+        prepare: crate::interactive::Prepare,
+    ) -> Result<crate::interactive::Prepared> {
+        // Built once, outside the instrumented future, so retries reuse one
+        // command id — the change ID stays stable and the submission remains
+        // de-duplication-safe across attempts, exactly as `submit` does.
+        let act_as = prepare.act_as().to_vec();
+        let (command_id, user_id, request) = prepare.into_request();
+        telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client = service!(
+                            self,
+                            pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                        );
+                        Ok(client.prepare_submission(request).await?.into_inner())
+                    }
+                })
+                .await?;
+            crate::interactive::Prepared::from_response(response, act_as, command_id, user_id)
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and return once the participant has
+    /// accepted it for processing.
+    ///
+    /// Acceptance is not commitment: the outcome arrives on the completion
+    /// stream. Use [`execute_submission_and_wait`](Self::execute_submission_and_wait)
+    /// to wait for it.
+    ///
+    /// # Errors
+    /// As any gRPC call. A missing or wrong signature is a rejection from the
+    /// participant, not a local error.
+    pub async fn execute_submission(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<()> {
+        let request = executable.into_execute_request();
+        telemetry::instrument("execute_submission", TRANSPORT_GRPC, async move {
+            self.with_retry(|| {
+                let request = request.clone();
+                async move {
+                    let mut client = service!(
+                        self,
+                        pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                    );
+                    client.execute_submission(request).await?;
+                    Ok(())
+                }
+            })
+            .await
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and wait for it to commit,
+    /// returning the update id.
+    ///
+    /// # Errors
+    /// As any gRPC call, plus a rejection if the transaction fails.
+    pub async fn execute_submission_and_wait(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<String> {
+        let request = executable.into_execute_and_wait_request();
+        telemetry::instrument("execute_submission_and_wait", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client = service!(
+                            self,
+                            pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                        );
+                        Ok(client
+                            .execute_submission_and_wait(request)
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            Ok(response.update_id)
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and wait for the committed
+    /// transaction itself.
+    ///
+    /// The events it carries follow
+    /// [`Executable::with_transaction_shape`](crate::interactive::Executable::with_transaction_shape).
+    ///
+    /// # Errors
+    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
+    /// reports success without a transaction.
+    pub async fn execute_submission_and_wait_for_transaction(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<pb::Transaction> {
+        let event_format = wildcard_event_format(&executable.act_as());
+        let request = executable.into_execute_and_wait_for_transaction_request(event_format);
+        telemetry::instrument(
+            "execute_submission_and_wait_for_transaction",
+            TRANSPORT_GRPC,
+            async move {
+                let response = self
+                    .with_retry(|| {
+                        let request = request.clone();
+                        async move {
+                            let mut client = service!(
+                                self,
+                                pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                            );
+                            Ok(client
+                                .execute_submission_and_wait_for_transaction(request)
+                                .await?
+                                .into_inner())
+                        }
+                    })
+                    .await?;
+
+                response.transaction.ok_or_else(|| {
+                    Error::UnexpectedResponse("response contained no transaction".to_string())
+                })
+            },
+        )
+        .await
+    }
+
     /// Subscribe to the command-completion stream for `parties`, starting after
     /// `begin_offset` (exclusive). Offset checkpoints are filtered out, so the
     /// stream yields only [`pb::Completion`]s.
