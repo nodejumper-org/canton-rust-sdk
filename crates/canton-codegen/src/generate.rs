@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use canton_lf::{Dar, DarError, DecodeError, decode_main_package, package_version};
 
-use crate::{CodegenError, SkippedType, generate_crate, lower_dar};
+use crate::{CodegenError, SkippedType, generate_crate};
 
 /// The marker written into a generated `Cargo.toml`, and looked for before
 /// overwriting one: a file without it was not written by this tool.
@@ -133,6 +133,7 @@ pub struct Options {
     crate_name: Option<String>,
     runtime: Runtime,
     force: bool,
+    external: crate::lower::ExternalPackages,
 }
 
 impl Options {
@@ -146,6 +147,7 @@ impl Options {
             crate_name: None,
             runtime: Runtime::Version(DEFAULT_RUNTIME_REQ.to_string()),
             force: false,
+            external: crate::lower::ExternalPackages::new(),
         }
     }
 
@@ -161,6 +163,31 @@ impl Options {
     #[must_use]
     pub fn with_runtime(mut self, runtime: Runtime) -> Self {
         self.runtime = runtime;
+        self
+    }
+
+    /// Reference a package that is **already published as its own crate**
+    /// instead of generating it, keyed by package name (preferred) or id.
+    ///
+    /// A DAR's dependency closure is shared — `splice-api-token-holding-v1`
+    /// sits under amulet, wallet and wallet-payments alike — and generating it
+    /// into each crate gives each its own `Holding`, which Rust treats as
+    /// unrelated types. A `ContractId<Holding>` from one then does not
+    /// typecheck against the other, though both name the same interface in the
+    /// same package.
+    ///
+    /// ```no_run
+    /// # use canton_codegen::Options;
+    /// let options = Options::new("splice-amulet.dar", "amulet-bindings")
+    ///     .with_external_package("splice-api-token-holding-v1", "canton_splice_api_token_holding_v1");
+    /// ```
+    #[must_use]
+    pub fn with_external_package(
+        mut self,
+        package: impl Into<String>,
+        crate_name: impl Into<String>,
+    ) -> Self {
+        self.external = self.external.with(package, crate_name);
         self
     }
 
@@ -224,10 +251,13 @@ pub fn generate(opts: &Options) -> Result<Stats, GenerateError> {
         path: opts.dar.clone(),
         source,
     })?;
-    let (krate, skipped) = lower_dar(&dar).map_err(|source| GenerateError::DecodeDar {
-        path: opts.dar.clone(),
-        source,
-    })?;
+    let (krate, skipped) =
+        crate::lower::lower_dar_with(&dar, &opts.external).map_err(|source| {
+            GenerateError::DecodeDar {
+                path: opts.dar.clone(),
+                source,
+            }
+        })?;
     if krate.packages.is_empty() {
         return Err(GenerateError::EmptyDar {
             path: opts.dar.clone(),
@@ -352,6 +382,18 @@ fn cargo_toml(opts: &Options, crate_name: &str, version: &str) -> String {
             )
         }
     };
+    // A referenced crate has to be a dependency, or the paths the emitter wrote
+    // do not resolve. The version is left to the caller to pin: this tool knows
+    // the crate's name, not which release of it matches the DAR.
+    let externals = opts
+        .external
+        .crate_names()
+        .iter()
+        .fold(String::new(), |mut out, name| {
+            use std::fmt::Write as _;
+            let _ = writeln!(out, "{} = \"*\"  # pin this", name.replace('_', "-"));
+            out
+        });
     format!(
         "{CARGO_TOML_MARKER}\n\
          [package]\n\
@@ -363,7 +405,7 @@ fn cargo_toml(opts: &Options, crate_name: &str, version: &str) -> String {
          # license = \"Apache-2.0\"\n\
          # repository = \"\"\n\
          \n\
-         [dependencies]\n{dependency}\n"
+         [dependencies]\n{dependency}\n{externals}"
     )
 }
 

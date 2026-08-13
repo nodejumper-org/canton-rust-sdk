@@ -95,7 +95,80 @@ impl std::error::Error for SkippedType {}
 /// # Errors
 /// Returns [`DecodeError`] if any package's bytes are malformed or not LF 2.x.
 pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
-    Ok(lower_crate(&decode_all(dar)?))
+    lower_dar_with(dar, &ExternalPackages::default())
+}
+
+/// The same, with packages that are **already published as their own crates**
+/// referenced instead of re-emitted.
+///
+/// A DAR's dependency closure is shared: `splice-api-token-holding-v1` sits
+/// under amulet, wallet and wallet-payments alike. Emitting it into each crate
+/// gives every crate its own `Holding`, and Rust treats those as unrelated
+/// types — a `ContractId<Holding>` obtained from one crate does not typecheck
+/// against the other, though both name the same interface in the same package.
+///
+/// Naming such a package here makes references to it point at the published
+/// crate, and leaves its modules out of the output entirely.
+///
+/// # Errors
+/// As [`lower_dar`].
+pub fn lower_dar_with(
+    dar: &Dar,
+    external: &ExternalPackages,
+) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
+    Ok(lower_crate_with(&decode_all(dar)?, external))
+}
+
+/// Packages to reference rather than generate, keyed by package **id** or
+/// package **name**.
+///
+/// The name form is the one to prefer: a package id is the hash of one build,
+/// so pinning by id stops matching the moment the dependency is rebuilt, while
+/// the name survives a version bump — which is the whole point of addressing
+/// packages by name under Smart Contract Upgrade.
+#[derive(Clone, Debug, Default)]
+pub struct ExternalPackages {
+    by_key: HashMap<String, String>,
+}
+
+impl ExternalPackages {
+    /// An empty map — everything in the DAR is generated.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Reference the package identified by `key` (its name, or its id hash) at
+    /// the crate `crate_name`, instead of generating it.
+    #[must_use]
+    pub fn with(mut self, key: impl Into<String>, crate_name: impl Into<String>) -> Self {
+        self.by_key.insert(key.into(), crate_name.into());
+        self
+    }
+
+    /// The crate names named here, sorted — what a generated manifest must
+    /// depend on.
+    #[must_use]
+    pub fn crate_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.by_key.values().cloned().collect();
+        names.sort_unstable();
+        names.dedup();
+        names
+    }
+
+    /// Resolve to `package id → crate name` for the packages actually present,
+    /// matching a key against each package's id and its name.
+    fn resolve(&self, packages: &[(String, lf::Package)]) -> HashMap<String, String> {
+        let mut resolved = HashMap::new();
+        for (id, package) in packages {
+            let by_id = self.by_key.get(id.as_str());
+            let by_name = canton_lf::package_name(package).and_then(|n| self.by_key.get(n));
+            if let Some(crate_name) = by_id.or(by_name) {
+                resolved.insert(id.clone(), crate_name.clone());
+            }
+        }
+        resolved
+    }
 }
 
 /// Lower a set of decoded packages (a DAR's closure, each with its package id)
@@ -105,7 +178,17 @@ pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
 /// Best-effort: a type that cannot be lowered is skipped and its error recorded,
 /// so a package with a few unsupported types still produces output.
 #[must_use]
+/// The no-externals form, which is what the tests exercise.
+#[cfg(test)]
 pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<SkippedType>) {
+    lower_crate_with(packages, &ExternalPackages::default())
+}
+
+pub(crate) fn lower_crate_with(
+    packages: &[(String, lf::Package)],
+    external: &ExternalPackages,
+) -> (Crate, Vec<SkippedType>) {
+    let external = external.resolve(packages);
     let module_names = package_module_names(packages);
 
     let mut krate = Crate::default();
@@ -122,11 +205,18 @@ pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<Ski
         if !lowered.insert(id.as_str()) {
             continue;
         }
+        // Published elsewhere: referenced, never emitted. Emitting it too would
+        // put a second copy of every type in this crate, which is the thing
+        // being fixed.
+        if external.contains_key(id.as_str()) {
+            continue;
+        }
         let lowering = Lowering {
             package,
             qualify: Some(Qualify {
                 module_names: &module_names,
                 current_id: id,
+                external: &external,
             }),
             depth: std::cell::Cell::new(0),
         };
@@ -911,6 +1001,10 @@ impl Drop for DepthGuard<'_> {
     }
 }
 
+/// The first segment of a path into another crate. Emitted as a leading `::`,
+/// which no Daml name can produce, so it cannot collide with one.
+pub(crate) const EXTERNAL_CRATE_ROOT: &str = "::";
+
 /// The context for qualifying a reference to a fully-qualified Rust path.
 struct Qualify<'a> {
     /// package id (archive hash) → the package's Rust module name. Resolves all
@@ -918,6 +1012,9 @@ struct Qualify<'a> {
     module_names: &'a HashMap<&'a str, String>,
     /// The id of the package currently being lowered (resolves `SelfPackageId`).
     current_id: &'a str,
+    /// package id → the crate that already publishes it. A reference to one of
+    /// these points at that crate; its modules are not emitted here.
+    external: &'a HashMap<String, String>,
 }
 
 impl Lowering<'_> {
@@ -1419,6 +1516,24 @@ impl Lowering<'_> {
             .ok_or_else(|| {
                 SkippedType::new(format!("reference to package {target_id} not in the DAR"))
             })?;
+
+        // A package published as its own crate is referenced there, so both
+        // crates name one type rather than each declaring its own. The leading
+        // `::` marker makes the path absolute — without it a generated module
+        // sharing the crate's name would shadow it.
+        if let Some(crate_name) = qualify.external.get(&target_id) {
+            // The package module segment stays: the other crate wraps its
+            // packages exactly as this one does, so the path there is
+            // `::<crate>::<package>::<module>::<Type>`. Dropping it produced
+            // `::<crate>::<module>::<Type>`, which does not resolve.
+            return Ok(vec![
+                EXTERNAL_CRATE_ROOT.to_string(),
+                crate_name.clone(),
+                package_module.clone(),
+                module_dotted.replace('.', "_"),
+                type_name,
+            ]);
+        }
 
         Ok(vec![
             "crate".to_string(),

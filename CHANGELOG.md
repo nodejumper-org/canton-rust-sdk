@@ -235,6 +235,18 @@ is included; nothing from it was removed or changed in signature.
   wrapped (`CreatedEvent` / `createdEvent`) or bare, and compares module and
   entity but not the package id, matching the gRPC path under Smart Contract
   Upgrade.
+- **`canton-codegen` (shared packages):** a package already published as its own
+  crate can be **referenced** instead of re-generated —
+  `Options::with_external_package(name_or_id, crate)`, or `lower_dar_with` for
+  the library path. A DAR's dependency closure is shared, so
+  `splice-api-token-holding-v1` sits under amulet, wallet and wallet-payments
+  alike; generating it into each gave each crate its own `Holding`, and Rust
+  treats those as unrelated types. A program depending on two of the published
+  binding crates failed to compile with "expected `Holding`, found a different
+  `Holding`" — for the same interface, in the same package. Packages are keyed
+  by **name** as well as id, and the name is the one to prefer: an id is the
+  hash of one build, while the name survives a version bump, which is the point
+  of addressing packages by name under Smart Contract Upgrade.
 - **`canton-codegen` (hostile DAR):** a type that resolves to itself is
   refused instead of overflowing the stack. Interned types are a flat table of
   indices, so `interned_types[0] = Interned(0)` — or two entries pointing at

@@ -711,6 +711,11 @@ pub(crate) fn type_var_ident(name: &str) -> Ident {
 pub(crate) fn type_path(segments: &[String]) -> TokenStream {
     let parts = segments.iter().map(|segment| match segment.as_str() {
         "crate" | "self" | "super" | "Self" => segment.parse::<TokenStream>().unwrap_or_default(),
+        // The marker for a path into another crate. Emitting nothing here is
+        // what produces the leading `::`, since the segments below are joined
+        // with `::` — so `["::", "c", "M", "T"]` becomes `::c::M::T`, an
+        // absolute path that a same-named local module cannot shadow.
+        crate::lower::EXTERNAL_CRATE_ROOT => TokenStream::new(),
         other => {
             let id = ident(other);
             quote!(#id)
