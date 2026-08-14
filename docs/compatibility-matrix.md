@@ -60,7 +60,7 @@ The decoder is held to the official JVM reader by a conformance oracle — the
 | Version | Types | Workflow |
 |---|---|---|
 | **CIP-56** (`-v1`) | generated: holding, metadata, transfer instruction, allocation, allocation instruction, allocation request, burn/mint, featured app | `canton-token`: registry client, choice contexts with disclosure, `TransferFactory_Transfer`, accept/reject/withdraw, allocate + execute/withdraw/cancel |
-| **CIP-0112** (`-v2`) | generated: holding (with `Account`), transfer instruction, transfer events (`EventLog`), allocation (with `SettlementFactory`, `Allocation_Settle`), allocation instruction, allocation request | `canton_token::v2`: the V2 registry paths, `TransferFactory_Transfer` over accounts, accept/reject/withdraw, allocate, `settle_batch`, allocation and allocation-instruction choices |
+| **CIP-0112** (`-v2`) | generated: holding (with `Account`), transfer instruction, transfer events (`EventLog`), allocation (with `SettlementFactory`, `Allocation_Settle`), allocation instruction, allocation request | `canton_token::v2`: the V2 registry paths, `TransferFactory_Transfer` over accounts, accept/reject/withdraw, allocate, `settle_batch`, allocation and allocation-instruction choices, and `events::holdings_changes` for reading what moved |
 
 V2 reuses `splice-api-token-metadata-v1`; there is no `metadata-v2`.
 

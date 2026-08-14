@@ -159,6 +159,16 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   allocation, which are under the plural `allocations`. A test pins each one,
   because a client that regularises the odd one out gets a 404 from a registry
   that is working correctly.
+- **`canton_token::v2::events`** — `holdings_changes` reads what actually moved
+  off a transaction. A V2 registry records it by exercising
+  `EventLog_HoldingsChange` on the `EventLog` interface, and that is the only
+  complete answer: the creates and archives show holdings appearing and
+  disappearing without saying which transfer they belonged to. Events are
+  matched on the interface's **qualified name**, not its package id — pinning
+  the id would make a client stop seeing events the day a network upgraded the
+  standard, and that failure reads as "nothing moved" rather than as an error.
+  The choice name alone is not enough either: it is not reserved. An argument
+  that does not decode is reported rather than skipped, for the same reason.
 - `examples/v2_transfer.rs` is the V1 example's counterpart, written to be read
   beside it.
 

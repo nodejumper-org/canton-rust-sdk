@@ -24,6 +24,8 @@
 //! Splice repository, not from V1 with a digit changed — the two differ in ways
 //! a search-and-replace would get wrong.
 
+pub mod events;
+
 use canton_core::Result;
 use canton_daml as rt;
 use canton_splice_api_token_allocation_instruction_v2::splice_api_token_allocation_instruction_v2::Splice_Api_Token_AllocationInstructionV2 as ai;

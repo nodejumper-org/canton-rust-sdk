@@ -31,6 +31,7 @@ canton-splice-api-token-holding-v2                = { workspace = true }
 canton-splice-api-token-transfer-instruction-v2   = { workspace = true }
 canton-splice-api-token-allocation-v2             = { workspace = true }
 canton-splice-api-token-allocation-instruction-v2 = { workspace = true }
+canton-splice-api-token-transfer-events-v2        = { workspace = true }
 
 reqwest    = { workspace = true, features = ["json", "rustls-tls"] }
 serde      = { workspace = true }

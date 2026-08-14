@@ -34,6 +34,7 @@ canton-splice-api-token-holding-v2 = { path = "crates/canton-splice-api-token-ho
 canton-splice-api-token-transfer-instruction-v2 = { path = "crates/canton-splice-api-token-transfer-instruction-v2", version = "0.3.0" }
 canton-splice-api-token-allocation-v2 = { path = "crates/canton-splice-api-token-allocation-v2", version = "0.3.0" }
 canton-splice-api-token-allocation-instruction-v2 = { path = "crates/canton-splice-api-token-allocation-instruction-v2", version = "0.3.0" }
+canton-splice-api-token-transfer-events-v2 = { path = "crates/canton-splice-api-token-transfer-events-v2", version = "0.3.0" }
 # M2 crates
 canton-lf      = { path = "crates/canton-lf",      version = "0.3.0" }
 canton-daml    = { path = "crates/canton-daml",    version = "0.3.0" }
