@@ -12,6 +12,7 @@
 //! CANTON_TOKEN_RECEIVER='bob::1220…' \
 //! CANTON_TOKEN_AMOUNT=10.0 \
 //! CANTON_TOKEN_INSTRUMENT=Amulet \
+//! CANTON_TOKEN_HOLDINGS='00abc…,00def…' \
 //!   cargo run -p canton-token --example v1_transfer
 //! ```
 //!
@@ -31,6 +32,22 @@ use canton_token::{RegistryClient, TransferKind};
 
 fn var(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|_| format!("set {name}"))
+}
+
+/// The holdings to spend, from `CANTON_TOKEN_HOLDINGS` (comma-separated
+/// contract ids).
+///
+/// Read them from the ledger's active contracts filtered to the `Holding`
+/// interface, or from PQS. Left empty, a registry that selects holdings itself
+/// will do so — and one that does not will refuse the transfer.
+fn holdings<T>() -> Vec<rt::ContractId<T>> {
+    std::env::var("CANTON_TOKEN_HOLDINGS")
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(|id| rt::ContractId::new(id.to_string()))
+        .collect()
 }
 
 #[tokio::main]
@@ -74,9 +91,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // The window in which this may execute. A registry rejects a transfer
         // whose deadline has passed, so it is not decoration.
         execute_before: rt::Timestamp(now + 10 * 60 * 1_000_000),
-        // Empty: the registry selects holdings where its implementation allows
-        // it. Naming them pins exactly which are spent.
-        input_holding_cids: Vec::new(),
+        // Which holdings to spend. The standard allows a registry to choose
+        // them itself, but it does not require one to: Splice's reference
+        // registry refuses an empty list outright — the transfer reaches the
+        // Daml interpreter and fails with "At least one holding must be
+        // provided". So this is not optional in practice, and naming them also
+        // pins exactly which are spent.
+        input_holding_cids: holdings(),
         meta: md::Metadata {
             values: rt::TextMap::new(),
         },

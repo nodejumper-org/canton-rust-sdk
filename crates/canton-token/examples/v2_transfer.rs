@@ -18,6 +18,7 @@
 //! CANTON_TOKEN_RECEIVER='bob::1220…' \
 //! CANTON_TOKEN_AMOUNT=10.0 \
 //! CANTON_TOKEN_INSTRUMENT=Amulet \
+//! CANTON_TOKEN_HOLDINGS='00abc…,00def…' \
 //!   cargo run -p canton-token --example v2_transfer
 //! ```
 //!
@@ -50,6 +51,22 @@ fn account(owner: rt::Party, id: String) -> h::Account {
         provider: None,
         id,
     }
+}
+
+/// The holdings to spend, from `CANTON_TOKEN_HOLDINGS` (comma-separated
+/// contract ids).
+///
+/// Read them from the ledger's active contracts filtered to the `Holding`
+/// interface, or from PQS. Left empty, a registry that selects holdings itself
+/// will do so — and one that does not will refuse the transfer.
+fn holdings<T>() -> Vec<rt::ContractId<T>> {
+    std::env::var("CANTON_TOKEN_HOLDINGS")
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(|id| rt::ContractId::new(id.to_string()))
+        .collect()
 }
 
 #[tokio::main]
@@ -105,9 +122,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // The window in which this may execute. A registry rejects a transfer
         // whose deadline has passed, so it is not decoration.
         execute_before: rt::Timestamp(now + 10 * 60 * 1_000_000),
-        // Empty: the registry selects holdings where its implementation allows
-        // it. Naming them pins exactly which are spent.
-        input_holding_cids: Vec::new(),
+        // Which holdings to spend. The standard allows a registry to choose
+        // them itself, but it does not require one to: Splice's reference
+        // registry refuses an empty list outright — the transfer reaches the
+        // Daml interpreter and fails with "At least one holding must be
+        // provided". So this is not optional in practice, and naming them also
+        // pins exactly which are spent.
+        input_holding_cids: holdings(),
         meta: md::Metadata {
             values: rt::TextMap::new(),
         },
@@ -162,5 +183,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         transaction.offset,
         transaction.events.len()
     );
+
+    // What actually moved. The creates and archives in this transaction show
+    // holdings appearing and disappearing without saying which transfer they
+    // belonged to; the registry records that by exercising
+    // `EventLog_HoldingsChange`, and this is how a V2 client reads it back.
+    for change in canton_token::v2::events::holdings_changes(&transaction.events)? {
+        println!(
+            "  holdings change on {} (node {}): {} spent, {} produced, {} leg(s)",
+            change.contract_id,
+            change.node_id,
+            change.change.input_holding_cids.len(),
+            change.change.output_holding_cids.len(),
+            change.change.transfer_leg_sides.len(),
+        );
+    }
     Ok(())
 }

@@ -233,6 +233,45 @@ of the map use a different column order; and "all ten are implemented" was wrong
 for JSON package management, which is why that one became a gap rather than a
 test.
 
+### Verified — both token standards, against a live registry
+
+The registry half of `canton-token` had been exercised only by
+`tests/inprocess.rs`, because the environment was recorded as having no
+registry. That was wrong: a LocalNet's registry is the **scan**, which the
+super-validator runs, and cn-quickstart runs one under `SV_PROFILE=on` on port
+5012 — it simply does not publish that port to the host.
+
+Against it, with the Amulet instrument declaring both standards
+(`splice-api-token-transfer-instruction-v1` **and** `-v2`):
+
+- **A V1 transfer settles end to end** — factory resolved against the registry,
+  submitted with the four contracts it named for disclosure, committed at offset
+  39643.
+- **A V2 `Account`-based transfer against the V2 reference token** — committed
+  at offset 39646. That is the proposal's verification clause for V2, and the
+  first time the `/v2/` paths, the `Account` model and the `actors` field have
+  met a real registry rather than a transcription of its specification.
+- **V2 event parsing on a committed transaction** — `events::holdings_changes`
+  read back one holdings change: one holding spent, two produced, two transfer
+  legs. The interface is matched on its qualified name rather than its package
+  id, and this is the first evidence that a *real* registry's event satisfies
+  that match.
+- `tests/live.rs` (new, env-gated on `CANTON_TOKEN_REGISTRY_URL`) covers the
+  registry read path: the admin party parses, instruments decode with the
+  optional fields genuinely absent, a not-issued instrument is `None` rather
+  than an error, page tokens round-trip, and the declared API versions are
+  readable. As with the other live suites, a set variable that cannot be reached
+  **fails rather than skips**.
+
+**What the first real submission found.** Both examples passed an empty
+`inputHoldingCids`, with a comment that a registry may select holdings itself.
+Splice's reference registry does not: the transfer reached the Daml interpreter
+and failed with `At least one holding must be provided`. An end-to-end example
+that cannot complete against the reference implementation is not end to end, so
+both examples now take `CANTON_TOKEN_HOLDINGS` and say why it is not optional in
+practice. The V2 example also reads its own committed transaction back through
+`holdings_changes`, which is where a reader would look for it.
+
 ### Added — the V2 token standard (CIP-0112)
 
 - Six new bindings crates: `canton-splice-api-token-holding-v2` (which carries

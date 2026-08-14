@@ -66,6 +66,21 @@ The decoder is held to the official JVM reader by a conformance oracle — the
 
 V2 reuses `splice-api-token-metadata-v1`; there is no `metadata-v2`.
 
+**Verified against a live registry** — the Splice scan of a cn-quickstart
+LocalNet, whose Amulet instrument declares both standards
+(`splice-api-token-transfer-instruction-v1` and `-v2`):
+
+| What | Result |
+|---|---|
+| V1 transfer, end to end | committed at offset 39643, 5 events |
+| V2 `Account`-based transfer, against the V2 reference token | committed at offset 39646, 5 events |
+| V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 holding spent, 2 produced, 2 transfer legs |
+
+Each run resolved the factory against the registry and submitted with the four
+contracts it named for disclosure, so the choice-context and
+`createdEventBlob` → `DisclosedContract` path are proven against a real
+registry rather than a stub.
+
 The V1 packages come from cn-quickstart at a pinned commit, fetched in CI and
 checked against their SHA-256. The V2 packages ship as no DAR anyone publishes,
 so they were taken from a participant and committed under
@@ -89,7 +104,7 @@ each file name ends with the package id that hashes its bytes.
 | Daml-LF conformance oracle | yes | a JVM |
 | live Ledger API, interactive submission | no | a Canton participant |
 | live PQS | no | a Scribe store |
-| token-standard registry | no | a Splice scan; a LocalNet running only a validator has none |
+| token-standard registry | no | a Splice scan — the **super-validator** runs one, so a LocalNet with `SV_PROFILE=on` has it (cn-quickstart serves it on `:5012` and does not publish that port to the host) |
 
 A suite CI cannot run is gated on an environment variable and **fails rather
 than skips** when that variable is set — a connection failure and an
