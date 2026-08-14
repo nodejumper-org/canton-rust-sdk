@@ -275,7 +275,7 @@ impl RegistryClient {
     /// Resolve the transfer factory for a transfer, with its choice context.
     ///
     /// `choice_arguments` is a serialized `TransferFactory_Transfer` with empty
-    /// `extraArgs` — see [`crate::transfer`], which builds it.
+    /// `extraArgs` — see [`crate::transfer()`], which builds it.
     ///
     /// # Errors
     /// As [`info`](Self::info).
@@ -312,6 +312,179 @@ impl RegistryClient {
             transfer_kind: None,
             context: ChoiceContext::from_wire(wire.choice_context)?,
         })
+    }
+
+    // ---- CIP-0112 (V2) ------------------------------------------------------
+    //
+    // Separate methods rather than a version flag on the ones above: the V2
+    // paths are not the V1 paths with a digit changed, and the shapes differ
+    // too. Allocation V2 has no `execute-transfer` context at all — settlement
+    // moved to a factory — and allocation-instruction V2 gained `accept` and
+    // `withdraw`, which V1 has not. A flag would have made those differences
+    // silent.
+
+    /// Resolve the **V2** transfer factory, with its choice context.
+    ///
+    /// `POST /registry/transfer-instruction/v2/transfer-factory`
+    ///
+    /// # Errors
+    /// As [`info`](Self::info).
+    pub async fn transfer_factory_v2(
+        &self,
+        choice_arguments: &serde_json::Value,
+    ) -> Result<FactoryWithContext> {
+        let url = self.url(&["registry", "transfer-instruction", "v2", "transfer-factory"])?;
+        let wire: WireTransferFactory = self.post_factory(url, choice_arguments).await?;
+        Ok(FactoryWithContext {
+            factory_id: wire.factory_id,
+            transfer_kind: Some(wire.transfer_kind),
+            context: ChoiceContext::from_wire(wire.choice_context)?,
+        })
+    }
+
+    /// Resolve the **V2** allocation factory.
+    ///
+    /// `POST /registry/allocation-instruction/v2/allocation-factory`
+    ///
+    /// # Errors
+    /// As [`info`](Self::info).
+    pub async fn allocation_factory_v2(
+        &self,
+        choice_arguments: &serde_json::Value,
+    ) -> Result<FactoryWithContext> {
+        let url = self.url(&[
+            "registry",
+            "allocation-instruction",
+            "v2",
+            "allocation-factory",
+        ])?;
+        let wire: WireFactory = self.post_factory(url, choice_arguments).await?;
+        Ok(FactoryWithContext {
+            factory_id: wire.factory_id,
+            transfer_kind: None,
+            context: ChoiceContext::from_wire(wire.choice_context)?,
+        })
+    }
+
+    /// Resolve the **settlement factory** — how a V2 allocation is settled.
+    ///
+    /// `POST /registry/allocation/v2/settlement-factory`
+    ///
+    /// Note the **singular** `allocation` here against the plural
+    /// `allocations` of the choice-context paths below. That is what the
+    /// specification says, inconsistent as it looks, and a client that
+    /// regularises it gets a 404 from a registry that is working correctly.
+    ///
+    /// V1 has no equivalent: there, an allocation is executed through a choice
+    /// context on the allocation itself. V2 settles a *batch* through this
+    /// factory instead, which is what lets both legs of a delivery-versus-
+    /// payment settle together.
+    ///
+    /// # Errors
+    /// As [`info`](Self::info).
+    pub async fn settlement_factory_v2(
+        &self,
+        choice_arguments: &serde_json::Value,
+    ) -> Result<FactoryWithContext> {
+        let url = self.url(&["registry", "allocation", "v2", "settlement-factory"])?;
+        let wire: WireFactory = self.post_factory(url, choice_arguments).await?;
+        Ok(FactoryWithContext {
+            factory_id: wire.factory_id,
+            transfer_kind: None,
+            context: ChoiceContext::from_wire(wire.choice_context)?,
+        })
+    }
+
+    /// The **V2** context for a choice on an existing transfer instruction.
+    ///
+    /// `POST /registry/transfer-instruction/v2/{id}/choice-contexts/{choice}`
+    ///
+    /// # Errors
+    /// As [`info`](Self::info).
+    pub async fn transfer_instruction_context_v2(
+        &self,
+        transfer_instruction_id: &str,
+        choice: TransferInstructionChoice,
+        request: &ChoiceContextRequest,
+    ) -> Result<ChoiceContext> {
+        self.choice_context(
+            self.url(&[
+                "registry",
+                "transfer-instruction",
+                "v2",
+                transfer_instruction_id,
+                "choice-contexts",
+                choice.path(),
+            ])?,
+            request,
+        )
+        .await
+    }
+
+    /// The **V2** context for a choice on an existing allocation.
+    ///
+    /// `POST /registry/allocations/v2/{id}/choice-contexts/{choice}` — plural,
+    /// unlike the settlement factory above.
+    ///
+    /// # Errors
+    /// As [`info`](Self::info), plus [`Error::InvalidRequest`] for
+    /// [`AllocationChoice::ExecuteTransfer`], which V2 does not have: settling
+    /// goes through [`settlement_factory_v2`](Self::settlement_factory_v2).
+    /// Refusing locally names the reason; the registry would answer 404.
+    pub async fn allocation_context_v2(
+        &self,
+        allocation_id: &str,
+        choice: AllocationChoice,
+        request: &ChoiceContextRequest,
+    ) -> Result<ChoiceContext> {
+        if choice == AllocationChoice::ExecuteTransfer {
+            return Err(Error::InvalidRequest(
+                "V2 allocations are settled through the settlement factory, not an \
+                 execute-transfer context — see `settlement_factory_v2`"
+                    .to_string(),
+            ));
+        }
+        self.choice_context(
+            self.url(&[
+                "registry",
+                "allocations",
+                "v2",
+                allocation_id,
+                "choice-contexts",
+                choice.path(),
+            ])?,
+            request,
+        )
+        .await
+    }
+
+    /// The **V2** context for a choice on an allocation *instruction*.
+    ///
+    /// `POST /registry/allocation-instruction/v2/{id}/choice-contexts/{choice}`
+    ///
+    /// V1 has no such endpoint — an allocation instruction there is driven
+    /// entirely through the factory.
+    ///
+    /// # Errors
+    /// As [`info`](Self::info).
+    pub async fn allocation_instruction_context_v2(
+        &self,
+        allocation_instruction_id: &str,
+        choice: AllocationInstructionChoice,
+        request: &ChoiceContextRequest,
+    ) -> Result<ChoiceContext> {
+        self.choice_context(
+            self.url(&[
+                "registry",
+                "allocation-instruction",
+                "v2",
+                allocation_instruction_id,
+                "choice-contexts",
+                choice.path(),
+            ])?,
+            request,
+        )
+        .await
     }
 
     /// The context for a choice on an existing transfer instruction.
@@ -463,6 +636,28 @@ impl TransferInstructionChoice {
         match self {
             Self::Accept => "accept",
             Self::Reject => "reject",
+            Self::Withdraw => "withdraw",
+        }
+    }
+}
+
+/// The choices a V2 allocation *instruction* offers.
+///
+/// V1 has no equivalent: an allocation instruction there is driven through the
+/// factory and has no choice contexts of its own.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum AllocationInstructionChoice {
+    /// The registry accepts a pending instruction.
+    Accept,
+    /// The sender withdraws it.
+    Withdraw,
+}
+
+impl AllocationInstructionChoice {
+    fn path(self) -> &'static str {
+        match self {
+            Self::Accept => "accept",
             Self::Withdraw => "withdraw",
         }
     }

@@ -27,12 +27,17 @@ pub mod allocation;
 mod context;
 mod registry;
 pub mod transfer;
+pub mod v2;
 
 pub use context::{ChoiceContext, ChoiceContextRequest, WireChoiceContext, WireDisclosedContract};
 pub use registry::{
-    AllocationChoice, FactoryWithContext, Instrument, RegistryClient, RegistryInfo,
-    TransferInstructionChoice, TransferKind,
+    AllocationChoice, AllocationInstructionChoice, FactoryWithContext, Instrument, RegistryClient,
+    RegistryInfo, TransferInstructionChoice, TransferKind,
 };
+/// The V1 (CIP-56) workflow, re-exported at the root because it is the one most
+/// networks run today. The V2 (CIP-0112) workflow keeps the same names and so
+/// stays behind [`v2`] — `token::transfer` and `token::v2::transfer` are
+/// different standards, and the path is what says which you meant.
 pub use transfer::{TokenCommand, accept, reject, transfer, withdraw};
 
 /// The `Holding` interface, re-exported so a caller naming holdings does not

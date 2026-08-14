@@ -383,6 +383,119 @@ async fn every_registry_path_is_the_one_the_standard_publishes() {
     }
 }
 
+/// The V2 paths are not V1's with a digit changed. Every collection here is
+/// spelled in the **singular** — `transfer-instruction`, `allocation-instruction`,
+/// `allocation` — except the choice contexts on an allocation, which are under
+/// the **plural** `allocations`. A registry that is working correctly answers
+/// 404 to either spelling in the wrong place, so this pins each one against the
+/// OpenAPI documents rather than against a rule about how they read.
+#[tokio::test]
+async fn the_v2_paths_are_the_ones_the_standard_publishes_odd_pluralisation_included() {
+    let factory = serde_json::json!({
+        "factoryId": "00f",
+        "transferKind": "offer",
+        "choiceContext": { "choiceContextData": {}, "disclosedContracts": [] }
+    });
+    for (expected, call) in [
+        (
+            "/registry/transfer-instruction/v2/transfer-factory",
+            0_u8, // transfer factory
+        ),
+        ("/registry/allocation-instruction/v2/allocation-factory", 1),
+        ("/registry/allocation/v2/settlement-factory", 2),
+    ] {
+        let (base, recorded) = registry(factory.clone()).await;
+        let client = RegistryClient::new(&base).expect("client");
+        let args = serde_json::json!({});
+        match call {
+            0 => client.transfer_factory_v2(&args).await.map(|_| ()),
+            1 => client.allocation_factory_v2(&args).await.map(|_| ()),
+            _ => client.settlement_factory_v2(&args).await.map(|_| ()),
+        }
+        .expect("resolves");
+        assert_eq!(recorded.lock().expect("lock").path, expected);
+    }
+
+    let context = serde_json::json!({ "choiceContextData": {}, "disclosedContracts": [] });
+    for (choice, expected) in [
+        (
+            canton_token::AllocationChoice::Withdraw,
+            "/registry/allocations/v2/00alloc/choice-contexts/withdraw",
+        ),
+        (
+            canton_token::AllocationChoice::Cancel,
+            "/registry/allocations/v2/00alloc/choice-contexts/cancel",
+        ),
+    ] {
+        let (base, recorded) = registry(context.clone()).await;
+        RegistryClient::new(&base)
+            .expect("client")
+            .allocation_context_v2(
+                "00alloc",
+                choice,
+                &canton_token::ChoiceContextRequest::default(),
+            )
+            .await
+            .expect("resolves");
+        assert_eq!(recorded.lock().expect("lock").path, expected);
+    }
+
+    // Contexts V1 has no counterpart for.
+    for (choice, expected) in [
+        (
+            canton_token::AllocationInstructionChoice::Accept,
+            "/registry/allocation-instruction/v2/00ai/choice-contexts/accept",
+        ),
+        (
+            canton_token::AllocationInstructionChoice::Withdraw,
+            "/registry/allocation-instruction/v2/00ai/choice-contexts/withdraw",
+        ),
+    ] {
+        let (base, recorded) = registry(context.clone()).await;
+        RegistryClient::new(&base)
+            .expect("client")
+            .allocation_instruction_context_v2(
+                "00ai",
+                choice,
+                &canton_token::ChoiceContextRequest::default(),
+            )
+            .await
+            .expect("resolves");
+        assert_eq!(recorded.lock().expect("lock").path, expected);
+    }
+}
+
+/// V2 settles a batch through the settlement factory. Asking for an
+/// execute-transfer context is a V1 habit, and it has to fail here rather than
+/// reach the network — a registry would answer 404 with nothing that says why.
+#[tokio::test]
+async fn a_v1_execute_transfer_context_is_refused_before_it_is_sent() {
+    let (base, recorded) = registry(serde_json::json!({})).await;
+    let error = RegistryClient::new(&base)
+        .expect("client")
+        .allocation_context_v2(
+            "00alloc",
+            canton_token::AllocationChoice::ExecuteTransfer,
+            &canton_token::ChoiceContextRequest::default(),
+        )
+        .await
+        .expect_err("V2 has no execute-transfer context");
+
+    assert!(
+        matches!(error, canton_core::Error::InvalidRequest(_)),
+        "expected the request to be refused, got {error:?}"
+    );
+    assert!(
+        error.to_string().contains("settlement factory"),
+        "the message must name the replacement: {error}"
+    );
+    assert_eq!(
+        recorded.lock().expect("lock").path,
+        "",
+        "nothing may reach the network"
+    );
+}
+
 /// A page token is an instrument id by the standard's own definition, so it can
 /// contain anything an id can. Formatted into the query string, one containing
 /// `&` split into extra parameters; this is the branch that was never sent.

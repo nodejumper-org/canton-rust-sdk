@@ -1,7 +1,10 @@
 # canton-token
 
-Canton Network **token-standard** workflows (CIP-56): the registry client,
-choice contexts, and the transfer and allocation flows.
+Canton Network **token-standard** workflows: the registry client, choice
+contexts, and the transfer and allocation flows. CIP-56 (V1) at the crate root
+and CIP-0112 (V2) under `v2`, which keeps the same function names one module
+down — `token::transfer` and `token::v2::transfer` are different standards, and
+the path is what says which you meant.
 
 Part of the [Canton Rust SDK](https://github.com/nodejumper-org/canton-rust-sdk).
 

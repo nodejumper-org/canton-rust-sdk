@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. External signing is in: interactive submission with a pluggable `Signer`, verified live — an external party is onboarded by signing its own topology, and a command prepared, signed off the participant and committed. Token-standard support (CIP-56 / CIP-0112) and a PQS client are next.
+> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. External signing is in: interactive submission with a pluggable `Signer`, verified live — an external party is onboarded by signing its own topology, and a command prepared, signed off the participant and committed. Token-standard support covers **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client verified against the OpenAPI documents; the PQS client is verified live against **Scribe 3.5.4**.
 
 ## Crates
 
@@ -17,7 +17,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
 | `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL, and no interpolation of values or field paths. |
-| `canton-token` | Token-standard workflows (CIP-56): the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. Workflow only — the types are generated, not re-declared. |
+| `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. |
 | `canton-signer` | Pluggable transaction signing for interactive submission: an object-safe async `Signer` trait (HSM/KMS-compatible) plus an in-memory Ed25519 key behind a feature flag. |
 | `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
 | `canton-codegen` / `canton-codegen-cli` | DAR → typed Rust. The CLI (`dpm-codegen-rust`, also `dpm codegen-rust`) writes a complete crate from any DAR; the library is the IR + emitter behind it. |
@@ -327,9 +327,9 @@ LF decoder is native Rust rather than a JVM wrapper around `daml-lf-archive`
 ([ADR-0008](docs/adr/0008-native-lf-decoder.md)); its output is held to the
 official JVM reader by a conformance oracle.
 
-**Next:** token-standard support (CIP-56 V1 + CIP-0112 V2), interactive
-submission with a pluggable signer, a typed PQS client, and the
-Ledger-Client-Standard conformance suite.
+Token-standard support (CIP-56 V1 + CIP-0112 V2), interactive submission with a
+pluggable signer, a typed PQS client and the Ledger-Client-Standard conformance
+suite have since landed on top of that.
 
 ## Contributing & security
 

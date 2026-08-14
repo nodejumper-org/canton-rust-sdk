@@ -177,7 +177,7 @@ impl PqsClient {
     /// The latest offset PQS has ingested.
     ///
     /// What a caller reads to know how far behind the store is, and what to
-    /// pass to [`Query::at_offset`] for a stable read.
+    /// pass to [`Query::active_at`] for a stable read.
     ///
     /// # Errors
     /// As [`run`](Self::run).

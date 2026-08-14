@@ -92,9 +92,9 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - Each choice on an allocation fetches its own context: the standard says a
   context may be specific to the choice, so sharing one is a bug that works
   until a registry starts distinguishing them.
-- **V2 types are generated** (see below); the `canton-token` *workflow* covers
-  CIP-56 today, and the V2 flows are the next layer over the same registry
-  client.
+- The **V2 workflow** lives in `canton_token::v2`, keeping the same function
+  names one module down: `token::transfer` and `token::v2::transfer` are
+  different standards, and the path is what says which you meant.
 
 ### Added — conformance to the Ledger Client Standard
 
@@ -141,6 +141,26 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   which is why one stdlib crate serves both.
 - The drift guard covers all nineteen generated crates, and the seven generated
   from committed packages are guarded in CI with no external checkout.
+- **`canton_token::v2`** — the workflow over those types: transfer with
+  accept/reject/withdraw, allocate, `settle_batch`, and the allocation and
+  allocation-instruction choices. Four differences from V1 a caller meets at
+  once, each of which the module documents: a transfer moves between
+  **accounts** rather than parties (and both the owner and the provider of an
+  account are optional); every choice names its **actors**, which V1 left
+  implicit in the submitting party; a V2 allocation names the settlement it
+  belongs to when it is *created*; and settlement moved to a **batch** on the
+  settlement factory, which is what lets both legs of a delivery-versus-payment
+  settle together. Asking for a V1 `execute-transfer` context is refused before
+  it reaches the network, naming the settlement factory as its replacement —
+  a registry would answer 404 with nothing that says why.
+- The V2 paths were taken from the OpenAPI documents rather than derived from
+  V1: the collections are singular (`transfer-instruction`,
+  `allocation-instruction`, `allocation`) *except* the choice contexts on an
+  allocation, which are under the plural `allocations`. A test pins each one,
+  because a client that regularises the odd one out gets a 404 from a registry
+  that is working correctly.
+- `examples/v2_transfer.rs` is the V1 example's counterpart, written to be read
+  beside it.
 
 ### Added — reading packages from a participant
 

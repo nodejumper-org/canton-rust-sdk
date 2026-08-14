@@ -129,7 +129,7 @@ impl Signature {
     /// A signature from its parts.
     ///
     /// # Errors
-    /// [`Error::InvalidRequest`] if the bytes cannot be what they claim: empty
+    /// [`canton_core::Error::InvalidRequest`] if the bytes cannot be what they claim: empty
     /// — which the Ledger API marks as required non-empty — or the wrong length
     /// for an Ed25519 `Concat` signature. A truncated reply from a signing
     /// service is worth catching here rather than as a verification failure

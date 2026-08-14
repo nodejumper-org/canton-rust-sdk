@@ -22,11 +22,19 @@ use serde::{Deserialize, Serialize};
 /// `meta` is passed to the choice and folded into the context by the registry;
 /// the standard provides it for extensibility and most callers send none.
 #[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChoiceContextRequest {
     /// Left out entirely when empty — the field is optional, and an empty
     /// object is a different thing to say than nothing.
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub meta: std::collections::BTreeMap<String, String>,
+    /// Ask the registry to leave out the debug fields.
+    ///
+    /// Added by the V2 specifications; V1's request has no such field, and a
+    /// registry serving V1 ignores it. Sent only when set, so a V1 request is
+    /// byte-identical to what it was.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub exclude_debug_fields: bool,
 }
 
 /// A contract the participant must be shown for a choice to resolve.
@@ -301,6 +309,17 @@ mod tests {
         assert_eq!(
             serde_json::to_value(&request).unwrap(),
             serde_json::json!({ "meta": { "k": "v" } })
+        );
+
+        // `excludeDebugFields` is a V2 addition, so a request that does not set
+        // it stays byte-identical to what a V1 registry has always been sent.
+        let request = ChoiceContextRequest {
+            exclude_debug_fields: true,
+            ..ChoiceContextRequest::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&request).unwrap(),
+            serde_json::json!({ "excludeDebugFields": true })
         );
     }
 }
