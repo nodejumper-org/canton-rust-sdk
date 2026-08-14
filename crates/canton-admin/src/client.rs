@@ -493,13 +493,17 @@ impl AdminClient {
                     "the participant returned an empty archive".to_string(),
                 ));
             }
-            // The id *is* the hash, so this is the whole integrity check — and
-            // it is the caller's to make, because the Ledger API hands the hash
-            // back beside the payload rather than inside it.
-            if !response.hash.is_empty() && response.hash != package_for_check {
+            // A package id *is* the SHA-256 of its payload, so the check is to
+            // hash the bytes — not to read the `hash` field back. That field is
+            // the server's own claim about what it sent, so comparing it to the
+            // id proves only that the server is self-consistent, and an empty
+            // one skipped the check altogether. Hashing the payload is what
+            // makes asking by id pin the content.
+            let computed = hex_sha256(&response.archive_payload);
+            if computed != package_for_check {
                 return Err(Error::UnexpectedResponse(format!(
-                    "asked for package {package_for_check} and got one hashing to {}",
-                    response.hash
+                    "asked for package {package_for_check} and got {} bytes hashing to {computed}",
+                    response.archive_payload.len()
                 )));
             }
             Ok(response.archive_payload)
@@ -548,5 +552,67 @@ impl AdminClient {
                 _ => None,
             })
             .collect())
+    }
+}
+
+/// The lowercase hex SHA-256 of `bytes` — which, for a Daml-LF package
+/// payload, *is* its package id.
+fn hex_sha256(bytes: &[u8]) -> String {
+    use sha2::{Digest as _, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::with_capacity(64), |mut out, byte| {
+            use std::fmt::Write as _;
+            let _ = write!(out, "{byte:02x}");
+            out
+        })
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod package_integrity_tests {
+    use super::hex_sha256;
+
+    /// The known-answer test, so the helper is pinned to SHA-256 rather than to
+    /// whatever it currently computes.
+    #[test]
+    fn the_digest_is_sha256_in_lowercase_hex() {
+        assert_eq!(
+            hex_sha256(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(
+            hex_sha256(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    /// The property `get_package` relies on: the committed V2 corpus is named
+    /// by the id its bytes hash to, and that is what makes asking by id pin the
+    /// content. If this helper ever stopped being SHA-256, those names would
+    /// stop meaning anything and nothing else would notice.
+    #[test]
+    fn a_committed_payload_hashes_to_the_id_in_its_name() {
+        let dir = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../testdata/token-standard-v2"
+        );
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return; // not checked out — the drift guard covers this corpus too
+        };
+        let mut checked = 0;
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let Some(stem) = name.strip_suffix(".lfpayload") else {
+                continue;
+            };
+            let Some((_, id)) = stem.rsplit_once('-') else {
+                continue;
+            };
+            let bytes = std::fs::read(entry.path()).expect("the payload reads");
+            assert_eq!(hex_sha256(&bytes), id, "{name} does not hash to its own id");
+            checked += 1;
+        }
+        assert!(checked >= 9, "expected the V2 corpus, checked {checked}");
     }
 }

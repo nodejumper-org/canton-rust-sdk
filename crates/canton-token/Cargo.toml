@@ -10,7 +10,7 @@ repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = ["api-bindings", "asynchronous"]
 keywords     = ["canton", "daml", "token-standard", "cip-56", "splice"]
-description  = "Canton Network token-standard workflows (CIP-56): registry client, choice contexts, transfers and allocations."
+description  = "Canton Network token-standard workflows (CIP-56 and CIP-0112): registry client, choice contexts, transfers and allocations."
 include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]

@@ -125,6 +125,13 @@ pub struct Signature {
     algorithm: SigningAlgorithm,
 }
 
+/// The length of an Ed25519 signature in `r || s` form.
+///
+/// A property of the algorithm, so it is defined here rather than beside the
+/// in-memory implementation — the validation in [`Signature::new`] has to hold
+/// for a caller who took only the trait.
+pub(crate) const ED25519_SIGNATURE_LEN: usize = 64;
+
 impl Signature {
     /// A signature from its parts.
     ///
@@ -145,14 +152,19 @@ impl Signature {
                 "a signature cannot be empty".to_string(),
             ));
         }
-        #[cfg(feature = "ed25519")]
+        // Deliberately *not* behind the `ed25519` feature. The length of an
+        // Ed25519 signature is a property of the algorithm, not of this crate's
+        // in-memory implementation of it — and the case this check exists for
+        // is a signing service returning a truncated or DER-shaped reply, which
+        // is precisely what an HSM caller building with
+        // `default-features = false` would hit. Gating it on the feature
+        // removed it from the only configuration that needed it.
         if algorithm == SigningAlgorithm::Ed25519
             && format == SignatureFormat::Concat
-            && bytes.len() != crate::ed25519::SIGNATURE_LEN
+            && bytes.len() != ED25519_SIGNATURE_LEN
         {
             return Err(canton_core::Error::InvalidRequest(format!(
-                "an Ed25519 `r || s` signature is {} bytes, got {}",
-                crate::ed25519::SIGNATURE_LEN,
+                "an Ed25519 `r || s` signature is {ED25519_SIGNATURE_LEN} bytes, got {}",
                 bytes.len()
             )));
         }

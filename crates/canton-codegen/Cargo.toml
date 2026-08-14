@@ -24,6 +24,9 @@ heck         = { workspace = true }
 semver       = { workspace = true }
 
 [dev-dependencies]
+# The committed payload corpus is pinned by its file names; the shared
+# generation table verifies that rather than trusting it.
+sha2 = { workspace = true }
 # The drift guard compares regenerated vs committed bindings at the AST level.
 canton-lf    = { workspace = true }
 

@@ -1,7 +1,9 @@
 # Compatibility matrix
 
-What this SDK is tested against, and what it therefore claims. Every row here
-is exercised in CI; nothing is listed on the strength of "it should work".
+What this SDK is tested against, and what it therefore claims. Nothing is
+listed on the strength of "it should work" — but not everything is checked by
+CI, and the table under [What CI runs, and what it cannot](#what-ci-runs-and-what-it-cannot)
+says exactly which rows rest on a developer-run live suite instead.
 
 Version **0.3.0** (unreleased).
 
@@ -83,7 +85,7 @@ each file name ends with the package id that hashes its bytes.
 |---|---|---|
 | unit, in-process, TLS, WebSocket | yes | nothing |
 | conformance (`canton-conformance`) | yes | nothing |
-| bindings drift, all nineteen generated crates | yes | the pinned DARs, fetched and checksummed; the V2 and stdlib crates need nothing |
+| bindings drift, eighteen of the nineteen generated crates | yes | the pinned DARs, fetched and checksummed; the V2 and stdlib crates need nothing. `canton-quickstart-licensing` is the exception — its DAR is built from source, so it is guarded locally and not in CI |
 | Daml-LF conformance oracle | yes | a JVM |
 | live Ledger API, interactive submission | no | a Canton participant |
 | live PQS | no | a Scribe store |

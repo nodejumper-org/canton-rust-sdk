@@ -78,6 +78,22 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo hack clippy --workspace --feature-powerset --no-dev-deps -- -D warnings
 
+      # `--no-dev-deps` above means tests are never *compiled* under a feature
+      # combination, let alone run — so a guard that only exists with a default
+      # feature on looks covered while being absent exactly where it matters.
+      # `canton-signer` is the case that made this concrete: its docs tell an
+      # HSM/KMS caller to build with `default-features = false`, and the
+      # signature-length check was written for that caller's failure mode (a
+      # signing service returning a truncated reply). The check was inside
+      # `#[cfg(feature = "ed25519")]`, so the one configuration it existed for
+      # was the one configuration without it — and no job here would have said
+      # so.
+      - name: The crates a caller strips features from still pass their tests
+        run: |
+          set -euo pipefail
+          cargo test -p canton-signer --no-default-features
+          cargo test -p canton-pqs --no-default-features
+
   deny:
     runs-on: ubuntu-latest
     steps:
@@ -127,21 +143,42 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with: { toolchain: stable }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - name: Every capability has a test, and every test ran
+      - name: The registry accounts for every in-scope row of the standard
         run: |
           set -euo pipefail
-          cargo test -p canton-conformance -- --nocapture | tee /tmp/conformance.log
+          # These guards are what make the count below mean anything: they
+          # assert the registry covers the standard, that every claim has a
+          # test, and that nothing claims a row recorded as a gap.
+          cargo test -p canton-conformance --test completeness -- --nocapture
 
-          # The registry is the checklist; count it and require the suite to
-          # have run at least that many tests. A suite that silently stopped
-          # collecting would otherwise pass with two.
-          capabilities=$(grep -c '^id ' conformance/capabilities.toml)
+      - name: Every capability has a test, and every one of them ran
+        run: |
+          set -euo pipefail
+          # Only the conformance binary. Summing every binary in the package
+          # left slack equal to the number of guard tests, and an `#[ignore]`d
+          # capability could hide in it.
+          cargo test -p canton-conformance --test conformance -- --nocapture \
+            | tee /tmp/conformance.log
+
+          # Count `[[capability]]` blocks, not `id` lines: gaps carry an `id`
+          # too, and counting those would inflate the threshold with rows this
+          # SDK explicitly does *not* implement.
+          capabilities=$(grep -c '^\[\[capability\]\]' conformance/capabilities.toml)
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/conformance.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
           echo "capabilities claimed: $capabilities"
-          ran=$(grep -oE 'test result: ok\. [0-9]+ passed' /tmp/conformance.log \
-                | grep -oE '[0-9]+' | paste -sd+ - | bc)
-          echo "tests passed:         $ran"
-          [ "$ran" -ge "$capabilities" ] || {
+          echo "tests passed:         $ran (ignored: $skipped)"
+
+          # Exact, not `>=`. A capability with two tests is fine in the suite
+          # but would let a different one go missing under a `>=`.
+          [ "$ran" -eq "$capabilities" ] || {
             echo "::error::the suite ran $ran tests for $capabilities capabilities"; exit 1; }
+          # An ignored test still satisfies the name-based guard, since that
+          # reads the suite's source. This is where it gets caught.
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped conformance test(s) were ignored"; exit 1; }
 
       - name: The matrix says what CI actually checks
         run: |

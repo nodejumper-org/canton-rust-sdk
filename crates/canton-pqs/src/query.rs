@@ -38,7 +38,7 @@ impl Op {
     fn sql(self) -> &'static str {
         match self {
             Self::Eq => "=",
-            Self::NotEq => "<>",
+            Self::NotEq => "IS DISTINCT FROM",
             Self::Lt => "<",
             Self::Le => "<=",
             Self::Gt => ">",
@@ -86,7 +86,17 @@ impl Predicate {
         }
     }
 
-    /// A field of the payload does not equal `value`.
+    /// A field of the payload does not equal `value` — **including when the
+    /// field is absent**.
+    ///
+    /// Rendered as `IS DISTINCT FROM` rather than `<>`, and the difference is
+    /// not pedantic here. `<>` against a missing path yields SQL `NULL`, so the
+    /// row is excluded — and missing paths are the *normal* case for this
+    /// crate, because [`qname`](Query::qname) deliberately matches on the
+    /// package **name** so a query survives a Smart Contract Upgrade. A result
+    /// set therefore mixes payloads of different versions with different field
+    /// sets. Under `<>`, adding a field in v2 would silently drop every v1
+    /// contract from a `not_eq` on it, with no error and no warning.
     pub fn not_eq(path: impl IntoPath, value: impl Into<serde_json::Value>) -> Self {
         Self {
             target: Target::Payload(path.into_path()),
@@ -96,6 +106,13 @@ impl Predicate {
     }
 
     /// An ordered comparison on a field.
+    ///
+    /// A contract whose payload lacks the field is **not** returned: there is
+    /// no answer to "is the missing value greater than 10". That is the right
+    /// verdict, unlike for [`not_eq`](Self::not_eq), but it is worth knowing
+    /// when a query spans two versions of a template — use
+    /// [`contains`](Self::contains) or a `not_eq` if the absent case should
+    /// count.
     ///
     /// A JSON number compares numerically and a JSON string compares as text.
     /// That distinction is not cosmetic: LF-JSON carries `Int64` and `Numeric`
@@ -530,6 +547,30 @@ mod tests {
         assert_eq!(
             sql.params[2],
             Param::Json(serde_json::json!("'; DROP TABLE __contracts; --"))
+        );
+    }
+
+    /// `<>` against a missing JSON path yields SQL NULL, so the row is
+    /// excluded. That matters here more than it would elsewhere: a query
+    /// matches on the package **name** so it survives an upgrade, which means a
+    /// result set mixes payloads of different versions with different field
+    /// sets. Under `<>`, adding a field in v2 would silently drop every v1
+    /// contract from a `not_eq` on it — no error, no warning, just a short
+    /// answer.
+    #[test]
+    fn not_equal_still_matches_a_contract_whose_field_is_absent() {
+        let sql = Query::<AppInstallRequest>::active()
+            .filter(Predicate::not_eq("status", "closed"))
+            .compile();
+        assert!(
+            sql.text.contains("IS DISTINCT FROM"),
+            "not_eq must include the absent case: {}",
+            sql.text
+        );
+        assert!(
+            !sql.text.contains(" <> "),
+            "plain `<>` drops rows lacking the field: {}",
+            sql.text
         );
     }
 

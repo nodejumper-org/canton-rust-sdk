@@ -16,7 +16,7 @@ publish      = false
 # The suite exercises the SDK the way an application does — through the facade,
 # so a capability that is unreachable from `cargo add canton` does not count as
 # delivered.
-canton      = { workspace = true, features = ["ws", "otel"] }
+canton      = { workspace = true, features = ["ws", "otel", "pqs-tls"] }
 canton-lf   = { workspace = true }
 canton-proto = { workspace = true }
 canton-splice-api-token-metadata-v1 = { path = "../canton-splice-api-token-metadata-v1" }

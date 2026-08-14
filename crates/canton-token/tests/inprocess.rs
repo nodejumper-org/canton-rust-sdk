@@ -25,6 +25,11 @@ use tokio::net::TcpListener;
 /// only on the reply.
 #[derive(Clone, Debug, Default)]
 struct Recorded {
+    /// The HTTP verb. Recorded because the standard specifies one per endpoint
+    /// — `POST` for every factory and choice context, `GET` for metadata — and
+    /// without it a factory issued as a `GET` passed every assertion here:
+    /// `reqwest` sends the body either way, so the path and body both matched.
+    method: String,
     path: String,
     body: serde_json::Value,
 }
@@ -66,13 +71,19 @@ async fn registry(response: serde_json::Value) -> (String, Arc<Mutex<Recorded>>)
                 continue;
             }
 
-            let path = head
-                .lines()
+            let request_line = head.lines().next().unwrap_or_default();
+            let method = request_line
+                .split_whitespace()
                 .next()
-                .and_then(|line| line.split_whitespace().nth(1))
+                .unwrap_or_default()
+                .to_string();
+            let path = request_line
+                .split_whitespace()
+                .nth(1)
                 .unwrap_or_default()
                 .to_string();
             *seen.lock().expect("lock") = Recorded {
+                method,
                 path,
                 body: serde_json::from_str(body).unwrap_or(serde_json::Value::Null),
             };
@@ -156,6 +167,7 @@ async fn the_factory_is_asked_the_way_the_standard_says_to_ask() {
         .expect("the transfer resolves");
 
     let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(seen.method, "POST", "the standard specifies POST here");
     assert_eq!(
         seen.path,
         "/registry/transfer-instruction/v1/transfer-factory"
@@ -352,7 +364,9 @@ async fn every_registry_path_is_the_one_the_standard_publishes() {
             )
             .await
             .expect("resolves");
-        assert_eq!(recorded.lock().expect("lock").path, expected);
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{expected} is a POST endpoint");
+        assert_eq!(seen.path, expected);
     }
 
     for (choice, expected) in [
@@ -379,7 +393,9 @@ async fn every_registry_path_is_the_one_the_standard_publishes() {
             )
             .await
             .expect("resolves");
-        assert_eq!(recorded.lock().expect("lock").path, expected);
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{expected} is a POST endpoint");
+        assert_eq!(seen.path, expected);
     }
 }
 
@@ -437,7 +453,9 @@ async fn the_v2_paths_are_the_ones_the_standard_publishes_odd_pluralisation_incl
             )
             .await
             .expect("resolves");
-        assert_eq!(recorded.lock().expect("lock").path, expected);
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{expected} is a POST endpoint");
+        assert_eq!(seen.path, expected);
     }
 
     // Contexts V1 has no counterpart for.
@@ -461,7 +479,9 @@ async fn the_v2_paths_are_the_ones_the_standard_publishes_odd_pluralisation_incl
             )
             .await
             .expect("resolves");
-        assert_eq!(recorded.lock().expect("lock").path, expected);
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{expected} is a POST endpoint");
+        assert_eq!(seen.path, expected);
     }
 }
 

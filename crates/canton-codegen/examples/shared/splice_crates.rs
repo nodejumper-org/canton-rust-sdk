@@ -329,16 +329,41 @@ fn packages(
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or("a payload with no name")?;
-        // The id is the hash of the bytes, so the file name is the checksum.
+        // The id is the hash of the bytes, so the file name is the checksum —
+        // but only if it really carries one. `rsplit('-').next()` returns the
+        // *whole* name when there is no `-` in it, so `foo.lfpayload` used to
+        // yield the package id `foo` and the error below was unreachable for
+        // exactly the shape it was written to catch.
         let id = name
-            .rsplit('-')
-            .next()
-            .and_then(|s| s.strip_suffix(".lfpayload"))
-            .ok_or_else(|| format!("`{name}` does not end with its package id"))?;
-        packages.push((
-            id.to_string(),
-            canton_lf::decode_payload(&std::fs::read(&entry)?)?,
-        ));
+            .strip_suffix(".lfpayload")
+            .and_then(|stem| stem.rsplit_once('-'))
+            .map(|(_, id)| id)
+            .filter(|id| id.len() == 64 && id.chars().all(|c| c.is_ascii_hexdigit()))
+            .ok_or_else(|| {
+                format!("`{name}` does not end with `-<package id>.lfpayload`, so its bytes are unpinned")
+            })?;
+        let bytes = std::fs::read(&entry)?;
+        // And the name is only a checksum if something checks it.
+        let computed = package_id_of(&bytes);
+        if computed != id {
+            return Err(format!("`{name}` hashes to {computed}, not to the id it is named for").into());
+        }
+        packages.push((id.to_string(), canton_lf::decode_payload(&bytes)?));
     }
     Ok(packages)
+}
+
+/// A Daml-LF package id *is* the SHA-256 of its payload bytes.
+///
+/// The committed V2 corpus needs no checksum file because each file name ends
+/// with this — which is only true while something computes it. Nothing did.
+fn package_id_of(bytes: &[u8]) -> String {
+    use sha2::{Digest as _, Sha256};
+    use std::fmt::Write as _;
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::with_capacity(64), |mut out, byte| {
+            let _ = write!(out, "{byte:02x}");
+            out
+        })
 }

@@ -201,6 +201,7 @@ dependencies = [
  "canton-lf",
  "canton-proto",
  "canton-signer",
+ "sha2 0.10.9",
  "tokio",
  "tokio-stream",
  "tonic 0.14.6",
@@ -230,6 +231,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "semver",
+ "sha2 0.10.9",
  "syn",
  "thiserror 2.0.18",
 ]

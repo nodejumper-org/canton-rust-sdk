@@ -251,17 +251,53 @@ pub fn active_signed_by<T: ContractType>(party: &str) -> Query<T> {
 /// Tell a failed *statement* from a failed *connection*.
 ///
 /// This decides whether the SDK reports the failure as retriable, and getting
-/// it wrong is not cosmetic: `Error::Connection` is retriable, so mapping every
-/// Postgres error to it makes an application that loops on `is_retriable()`
-/// spin forever on a mistyped predicate. A database error carries a SQLSTATE —
-/// the server understood the statement and refused it — and no amount of
-/// retrying changes that.
+/// it wrong is not cosmetic in either direction. Report a mistyped predicate as
+/// retriable and an application looping on `is_retriable()` spins forever on a
+/// bug only a human can fix. Report a failover as *non*-retriable and the same
+/// application gives up on a five-second restart, having told its operator to
+/// go and look at a query that was never wrong.
+///
+/// A SQLSTATE alone does not separate the two. It says the server understood
+/// the statement well enough to refuse it, which is true of a syntax error and
+/// equally true of `57P01 admin_shutdown`. What separates them is the
+/// SQLSTATE's two-character *class*:
+///
+/// | Class | Meaning | Verdict |
+/// |---|---|---|
+/// | `08` | connection exception | retriable |
+/// | `40` | transaction rollback — serialization failure, deadlock | retriable |
+/// | `53` | insufficient resources — out of memory, too many connections | retriable |
+/// | `55` | object not in prerequisite state — lock unavailable | retriable |
+/// | `57` | operator intervention — shutdown, cancelled, crash | retriable |
+/// | *anything else* | the statement is wrong (`42…`), the data is (`22…`) | caller's |
+///
+/// Everything transient here is a condition the *same statement* would survive
+/// on a later attempt, which is exactly what retriable has to mean.
 fn classify(error: &tokio_postgres::Error) -> Error {
-    if error.code().is_some() {
-        Error::InvalidRequest(format!("PQS rejected the query: {}", detail(error)))
+    let Some(code) = error.code() else {
+        return Error::Connection(format!("PQS query failed: {}", detail(error)));
+    };
+    if is_transient_sqlstate(code.code()) {
+        // Reported as a connection failure because that is the variant
+        // `is_retriable` already answers `true` for, and the condition really
+        // is the server being momentarily unable rather than unwilling.
+        Error::Connection(format!(
+            "PQS is momentarily unavailable ({}): {}",
+            code.code(),
+            detail(error)
+        ))
     } else {
-        Error::Connection(format!("PQS query failed: {}", detail(error)))
+        Error::InvalidRequest(format!("PQS rejected the query: {}", detail(error)))
     }
+}
+
+/// Whether a SQLSTATE names a condition a later attempt could survive.
+///
+/// Matched on the class rather than on individual codes: PostgreSQL assigns
+/// codes within a class by the same rule, so a code added later lands on the
+/// right verdict without this list being revisited.
+fn is_transient_sqlstate(sqlstate: &str) -> bool {
+    matches!(sqlstate.get(..2), Some("08" | "40" | "53" | "55" | "57"))
 }
 
 /// A `tokio_postgres::Error` prints as "db error" and keeps what the database
@@ -276,4 +312,62 @@ fn detail(error: &tokio_postgres::Error) -> String {
         source = cause.source();
     }
     message
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_transient_sqlstate;
+
+    /// The codes an operator actually meets. Each of these used to be reported
+    /// as "PQS rejected the query", which sent whoever read it to look at a
+    /// predicate that was never wrong — and, because `InvalidRequest` is not
+    /// retriable, made an application give up on a restart it should have
+    /// ridden out.
+    #[test]
+    fn a_server_that_is_momentarily_unable_is_retriable() {
+        for (code, what) in [
+            ("57P01", "the admin shut the server down — a failover"),
+            ("57P02", "the server crashed"),
+            ("57P03", "the server cannot connect yet — still starting"),
+            ("40001", "serialization failure under concurrent load"),
+            ("40P01", "deadlock detected"),
+            ("53300", "too many connections"),
+            ("53200", "out of memory"),
+            ("55P03", "lock not available"),
+            ("08006", "connection failure"),
+        ] {
+            assert!(
+                is_transient_sqlstate(code),
+                "{code} ({what}) must be retriable"
+            );
+        }
+    }
+
+    /// And the other direction, which is the reason the whole distinction
+    /// exists: retrying a statement the server understood and refused just
+    /// spins.
+    #[test]
+    fn a_statement_the_server_refused_is_the_callers_to_fix() {
+        for (code, what) in [
+            ("42601", "syntax error"),
+            ("42883", "no such function — a wrong qname"),
+            ("42703", "no such column"),
+            ("22P02", "invalid text representation — a bad cast"),
+            ("23505", "unique violation"),
+        ] {
+            assert!(
+                !is_transient_sqlstate(code),
+                "{code} ({what}) must not be retriable"
+            );
+        }
+    }
+
+    /// A SQLSTATE is five characters; anything shorter must not index-panic or
+    /// be read as a class it does not have.
+    #[test]
+    fn a_malformed_sqlstate_is_not_mistaken_for_a_transient_one() {
+        for code in ["", "5", "4"] {
+            assert!(!is_transient_sqlstate(code), "{code:?} is not a class");
+        }
+    }
 }

@@ -4,13 +4,13 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. External signing is in: interactive submission with a pluggable `Signer`, verified live — an external party is onboarded by signing its own topology, and a command prepared, signed off the participant and committed. Token-standard support covers **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client verified against the OpenAPI documents; the PQS client is verified live against **Scribe 3.5.4**.
+> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. External signing is in: interactive submission with a pluggable `Signer`, verified live — an external party is onboarded by signing its own topology, and a command prepared, signed off the participant and committed. Token-standard support covers **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client whose every path and payload is transcribed from the standard's OpenAPI documents and pinned by test; the PQS client is verified live against **Scribe 3.5.4**.
 
 ## Crates
 
 | Crate | What it is |
 |---|---|
-| `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml`, `canton::signer`, `canton::token`, `canton::pqs` + the shared `Config`/`Error` at the root) with the `ws`/`otel` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
+| `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml`, `canton::signer`, `canton::token`, `canton::pqs` + the shared `Config`/`Error` at the root) with the `ws`/`otel`/`pqs-tls` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
@@ -52,8 +52,9 @@ crates release in **lockstep** — mix only equal versions
 |---|---|---|
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
+| `tls` | `canton-pqs` | Connecting to a PQS store over TLS (`PqsClient::connect_tls`), with the platform's root certificates. |
 
-The `canton` facade forwards both: `canton = { version = "0.3", features = ["ws", "otel"] }`.
+The `canton` facade forwards all three — the PQS one as `pqs-tls`, since the facade's own namespace has to say which crate a `tls` belongs to: `canton = { version = "0.3", features = ["ws", "otel", "pqs-tls"] }`.
 
 Telemetry follows the standard Rust model: the SDK **emits** (`tracing` spans, `metrics` counters labelled by method + transport); the application installs the subscriber/recorder of its choice.
 

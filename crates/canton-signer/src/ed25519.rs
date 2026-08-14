@@ -16,9 +16,6 @@ use crate::{KeyFormat, KeySpec, PublicKey, Signature, SignatureFormat, Signer, S
 /// The length of an Ed25519 seed, and of its public key.
 const SEED_LEN: usize = 32;
 
-/// `r || s` — what an Ed25519 signature is, and therefore what one must be.
-pub(crate) const SIGNATURE_LEN: usize = 64;
-
 /// An Ed25519 key pair, before the participant has told it who it is.
 ///
 /// It can produce its public key — which is what

@@ -28,6 +28,12 @@ canton-pqs    = { workspace = true }
 # is the only place users have to think about.
 ws   = ["canton-ledger/ws"]
 otel = ["canton-ledger/otel"]
+# PQS over TLS. Forwarded because this crate's own conformance suite states the
+# rule: "a capability that works only via a member crate is not one
+# `cargo add canton` delivers". Without this, reaching a PQS behind TLS meant
+# adding a second, separately-versioned `canton-pqs` dependency — the version
+# skew the facade exists to prevent.
+pqs-tls = ["canton-pqs/tls"]
 
 [lints]
 workspace = true

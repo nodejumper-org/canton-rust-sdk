@@ -101,7 +101,7 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - **`canton-conformance`** (new, not published) — one test per capability of the
   standard, named for the row it answers, so a reviewer can read the two side by
   side. `conformance/capabilities.toml` is the machine-readable checklist,
-  generated from the capability matrix DA published.
+  derived from the capability matrix DA published.
 - A completeness guard asserts the two agree **in both directions**: no
   capability claimed without a test, and no test claiming a capability the
   registry does not list. Checked against the suite's source rather than a run
@@ -116,9 +116,122 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md) — toolchain,
   platform, Canton release, Daml-LF minors, token-standard version, and a table
   of what CI checks against what needs a live node.
-- A `conformance` CI job runs the suite and asserts it covered at least as many
-  tests as the registry claims capabilities — a suite that silently stopped
-  collecting would otherwise pass with two.
+- A `conformance` CI job runs the suite and asserts the count matches the
+  registry **exactly**, with nothing ignored. `>=` across every binary in the
+  package left slack equal to the number of guard tests, and an `#[ignore]`d
+  capability could hide in it — the name-based guard reads the suite's source,
+  so it counts an ignored test as coverage.
+
+### Fixed — a full M3 review, and what it turned up
+
+Two independent reviews of the whole milestone: one against the proposal, one
+hunting bugs and checking whether the problem classes found in M1 and M2 had
+recurred. Every finding below was verified against the code before being acted
+on, and two of the reviews' own claims did not survive that check.
+
+**Retriability, which M1 got wrong in two places and M3 got wrong in two more.**
+
+- `canton-pqs` classified *every* Postgres SQLSTATE as `InvalidRequest`, which
+  is not retriable. A failover (`57P01`), a serialization failure (`40001`), a
+  deadlock, `53300 too_many_connections` — all reported to the caller as "PQS
+  rejected the query", pointing whoever read it at a predicate that was never
+  wrong, and making an application give up on a five-second restart. Now
+  classified by SQLSTATE *class*: `08`, `40`, `53`, `55` and `57` are transient,
+  everything else is the caller's. `classify` had no test at all; it has three.
+- `canton-token`'s registry client turned every transport failure into a
+  retriable `Error::Connection` carrying only reqwest's outer sentence. A
+  certificate the client cannot verify was retried forever, and the word
+  "certificate" — which lives in the source chain — never reached the operator.
+  The chain is now walked, and a certificate failure, a malformed URL and a
+  redirect loop are reported as non-retriable.
+
+**Two integrity checks that did not check.**
+
+- `canton-admin::get_package` compared the participant's *own* `hash` field
+  against the id that was asked for, and skipped the comparison entirely when
+  that field was empty — while its doc claimed "a package id **is** the hash of
+  its payload, so that check is what makes asking by id pin the content". It now
+  hashes the payload.
+- The committed V2 payload corpus is documented as needing no checksum file
+  "because each file name ends with the id it hashes to". Nothing hashed them.
+  The shared generation table now does, and rejects a name that does not carry a
+  64-hex id — `rsplit('-').next()` returned the whole filename when there was no
+  `-`, so `foo.lfpayload` yielded the package id `foo` and the error written for
+  that shape was unreachable.
+
+**A guard that was absent from the configuration it was written for.** The
+Ed25519 signature-length check in `canton-signer` sat inside
+`#[cfg(feature = "ed25519")]`, and the crate's docs tell HSM/KMS callers to
+build with `default-features = false`. The length of an Ed25519 signature is a
+property of the algorithm, not of the in-memory implementation, so the check is
+now unconditional — and CI runs the tests with default features off, which the
+feature-powerset job could not (it passes `--no-dev-deps`, so tests are never
+compiled under a feature combination).
+
+**A query that silently returned less than it should.** `Predicate::not_eq`
+rendered as `<>`, which yields SQL NULL against a missing JSON path and drops
+the row. Since a query matches on the package *name* so it survives a Smart
+Contract Upgrade, a result set normally mixes payloads of different versions
+with different field sets — so adding a field in v2 would have quietly dropped
+every v1 contract from a `not_eq` on it. Now `IS DISTINCT FROM`. The ordered
+comparisons keep NULL semantics, which is right, and now say so.
+
+**`instrument()` reported a misconfigured base URL as an answer.** Any 404
+became `Ok(None)` — "this registry does not issue it" — so a base URL one path
+component off made a wallet's polling call return a steady, quiet `None` while
+every other call on the same client failed loudly. A 404 whose body is not JSON
+did not come from a registry handler and is now an error that says so.
+
+**The conformance registry claimed less than the SDK does, and nothing could
+tell.** `conformance/capabilities.toml` listed 39 rows; the Ledger Client
+Standard has 49 in scope. The two existing guards compare the registry to the
+suite, so a row missing from *both* was invisible to them — and ten were,
+including **Explicit disclosure**, an M3 row and a named sub-item of the
+token-standard deliverable. Meanwhile the CI job derived its threshold from that
+same short file, so the gate grew easier as the registry shrank.
+
+- The ten rows are added, each with a test: explicit disclosure, interface
+  subscriptions, node health, gRPC package management, vetting, the three
+  topology reads, and user self-inspect.
+- One of them is **not** added as a claim. "JSON package mgmt" is an M1 row this
+  SDK does not implement — `JsonClient` covers version, ledger end, commands,
+  ACS and updates, and has no package endpoint — so it is recorded as a
+  `[[gap]]` with a reason. A capability nobody can name a test for is not one
+  this SDK has, and writing a test that named it anyway is precisely the fake
+  coverage the mechanism exists to prevent.
+- A third guard asserts capabilities + gaps account for every in-scope row, so
+  dropping one now fails rather than passing quietly. Removing "Explicit
+  disclosure" was used to check the guard actually fires.
+- The CI counter requires an exact match with **zero ignored**, and counts
+  `[[capability]]` blocks rather than `id` lines — gaps carry an `id` too.
+
+**Reachability through the facade.** `canton-pqs`'s `tls` feature was not
+forwarded, so `PqsClient::connect_tls` did not exist for a `cargo add canton`
+user; reaching a PQS behind TLS meant a second, separately-versioned dependency
+— the version skew the facade exists to prevent. Forwarded as `pqs-tls`, and the
+conformance suite now names the method, which is the file that states the rule.
+
+**The registry stub did not check the HTTP verb.** It recorded path and body
+only, and answered `200` to any request line, so a factory issued as a `GET`
+passed every assertion — `reqwest` sends the body either way. The method is
+recorded and asserted.
+
+**Documentation that claimed more than the code did.** The compatibility matrix
+said bindings drift covers "all nineteen" generated crates (CI covers eighteen;
+`canton-quickstart-licensing` builds its DAR from source and is guarded
+locally), and opened by saying every row is exercised in CI while its own table
+lists four that are not. The capability registry cited `canton-kernel` and
+`canton-daml-runtime`, neither of which exists — they are `canton-core` and
+`canton-daml`. The facade's landing-page table omitted all three M3 crates and
+still described the token crate as CIP-56 only. Three intra-doc links were
+broken, two of them predating this work.
+
+**Reviewer claims that did not survive checking**, recorded because a review is
+evidence, not a verdict: the count of missing capability rows was first reported
+against a 49-row total I could not reproduce until I found that three sections
+of the map use a different column order; and "all ten are implemented" was wrong
+for JSON package management, which is why that one became a gap rather than a
+test.
 
 ### Added — the V2 token standard (CIP-0112)
 

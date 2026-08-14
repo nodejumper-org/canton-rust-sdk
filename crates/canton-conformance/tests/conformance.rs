@@ -120,6 +120,12 @@ fn codegen_and_bindings__grpc_bindings() {
 fn codegen_and_bindings__pqs_bindings() {
     use canton::pqs::{Predicate, Query};
 
+    // A PQS behind TLS has to be reachable through the facade, not only
+    // through `canton-pqs` directly — this file's own rule. It was not, until
+    // the `pqs-tls` feature was forwarded; reaching it meant a second,
+    // separately-versioned dependency, which is the skew the facade prevents.
+    let _ = canton::pqs::PqsClient::connect_tls;
+
     assert_eq!(
         Query::<AppInstallRequest>::qname(),
         "quickstart-licensing:Licensing.AppInstall:AppInstallRequest"
@@ -563,4 +569,128 @@ fn token_standard__instrument_inspection() {
     let _ = canton::token::RegistryClient::info;
     let _ = canton::token::RegistryClient::list_instruments;
     let _ = canton::token::RegistryClient::instrument;
+}
+
+// ---------------------------------------------------------------------------
+// Rows the first registry omitted. Each was already implemented; what was
+// missing was the claim of coverage, which is the half a vote reviewer reads.
+// These assert behaviour where the capability has behaviour to assert, rather
+// than only naming a symbol — a row proven by `let _ = f;` survives an
+// implementation that silently drops its argument.
+// ---------------------------------------------------------------------------
+
+/// A command may carry contracts the submitting party cannot see, so the
+/// participant can interpret it. The whole token standard rests on this: a
+/// registry's choice context *is* a set of disclosed contracts.
+#[test]
+fn commands__explicit_disclosure() {
+    let disclosed = canton::ledger::proto::DisclosedContract {
+        contract_id: "00abc".to_string(),
+        created_event_blob: vec![1, 2, 3],
+        ..Default::default()
+    };
+
+    // The ordinary path.
+    let submit = canton::ledger::Submit::new("alice::1220ab")
+        .add_command(rt::create_command(&a_request()))
+        .add_disclosed_contract(disclosed.clone());
+    assert_eq!(submit.disclosed_contracts().len(), 1);
+    assert_eq!(submit.disclosed_contracts()[0].contract_id, "00abc");
+    assert_eq!(
+        &submit.disclosed_contracts()[0].created_event_blob[..],
+        &[1, 2, 3][..],
+        "the blob must reach the wire intact — it is what the participant reads"
+    );
+
+    // And the interactive path, which needs them just as much: the transaction
+    // is prepared on the participant, so it must be shown the same contracts.
+    let prepare = canton::ledger::Prepare::new("alice::1220ab")
+        .add_command(rt::create_command(&a_request()))
+        .with_disclosed_contracts(vec![disclosed]);
+    assert_eq!(prepare.disclosed_contracts().len(), 1);
+}
+
+/// A stream can be subscribed by *interface* rather than by template, which is
+/// how a client reads holdings it has no template for.
+#[test]
+fn streams__interfaces() {
+    let interface = format!(
+        "{}:{}:{}",
+        h2::Holding::PACKAGE_ID,
+        h2::Holding::MODULE_NAME,
+        h2::Holding::ENTITY_NAME
+    );
+    let request = canton::ledger::ActiveContractsRequest::new(vec!["alice::1220ab".to_string()], 0)
+        .for_interfaces([interface.as_str()])
+        .expect("a well-formed interface id is accepted");
+    let _ = request;
+
+    // A malformed interface id is refused here rather than by the participant,
+    // where it returns an argument error with nothing pointing at the cause.
+    assert!(
+        canton::ledger::ActiveContractsRequest::new(vec!["alice::1220ab".to_string()], 0)
+            .for_interfaces(["not-an-interface-id"])
+            .is_err(),
+        "an id that is not package:module:entity must be refused locally"
+    );
+}
+
+/// Whether the node is serving, before a client sends it work.
+#[test]
+fn basic_infrastructure__node_health() {
+    let _ = canton::ledger::CantonClient::health_check;
+    // The status is an enum a caller matches on, not a bare bool — "not
+    // serving" and "unknown" are different answers to an operator.
+    let serving = canton::ledger::ServingStatus::Serving;
+    assert_ne!(serving, canton::ledger::ServingStatus::NotServing);
+}
+
+/// Reading which packages a participant has, over gRPC.
+#[test]
+fn packages__grpc_package_mgmt() {
+    let _ = canton::admin::AdminClient::list_packages;
+    let _ = canton::admin::AdminClient::get_package;
+    let _ = canton::admin::AdminClient::get_package_status;
+}
+
+/// Which packages a participant has *vetted* — a topology read, and a
+/// different question from which it has uploaded.
+#[test]
+fn packages__vetting() {
+    let _ = canton::admin::TopologyClient::list_vetted_packages;
+}
+
+/// Party-to-participant mappings: which participants host a party.
+#[test]
+fn topology__list_mappings() {
+    let _ = canton::admin::TopologyClient::list_party_to_participant;
+    // A mapping is read from a named store, and which store is the caller's
+    // choice — the authorized store and a synchronizer store give different
+    // answers during onboarding.
+    assert_ne!(
+        canton::admin::Store::Authorized,
+        canton::admin::Store::Synchronizer("sync::1220ab".to_string())
+    );
+}
+
+/// Every mapping read carries its context — store, validity window, serial —
+/// not just the mapping, which is what makes two reads comparable.
+#[test]
+fn topology__generic_mappings() {
+    let _: fn(&canton::admin::Entry<u8>) -> &u8 = |entry| &entry.item;
+    let _ = canton::admin::Store::Temporary("scratch".to_string());
+}
+
+/// Namespace delegations: which keys may sign for a namespace.
+#[test]
+fn topology__namespace_delegations() {
+    let _ = canton::admin::TopologyClient::list_namespace_delegations;
+}
+
+/// A user reading its own record and rights, which needs no admin right —
+/// the one call an unprivileged application can always make.
+#[test]
+fn user__self_inspect() {
+    let _ = canton::admin::AdminClient::current_user;
+    let _ = canton::admin::AdminClient::current_user_rights;
 }

@@ -256,8 +256,14 @@ impl RegistryClient {
     /// One instrument by id, or `None` if this registry does not issue it.
     ///
     /// # Errors
-    /// As [`info`](Self::info). A `404` is not an error here: not issuing an
-    /// instrument is an answer.
+    /// As [`info`](Self::info). A `404` is not an error here — not issuing an
+    /// instrument is an answer — but only when the *registry* is the one
+    /// answering it. A `404` whose body is not JSON did not come from a
+    /// registry handler at all: it is a base URL one path component off, or a
+    /// gateway in front of one, and reporting that as "this registry does not
+    /// issue it" is the worst of both worlds. A wallet polling for an
+    /// instrument would see a steady, quiet `None` while every other call on
+    /// the same client failed loudly.
     pub async fn instrument(&self, instrument_id: &str) -> Result<Option<Instrument>> {
         let url = self.url(&["registry", "metadata", "v1", "instruments", instrument_id])?;
         let response = self
@@ -267,7 +273,18 @@ impl RegistryClient {
             .await
             .map_err(|e| connection(&e))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(None);
+            let body = response.text().await.unwrap_or_default();
+            let trimmed = body.trim();
+            if trimmed.is_empty() || serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
+                return Ok(None);
+            }
+            return Err(Error::Http {
+                status: 404,
+                body: format!(
+                    "{url}: a 404 that is not the registry's own — check the base URL: {}",
+                    truncate(trimmed)
+                ),
+            });
         }
         Ok(Some(Self::decode(response, url.as_str()).await?))
     }
@@ -615,8 +632,59 @@ struct ErrorResponse {
     error: String,
 }
 
+/// Turn a transport failure into an error a caller can act on.
+///
+/// Two things this must get right, and the first version got neither.
+///
+/// **The message.** A `reqwest::Error` prints only its outer sentence —
+/// `error sending request for url (…)` — and keeps what actually went wrong in
+/// its source chain. Reporting only the outer message hides the one line that
+/// says *certificate*, or *dns*, or *connection refused*.
+///
+/// **The verdict.** [`Error::Connection`] is unconditionally retriable, so
+/// mapping everything to it makes an application that loops on `is_retriable()`
+/// retry forever on a condition no amount of waiting fixes — a certificate it
+/// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
+/// [`Error::InvalidRequest`], which is not retriable.
 fn connection(e: &reqwest::Error) -> Error {
-    Error::Connection(e.to_string())
+    let detail = chain(e);
+    if e.is_timeout() {
+        // The 30s default this client sets. Retriable, and `Error::Timeout`
+        // says why without the caller reading the message.
+        return Error::Timeout;
+    }
+    if e.is_builder() || e.is_redirect() {
+        return Error::InvalidRequest(format!("the registry request could not be made: {detail}"));
+    }
+    if e.is_decode() {
+        return Error::UnexpectedResponse(format!(
+            "the registry's reply could not be read: {detail}"
+        ));
+    }
+    // A TLS failure arrives as a connect error, indistinguishable by type from
+    // a refused connection — reqwest exposes no typed TLS error — so the chain
+    // is the only place the difference shows. Worth the string match: a
+    // certificate the client cannot verify is permanent, and retrying it
+    // forever is the failure this whole function exists to avoid.
+    let lower = detail.to_ascii_lowercase();
+    if lower.contains("certificate") || lower.contains("tls handshake") {
+        return Error::InvalidRequest(format!(
+            "the registry's TLS certificate could not be verified: {detail}"
+        ));
+    }
+    Error::Connection(format!("cannot reach the registry: {detail}"))
+}
+
+/// A `reqwest::Error` and everything under it, so the cause is not lost.
+fn chain(e: &reqwest::Error) -> String {
+    let mut message = e.to_string();
+    let mut source = std::error::Error::source(e);
+    while let Some(cause) = source {
+        message.push_str(": ");
+        message.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    message
 }
 
 /// The choices a transfer instruction offers, as the registry paths name them.
@@ -683,6 +751,22 @@ impl AllocationChoice {
             Self::Cancel => "cancel",
         }
     }
+}
+
+/// A body excerpt short enough for an error message. An HTML error page is
+/// otherwise long enough to bury the sentence that names the problem.
+fn truncate(body: &str) -> String {
+    const LIMIT: usize = 200;
+    if body.len() <= LIMIT {
+        return body.to_string();
+    }
+    let cut = body
+        .char_indices()
+        .map(|(i, _)| i)
+        .take_while(|i| *i <= LIMIT)
+        .last()
+        .unwrap_or(0);
+    format!("{}…", &body[..cut])
 }
 
 #[cfg(test)]

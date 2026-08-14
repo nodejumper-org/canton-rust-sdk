@@ -14,6 +14,9 @@ description  = "Canton admin client: party management, user self-inspect, and to
 include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
+# A package id is the SHA-256 of its payload; `get_package` verifies that
+# rather than trusting the hash the server reports beside it.
+sha2 = { workspace = true }
 canton-proto = { workspace = true }
 canton-core  = { workspace = true }
 canton-signer = { workspace = true }
