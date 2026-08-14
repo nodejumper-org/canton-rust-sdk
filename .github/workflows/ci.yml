@@ -115,6 +115,41 @@ jobs:
             ! grep -q '^tests/' /tmp/files.txt || { echo "::error::$crate ships integration tests"; exit 1; }
           done
 
+  # The proposal asks for "a conformance suite mapped to the Ledger Client
+  # Standard". A map is only worth something if it cannot quietly stop being
+  # one, so this asserts the suite ran and covered every capability rather than
+  # trusting a green tick.
+  conformance:
+    name: Conformance to the Ledger Client Standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Every capability has a test, and every test ran
+        run: |
+          set -euo pipefail
+          cargo test -p canton-conformance -- --nocapture | tee /tmp/conformance.log
+
+          # The registry is the checklist; count it and require the suite to
+          # have run at least that many tests. A suite that silently stopped
+          # collecting would otherwise pass with two.
+          capabilities=$(grep -c '^id ' conformance/capabilities.toml)
+          echo "capabilities claimed: $capabilities"
+          ran=$(grep -oE 'test result: ok\. [0-9]+ passed' /tmp/conformance.log \
+                | grep -oE '[0-9]+' | paste -sd+ - | bc)
+          echo "tests passed:         $ran"
+          [ "$ran" -ge "$capabilities" ] || {
+            echo "::error::the suite ran $ran tests for $capabilities capabilities"; exit 1; }
+
+      - name: The matrix says what CI actually checks
+        run: |
+          # The document is the published claim; a missing file means the claim
+          # was deleted rather than revised.
+          test -f docs/compatibility-matrix.md
+          grep -q 'Ledger Client Standard' docs/compatibility-matrix.md
+
   # The committed binding crates prove that *some* past generator emitted
   # compilable code. This proves the one on this commit does.
   codegen-output:

@@ -24,6 +24,7 @@ canton-admin  = { path = "crates/canton-admin",  version = "0.3.0" }
 canton-signer = { path = "crates/canton-signer", version = "0.3.0" }
 canton-token  = { path = "crates/canton-token",  version = "0.3.0" }
 canton-pqs    = { path = "crates/canton-pqs",    version = "0.3.0" }
+canton        = { path = "crates/canton",        version = "0.3.0" }
 canton-splice-api-token-metadata-v1 = { path = "crates/canton-splice-api-token-metadata-v1", version = "0.3.0" }
 canton-splice-api-token-holding-v1 = { path = "crates/canton-splice-api-token-holding-v1", version = "0.3.0" }
 canton-splice-api-token-transfer-instruction-v1 = { path = "crates/canton-splice-api-token-transfer-instruction-v1", version = "0.3.0" }

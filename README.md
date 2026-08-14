@@ -25,9 +25,14 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | Pre-built typed bindings for the Splice protocol DARs, regenerated per release ("DAR as a crate"). |
 | `canton-splice-api-token-*` (V1 and V2), `canton-splice-api-featured-app-v1` | The token-standard and featured-app packages, one crate each — CIP-56 (`-v1`) and CIP-0112 (`-v2`). The crates above reference these rather than copying them, so a `Holding` is the same Rust type whichever crate you reach it through. |
 | `canton-daml-stdlib` | The Daml standard library (`daml-stdlib`, `daml-prim`, `ghc-stdlib`), which every DAR carries and no DAR ships. Every bindings crate references it, so a `RelTime` is one type rather than one per crate. |
+| `canton-conformance` | The Ledger Client Standard, one test per capability, with a guard asserting the suite and the published capability list agree in both directions. **Not published.** |
 | `canton-quickstart-licensing` | The same, for the cn-quickstart licensing DAR. **Not published** — it backs the reference app and the end-to-end tests; generate your own with the CLI. |
 
 ## Compatibility
+
+The full picture — toolchain, platform, Canton, Daml-LF, token-standard version,
+and what CI can and cannot check — is in
+[docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|

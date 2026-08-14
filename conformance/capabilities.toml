@@ -1,0 +1,282 @@
+# The Ledger Client Standard capabilities this SDK claims.
+#
+# Generated from planning/ledger-client-standard-mapping.md, which maps the
+# capability matrix DA published to a milestone and a crate. This file is the
+# machine-readable half: `canton-conformance` asserts there is a test named
+# for every row here, so a capability cannot be claimed without one.
+#
+# `evidence` names where the behaviour is actually proven. A conformance test
+# exercises the capability through the public API; it does not restate what a
+# unit test next to the implementation already covers.
+
+[[capability]]
+id        = "codegen_and_bindings__daml_representation_codegen"
+name      = "Daml representation (codegen)"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-codegen`"
+
+[[capability]]
+id        = "codegen_and_bindings__json_codec"
+name      = "JSON Codec"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "generated + `canton-daml-runtime`"
+
+[[capability]]
+id        = "codegen_and_bindings__grpc_codec"
+name      = "gRPC Codec"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "generated + `canton-daml-runtime`"
+
+[[capability]]
+id        = "codegen_and_bindings__json_bindings"
+name      = "JSON Bindings"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-ledger` (JSON)"
+
+[[capability]]
+id        = "codegen_and_bindings__grpc_bindings"
+name      = "gRPC Bindings"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-ledger` (gRPC)"
+
+[[capability]]
+id        = "codegen_and_bindings__pqs_bindings"
+name      = "PQS bindings"
+section   = "Codegen and bindings"
+milestone = "M3"
+note      = "`canton-pqs`"
+
+[[capability]]
+id        = "basic_infrastructure__tls"
+name      = "TLS"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel` / `canton-ledger`"
+
+[[capability]]
+id        = "basic_infrastructure__authorization"
+name      = "Authorization"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel` (`TokenProvider`)"
+
+[[capability]]
+id        = "basic_infrastructure__error_parsing_and_handling"
+name      = "Error parsing & handling"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel` (`Error`, error parser)"
+
+[[capability]]
+id        = "basic_infrastructure__tracing"
+name      = "Tracing"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel`"
+
+[[capability]]
+id        = "basic_infrastructure__retry_logic"
+name      = "Retry logic"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel` (tower layer)"
+
+[[capability]]
+id        = "basic_infrastructure__logging"
+name      = "Logging"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel`"
+
+[[capability]]
+id        = "basic_infrastructure__metrics"
+name      = "Metrics"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-kernel`"
+
+[[capability]]
+id        = "basic_infrastructure__signing"
+name      = "Signing"
+section   = "Basic infrastructure"
+milestone = "M3"
+note      = "`canton-signer` (trait)"
+
+[[capability]]
+id        = "commands__json"
+name      = "JSON"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__grpc"
+name      = "gRPC"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__internal_commands"
+name      = "Internal commands"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__external_commands"
+name      = "External commands"
+section   = "Commands"
+milestone = "M3"
+note      = "`canton-ledger` + `canton-signer`"
+
+[[capability]]
+id        = "commands__deduplication"
+name      = "Deduplication"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger` + `canton-kernel`"
+
+[[capability]]
+id        = "commands__command_recovery"
+name      = "Command recovery"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__contract_keys"
+name      = "Contract keys"
+section   = "Commands"
+milestone = "M2"
+note      = "`canton-codegen` + `canton-ledger`"
+
+[[capability]]
+id        = "streams__json"
+name      = "JSON"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__grpc"
+name      = "gRPC"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__acs_streaming"
+name      = "ACS streaming"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__acs_paging"
+name      = "ACS paging"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__updates_streaming"
+name      = "Updates streaming"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__updates_paging"
+name      = "Updates paging"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__reverse_order"
+name      = "Reverse order"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__resilient_streams"
+name      = "Resilient streams"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "parties__json_party_mgmt"
+name      = "JSON party mgmt"
+section   = "Parties"
+milestone = "M1"
+
+[[capability]]
+id        = "parties__grpc_party_mgmt"
+name      = "gRPC party mgmt"
+section   = "Parties"
+milestone = "M1"
+note      = "`PartyManagementService`"
+
+[[capability]]
+id        = "parties__list_parties"
+name      = "List parties"
+section   = "Parties"
+milestone = "M1"
+note      = "with filtering"
+
+[[capability]]
+id        = "parties__local_parties_creation"
+name      = "Local parties creation"
+section   = "Parties"
+milestone = "M1"
+note      = "self-administration mode"
+
+[[capability]]
+id        = "packages__listing"
+name      = "Listing"
+section   = "Packages"
+milestone = "M1"
+note      = "list package ids"
+
+[[capability]]
+id        = "token_standard__one_step_transfers"
+name      = "One-step transfers"
+section   = "Token Standard"
+milestone = "M3"
+note      = "sender-initiated, receiver pre-approved"
+
+[[capability]]
+id        = "token_standard__pre_approvals"
+name      = "Pre-approvals"
+section   = "Token Standard"
+milestone = "M3"
+note      = "`TransferPreapproval`"
+
+[[capability]]
+id        = "token_standard__allocate"
+name      = "Allocate"
+section   = "Token Standard"
+milestone = "M3"
+note      = "two-step allocate path"
+
+[[capability]]
+id        = "token_standard__transfer"
+name      = "Transfer"
+section   = "Token Standard"
+milestone = "M3"
+note      = "`TransferFactory_Transfer`"
+
+[[capability]]
+id        = "token_standard__instrument_inspection"
+name      = "Instrument inspection"
+section   = "Token Standard"
+milestone = "M3"
+note      = "registry/instrument metadata"

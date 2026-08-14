@@ -66,6 +66,10 @@ pub use canton_token as token;
 /// Reading a local development network out of the environment — the variables
 /// `canton-devkit localnet env` exports, and the party ids that come with them.
 pub use canton_core::localnet;
+/// What the SDK emits: span and metric names, and the transport labels they
+/// carry. An application building a dashboard needs these, and reaching them
+/// meant depending on `canton-core` directly.
+pub use canton_core::telemetry;
 
 pub use canton_core::{
     Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,

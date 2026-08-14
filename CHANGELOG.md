@@ -96,6 +96,30 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   CIP-56 today, and the V2 flows are the next layer over the same registry
   client.
 
+### Added — conformance to the Ledger Client Standard
+
+- **`canton-conformance`** (new, not published) — one test per capability of the
+  standard, named for the row it answers, so a reviewer can read the two side by
+  side. `conformance/capabilities.toml` is the machine-readable checklist,
+  generated from the capability matrix DA published.
+- A completeness guard asserts the two agree **in both directions**: no
+  capability claimed without a test, and no test claiming a capability the
+  registry does not list. Checked against the suite's source rather than a run
+  of it, so an ignored test does not count as coverage.
+- The suite exercises the SDK **through the `canton` facade**, which is how it
+  found that `canton::telemetry` was not re-exported — the metric names and
+  transport labels an application builds a dashboard from were unreachable from
+  `cargo add canton`. They are exported now.
+- One row is honest about its limits rather than quietly weaker: **contract
+  keys** are generated and exercisable by key, but no template in this corpus
+  declares a key, so the test asserts the mechanism is present and says so.
+- [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md) — toolchain,
+  platform, Canton release, Daml-LF minors, token-standard version, and a table
+  of what CI checks against what needs a live node.
+- A `conformance` CI job runs the suite and asserts it covered at least as many
+  tests as the registry claims capabilities — a suite that silently stopped
+  collecting would otherwise pass with two.
+
 ### Added — the V2 token standard (CIP-0112)
 
 - Six new bindings crates: `canton-splice-api-token-holding-v2` (which carries
