@@ -25,13 +25,12 @@ fn every_committed_bindings_crate_is_up_to_date() {
             println!("skipping {crate_name}: its DAR is not configured");
             continue;
         };
-        let dar = Dar::open(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
-        let (krate, _) = canton_codegen::lower_dar_selecting(
-            &dar,
+        let loaded = packages(*source, &path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let (krate, _) = canton_codegen::lower_packages_selecting(
+            &loaded,
             &selection_for(*emits),
             &externals_for(externals, *emits),
-        )
-        .expect("lower");
+        );
         let regenerated = generate_crate(&krate).expect("generate");
 
         let committed_path = format!("{}/../{crate_name}/src/lib.rs", env!("CARGO_MANIFEST_DIR"));

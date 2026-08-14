@@ -39,12 +39,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // README — and `Options::generate`'s manifest is a bootstrap for a
         // *user's* crate, not for one of ours: it would drop all of that and
         // take the version from the DAR instead of the workspace.
-        let dar = canton_lf::Dar::open(&path)?;
-        let (krate, skipped) = canton_codegen::lower_dar_selecting(
-            &dar,
+        let (krate, skipped) = canton_codegen::lower_packages_selecting(
+            &packages(*source, &path)?,
             &selection_for(*emits),
             &externals_for(externals, *emits),
-        )?;
+        );
         if krate.packages.is_empty() {
             // A misspelled package name resolves to nothing and would otherwise
             // write an empty crate and print " 0 packages" on its way past. The

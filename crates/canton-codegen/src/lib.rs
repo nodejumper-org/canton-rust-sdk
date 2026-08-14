@@ -60,6 +60,7 @@ pub use canton_lf;
 pub use generate::{GenerateError, Options, Runtime, Stats, default_crate_name, generate};
 pub use lower::{
     ExternalPackages, Selection, SkippedType, lower_dar, lower_dar_selecting, lower_dar_with,
+    lower_packages_selecting,
 };
 
 use proc_macro2::TokenStream;

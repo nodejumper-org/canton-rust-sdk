@@ -18,6 +18,13 @@ enum DarSource {
     /// A path relative to the repository root, for the DAR committed here.
     /// Always available, so a crate generated from it is guarded in CI too.
     Repo(&'static str),
+    /// A directory of `.lfpayload` files, relative to the repository root.
+    ///
+    /// For packages that ship as no DAR at all — the V2 token standard is live
+    /// on the network and published nowhere as a built artefact, so the only
+    /// way to obtain it is to ask a participant. Each file name ends with the
+    /// package id, which is the hash of its own bytes.
+    Payloads(&'static str),
 }
 
 /// Which of a DAR's packages a crate emits.
@@ -134,6 +141,46 @@ const CRATES: &[(&str, DarSource, &[&str], Emits)] = &[
    
         Emits::Everything,
     ),
+    // CIP-0112 — the V2 token standard. Each crate emits exactly its own
+    // package and references the rest, as the V1 crates do. The dependency
+    // graph below was not guessed: selecting one package at a time and reading
+    // what the escape check reported is what produced it.
+    (
+        "canton-splice-api-token-holding-v2",
+        V2,
+        &[METADATA],
+        Emits::Families(&["splice-api-token-holding-v2"]),
+    ),
+    (
+        "canton-splice-api-token-transfer-instruction-v2",
+        V2,
+        V2_HOLDING,
+        Emits::Families(&["splice-api-token-transfer-instruction-v2"]),
+    ),
+    (
+        "canton-splice-api-token-transfer-events-v2",
+        V2,
+        V2_HOLDING,
+        Emits::Families(&["splice-api-token-transfer-events-v2"]),
+    ),
+    (
+        "canton-splice-api-token-allocation-v2",
+        V2,
+        V2_HOLDING,
+        Emits::Families(&["splice-api-token-allocation-v2"]),
+    ),
+    (
+        "canton-splice-api-token-allocation-instruction-v2",
+        V2,
+        V2_ALLOCATION,
+        Emits::Families(&["splice-api-token-allocation-instruction-v2"]),
+    ),
+    (
+        "canton-splice-api-token-allocation-request-v2",
+        V2,
+        V2_ALLOCATION,
+        Emits::Families(&["splice-api-token-allocation-request-v2"]),
+    ),
     // The reference app. Its DAR is built by a cn-quickstart checkout rather
     // than shipped, so it has a variable of its own and is skipped when unset.
     // It is not published, but it is the crate an application developer reads,
@@ -151,6 +198,16 @@ const CRATES: &[(&str, DarSource, &[&str], Emits)] = &[
 ];
 
 const METADATA: &str = "splice-api-token-metadata-v1";
+
+/// Where the V2 packages live — see `testdata/token-standard-v2/README.md`.
+const V2: DarSource = DarSource::Payloads("testdata/token-standard-v2");
+/// V2 reuses `metadata-v1`; there is no `metadata-v2`.
+const V2_HOLDING: &[&str] = &[METADATA, "splice-api-token-holding-v2"];
+const V2_ALLOCATION: &[&str] = &[
+    METADATA,
+    "splice-api-token-holding-v2",
+    "splice-api-token-allocation-v2",
+];
 const HOLDING: &[&str] = &[METADATA, "splice-api-token-holding-v1"];
 const ALLOCATION: &[&str] = &[
     METADATA,
@@ -205,7 +262,11 @@ fn externals_for(packages: &[&str], emits: Emits) -> canton_codegen::ExternalPac
     for package in packages {
         map = map.with(*package, crate_ident(package));
     }
-    if matches!(emits, Emits::Everything) {
+    // Every crate references the standard library — unless it *is* the standard
+    // library. Keyed off what it emits rather than off its name: the stdlib
+    // crate is the one whose selection is the stdlib families.
+    let is_stdlib = matches!(emits, Emits::Families(f) if f == STDLIB);
+    if !is_stdlib {
         for family in STDLIB {
             map = map.with_prefixed(*family, STDLIB_CRATE);
         }
@@ -224,16 +285,60 @@ fn selection_for(emits: Emits) -> canton_codegen::Selection {
     }
 }
 
-/// Resolve a DAR to a path, or `None` when its source is not configured.
+/// Resolve a source to a path, or `None` when it is not configured.
 fn dar_path(source: DarSource) -> Option<String> {
     match source {
-        DarSource::SpliceDir(name) => {
-            std::env::var("SPLICE_DARS").ok().map(|dir| format!("{dir}/{name}"))
-        }
+        DarSource::SpliceDir(name) => std::env::var("SPLICE_DARS")
+            .ok()
+            .map(|dir| format!("{dir}/{name}")),
         DarSource::Env(var) => std::env::var(var).ok(),
-        DarSource::Repo(rel) => Some(format!(
-            "{}/../../{rel}",
-            env!("CARGO_MANIFEST_DIR")
-        )),
+        DarSource::Repo(rel) | DarSource::Payloads(rel) => {
+            Some(format!("{}/../../{rel}", env!("CARGO_MANIFEST_DIR")))
+        }
     }
+}
+
+/// Load a source into decoded packages.
+///
+/// A DAR carries its whole closure; a directory of payloads carries whatever
+/// was fetched from a participant. Both end up as the same `(id, package)`
+/// pairs, which is what the lowering pass takes.
+///
+/// # Errors
+/// If a file cannot be read or decoded, or a payload's name does not end with
+/// its package id.
+fn packages(
+    source: DarSource,
+    path: &str,
+) -> Result<Vec<(String, canton_lf::pb::daml_lf_2::Package)>, Box<dyn std::error::Error>> {
+    let DarSource::Payloads(_) = source else {
+        return Ok(canton_lf::decode_all(&canton_lf::Dar::open(path)?)?);
+    };
+    let mut entries: Vec<_> = std::fs::read_dir(path)?
+        .filter_map(std::result::Result::ok)
+        .map(|entry| entry.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "lfpayload"))
+        .collect();
+    // Sorted, so the generated output does not depend on the order the
+    // filesystem happens to hand them back in.
+    entries.sort();
+
+    let mut packages = Vec::new();
+    for entry in entries {
+        let name = entry
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or("a payload with no name")?;
+        // The id is the hash of the bytes, so the file name is the checksum.
+        let id = name
+            .rsplit('-')
+            .next()
+            .and_then(|s| s.strip_suffix(".lfpayload"))
+            .ok_or_else(|| format!("`{name}` does not end with its package id"))?;
+        packages.push((
+            id.to_string(),
+            canton_lf::decode_payload(&std::fs::read(&entry)?)?,
+        ));
+    }
+    Ok(packages)
 }

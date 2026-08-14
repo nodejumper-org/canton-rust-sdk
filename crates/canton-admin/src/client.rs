@@ -450,6 +450,63 @@ impl AdminClient {
     /// known, `Unspecified` otherwise.
     ///
     /// # Errors
+    /// Download a package the participant knows, as `ArchivePayload` bytes.
+    ///
+    /// This is what `canton_lf::decode_payload` reads — the *inner* half of an
+    /// archive. A DAR entry is the whole `Archive`, payload and hash together,
+    /// and `canton_lf::decode_package` reads that one; the Ledger API returns
+    /// the parts separately, so the two are different bytes and each has its
+    /// own decoder.
+    ///
+    /// Bindings can therefore be generated from what a participant has actually
+    /// vetted, rather than from a DAR file that has to be found somewhere — and
+    /// for a package that only ever existed on a network, there may be no such
+    /// file at all.
+    ///
+    /// The returned hash is checked against `package_id` before the bytes are
+    /// handed back. A package id **is** the hash of its payload, so that check
+    /// is what makes asking by id pin the content exactly, with nothing further
+    /// to checksum.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails, and
+    /// [`Error::UnexpectedResponse`] if the participant answers with no payload
+    /// or with a hash that is not the id that was asked for.
+    pub async fn get_package(&self, package_id: &str) -> Result<Vec<u8>> {
+        let package_id = package_id.to_string();
+        let package_for_check = package_id.clone();
+        telemetry::instrument("get_package", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let package_id = package_id.clone();
+                    async move {
+                        let mut client = service!(self, PackageServiceClient::new);
+                        Ok(client
+                            .get_package(lapi::GetPackageRequest { package_id })
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            if response.archive_payload.is_empty() {
+                return Err(Error::UnexpectedResponse(
+                    "the participant returned an empty archive".to_string(),
+                ));
+            }
+            // The id *is* the hash, so this is the whole integrity check — and
+            // it is the caller's to make, because the Ledger API hands the hash
+            // back beside the payload rather than inside it.
+            if !response.hash.is_empty() && response.hash != package_for_check {
+                return Err(Error::UnexpectedResponse(format!(
+                    "asked for package {package_for_check} and got one hashing to {}",
+                    response.hash
+                )));
+            }
+            Ok(response.archive_payload)
+        })
+        .await
+    }
+
     /// Returns an [`Error`] if authentication or the RPC fails.
     pub async fn get_package_status(&self, package_id: &str) -> Result<lapi::PackageStatus> {
         let package_id = package_id.to_string();

@@ -92,8 +92,46 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - Each choice on an allocation fetches its own context: the standard says a
   context may be specific to the choice, so sharing one is a bug that works
   until a registry starts distinguishing them.
-- **Not yet covered:** CIP-0112 (V2). The pinned DAR corpus contains no V2
-  package at all — every one is `-v1` — so V2 waits on re-pinning it.
+- **V2 types are generated** (see below); the `canton-token` *workflow* covers
+  CIP-56 today, and the V2 flows are the next layer over the same registry
+  client.
+
+### Added — the V2 token standard (CIP-0112)
+
+- Six new bindings crates: `canton-splice-api-token-holding-v2` (which carries
+  the **`Account`** model), `-transfer-instruction-v2`, `-transfer-events-v2`
+  (the `EventLog` a V2 transfer is parsed from), `-allocation-v2` (with
+  `SettlementFactory`, `Allocation_Settle` and `FinalizedAllocation` — executor
+  settlement), `-allocation-instruction-v2` and `-allocation-request-v2`.
+- V2 reuses `splice-api-token-metadata-v1`: there is no `metadata-v2`.
+- **Where the packages came from.** V2 ships as no DAR anyone publishes —
+  cn-quickstart carries only the V1 set, the Splice repository holds Daml
+  sources rather than built artefacts, and there are no release assets. It is
+  live on the network, so it was taken from a participant through the Ledger
+  API's `GetPackage` and committed under `testdata/token-standard-v2`. A package
+  id is the SHA-256 of its own bytes and each file name ends with that id, so
+  the corpus is pinned by construction and needs no checksum file.
+- The V2 crates reference `canton-daml-stdlib` and the metadata crate rather
+  than copying them, exactly as the V1 crates do — the `ghc-stdlib` and
+  `daml-stdlib` packages they depend on carry the same ids the V1 corpus uses,
+  which is why one stdlib crate serves both.
+- The drift guard covers all nineteen generated crates, and the seven generated
+  from committed packages are guarded in CI with no external checkout.
+
+### Added — reading packages from a participant
+
+- **`canton-admin`** — `get_package` downloads a package's `ArchivePayload`
+  bytes and checks the hash the participant returns against the id that was
+  asked for. With `list_packages`, that is enough to generate bindings from
+  what a network has actually vetted rather than from a file that has to be
+  found — and for a package that exists only on a network, there may be no file.
+- **`canton-lf`** — `decode_payload` reads that shape. A DAR entry is a whole
+  `Archive` (payload, hash and hash function together) and `decode_package`
+  reads *that*; the Ledger API returns the three as separate fields. Mistaking
+  one for the other fails with a protobuf error about a `hash` field that says
+  nothing about the cause.
+- **`canton-codegen`** — `lower_packages_selecting` generates from decoded
+  packages rather than only from a DAR.
 
 ### Added — the Participant Query Store
 
@@ -139,6 +177,9 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 > → `canton-splice-api-token-metadata-v1`, `canton-splice-api-featured-app-v1`
 > → `-holding-v1` → `-allocation-v1` → `-allocation-instruction-v1`,
 > `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1`
+> → `canton-splice-api-token-holding-v2` → `-transfer-instruction-v2`,
+> `-transfer-events-v2`, `-allocation-v2` → `-allocation-instruction-v2`,
+> `-allocation-request-v2`
 > → `canton-splice-amulet` → `canton-splice-wallet-payments` →
 > `canton-splice-wallet` → **`canton-token`** → `canton` (last: the facade
 > re-exports everything above).

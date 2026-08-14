@@ -11,7 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Canton admin client: party management, user self-inspect, and topology read (gRPC)."
-include      = ["src/**/*", "README.md", "LICENSE"]
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-proto = { workspace = true }
@@ -23,6 +23,8 @@ tokio        = { workspace = true, features = ["rt", "macros", "time"] }
 tracing      = { workspace = true }
 
 [dev-dependencies]
+# The package-fetch example decodes what it downloads, and authenticates.
+canton-lf    = { workspace = true }
 canton-auth  = { workspace = true }
 # Server stubs (dev-only) so in-process gRPC test servers can be built.
 canton-proto = { workspace = true, features = ["server"] }

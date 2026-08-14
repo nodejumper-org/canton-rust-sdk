@@ -144,6 +144,26 @@ pub fn lower_dar_selecting(
     ))
 }
 
+/// The same, from packages already decoded rather than from a DAR.
+///
+/// A DAR is one way to get packages; a participant is another, and often the
+/// better one — `AdminClient::get_package` returns exactly what a participant
+/// has vetted, whereas a DAR file has to be found somewhere and may not exist
+/// for a package that is nonetheless live on the network. A package id is the
+/// hash of its own bytes, so a set assembled this way is pinned by its ids.
+///
+/// # Errors
+/// This cannot fail: the packages are already decoded. It returns the same
+/// pair as [`lower_dar_selecting`] so the two read alike at a call site.
+#[must_use]
+pub fn lower_packages_selecting(
+    packages: &[(String, lf::Package)],
+    selection: &Selection,
+    external: &ExternalPackages,
+) -> (Crate, Vec<SkippedType>) {
+    lower_crate_selecting(packages, selection, external)
+}
+
 /// Which of a DAR's packages a crate emits.
 ///
 /// Keys are package **names** or package **ids**, as for [`ExternalPackages`],
