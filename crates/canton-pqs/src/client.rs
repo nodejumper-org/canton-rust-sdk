@@ -28,19 +28,23 @@ impl PqsClient {
     /// client ends it.
     ///
     /// # Errors
-    /// [`Error::Connection`] if the connection cannot be established.
+    /// [`Error::Connection`] if the store cannot be reached, and
+    /// [`Error::InvalidRequest`] if it refuses the connection for a reason
+    /// waiting will not change — a wrong password, an unknown database.
     pub async fn connect(config: &str) -> Result<Self> {
         let (client, connection) = tokio_postgres::connect(config, tokio_postgres::NoTls)
             .await
-            .map_err(|e| Error::Connection(format!("cannot reach PQS: {e}")))?;
+            .map_err(|e| connect_error("cannot reach PQS", &e))?;
         Ok(Self::spawn(client, connection))
     }
 
     /// Connect over TLS, with the platform's root certificates.
     ///
     /// # Errors
-    /// [`Error::Connection`] if the connection or the TLS handshake fails, and
-    /// [`Error::InvalidRequest`] if no root certificates can be loaded.
+    /// [`Error::Connection`] if the store cannot be reached, and
+    /// [`Error::InvalidRequest`] if no root certificates can be loaded, if the
+    /// certificate cannot be verified, or if the store refuses the connection
+    /// for a reason waiting will not change.
     #[cfg(feature = "tls")]
     pub async fn connect_tls(config: &str) -> Result<Self> {
         let mut roots = rustls::RootCertStore::empty();
@@ -60,7 +64,7 @@ impl PqsClient {
         );
         let (client, connection) = tokio_postgres::connect(config, tls)
             .await
-            .map_err(|e| Error::Connection(format!("cannot reach PQS over TLS: {e}")))?;
+            .map_err(|e| connect_error("cannot reach PQS over TLS", &e))?;
         Ok(Self::spawn(client, connection))
     }
 
@@ -289,6 +293,40 @@ fn classify(error: &tokio_postgres::Error) -> Error {
     } else {
         Error::InvalidRequest(format!("PQS rejected the query: {}", detail(error)))
     }
+}
+
+/// Classify a failure to *connect*, as [`classify`] does for a failure to
+/// query.
+///
+/// Written because the query path was fixed and this one was not, in the same
+/// file. Both had the same two defects. The message dropped everything under
+/// the outer error — a `tokio_postgres::Error` prints as `error connecting to
+/// server` and keeps *which* server and *why* in its source chain — and the
+/// verdict was `Error::Connection` unconditionally, which is retriable. So a
+/// wrong password, an unknown database and an unverifiable certificate were all
+/// retried forever, with nothing in the message saying which.
+///
+/// A refused connection carries a SQLSTATE (`28P01` bad password, `3D000` no
+/// such database, `28000` rejected by `pg_hba.conf`), so the same class rule
+/// separates them from a store that is merely down.
+fn connect_error(what: &str, error: &tokio_postgres::Error) -> Error {
+    let detail = detail(error);
+    if let Some(code) = error.code()
+        && !is_transient_sqlstate(code.code())
+    {
+        return Error::InvalidRequest(format!(
+            "{what}: the store refused the connection ({}): {detail}",
+            code.code()
+        ));
+    }
+    // A TLS failure arrives with no SQLSTATE — it never reached the protocol —
+    // so the chain is the only place it shows. Permanent either way.
+    if detail.to_ascii_lowercase().contains("certificate") {
+        return Error::InvalidRequest(format!(
+            "{what}: its certificate could not be verified: {detail}"
+        ));
+    }
+    Error::Connection(format!("{what}: {detail}"))
 }
 
 /// Whether a SQLSTATE names a condition a later attempt could survive.

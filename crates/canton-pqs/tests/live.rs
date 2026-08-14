@@ -304,3 +304,47 @@ async fn the_acs_can_be_read_as_of_an_offset() {
         "the database's own explanation must survive: {message}"
     );
 }
+
+/// A store that refuses the connection is not something waiting fixes.
+///
+/// This was reported as a retriable `Error::Connection` carrying only
+/// `error connecting to server`, so an application looping on `is_retriable()`
+/// retried a wrong password forever and the operator was never told which of
+/// the many things that can go wrong had. The query path had already been
+/// fixed; the connect path in the same file had not.
+#[tokio::test]
+async fn a_refused_connection_is_not_retried_forever() {
+    let Some(url) = std::env::var("CANTON_PQS_URL").ok() else {
+        return;
+    };
+    // The same store, with a password it will not accept.
+    let wrong = url
+        .split_whitespace()
+        .map(|part| {
+            if part.starts_with("password=") {
+                "password=definitely-not-the-password".to_string()
+            } else {
+                part.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    if wrong == url {
+        return; // a URL-form connection string; nothing to substitute
+    }
+
+    let error = PqsClient::connect(&wrong)
+        .await
+        .expect_err("a wrong password must not connect");
+    assert!(
+        !error.is_retriable(),
+        "a rejected password is permanent, so retrying it just spins: {error:?}"
+    );
+    // And the message has to name the cause, which lives in the source chain.
+    let message = error.to_string().to_ascii_lowercase();
+    assert!(
+        message.contains("password") || message.contains("authentication"),
+        "the message must say what was refused: {error}"
+    );
+    println!("refused as expected: {error}");
+}
