@@ -69,10 +69,20 @@ V2 reuses `splice-api-token-metadata-v1`; there is no `metadata-v2`.
 **Verified against a live registry** — the Splice scan of a cn-quickstart
 LocalNet. The instrument is **Amulet (Canton Coin)**, which declares both
 standards (`splice-api-token-transfer-instruction-v1` and `-v2`). That is a V2
-implementation, exercised as one; it is *not* the "V2 reference token" the
-proposal's verification clause names, and this table does not claim to be —
-see [the milestone report](../planning/milestone-3-plan.md) for what that
-clause still needs.
+implementation, exercised as one.
+
+**On the "V2 reference token".** Splice documented a separate *Token Standard
+V2 DevNet* — a temporary, single-SV network run by Digital Asset for
+organizations validating the V2 standard, with a public scan and a weekly
+Monday reset. It appears to have been wound down: the document's version line
+was bumped weekly through 23 June 2026 and has not moved since, and the
+network's hostnames are absent from the certificate its address now presents
+(a valid certificate covering the ordinary DevNet names and no
+`token-std-v2-dev` name at all — a retired ingress rather than an IP
+allowlist, which would answer 403 over a good handshake). V2 has meanwhile
+landed in the ordinary stack, which is why a plain LocalNet's Amulet declares
+every V2 API. So the runs below are against a V2 implementation on a normal
+network, which is the target that exists.
 
 | What | Result |
 |---|---|
