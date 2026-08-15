@@ -463,7 +463,7 @@ impl AdminClient {
     /// for a package that only ever existed on a network, there may be no such
     /// file at all.
     ///
-    /// The returned hash is checked against `package_id` before the bytes are
+    /// The payload is hashed and the digest checked against `package_id` before the bytes are
     /// handed back. A package id **is** the hash of its payload, so that check
     /// is what makes asking by id pin the content exactly, with nothing further
     /// to checksum.
@@ -471,7 +471,7 @@ impl AdminClient {
     /// # Errors
     /// Returns an [`Error`] if the RPC fails, and
     /// [`Error::UnexpectedResponse`] if the participant answers with no payload
-    /// or with a hash that is not the id that was asked for.
+    /// or whose bytes do not hash to the id that was asked for.
     pub async fn get_package(&self, package_id: &str) -> Result<Vec<u8>> {
         let package_id = package_id.to_string();
         let package_for_check = package_id.clone();

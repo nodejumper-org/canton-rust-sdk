@@ -67,13 +67,17 @@ The decoder is held to the official JVM reader by a conformance oracle — the
 V2 reuses `splice-api-token-metadata-v1`; there is no `metadata-v2`.
 
 **Verified against a live registry** — the Splice scan of a cn-quickstart
-LocalNet, whose Amulet instrument declares both standards
-(`splice-api-token-transfer-instruction-v1` and `-v2`):
+LocalNet. The instrument is **Amulet (Canton Coin)**, which declares both
+standards (`splice-api-token-transfer-instruction-v1` and `-v2`). That is a V2
+implementation, exercised as one; it is *not* the "V2 reference token" the
+proposal's verification clause names, and this table does not claim to be —
+see [the milestone report](../planning/milestone-3-plan.md) for what that
+clause still needs.
 
 | What | Result |
 |---|---|
 | V1 transfer, end to end | committed at offset 39643, 5 events |
-| V2 `Account`-based transfer, against the V2 reference token | committed at offset 39646, 5 events |
+| V2 `Account`-based transfer | committed at offset 39646, 5 events |
 | V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 holding spent, 2 produced, 2 transfer legs |
 
 Each run resolved the factory against the registry and submitted with the four

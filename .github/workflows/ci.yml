@@ -149,7 +149,18 @@ jobs:
           # These guards are what make the count below mean anything: they
           # assert the registry covers the standard, that every claim has a
           # test, and that nothing claims a row recorded as a gap.
-          cargo test -p canton-conformance --test completeness -- --nocapture
+          cargo test -p canton-conformance --test completeness -- --nocapture \
+            | tee /tmp/completeness.log
+
+          # And this asserts they ran. `cargo test` exits 0 on "0 passed", so
+          # deleting every guard in this file would have turned the step green
+          # — the step that gates the count in the next one. Its sibling steps
+          # already check their own markers; this one did not.
+          guards=$(grep -oE 'test result: ok\. [0-9]+ passed' /tmp/completeness.log \
+                   | grep -oE '[0-9]+')
+          echo "completeness guards run: ${guards:-0}"
+          [ "${guards:-0}" -ge 5 ] || {
+            echo "::error::expected at least 5 completeness guards, ran ${guards:-0}"; exit 1; }
 
       - name: Every capability has a test, and every one of them ran
         run: |
@@ -253,7 +264,7 @@ jobs:
           grep -q 'oracle agreement:' /tmp/oracle.log || {
             echo "::error::the oracle skipped instead of running"; exit 1; }
 
-  # The three published bindings crates are checked-in generated code, and the
+  # The published bindings crates are checked-in generated code, and the
   # tests that keep them in step with the emitter are gated on a DAR that lives
   # in someone else's repository. Without one they skip — and a skipped test is
   # reported as a passing one, so on every push so far nothing had checked that

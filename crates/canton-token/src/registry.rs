@@ -647,7 +647,7 @@ struct ErrorResponse {
 /// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
 /// [`Error::InvalidRequest`], which is not retriable.
 fn connection(e: &reqwest::Error) -> Error {
-    let detail = chain(e);
+    let detail = canton_core::chain(e);
     if e.is_timeout() {
         // The 30s default this client sets. Retriable, and `Error::Timeout`
         // says why without the caller reading the message.
@@ -673,18 +673,6 @@ fn connection(e: &reqwest::Error) -> Error {
         ));
     }
     Error::Connection(format!("cannot reach the registry: {detail}"))
-}
-
-/// A `reqwest::Error` and everything under it, so the cause is not lost.
-fn chain(e: &reqwest::Error) -> String {
-    let mut message = e.to_string();
-    let mut source = std::error::Error::source(e);
-    while let Some(cause) = source {
-        message.push_str(": ");
-        message.push_str(&cause.to_string());
-        source = cause.source();
-    }
-    message
 }
 
 /// The choices a transfer instruction offers, as the registry paths name them.

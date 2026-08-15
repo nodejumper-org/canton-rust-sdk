@@ -563,6 +563,30 @@ impl From<serde_json::Error> for Error {
 /// SDK-wide result alias. Re-exported by the facade as `canton::Result`.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// An error and every cause under it, joined with `": "`.
+///
+/// Most transport errors keep the sentence that matters in their source chain
+/// and print only a generic outer line: `reqwest` says `error sending request
+/// for url (…)` while `invalid peer certificate: UnknownIssuer` sits one level
+/// down, and `tokio_postgres` says `db error` over `FATAL: password
+/// authentication failed`. Reporting only the outer message hides the one
+/// thing an operator needs.
+///
+/// Lives here because four crates were each losing it separately, and three of
+/// them had grown their own private copy of this function before anyone noticed
+/// the fourth still had none.
+#[must_use]
+pub fn chain(error: &dyn std::error::Error) -> String {
+    let mut message = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        message.push_str(": ");
+        message.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    message
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {

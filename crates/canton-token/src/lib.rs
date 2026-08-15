@@ -40,6 +40,47 @@ pub use registry::{
 /// different standards, and the path is what says which you meant.
 pub use transfer::{TokenCommand, accept, reject, transfer, withdraw};
 
-/// The `Holding` interface, re-exported so a caller naming holdings does not
-/// have to depend on the generated crate directly.
+pub mod types {
+    //! The generated token-standard types this crate's API is written in terms
+    //! of, re-exported so they can be named without depending on each
+    //! generated crate directly.
+    //!
+    //! This is not a convenience. `transfer` takes a
+    //! [`Transfer`](v1::transfer_instruction::Transfer) and `v2::transfer`
+    //! takes a [`Transfer`](v2::transfer_instruction::Transfer) — so without
+    //! these a `cargo add canton` user could reach the *functions* through the
+    //! facade and be unable to name their arguments. The whole token
+    //! deliverable was unreachable that way, which is the same defect the
+    //! crate's own conformance suite states the rule against: a capability
+    //! that works only via a member crate is not one `cargo add canton`
+    //! delivers.
+    //!
+    //! Whole modules rather than a hand-listed set of types, because a list
+    //! goes stale the first time the standard adds a record and nothing
+    //! notices.
+
+    /// Metadata — `ExtraArgs`, `ChoiceContext`, `Metadata`. Shared by both
+    /// standards: there is no `metadata-v2`.
+    pub use canton_splice_api_token_metadata_v1::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1 as metadata;
+
+    /// CIP-56 — the V1 token standard.
+    pub mod v1 {
+        pub use canton_splice_api_token_allocation_instruction_v1::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1 as allocation_instruction;
+        pub use canton_splice_api_token_allocation_v1::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1 as allocation;
+        pub use canton_splice_api_token_holding_v1::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1 as holding;
+        pub use canton_splice_api_token_transfer_instruction_v1::splice_api_token_transfer_instruction_v1::Splice_Api_Token_TransferInstructionV1 as transfer_instruction;
+    }
+
+    /// CIP-0112 — the V2 token standard.
+    pub mod v2 {
+        pub use canton_splice_api_token_allocation_instruction_v2::splice_api_token_allocation_instruction_v2::Splice_Api_Token_AllocationInstructionV2 as allocation_instruction;
+        pub use canton_splice_api_token_allocation_v2::splice_api_token_allocation_v2::Splice_Api_Token_AllocationV2 as allocation;
+        pub use canton_splice_api_token_holding_v2::splice_api_token_holding_v2::Splice_Api_Token_HoldingV2 as holding;
+        pub use canton_splice_api_token_transfer_events_v2::splice_api_token_transfer_events_v2::Splice_Api_Token_TransferEventsV2 as transfer_events;
+        pub use canton_splice_api_token_transfer_instruction_v2::splice_api_token_transfer_instruction_v2::Splice_Api_Token_TransferInstructionV2 as transfer_instruction;
+    }
+}
+
+/// The V1 `Holding` interface, at the root because it is the type a caller
+/// reaches for first. Everything else is under [`types`].
 pub use canton_splice_api_token_holding_v1::splice_api_token_holding_v1::Splice_Api_Token_HoldingV1::Holding;

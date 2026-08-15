@@ -272,6 +272,78 @@ both examples now take `CANTON_TOKEN_HOLDINGS` and say why it is not optional in
 practice. The V2 example also reads its own committed transaction back through
 `holdings_changes`, which is where a reader would look for it.
 
+### Fixed — a three-milestone review, and the fixes that had siblings
+
+Three reviews: M1+M2 against their proposal text, M3 exhaustively, and a sweep
+for fixes applied in one place while the same pattern survived elsewhere. The
+third was the one worth running.
+
+**The cause chain, now in one place.** The previous round fixed how the registry
+client reports a transport failure. Four other sites had the same two defects —
+a message that dropped everything under the outer error, and a verdict of
+retriable `Error::Connection` for conditions no amount of waiting fixes. Two of
+them, `canton-ledger`'s JSON client and `canton-auth`'s token fetch, sit *inside*
+`run_with_retry`, which the registry client did not: an IdP or participant behind
+a certificate the client cannot verify ran the full retry schedule and then
+reported `error sending request for url (…)`, with the word *certificate* one
+level down in a chain nobody read. `canton_core::chain` is now the single walker
+— three crates had each grown a private copy before anyone noticed the fourth had
+none — and each site classifies for itself, because what is permanent differs:
+a bad token endpoint is `Auth`, a bad JSON body is `UnexpectedResponse`.
+
+**`PqsClient::connect` had the bug the same file's `classify` had just lost.**
+Fixed by the SQLSTATE class rule already written twelve lines below it. Verified
+against the running store: a wrong password is now
+`invalid request: … the store refused the connection (28P01): … FATAL: password
+authentication failed`, non-retriable, instead of a retriable `db error`.
+
+**The token deliverable could not be *called* through the facade.** Every entry
+point takes a generated type — `transfer` takes a `Transfer` — and the facade
+depends on no `canton-splice-*` crate, so a `cargo add canton` user could reach
+the functions and not name their arguments. `canton_token::types` re-exports the
+modules (`types::v1::transfer_instruction`, `types::v2::holding`, `types::metadata`
+…), whole modules rather than a hand-listed set that goes stale on the next
+record the standard adds. This is the `pqs-tls` defect one level up, and larger:
+that one hid a feature, this one hid the milestone.
+
+**External-party onboarding now checks the one relation it can.** A party id is
+`<hint>::<namespace>`, and for an external party the namespace *is* the
+fingerprint of the key being registered — so a response assembled for a
+different key is now refused before anything signs it. The multi-hash still
+cannot be recomputed (that needs Canton's hash-purpose scheme, which this
+workspace does not implement); this is the free check that was missing beside it.
+
+**Half-applied fixes from the previous round, completed:**
+
+- The HTTP-verb assertion reached the six POST endpoints and none of the GET
+  ones — in the file whose own new comment names both.
+- `CANTON_TOKEN_HOLDINGS` was added to both examples with a doc that still
+  carried the pre-fix reassurance, contradicting the call-site comment eight
+  lines below it. The helper now warns when the variable is unset rather than
+  defaulting quietly into a failure that arrives from the Daml interpreter.
+- `pqs-tls` reached the manifest and the module table but not the facade's own
+  canonical feature list, which reads as complete.
+- `get_package`'s doc still described the check the hash fix removed — that the
+  SDK trusts the server's `hash` field.
+
+**Documentation that claimed more than the code did.** The published matrix
+called a run "against the V2 reference token" six lines after naming the
+instrument as Amulet; it now says what it is — a V2 implementation exercised as
+one — and points at what the clause still needs. `docs/daml-lf-type-mapping.md`,
+the M2 deliverable document, said references are "always"
+`crate::<package>::<module>::<Type>`; every one of the nineteen generated crates
+in this repository disproves it, and the cross-crate form is now documented with
+the emitted code beside it. ADR-0005 claimed the bindings crates encode the DAR
+version in their version metadata (they do not). The CHANGELOG said thirteen
+generated crates in the same entry where it said nineteen. Two CI comments
+described a four-guard shape that no longer exists, and `canton-quickstart-licensing`
+pointed at the wrong crate for its own drift guard.
+
+**The CI step gating the conformance count did not check that it ran.**
+`cargo test` exits 0 on "0 passed", so deleting every completeness guard would
+have turned green the step that everything downstream depends on. Its sibling
+steps already assert their own markers.
+
 ### Added — the V2 token standard (CIP-0112)
 
 - Six new bindings crates: `canton-splice-api-token-holding-v2` (which carries
@@ -397,7 +469,7 @@ practice. The V2 example also reads its own committed transaction back through
 - The packaging check derives its crate list from `cargo metadata` rather than
   a hand-written one, so a crate added to the workspace cannot be left out of
   it — the previous list silently stopped covering the eight crates above.
-- The bindings drift guard checks all thirteen generated crates (it checked
+- The bindings drift guard checks all nineteen generated crates (it checked
   three), reading the crate/DAR/external-package table from the same file the
   regeneration example uses so the two cannot disagree. `canton-daml-stdlib` is
   generated from the DAR committed here, so that one is guarded in CI with no

@@ -38,12 +38,24 @@ fn var(name: &str) -> Result<String, String> {
 /// contract ids).
 ///
 /// Read them from the ledger's active contracts filtered to the `Holding`
-/// interface, or from PQS. Left empty, a registry that selects holdings itself
-/// will do so — and one that does not will refuse the transfer.
+/// interface, or from PQS.
+///
+/// The standard permits a registry to select holdings itself, so an empty list
+/// is legal — but Splice's reference registry refuses one, and the refusal
+/// arrives from the Daml interpreter after the whole registry round-trip has
+/// succeeded. So this warns rather than defaulting quietly: against most
+/// registries an unset variable is a run that fails at the last step for a
+/// reason nothing earlier hinted at.
 fn holdings<T>() -> Vec<rt::ContractId<T>> {
-    std::env::var("CANTON_TOKEN_HOLDINGS")
-        .unwrap_or_default()
-        .split(',')
+    let raw = std::env::var("CANTON_TOKEN_HOLDINGS").unwrap_or_default();
+    if raw.trim().is_empty() {
+        eprintln!(
+            "warning: CANTON_TOKEN_HOLDINGS is unset, so no holdings are named. This is legal \
+             only against a registry that selects them itself; Splice's refuses with \"At least \
+             one holding must be provided\" once the transfer reaches the interpreter."
+        );
+    }
+    raw.split(',')
         .map(str::trim)
         .filter(|id| !id.is_empty())
         .map(|id| rt::ContractId::new(id.to_string()))

@@ -60,6 +60,35 @@ impl ExternalPartyTopology {
                     .to_string(),
             ));
         }
+        // A party id is `<hint>::<namespace>`, and for an external party the
+        // namespace *is* the fingerprint of the key being registered. The SDK
+        // cannot yet recompute the multi-hash — that needs Canton's
+        // hash-purpose scheme, which this workspace does not implement — so
+        // this is the one relation between the returned pieces that can be
+        // checked at all, and it is free.
+        //
+        // What it catches is the ordinary case rather than the adversarial
+        // one: a response assembled for a different key, or a participant that
+        // onboarded a party under a namespace the caller does not hold. The
+        // caller would otherwise learn this by signing, submitting, and being
+        // told the signature is invalid, with nothing pointing at why.
+        match response.party_id.rsplit_once("::") {
+            Some((_, namespace)) if namespace == response.public_key_fingerprint => {}
+            Some((_, namespace)) => {
+                return Err(canton_core::Error::UnexpectedResponse(format!(
+                    "the participant offered party `{}`, whose namespace `{namespace}` is not the \
+                     fingerprint `{}` of the key being registered — nothing this caller holds \
+                     could sign as it",
+                    response.party_id, response.public_key_fingerprint
+                )));
+            }
+            None => {
+                return Err(canton_core::Error::UnexpectedResponse(format!(
+                    "the participant returned `{}`, which is not a party id",
+                    response.party_id
+                )));
+            }
+        }
         Ok(Self {
             party_id: response.party_id,
             public_key_fingerprint: response.public_key_fingerprint,
@@ -102,5 +131,52 @@ impl ExternalPartyTopology {
     #[must_use]
     pub fn transactions(&self) -> &[Vec<u8>] {
         &self.transactions
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::ExternalPartyTopology;
+    use canton_proto::com::daml::ledger::api::v2::admin as pb;
+
+    fn response(party_id: &str, fingerprint: &str) -> pb::GenerateExternalPartyTopologyResponse {
+        pb::GenerateExternalPartyTopologyResponse {
+            party_id: party_id.to_string(),
+            public_key_fingerprint: fingerprint.to_string(),
+            topology_transactions: vec![vec![1, 2, 3]],
+            multi_hash: vec![0x12, 0x20, 0xaa],
+        }
+    }
+
+    /// The ordinary case: the namespace of the party id is the fingerprint of
+    /// the key being registered, so this caller can sign as it.
+    #[test]
+    fn a_party_whose_namespace_is_the_registered_key_is_accepted() {
+        let topology = ExternalPartyTopology::from_response(response("alice::1220ab", "1220ab"))
+            .expect("the namespace matches the key");
+        assert_eq!(topology.party_id(), "alice::1220ab");
+        assert_eq!(topology.public_key_fingerprint(), "1220ab");
+    }
+
+    /// And the case worth catching: a party under a namespace this caller's key
+    /// does not control. Signing and submitting would be the only other way to
+    /// find out, and the participant's answer would name the signature rather
+    /// than the mismatch.
+    #[test]
+    fn a_party_under_a_namespace_this_key_does_not_control_is_refused() {
+        let error = ExternalPartyTopology::from_response(response("alice::1220ff", "1220ab"))
+            .expect_err("the namespace is another key's");
+        let message = error.to_string();
+        assert!(message.contains("1220ff"), "name the namespace: {message}");
+        assert!(message.contains("1220ab"), "and the key: {message}");
+    }
+
+    /// Something that is not a party id at all.
+    #[test]
+    fn a_response_that_is_not_a_party_id_is_refused() {
+        let error = ExternalPartyTopology::from_response(response("alice", "1220ab"))
+            .expect_err("`alice` is not a party id");
+        assert!(error.to_string().contains("not a party id"), "{error}");
     }
 }

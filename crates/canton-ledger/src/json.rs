@@ -576,7 +576,7 @@ impl JsonClient {
             let response = request
                 .send()
                 .await
-                .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
+                .map_err(|e| transport_error(path, &e))?;
             read_json(response, path).await
         })
         .await
@@ -600,7 +600,7 @@ impl JsonClient {
             let response = request
                 .send()
                 .await
-                .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
+                .map_err(|e| transport_error(path, &e))?;
             read_json(response, path).await
         })
         .await
@@ -978,6 +978,38 @@ impl JsonClient {
             }
         }
     }
+}
+
+/// Classify a failure to *send* a JSON request.
+///
+/// This sits inside [`canton_core::retry::run_with_retry`], which loops while
+/// `is_retriable()` — and `Error::Connection` always is. Reporting every
+/// transport failure that way meant an unverifiable certificate, a malformed
+/// URL and a redirect loop each ran the full retry schedule and then reported
+/// `error sending request for url (…)`, with the word *certificate* left in the
+/// source chain nobody read.
+fn transport_error(path: &str, e: &reqwest::Error) -> Error {
+    let detail = canton_core::chain(e);
+    if e.is_timeout() {
+        return Error::Timeout;
+    }
+    if e.is_builder() || e.is_redirect() {
+        return Error::InvalidRequest(format!("the request to {path} could not be made: {detail}"));
+    }
+    if e.is_decode() {
+        return Error::UnexpectedResponse(format!(
+            "{path} returned a body this cannot read: {detail}"
+        ));
+    }
+    // A TLS failure arrives as a connect error, indistinguishable by type from
+    // a refused connection — reqwest exposes no typed TLS error — so the chain
+    // is the only place it shows. Permanent, so not retriable.
+    if detail.to_ascii_lowercase().contains("certificate") {
+        return Error::InvalidRequest(format!(
+            "the certificate presented for {path} could not be verified: {detail}"
+        ));
+    }
+    Error::Connection(format!("json request to {path} failed: {detail}"))
 }
 
 #[cfg(test)]

@@ -339,17 +339,9 @@ fn is_transient_sqlstate(sqlstate: &str) -> bool {
 }
 
 /// A `tokio_postgres::Error` prints as "db error" and keeps what the database
-/// actually said in its source. Reporting only the outer message hides the one
-/// sentence that says which column or cast was wrong.
+/// actually said in its source. Shared with every other transport in the SDK.
 fn detail(error: &tokio_postgres::Error) -> String {
-    let mut message = error.to_string();
-    let mut source = std::error::Error::source(error);
-    while let Some(cause) = source {
-        message.push_str(": ");
-        message.push_str(&cause.to_string());
-        source = cause.source();
-    }
-    message
+    canton_core::chain(error)
 }
 
 #[cfg(test)]
