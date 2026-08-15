@@ -235,6 +235,33 @@ pub struct Sql {
     pub params: Vec<Param>,
 }
 
+impl Sql {
+    /// A statement this crate did not compile.
+    ///
+    /// **This is the one place the crate's safety property is a convention
+    /// rather than a type.** Everything [`Query::compile`] produces binds every
+    /// caller value as a parameter — including the JSON field path, which goes
+    /// as `text[]` and is applied with `#>` — so no input can change which
+    /// statement runs. `text` here is executed as given.
+    ///
+    /// It exists because PQS has functions this crate does not model
+    /// (`lookup_contract`, `exercises`, `latest_offset` are built with it
+    /// internally) and because a caller reaching for one should not have to
+    /// fork the crate. Named `raw` so that a reader of the call site knows
+    /// which half they are in: `Query::compile()` is checked, `Sql::raw` is
+    /// theirs to get right.
+    ///
+    /// Parameters are still bound — `params` goes to Postgres as parameters,
+    /// never interpolated — so the hazard is the *statement*, not the values.
+    #[must_use]
+    pub fn raw(text: impl Into<String>, params: Vec<Param>) -> Self {
+        Self {
+            text: text.into(),
+            params,
+        }
+    }
+}
+
 /// Which PQS function a query reads from.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]

@@ -26,6 +26,13 @@ canton-pqs    = { workspace = true }
 [features]
 # Forwarded to the crates that implement them, so `canton = { features = [..] }`
 # is the only place users have to think about.
+# On by default, so `cargo add canton` is unchanged. An HSM/KMS deployment that
+# must not link `ring` or the in-memory private-key type takes
+# `default-features = false` — which did nothing at all before, because three
+# crates in the tree pinned the signer's default and feature unification is
+# additive.
+default = ["ed25519"]
+ed25519 = ["canton-signer/ed25519", "canton-ledger/ed25519", "canton-admin/ed25519"]
 ws   = ["canton-ledger/ws"]
 otel = ["canton-ledger/otel"]
 # PQS over TLS. Forwarded because this crate's own conformance suite states the

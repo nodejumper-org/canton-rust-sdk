@@ -16,7 +16,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
 | `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
-| `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL, and no interpolation of values or field paths. |
+| `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL on that path, and no interpolation of values or field paths anywhere. `Sql::raw` is the documented escape hatch for PQS functions the crate does not model; it still binds its parameters. |
 | `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. |
 | `canton-signer` | Pluggable transaction signing for interactive submission: an object-safe async `Signer` trait (HSM/KMS-compatible) plus an in-memory Ed25519 key behind a feature flag. |
 | `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
@@ -52,9 +52,10 @@ crates release in **lockstep** — mix only equal versions
 |---|---|---|
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
+| `ed25519` | `canton-signer` | The in-memory Ed25519 key (`Ed25519Key`), on `ring`. **On by default via the facade.** An HSM/KMS deployment that must not link `ring` or an in-memory private key takes `canton = { default-features = false }` and implements `Signer` itself; the trait, the wire types and their validation are unconditional. |
 | `tls` | `canton-pqs` | Connecting to a PQS store over TLS (`PqsClient::connect_tls`), with the platform's root certificates. |
 
-The `canton` facade forwards all three — the PQS one as `pqs-tls`, since the facade's own namespace has to say which crate a `tls` belongs to: `canton = { version = "0.3", features = ["ws", "otel", "pqs-tls"] }`.
+The `canton` facade forwards all of them — the PQS one as `pqs-tls`, since the facade's own namespace has to say which crate a `tls` belongs to: `canton = { version = "0.3", features = ["ws", "otel", "pqs-tls"] }`. `ed25519` is on by default, so turning it off is `default-features = false`.
 
 Telemetry follows the standard Rust model: the SDK **emits** (`tracing` spans, `metrics` counters labelled by method + transport); the application installs the subscriber/recorder of its choice.
 

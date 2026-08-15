@@ -19,11 +19,21 @@ include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 sha2 = { workspace = true }
 canton-proto = { workspace = true }
 canton-core  = { workspace = true }
+# `canton-signer` without its in-memory Ed25519 key. The library needs only the
+# `Signer` trait and the wire types; `Ed25519Key` and `ring` come back with the
+# `ed25519` feature, which the facade turns on by default. Taken with
+# `default-features = false` because feature unification is additive: one
+# dependant pinning the default would have forced `ring` on every HSM
+# deployment in the tree, which is what it did.
 canton-signer = { workspace = true }
 tonic        = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
 tonic-prost  = { workspace = true }
 tokio        = { workspace = true, features = ["rt", "macros", "time"] }
 tracing      = { workspace = true }
+
+[features]
+# As `canton-ledger`: the trait is unconditional, the key is not.
+ed25519 = ["canton-signer/ed25519"]
 
 [dev-dependencies]
 # The package-fetch example decodes what it downloads, and authenticates.

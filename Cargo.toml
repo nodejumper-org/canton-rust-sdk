@@ -21,7 +21,12 @@ canton-core   = { path = "crates/canton-core",   version = "0.3.0" }
 canton-auth   = { path = "crates/canton-auth",   version = "0.3.0" }
 canton-ledger = { path = "crates/canton-ledger", version = "0.3.0" }
 canton-admin  = { path = "crates/canton-admin",  version = "0.3.0" }
-canton-signer = { path = "crates/canton-signer", version = "0.3.0" }
+# `default-features = false` here, not at each dependant: Cargo refuses the
+# override on an inherited dependency, and feature unification is additive — so
+# one crate taking the default would put `ring` and the in-memory private key
+# back into every HSM deployment in the tree. The `canton` facade turns
+# `ed25519` back on by default, so `cargo add canton` is unchanged.
+canton-signer = { path = "crates/canton-signer", version = "0.3.0", default-features = false }
 canton-token  = { path = "crates/canton-token",  version = "0.3.0" }
 canton-pqs    = { path = "crates/canton-pqs",    version = "0.3.0" }
 canton        = { path = "crates/canton",        version = "0.3.0" }

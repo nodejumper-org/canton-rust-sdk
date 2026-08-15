@@ -125,13 +125,13 @@ impl PqsClient {
     where
         T: ContractType + serde::de::DeserializeOwned,
     {
-        let sql = Sql {
-            text: "SELECT * FROM lookup_contract($1, $2)".to_string(),
-            params: vec![
+        let sql = Sql::raw(
+            "SELECT * FROM lookup_contract($1, $2)",
+            vec![
                 Param::Text(contract_id.to_string()),
                 Param::Text(Query::<T>::qname()),
             ],
-        };
+        );
         let rows = self.query(&sql).await?;
         rows.first().map(Contract::from_row).transpose()
     }
@@ -174,7 +174,7 @@ impl PqsClient {
         }
         text.push(')');
 
-        let rows = self.query(&Sql { text, params }).await?;
+        let rows = self.query(&Sql::raw(text, params)).await?;
         rows.iter().map(Exercise::from_row).collect()
     }
 
@@ -187,10 +187,7 @@ impl PqsClient {
     /// As [`run`](Self::run).
     pub async fn latest_offset(&self) -> Result<i64> {
         let rows = self
-            .query(&Sql {
-                text: "SELECT latest_offset()".to_string(),
-                params: Vec::new(),
-            })
+            .query(&Sql::raw("SELECT latest_offset()", Vec::new()))
             .await?;
         let row = rows.first().ok_or_else(|| {
             Error::UnexpectedResponse("PQS answered latest_offset() with no row".to_string())
