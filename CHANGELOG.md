@@ -394,7 +394,17 @@ steps already assert their own markers.
   The choice name alone is not enough either: it is not reserved. An argument
   that does not decode is reported rather than skipped, for the same reason.
 - `examples/v2_transfer.rs` is the V1 example's counterpart, written to be read
-  beside it.
+  beside it, and `examples/v2_allocate.rs` is the allocation flow — the half
+  that needs three parties rather than two. Run against the live registry with
+  app-provider as sender, app-user as receiver and the super-validator as
+  executor: allocated at offset 40176, six events. It stops before settling on
+  purpose; that is the executor's move from their own participant, and one
+  process holding both sides would prove nothing about a pattern whose whole
+  point is that the principals differ.
+- The allocation example is also the first thing written entirely against
+  `canton_token::types` — it names `SettlementInfo`, `AllocationSpecification`,
+  `TransferLegSide` and `Account` with no direct dependency on any
+  `canton-splice-*` crate, which is what the re-export was for.
 
 ### Added — reading packages from a participant
 

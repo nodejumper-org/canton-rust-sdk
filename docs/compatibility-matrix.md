@@ -79,8 +79,16 @@ clause still needs.
 | V1 transfer, end to end | committed at offset 39643, 5 events |
 | V2 `Account`-based transfer | committed at offset 39646, 5 events |
 | V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 holding spent, 2 produced, 2 transfer legs |
+| V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 40176, 6 events, 3 contracts created |
 
-Each run resolved the factory against the registry and submitted with the four
+The allocation is the half that needs more than two parties: the sender
+reserves holdings for a settlement a third party — the executor — completes
+later, which is what delivery-versus-payment is built from. Settling is not
+run here, and deliberately: it belongs to the executor, from their own
+participant with their own credentials, and one process holding both sides
+would demonstrate nothing.
+
+Each run resolved the factory against the registry and submitted with the
 contracts it named for disclosure, so the choice-context and
 `createdEventBlob` → `DisclosedContract` path are proven against a real
 registry rather than a stub.
