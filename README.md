@@ -13,8 +13,8 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml` + the shared `Config`/`Error` at the root) with the `ws`/`otel` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
-| `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
-| `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
+| `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets that each produce their provider's normal token request (Auth0's `audience`, Okta's HTTP Basic credentials). |
+| `canton-ledger` | The async Ledger API client, with the **same operations on both transports**. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions and change-ID recovery, ACS/update streaming (+ paging, reverse-order, event query, checkpoint-resumable), a lossless ACS read (`AcsEntry`, incomplete reassignments included), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: the same submission set including fire-and-forget and recovery, event query, bounded reads, and WebSocket streaming — updates, completions and a resumable ACS — behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
 | `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
 | `canton-codegen` / `canton-codegen-cli` | DAR → typed Rust. The CLI (`dpm-codegen-rust`, also `dpm codegen-rust`) writes a complete crate from any DAR; the library is the IR + emitter behind it. |
@@ -103,6 +103,30 @@ Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_
 cargo run -p canton-ledger --example version_and_health
 cargo run -p canton-ledger --example submit_and_read
 ```
+
+**When the outcome must not be lost.** A submission whose response never
+arrives may still have committed, and the way back to it is the command's
+identity — so take the identity *before* sending rather than from a call that
+may fail:
+
+```rust,ignore
+use std::time::Duration;
+
+// An offset from before the submission, to read completions from.
+let offset = client.ledger_end().await?;
+let submission = client.submission(Submit::new(party).add_command(command));
+
+if submission.submit_and_wait().await.is_err() {
+    // Ambiguous — ask the ledger what actually happened. The match is on the
+    // whole change ID (user, acting parties, command id), not the command id
+    // alone, which is not unique across a participant's users.
+    let completion = submission.recover(offset, Duration::from_secs(30)).await?;
+    println!("committed after all: {}", completion.update_id);
+}
+```
+
+`JsonClient::submission` is the same handle on the JSON transport, recovering
+over the WebSocket.
 
 See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
 
@@ -345,6 +369,12 @@ The local-development path reads the environment
 [canton-devkit](https://github.com/bitdynamics-ab/canton-devkit) exports, and
 reading its DAR container taught us that a per-entry decompression cap bounds
 nothing on its own — an archive is now bounded in total as well.
+
+[Equilibrium](https://equilibrium.co) reviewed the released M1 client from an
+independent engineering perspective and reported a credential leak privately
+before anything else. Their findings are closed in 0.2.0 and listed in the
+[changelog](CHANGELOG.md); several are the kind that only a reader who does not
+already know what the code meant to do would find.
 
 ## License
 
