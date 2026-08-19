@@ -751,6 +751,27 @@ impl CantonClient {
         &self,
         request: crate::request::UpdatesRequest,
     ) -> Result<impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<>> {
+        let stream = self.updates_including_checkpoints(request).await?;
+        Ok(stream.filter(|item| {
+            !matches!(
+                item,
+                Ok(pb::get_updates_response::Update::OffsetCheckpoint(_))
+            )
+        }))
+    }
+
+    /// The update stream with `OffsetCheckpoint` frames left in.
+    ///
+    /// A checkpoint is not an update anyone subscribed for, which is why
+    /// [`Self::updates_with`] drops it. It is, however, the participant naming
+    /// an offset that is safe to restart from — and it arrives on a quiet
+    /// stream, where no transaction has moved the position for a while. The
+    /// resumable path needs exactly that, so it reads this and filters for
+    /// itself.
+    async fn updates_including_checkpoints(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> Result<impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<>> {
         let (_, end_inclusive) = request.bounds();
         if request.is_descending() && end_inclusive.is_none() {
             return Err(Error::InvalidRequest(
@@ -763,10 +784,7 @@ impl CantonClient {
             let stream = client.get_updates(request.into_grpc()).await?.into_inner();
 
             Ok(stream.filter_map(|item| match item {
-                Ok(response) => match response.update {
-                    Some(pb::get_updates_response::Update::OffsetCheckpoint(_)) | None => None,
-                    Some(update) => Some(Ok(update)),
-                },
+                Ok(response) => response.update.map(Ok),
                 Err(status) => Some(Err(Error::from(status))),
             }))
         })
@@ -774,10 +792,17 @@ impl CantonClient {
     }
 
     /// Like [`Self::updates`], but **resumable**: on a retriable stream error it
-    /// reconnects from the last offset it yielded (rather than restarting from
-    /// `begin_offset` or losing position), with a short backoff and a bounded
-    /// number of consecutive reconnects (see the client's
+    /// reconnects from the last offset it *observed* (rather than restarting
+    /// from `begin_offset` or losing position), with a short backoff and a
+    /// bounded number of consecutive reconnects (see the client's
     /// [`RetryConfig`](canton_core::RetryConfig)).
+    ///
+    /// Observed includes the participant's `OffsetCheckpoint` frames, which are
+    /// filtered out of what this yields but are the only thing that advances the
+    /// resume point on a stream where nothing is happening. Once the reconnect
+    /// budget is spent the stream yields **the failure that caused it** — the
+    /// participant's status, details and retriable classification intact —
+    /// rather than an error of the SDK's own.
     ///
     /// # Example
     /// ```no_run
@@ -803,7 +828,7 @@ impl CantonClient {
     /// Like [`Self::updates_resumable`], with the full request surface of an
     /// [`UpdatesRequest`](crate::request::UpdatesRequest). A bounded request
     /// (`until`) makes this a *resilient catch-up read*: reconnects resume
-    /// from the last yielded offset, and the stream ends once the participant
+    /// from the last observed offset, and the stream ends once the participant
     /// closes it at the end offset.
     pub fn updates_resumable_with(
         &self,
@@ -824,17 +849,36 @@ impl CantonClient {
             let mut offset = request.begin_exclusive;
             let mut reconnects = 0u32;
             loop {
-                match client.updates_with(request.resume_after(offset)).await {
+                // What made this reconnect necessary. Carried out of the inner
+                // loop so that giving up reports the participant's own failure
+                // rather than a fresh error of ours: the status, its structured
+                // details, the correlation id and the retriable classification
+                // are what an application branches on, and the moment the
+                // stream gives up is when it needs them most.
+                let cause = match client
+                    .updates_including_checkpoints(request.resume_after(offset))
+                    .await
+                {
                     Ok(stream) => {
                         tokio::pin!(stream);
                         loop {
                             match stream.next().await {
                                 Some(Ok(update)) => {
+                                    // Checkpoints are included here: on a quiet
+                                    // stream a checkpoint is the only thing that
+                                    // moves the resume point, and after pruning
+                                    // the older offset may not be servable at all.
                                     offset = update_offset(&update);
                                     reconnects = 0;
+                                    if matches!(
+                                        update,
+                                        pb::get_updates_response::Update::OffsetCheckpoint(_)
+                                    ) {
+                                        continue;
+                                    }
                                     yield Ok(update);
                                 }
-                                Some(Err(err)) if err.is_retriable() => break,
+                                Some(Err(err)) if err.is_retriable() => break err,
                                 Some(Err(err)) => {
                                     yield Err(err);
                                     return;
@@ -843,18 +887,21 @@ impl CantonClient {
                             }
                         }
                     }
-                    Err(err) if err.is_retriable() => {}
+                    Err(err) if err.is_retriable() => err,
                     Err(err) => {
                         yield Err(err);
                         return;
                     }
-                }
+                };
 
                 reconnects += 1;
                 if reconnects > max_reconnects {
-                    yield Err(Error::UnexpectedResponse(format!(
-                        "update stream failed to resume after {max_reconnects} reconnects"
-                    )));
+                    tracing::warn!(
+                        max_reconnects,
+                        offset,
+                        "update stream gave up resuming; reporting the failure that caused it"
+                    );
+                    yield Err(cause);
                     return;
                 }
                 tokio::time::sleep(backoff_unit * reconnects).await;

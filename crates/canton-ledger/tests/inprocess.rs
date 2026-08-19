@@ -599,3 +599,201 @@ async fn resumable_acs_resumes_from_the_last_page_token() {
         "the retry must resume from the last continuation token, not restart"
     );
 }
+
+// ---- gRPC: the resumable stream honours checkpoints and keeps the cause -----
+
+fn checkpoint_update(offset: i64) -> pb::GetUpdatesResponse {
+    pb::GetUpdatesResponse {
+        update: Some(pb::get_updates_response::Update::OffsetCheckpoint(
+            pb::OffsetCheckpoint {
+                offset,
+                synchronizer_times: Vec::new(),
+            },
+        )),
+    }
+}
+
+/// `UpdateService` whose first stream carries nothing but a checkpoint at
+/// offset 10 before dropping with `Unavailable`. A client that tracks only the
+/// updates it yielded has no position to resume from and restarts at 0 — which
+/// after pruning the participant can refuse outright.
+#[derive(Clone, Default)]
+struct CheckpointThenDrop {
+    calls: Arc<AtomicUsize>,
+    begins: Arc<Mutex<Vec<i64>>>,
+}
+
+#[tonic::async_trait]
+impl UpdateService for CheckpointThenDrop {
+    type GetUpdatesStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::GetUpdatesResponse, Status>> + Send>>;
+
+    async fn get_updates(
+        &self,
+        request: Request<pb::GetUpdatesRequest>,
+    ) -> Result<Response<Self::GetUpdatesStream>, Status> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
+        self.begins
+            .lock()
+            .unwrap()
+            .push(request.into_inner().begin_exclusive);
+        let items: Vec<Result<pb::GetUpdatesResponse, Status>> = if call == 1 {
+            vec![
+                Ok(checkpoint_update(10)),
+                Err(Status::unavailable("connection dropped")),
+            ]
+        } else {
+            vec![Ok(tx_update(11))]
+        };
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+
+    async fn get_update_by_offset(
+        &self,
+        _r: Request<pb::GetUpdateByOffsetRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_id(
+        &self,
+        _r: Request<pb::GetUpdateByIdRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_hash(
+        &self,
+        _r: Request<pb::GetUpdateByHashRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_updates_page(
+        &self,
+        _r: Request<pb::GetUpdatesPageRequest>,
+    ) -> Result<Response<pb::GetUpdatesPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_updates<S>(service: S) -> u16
+where
+    S: UpdateService,
+{
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(UpdateServiceServer::new(service), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+#[tokio::test]
+async fn resumable_stream_restarts_after_the_latest_checkpoint() {
+    let mock = CheckpointThenDrop::default();
+    let begins = mock.begins.clone();
+    let port = serve_updates(mock).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    let stream = client.updates_resumable(vec!["p".to_string()], 0);
+    tokio::pin!(stream);
+    let first = tokio::time::timeout(Duration::from_secs(5), stream.next())
+        .await
+        .expect("timed out waiting for the update after the reconnect");
+    match first {
+        Some(Ok(pb::get_updates_response::Update::Transaction(t))) => assert_eq!(t.offset, 11),
+        other => panic!("expected the transaction that follows the checkpoint, got {other:?}"),
+    }
+
+    assert_eq!(
+        *begins.lock().unwrap(),
+        vec![0, 10],
+        "the reconnect must resume from the checkpoint the participant sent, not from 0"
+    );
+}
+
+/// `UpdateService` that is never available, so the reconnect budget runs out.
+#[derive(Clone, Default)]
+struct AlwaysUnavailable;
+
+#[tonic::async_trait]
+impl UpdateService for AlwaysUnavailable {
+    type GetUpdatesStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::GetUpdatesResponse, Status>> + Send>>;
+
+    async fn get_updates(
+        &self,
+        _request: Request<pb::GetUpdatesRequest>,
+    ) -> Result<Response<Self::GetUpdatesStream>, Status> {
+        Err(Status::unavailable("participant is restarting"))
+    }
+
+    async fn get_update_by_offset(
+        &self,
+        _r: Request<pb::GetUpdateByOffsetRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_id(
+        &self,
+        _r: Request<pb::GetUpdateByIdRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_hash(
+        &self,
+        _r: Request<pb::GetUpdateByHashRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_updates_page(
+        &self,
+        _r: Request<pb::GetUpdatesPageRequest>,
+    ) -> Result<Response<pb::GetUpdatesPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn exhausted_reconnects_report_the_participants_own_failure() {
+    let port = serve_updates(AlwaysUnavailable).await;
+
+    let client = CantonClient::connect_lazy(
+        Config::new(format!("http://localhost:{port}")).with_retry(
+            RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        ),
+    )
+    .unwrap();
+
+    let stream = client.updates_resumable(vec!["p".to_string()], 0);
+    tokio::pin!(stream);
+    let last = tokio::time::timeout(Duration::from_secs(5), stream.next())
+        .await
+        .expect("timed out waiting for the stream to give up")
+        .expect("the stream must yield the failure rather than ending silently")
+        .expect_err("an unavailable participant cannot produce an update");
+
+    // The status, its details and its classification are what an application
+    // branches on; replacing them with a message of our own throws all three
+    // away at the moment they matter most.
+    assert_eq!(
+        last.code(),
+        Some(tonic::Code::Unavailable),
+        "the original gRPC status must survive: {last:?}"
+    );
+    assert!(
+        last.is_retriable(),
+        "a transient failure stays classified as retriable: {last:?}"
+    );
+    assert!(
+        format!("{last}").contains("participant is restarting"),
+        "the participant's own message must survive: {last}"
+    );
+}
