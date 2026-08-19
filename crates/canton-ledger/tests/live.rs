@@ -20,8 +20,8 @@
 
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{
-    CantonClient, Config, JsonClient, JsonCommands, RetryConfig, Submit, create, exercise,
-    identifier, record, value,
+    CantonClient, ChangeId, Config, JsonClient, JsonCommands, RetryConfig, Submit, create,
+    exercise, identifier, record, value,
 };
 
 fn endpoint() -> Option<String> {
@@ -298,14 +298,11 @@ async fn await_completion_recovers_a_submitted_command() {
         .expect("submit should succeed");
 
     // Recover the command's completion from the stream (the method bounds the
-    // wait internally so a missing completion can't hang).
+    // wait internally so a missing completion can't hang). The identity is the
+    // whole change ID, which for a token-derived user is (parties, command id).
+    let change_id = ChangeId::new("", vec![party.clone()], &command_id);
     let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+        .await_completion(&change_id, begin, std::time::Duration::from_secs(15))
         .await
         .expect("completion should be found");
 
@@ -1271,24 +1268,21 @@ async fn submit_fire_and_forget_then_recover() {
 
     let begin = client.ledger_end().await.expect("ledger_end");
 
-    // Fire-and-forget submit returns the change-ID command_id used.
-    let command_id = client
-        .submit(Submit::new(&party).add_command(app_install(&party, &pkg)))
-        .await
-        .expect("submit should be accepted");
+    // The handle knows the command's identity before anything is sent, which
+    // is what makes the outcome recoverable when the send itself is what fails.
+    let submission = client.submission(Submit::new(&party).add_command(app_install(&party, &pkg)));
+    let command_id = submission.change_id().command_id().to_string();
     assert!(
         command_id.starts_with("sdk-"),
         "expected a generated command id, got {command_id}"
     );
+    submission
+        .submit()
+        .await
+        .expect("submit should be accepted");
 
-    // The outcome is recoverable via the completion stream.
-    let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(15))
         .await
         .expect("the submitted command's completion should be found");
     assert_eq!(

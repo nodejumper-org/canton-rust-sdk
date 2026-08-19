@@ -25,15 +25,17 @@ mod client;
 mod command;
 mod json;
 pub mod request;
+mod submission;
 #[cfg(feature = "ws")]
 mod ws;
 
 pub use canton_core::{Config, Error, ErrorCategory, Result, RetryConfig, TlsConfig};
 pub use canton_proto::grpc::health::v1::health_check_response::ServingStatus;
 pub use client::{AcsEntry, CantonClient};
-pub use command::{Submit, create, exercise, identifier, record, value};
+pub use command::{ChangeId, Submit, create, exercise, identifier, record, value};
 pub use json::{JsonClient, JsonCommands, JsonSubmitResponse, JsonTransaction};
 pub use request::{ActiveContractsRequest, CompletionsRequest, TransactionShape, UpdatesRequest};
+pub use submission::Submission;
 
 /// The generated Ledger API v2 protobuf types, for the **dynamic** (untyped)
 /// command path. For typed payloads generated from a DAR, see `canton-codegen`

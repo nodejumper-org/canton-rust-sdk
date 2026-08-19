@@ -232,9 +232,47 @@ impl CantonClient {
     /// Returns an [`Error`] if authentication fails or the participant rejects
     /// the submission synchronously (e.g. a preprocessing error).
     pub async fn submit(&self, submit: crate::command::Submit) -> Result<String> {
+        let submission = self.submission(submit);
+        let command_id = submission.change_id().command_id().to_string();
+        submission.submit().await?;
+        Ok(command_id)
+    }
+
+    /// Fix a submission's identity **before** sending it, returning a
+    /// [`Submission`] that carries its [`ChangeId`](crate::ChangeId).
+    ///
+    /// This is the handle to reach for when losing the outcome is not an
+    /// option. A submission whose response is lost — a dropped connection, a
+    /// timeout, a retry the participant de-duplicated — may well have
+    /// committed, and the only way back to the answer is the change ID. If the
+    /// SDK generated the command id inside the call that failed, there is no
+    /// change ID to go back with.
+    ///
+    /// ```no_run
+    /// # async fn run(client: canton_ledger::CantonClient, submit: canton_ledger::Submit)
+    /// #     -> canton_ledger::Result<()> {
+    /// use std::time::Duration;
+    ///
+    /// // Where to start reading completions from, taken before submitting.
+    /// let offset = client.ledger_end().await?;
+    /// let submission = client.submission(submit);
+    ///
+    /// if submission.submit_and_wait().await.is_err() {
+    ///     // Ambiguous: ask the ledger what actually happened.
+    ///     let completion = submission.recover(offset, Duration::from_secs(30)).await?;
+    ///     println!("committed after all: {}", completion.update_id);
+    /// }
+    /// # Ok(()) }
+    /// ```
+    #[must_use]
+    pub fn submission(&self, submit: crate::command::Submit) -> crate::submission::Submission {
+        let shape = submit.transaction_shape;
+        let (change_id, commands) = submit.into_commands();
+        crate::submission::Submission::new(self.clone(), change_id, commands, shape)
+    }
+
+    pub(crate) async fn submit_commands(&self, commands: pb::Commands) -> Result<()> {
         telemetry::instrument("submit", TRANSPORT_GRPC, async move {
-            // Built once so retries reuse the same change ID (de-dup-safe).
-            let (command_id, commands) = submit.into_commands();
             self.with_retry(|| {
                 let commands = commands.clone();
                 async move {
@@ -250,8 +288,7 @@ impl CantonClient {
                     Ok(())
                 }
             })
-            .await?;
-            Ok(command_id)
+            .await
         })
         .await
     }
@@ -269,9 +306,14 @@ impl CantonClient {
         &self,
         submit: crate::command::Submit,
     ) -> Result<pb::SubmitAndWaitResponse> {
+        self.submission(submit).submit_and_wait().await
+    }
+
+    pub(crate) async fn submit_and_wait_commands(
+        &self,
+        commands: pb::Commands,
+    ) -> Result<pb::SubmitAndWaitResponse> {
         telemetry::instrument("submit_and_wait", TRANSPORT_GRPC, async move {
-            // Built once so retries reuse the same change ID (de-dup-safe).
-            let (_command_id, commands) = submit.into_commands();
             let request = pb::SubmitAndWaitRequest {
                 commands: Some(commands),
             };
@@ -327,11 +369,16 @@ impl CantonClient {
         &self,
         submit: crate::command::Submit,
     ) -> Result<pb::Transaction> {
-        // Built once (and outside the instrumented future, keeping it small) so
-        // retries reuse the same change ID (`command_id`), keeping the
-        // submission de-duplication-safe across attempts.
-        let shape = submit.transaction_shape;
-        let (_command_id, commands) = submit.into_commands();
+        self.submission(submit)
+            .submit_and_wait_for_transaction()
+            .await
+    }
+
+    pub(crate) async fn submit_and_wait_for_transaction_commands(
+        &self,
+        commands: pb::Commands,
+        shape: crate::request::TransactionShape,
+    ) -> Result<pb::Transaction> {
         let request = pb::SubmitAndWaitForTransactionRequest {
             transaction_format: Some(pb::TransactionFormat {
                 event_format: Some(wildcard_event_format(&commands.act_as)),
@@ -419,13 +466,19 @@ impl CantonClient {
         .await
     }
 
-    /// Recover the completion for a specific `command_id` by scanning the
-    /// completion stream from `begin_offset`, up to `timeout`.
+    /// Recover the completion for a specific command by scanning the completion
+    /// stream from `begin_offset`, up to `timeout`.
     ///
     /// This is the command-recovery path: after a crash, lost connection, or
     /// timeout, the outcome of a pending command is read back from the
     /// completion endpoint instead of blindly re-submitting. If the command's
     /// completion reports a non-OK status, this returns [`Error::CommandRejected`].
+    ///
+    /// Matching is on the whole [`ChangeId`](crate::ChangeId) — user, acting
+    /// parties and command id — because that is what identifies a command to
+    /// Canton. A command id on its own is not unique across the users of a
+    /// participant, and answering with somebody else's completion is worse
+    /// than answering with none.
     ///
     /// The completion stream is a live subscription that does not self-terminate,
     /// so `timeout` bounds how long to wait for the target completion.
@@ -436,17 +489,18 @@ impl CantonClient {
     /// [`Error`] if the stream fails.
     pub async fn await_completion(
         &self,
-        command_id: &str,
-        parties: Vec<String>,
+        change_id: &crate::command::ChangeId,
         begin_offset: i64,
         timeout: Duration,
     ) -> Result<pb::Completion> {
         let scan = async {
-            let stream = self.completions(parties, begin_offset).await?;
+            let stream = self
+                .completions(change_id.act_as().to_vec(), begin_offset)
+                .await?;
             tokio::pin!(stream);
             while let Some(item) = stream.next().await {
                 let completion = item?;
-                if completion.command_id == command_id {
+                if change_id.matches(&completion) {
                     // A non-OK gRPC status on the completion means the ledger
                     // rejected the command for business/interpretation reasons.
                     if let Some(status) = &completion.status {
@@ -462,7 +516,8 @@ impl CantonClient {
                 }
             }
             Err(Error::UnexpectedResponse(format!(
-                "completion stream ended before command {command_id} was seen"
+                "completion stream ended before command {} was seen",
+                change_id.command_id()
             )))
         };
 

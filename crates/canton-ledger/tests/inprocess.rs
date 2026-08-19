@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use canton_auth::{OidcConfig, TokenProvider};
-use canton_ledger::{AcsEntry, CantonClient, Config, RetryConfig};
+use canton_ledger::{AcsEntry, CantonClient, ChangeId, Config, RetryConfig};
 use canton_proto::com::daml::ledger::api::v2 as pb;
 use pb::update_service_server::{UpdateService, UpdateServiceServer};
 use pb::version_service_server::{VersionService, VersionServiceServer};
@@ -983,4 +983,115 @@ async fn the_active_only_read_still_returns_active_contracts_only() {
         ids.push(contract.unwrap().created_event.unwrap().contract_id);
     }
     assert_eq!(ids, vec!["active-1"]);
+}
+
+// ---- gRPC: recovering a command by its whole identity -----------------------
+
+/// A completion stream carrying, in order: somebody else's completion with the
+/// *same* command id, then this command's own. A recovery that matches on the
+/// command id alone answers with the first — the wrong application's outcome,
+/// reported as this one's.
+#[derive(Clone, Default)]
+struct CollidingCompletions;
+
+#[tonic::async_trait]
+impl pb::command_completion_service_server::CommandCompletionService for CollidingCompletions {
+    type CompletionStreamStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::CompletionStreamResponse, Status>> + Send>,
+    >;
+
+    async fn completion_stream(
+        &self,
+        _request: Request<pb::CompletionStreamRequest>,
+    ) -> Result<Response<Self::CompletionStreamStream>, Status> {
+        let response = |completion: pb::Completion| {
+            Ok(pb::CompletionStreamResponse {
+                completion_response: Some(
+                    pb::completion_stream_response::CompletionResponse::Completion(completion),
+                ),
+            })
+        };
+        let items: Vec<Result<pb::CompletionStreamResponse, Status>> = vec![
+            response(pb::Completion {
+                command_id: "shared-command-id".to_string(),
+                user_id: "someone-else".to_string(),
+                act_as: vec!["alice".to_string()],
+                update_id: "not-ours".to_string(),
+                ..Default::default()
+            }),
+            response(pb::Completion {
+                command_id: "shared-command-id".to_string(),
+                user_id: "us".to_string(),
+                act_as: vec!["alice".to_string()],
+                update_id: "ours".to_string(),
+                ..Default::default()
+            }),
+        ];
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+
+    type GetCompletionsStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::CompletionStreamResponse, Status>> + Send>,
+    >;
+    async fn get_completions(
+        &self,
+        _r: Request<pb::GetCompletionsRequest>,
+    ) -> Result<Response<Self::GetCompletionsStream>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn recovery_matches_the_whole_change_id() {
+    use pb::command_completion_service_server::CommandCompletionServiceServer;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(
+                CommandCompletionServiceServer::new(CollidingCompletions),
+                incoming,
+            )
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    let ours = ChangeId::new("us", vec!["alice".to_string()], "shared-command-id");
+    let completion = client
+        .await_completion(&ours, 0, Duration::from_secs(5))
+        .await
+        .expect("our completion is on the stream");
+    assert_eq!(
+        completion.update_id, "ours",
+        "a command id is not an identity: the user must match too"
+    );
+}
+
+#[tokio::test]
+async fn a_submission_knows_its_identity_before_it_is_sent() {
+    // Nothing is submitted here, and that is the point: the change ID has to
+    // exist before the call that might fail ambiguously, or there is nothing
+    // to recover with afterwards.
+    let client = CantonClient::connect_lazy(Config::new("http://localhost:1")).unwrap();
+    let submission = client.submission(canton_ledger::Submit::new("alice"));
+
+    let change_id = submission.change_id().clone();
+    assert!(change_id.command_id().starts_with("sdk-"));
+    assert_eq!(change_id.act_as(), ["alice".to_string()]);
+    assert!(
+        change_id.user_id().is_empty(),
+        "unset means token-derived, and the client must not invent one"
+    );
+
+    // And it stays the same across sends, which is what makes a retry
+    // de-duplicate rather than execute twice.
+    assert_eq!(submission.change_id(), &change_id);
+    assert!(submission.submit().await.is_err(), "nothing is listening");
+    assert_eq!(submission.change_id(), &change_id);
 }

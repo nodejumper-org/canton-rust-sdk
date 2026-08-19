@@ -34,6 +34,96 @@ pub struct Submit {
     pub(crate) taps_max_passes: Option<u32>,
 }
 
+/// The complete identity of a submitted command — Canton's **change ID**.
+///
+/// The Ledger API does not identify a command by its `command_id` alone: it
+/// de-duplicates on the triple (`user_id`, `act_as`, `command_id`), and two
+/// applications sharing a participant can legitimately use the same command id.
+/// Anything that goes looking for a command's outcome afterwards — a completion
+/// after a lost response, say — has to match on all three or it can find
+/// somebody else's answer.
+///
+/// A [`Submission`](crate::Submission) hands one of these back *before* the
+/// command is sent, which is the point: after an ambiguous failure the id is
+/// the only way back to the outcome, and a generated id the caller never saw
+/// is no way back at all.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChangeId {
+    user_id: String,
+    act_as: Vec<String>,
+    command_id: String,
+}
+
+impl ChangeId {
+    /// Assemble a change ID from its three parts.
+    ///
+    /// An empty `user_id` means "whichever user the bearer token resolves to",
+    /// which is what the participant fills in when a submission leaves it
+    /// unset — see [`Self::matches`].
+    #[must_use]
+    pub fn new(
+        user_id: impl Into<String>,
+        act_as: Vec<String>,
+        command_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            user_id: user_id.into(),
+            act_as,
+            command_id: command_id.into(),
+        }
+    }
+
+    /// The command id.
+    #[must_use]
+    pub fn command_id(&self) -> &str {
+        &self.command_id
+    }
+
+    /// The submitting user id; empty when it was left to the token.
+    #[must_use]
+    pub fn user_id(&self) -> &str {
+        &self.user_id
+    }
+
+    /// The acting parties.
+    #[must_use]
+    pub fn act_as(&self) -> &[String] {
+        &self.act_as
+    }
+
+    /// Whether `completion` is the completion of *this* command.
+    ///
+    /// The command id must match, and the acting parties must be the same set —
+    /// order is not meaningful, and Canton may echo them in its own.
+    ///
+    /// Two deliberate asymmetries. A `user_id` this side left empty is not
+    /// compared: the participant resolved it from the token and the client
+    /// genuinely does not know it, so requiring equality would reject every
+    /// completion. And a completion that carries no `act_as` at all is not
+    /// rejected on that ground — some rejections are reported without one, and
+    /// refusing to recognise a rejection is worse than the narrow risk of a
+    /// same-user, same-command-id collision it guards against.
+    #[must_use]
+    pub fn matches(&self, completion: &pb::Completion) -> bool {
+        if completion.command_id != self.command_id {
+            return false;
+        }
+        if !self.user_id.is_empty() && completion.user_id != self.user_id {
+            return false;
+        }
+        if completion.act_as.is_empty() {
+            return true;
+        }
+        let normalise = |parties: &[String]| {
+            let mut parties: Vec<String> = parties.to_vec();
+            parties.sort_unstable();
+            parties.dedup();
+            parties
+        };
+        normalise(&completion.act_as) == normalise(&self.act_as)
+    }
+}
+
 impl Submit {
     /// Start a submission acting as a single party.
     pub fn new(act_as: impl Into<String>) -> Self {
@@ -210,12 +300,18 @@ impl Submit {
     }
 
     /// Build the wire [`pb::Commands`], filling `command_id` with a fresh UUID
-    /// when the caller did not set one. Returns `(command_id, commands)` so the
-    /// caller can hand the change ID back for completion-based recovery.
-    pub(crate) fn into_commands(self) -> (String, pb::Commands) {
+    /// when the caller did not set one. Returns the [`ChangeId`] alongside, so
+    /// the identity of the command is known before it is sent and can be used
+    /// for completion-based recovery afterwards.
+    pub(crate) fn into_commands(self) -> (ChangeId, pb::Commands) {
         let command_id = self
             .command_id
             .unwrap_or_else(|| format!("sdk-{}", uuid::Uuid::new_v4()));
+        let change_id = ChangeId::new(
+            self.user_id.clone().unwrap_or_default(),
+            self.act_as.clone(),
+            command_id.clone(),
+        );
         let commands = pb::Commands {
             command_id: command_id.clone(),
             act_as: self.act_as,
@@ -236,7 +332,7 @@ impl Submit {
             prefetch_contract_keys: self.prefetch_contract_keys,
             taps_max_passes: self.taps_max_passes,
         };
-        (command_id, commands)
+        (change_id, commands)
     }
 }
 
@@ -411,13 +507,60 @@ mod tests {
         assert_eq!(submit.commands.len(), 1);
     }
 
+    fn completion(command_id: &str, user_id: &str, act_as: &[&str]) -> pb::Completion {
+        pb::Completion {
+            command_id: command_id.to_string(),
+            user_id: user_id.to_string(),
+            act_as: act_as.iter().map(|p| (*p).to_string()).collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_change_id_matches_only_its_own_completion() {
+        let change_id = ChangeId::new("app-1", vec!["alice".to_string()], "cmd-1");
+
+        assert!(change_id.matches(&completion("cmd-1", "app-1", &["alice"])));
+        // Same command id, different application on the same participant: this
+        // is the collision that matching on the command id alone answers wrongly.
+        assert!(!change_id.matches(&completion("cmd-1", "app-2", &["alice"])));
+        // Same command id, different acting party.
+        assert!(!change_id.matches(&completion("cmd-1", "app-1", &["bob"])));
+        assert!(!change_id.matches(&completion("cmd-2", "app-1", &["alice"])));
+    }
+
+    #[test]
+    fn acting_parties_are_a_set_not_a_sequence() {
+        let change_id = ChangeId::new(
+            "app-1",
+            vec!["alice".to_string(), "bob".to_string()],
+            "cmd-1",
+        );
+        assert!(change_id.matches(&completion("cmd-1", "app-1", &["bob", "alice"])));
+        assert!(!change_id.matches(&completion("cmd-1", "app-1", &["alice"])));
+    }
+
+    #[test]
+    fn an_unknown_user_id_is_not_compared() {
+        // Left to the bearer token: the participant resolved it and the client
+        // never learned which user that was, so requiring equality here would
+        // reject the very completion it is looking for.
+        let change_id = ChangeId::new("", vec!["alice".to_string()], "cmd-1");
+        assert!(change_id.matches(&completion("cmd-1", "whoever", &["alice"])));
+
+        // A completion reported without acting parties still matches: some
+        // rejections arrive that way, and failing to recognise a rejection is
+        // the worse outcome.
+        assert!(change_id.matches(&completion("cmd-1", "whoever", &[])));
+    }
+
     #[test]
     fn into_commands_wires_every_field_and_generates_an_id() {
         let disclosed = pb::DisclosedContract {
             contract_id: "cid-1".to_string(),
             ..Default::default()
         };
-        let (command_id, commands) = Submit::new("alice")
+        let (change_id, commands) = Submit::new("alice")
             .with_user_id("user-1")
             .with_read_as(vec!["bob".to_string()])
             .with_workflow_id("wf-1")
@@ -432,8 +575,13 @@ mod tests {
             .add_command(create(identifier("p", "M", "E"), record(vec![])))
             .into_commands();
 
-        assert!(command_id.starts_with("sdk-"), "generated uuid id");
-        assert_eq!(commands.command_id, command_id);
+        assert!(
+            change_id.command_id().starts_with("sdk-"),
+            "generated uuid id"
+        );
+        assert_eq!(commands.command_id, change_id.command_id());
+        assert_eq!(change_id.user_id(), "user-1");
+        assert_eq!(change_id.act_as(), ["alice".to_string()]);
         assert_eq!(commands.act_as, vec!["alice".to_string()]);
         assert_eq!(commands.read_as, vec!["bob".to_string()]);
         assert_eq!(commands.user_id, "user-1");
@@ -485,12 +633,15 @@ mod tests {
 
     #[test]
     fn into_commands_preserves_an_explicit_id_and_offset_dedup() {
-        let (command_id, commands) = Submit::new("alice")
+        let (change_id, commands) = Submit::new("alice")
             .with_command_id("cmd-7")
             .with_deduplication_offset(42)
             .into_commands();
 
-        assert_eq!(command_id, "cmd-7");
+        assert_eq!(change_id.command_id(), "cmd-7");
+        // Left to the token: the participant resolves it, so the client cannot
+        // record a user id it does not know.
+        assert!(change_id.user_id().is_empty());
         assert_eq!(commands.command_id, "cmd-7");
         assert!(matches!(
             commands.deduplication_period,
