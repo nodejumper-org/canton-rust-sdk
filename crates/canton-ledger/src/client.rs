@@ -264,7 +264,8 @@ impl CantonClient {
     }
 
     /// Fix a submission's identity **before** sending it, returning a
-    /// [`Submission`] that carries its [`ChangeId`](crate::ChangeId).
+    /// [`Submission`](crate::Submission) that carries its
+    /// [`ChangeId`](crate::ChangeId).
     ///
     /// This is the handle to reach for when losing the outcome is not an
     /// option. A submission whose response is lost — a dropped connection, a
