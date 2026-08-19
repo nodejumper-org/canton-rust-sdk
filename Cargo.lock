@@ -304,6 +304,7 @@ dependencies = [
  "prost 0.14.4",
  "prost-types",
  "protoc-bin-vendored",
+ "sha2",
  "tokio",
  "tonic 0.14.6",
  "tonic-prost",
