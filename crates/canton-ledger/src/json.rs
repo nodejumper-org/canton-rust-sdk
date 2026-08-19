@@ -144,6 +144,17 @@ impl JsonCommands {
         self
     }
 
+    /// This command set's complete identity — available before it is sent, and
+    /// the only way back to the outcome of a submission whose result was lost.
+    #[must_use]
+    pub fn change_id(&self) -> crate::ChangeId {
+        crate::ChangeId::new(
+            self.user_id.clone().unwrap_or_default(),
+            self.act_as.clone(),
+            self.command_id.clone(),
+        )
+    }
+
     /// Set the acting user id (defaults to the one derived from the token).
     #[must_use]
     pub fn with_user_id(mut self, user_id: impl Into<String>) -> Self {
@@ -247,6 +258,19 @@ impl JsonCommands {
         self.min_ledger_time_rel = Some(duration);
         self
     }
+}
+
+/// The response to a successful `submit-and-wait` — the lighter of the two
+/// waiting submissions, which reports where the command landed without
+/// returning the transaction itself.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct JsonSubmitAndWaitResponse {
+    /// The id of the transaction the command produced.
+    pub update_id: String,
+    /// The offset of the completion.
+    pub completion_offset: i64,
 }
 
 /// The response to a successful `submit-and-wait-for-transaction`.
@@ -650,6 +674,81 @@ impl JsonClient {
         .await
     }
 
+    /// Submit **without waiting** (`POST /v2/commands/async/submit`): the
+    /// participant accepts the command and the outcome arrives on the
+    /// completion stream.
+    ///
+    /// The gRPC lane has had this since M1. Note what a failure here means: the
+    /// command may still have committed, so reach for
+    /// [`Self::submission`] rather than this method when losing the outcome is
+    /// not acceptable.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication fails or the participant rejects
+    /// the submission ([`Error::Http`] with its error body).
+    pub async fn submit(&self, commands: &JsonCommands) -> Result<()> {
+        telemetry::instrument("submit", TRANSPORT_JSON, async {
+            // These two endpoints take the command set *itself* as the body,
+            // where `submit-and-wait-for-transaction` takes a request object
+            // wrapping it. The participant rejects the wrong one with a 400
+            // naming the fields it could not find.
+            // The response body is an empty object; accepting it is the answer.
+            let _: serde_json::Value = self.post("/v2/commands/async/submit", commands).await?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Submit and wait for the completion (`POST /v2/commands/submit-and-wait`)
+    /// without fetching the transaction — the update id and completion offset.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication fails or the command is rejected.
+    pub async fn submit_and_wait(
+        &self,
+        commands: &JsonCommands,
+    ) -> Result<JsonSubmitAndWaitResponse> {
+        telemetry::instrument("submit_and_wait", TRANSPORT_JSON, async {
+            self.post("/v2/commands/submit-and-wait", commands).await
+        })
+        .await
+    }
+
+    /// The create and consuming-exercise events of one contract
+    /// (`POST /v2/events/events-by-contract-id`), as seen by `parties`.
+    ///
+    /// Returns the raw response object; a contract that has been pruned or is
+    /// invisible to `parties` comes back as a `CONTRACT_EVENTS_NOT_FOUND`
+    /// error rather than an empty result.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails, or the
+    /// contract has no events visible to `parties`.
+    pub async fn events_by_contract_id(
+        &self,
+        contract_id: impl Into<String>,
+        parties: Vec<String>,
+    ) -> Result<Value> {
+        telemetry::instrument("events_by_contract_id", TRANSPORT_JSON, async {
+            let request = crate::request::ActiveContractsRequest::new(parties, 0);
+            let body = json!({
+                "contractId": contract_id.into(),
+                "eventFormat": request.json_body()["eventFormat"],
+            });
+            self.post("/v2/events/events-by-contract-id", &body).await
+        })
+        .await
+    }
+
+    /// Fix a submission's identity **before** sending it, returning a
+    /// [`JsonSubmission`](crate::JsonSubmission) that carries its
+    /// [`ChangeId`](crate::ChangeId) — the JSON lane's
+    /// [`CantonClient::submission`](crate::CantonClient::submission).
+    #[must_use]
+    pub fn submission(&self, commands: JsonCommands) -> crate::submission::JsonSubmission {
+        crate::submission::JsonSubmission::new(self.clone(), commands)
+    }
+
     /// The active contract set snapshot at `active_at_offset`, wildcard-filtered
     /// to `parties` (`POST /v2/state/active-contracts`).
     ///
@@ -904,6 +1003,109 @@ impl JsonClient {
         .await
     }
 
+    /// The reconnect policy for the WebSocket streams: `(max_reconnects,
+    /// backoff_unit)`, taken from this client's
+    /// [`RetryConfig`](canton_core::RetryConfig) when one is configured — the
+    /// same derivation the gRPC client makes, so configuring retries once
+    /// governs both lanes rather than only the unary one.
+    #[cfg(feature = "ws")]
+    fn reconnect_policy(&self) -> (u32, std::time::Duration) {
+        match &self.retry {
+            Some(retry) => (retry.max_attempts, retry.initial_backoff),
+            None => (5, std::time::Duration::from_millis(250)),
+        }
+    }
+
+    /// Like [`Self::ws_active_contracts`], but **resumable**: on a retriable
+    /// disconnect it resubscribes from the last continuation token the
+    /// participant sent, rather than starting the snapshot again.
+    ///
+    /// An ACS snapshot has no offsets to resume from — it is a position in a
+    /// stream of entries, which is what `streamContinuationToken` names. The
+    /// gRPC lane has had a resumable ACS read since M1; this is its counterpart,
+    /// and without it a WebSocket consumer of a large snapshot had to start over
+    /// on any blip.
+    ///
+    /// The token is only valid against the same participant, the same
+    /// `active_at_offset` and the same filters — all of which are fixed for the
+    /// life of this stream — and while the snapshot's offset has not been
+    /// pruned.
+    #[cfg(feature = "ws")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+    pub fn ws_active_contracts_resumable(
+        &self,
+        parties: Vec<String>,
+        active_at_offset: i64,
+    ) -> impl futures_core::Stream<Item = Result<Value>> + Send + use<> {
+        let (max_reconnects, backoff_unit) = self.reconnect_policy();
+        let base_url = self.base_url.clone();
+        let auth = self.auth.clone();
+        let tls = self.tls.clone();
+        let max_decoding_message_size = self.max_decoding_message_size;
+        let timeout = self.timeout;
+        async_stream::stream! {
+            let mut token: Option<String> = None;
+            let mut reconnects = 0u32;
+            loop {
+                let mut request = active_contracts_request(&parties, active_at_offset);
+                if let Some(token) = &token {
+                    request["streamContinuationToken"] = Value::String(token.clone());
+                }
+                let transport = crate::ws::WsTransport {
+                    base_url: &base_url,
+                    auth: &auth,
+                    tls: tls.as_ref(),
+                    max_decoding_message_size,
+                    timeout,
+                };
+                match crate::ws::subscribe(&transport, "/v2/state/active-contracts", request).await {
+                    Ok(inner) => {
+                        tokio::pin!(inner);
+                        loop {
+                            match inner.next().await {
+                                Some(Ok(frame)) => {
+                                    if let Some(next) = frame
+                                        .get("streamContinuationToken")
+                                        .and_then(Value::as_str)
+                                    {
+                                        if !next.is_empty() {
+                                            token = Some(next.to_string());
+                                        }
+                                    }
+                                    reconnects = 0;
+                                    yield Ok(frame);
+                                }
+                                Some(Err(err)) if err.is_retriable() => break,
+                                Some(Err(err)) => {
+                                    yield Err(err);
+                                    return;
+                                }
+                                // A bounded read: the participant closes the
+                                // socket when the snapshot is delivered, and
+                                // there is no token left to resume from.
+                                None => return,
+                            }
+                        }
+                    }
+                    Err(err) if err.is_retriable() => {}
+                    Err(err) => {
+                        yield Err(err);
+                        return;
+                    }
+                }
+
+                reconnects += 1;
+                if reconnects > max_reconnects {
+                    yield Err(Error::UnexpectedResponse(format!(
+                        "ws acs stream failed to resume after {max_reconnects} reconnects"
+                    )));
+                    return;
+                }
+                tokio::time::sleep(backoff_unit * reconnects).await;
+            }
+        }
+    }
+
     /// Like [`Self::ws_updates`] (unbounded tail), but **resumable**: on a
     /// retriable disconnect it reconnects from the last offset it observed
     /// (tracked via `OffsetCheckpoint` heartbeats and update offsets), with a
@@ -917,7 +1119,7 @@ impl JsonClient {
         parties: Vec<String>,
         begin_exclusive: i64,
     ) -> impl futures_core::Stream<Item = Result<Value>> + Send + use<> {
-        const MAX_RECONNECTS: u32 = 5;
+        let (max_reconnects, backoff_unit) = self.reconnect_policy();
         let base_url = self.base_url.clone();
         let auth = self.auth.clone();
         let tls = self.tls.clone();
@@ -967,14 +1169,13 @@ impl JsonClient {
                 }
 
                 reconnects += 1;
-                if reconnects > MAX_RECONNECTS {
+                if reconnects > max_reconnects {
                     yield Err(Error::UnexpectedResponse(format!(
-                        "ws update stream failed to resume after {MAX_RECONNECTS} reconnects"
+                        "ws update stream failed to resume after {max_reconnects} reconnects"
                     )));
                     return;
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(250 * u64::from(reconnects)))
-                    .await;
+                tokio::time::sleep(backoff_unit * reconnects).await;
             }
         }
     }

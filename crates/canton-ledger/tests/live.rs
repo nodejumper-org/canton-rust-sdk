@@ -1316,3 +1316,165 @@ async fn submit_and_wait_returns_the_update_id() {
         response.update_id, response.completion_offset
     );
 }
+
+#[tokio::test]
+async fn json_async_submit_is_recoverable_by_its_change_id() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        eprintln!("skipping json_async_submit_is_recoverable_by_its_change_id: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        eprintln!("skipping: no credentials in the environment");
+        return;
+    };
+
+    // The offset to scan completions from, taken before anything is sent.
+    let begin = json.ledger_end().await.expect("json ledger_end");
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let submission =
+        json.submission(JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments));
+    let command_id = submission.change_id().command_id().to_string();
+
+    // Fire-and-forget over JSON, which had no such endpoint before.
+    submission
+        .submit()
+        .await
+        .expect("json async submit should be accepted");
+
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(30))
+        .await
+        .expect("the completion should be found over the WS lane");
+    assert_eq!(
+        completion.get("commandId").and_then(|v| v.as_str()),
+        Some(command_id.as_str())
+    );
+    println!("json async submit — command_id={command_id} recovered over WS");
+}
+
+#[tokio::test]
+async fn json_submit_and_wait_reports_where_the_command_landed() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        eprintln!("skipping json_submit_and_wait_reports_where_the_command_landed: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        eprintln!("skipping: no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+
+    let response = json
+        .submit_and_wait(&commands)
+        .await
+        .expect("json submit-and-wait should commit");
+    assert!(!response.update_id.is_empty());
+    assert!(response.completion_offset > 0);
+    println!(
+        "json submit-and-wait — update_id={} completion_offset={}",
+        response.update_id, response.completion_offset
+    );
+}
+
+#[tokio::test]
+async fn json_events_by_contract_id_finds_a_contract_we_created() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        eprintln!(
+            "skipping json_events_by_contract_id_finds_a_contract_we_created: no environment"
+        );
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        eprintln!("skipping: no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+    let response = json
+        .submit_and_wait_for_transaction(&commands)
+        .await
+        .expect("json submit should commit");
+
+    // Dig the contract id out of the created event the submit returned.
+    let contract_id = response
+        .transaction
+        .events
+        .iter()
+        .find_map(|event| {
+            event
+                .get("CreatedEvent")
+                .and_then(|created| created.get("contractId"))
+                .and_then(|id| id.as_str())
+                .map(str::to_string)
+        })
+        .expect("the create should report a contract id");
+
+    let events = json
+        .events_by_contract_id(&contract_id, vec![party.clone()])
+        .await
+        .expect("events-by-contract-id");
+    assert!(
+        events.to_string().contains(&contract_id),
+        "the response should describe the contract we asked about: {events}"
+    );
+    println!("json events-by-contract-id — {contract_id} found");
+}
+
+#[tokio::test]
+async fn ws_active_contracts_resumable_reads_the_snapshot() {
+    let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
+        eprintln!("skipping ws_active_contracts_resumable_reads_the_snapshot: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        eprintln!("skipping: no credentials in the environment");
+        return;
+    };
+
+    use tokio_stream::StreamExt as _;
+
+    let offset = json.ledger_end().await.expect("json ledger_end");
+    let stream = json.ws_active_contracts_resumable(vec![party.clone()], offset);
+    tokio::pin!(stream);
+
+    let mut entries = 0usize;
+    while let Some(frame) = stream.next().await {
+        frame.expect("the resumable ACS stream should not fail");
+        entries += 1;
+        if entries >= 5 {
+            break; // enough to prove the subscription delivers
+        }
+    }
+    println!("ws resumable acs — {entries} entries read from the snapshot");
+}

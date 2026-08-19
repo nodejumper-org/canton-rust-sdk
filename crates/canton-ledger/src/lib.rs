@@ -33,9 +33,11 @@ pub use canton_core::{Config, Error, ErrorCategory, Result, RetryConfig, TlsConf
 pub use canton_proto::grpc::health::v1::health_check_response::ServingStatus;
 pub use client::{AcsEntry, CantonClient};
 pub use command::{ChangeId, Submit, create, exercise, identifier, record, value};
-pub use json::{JsonClient, JsonCommands, JsonSubmitResponse, JsonTransaction};
+pub use json::{
+    JsonClient, JsonCommands, JsonSubmitAndWaitResponse, JsonSubmitResponse, JsonTransaction,
+};
 pub use request::{ActiveContractsRequest, CompletionsRequest, TransactionShape, UpdatesRequest};
-pub use submission::Submission;
+pub use submission::{JsonSubmission, Submission};
 
 /// The generated Ledger API v2 protobuf types, for the **dynamic** (untyped)
 /// command path. For typed payloads generated from a DAR, see `canton-codegen`

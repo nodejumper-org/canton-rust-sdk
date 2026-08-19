@@ -163,6 +163,17 @@ pub(crate) fn is_offset_checkpoint(value: &Value) -> bool {
     })
 }
 
+/// The completion object inside a WS completion frame, if the frame is one.
+///
+/// The envelope is `{"completionResponse": {"Completion": {"value": {…}}}}`;
+/// an `OffsetCheckpoint` frame has no completion to return.
+pub(crate) fn completion_value(frame: &Value) -> Option<&Value> {
+    frame
+        .get("completionResponse")?
+        .get("Completion")?
+        .get("value")
+}
+
 /// Drop `OffsetCheckpoint` heartbeat frames from a stream (matching the gRPC
 /// client's `updates`/`completions`, which surface only real items).
 pub(crate) fn filter_checkpoints(

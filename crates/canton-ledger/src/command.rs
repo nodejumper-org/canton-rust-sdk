@@ -105,13 +105,49 @@ impl ChangeId {
     /// same-user, same-command-id collision it guards against.
     #[must_use]
     pub fn matches(&self, completion: &pb::Completion) -> bool {
-        if completion.command_id != self.command_id {
+        self.matches_parts(
+            &completion.command_id,
+            &completion.user_id,
+            &completion.act_as,
+        )
+    }
+
+    /// [`Self::matches`] for a completion from the JSON transport, which
+    /// carries the same three fields under their camelCase names.
+    ///
+    /// The rule lives here rather than in the JSON client so that the two
+    /// transports cannot come to disagree about what identifies a command.
+    #[must_use]
+    pub fn matches_json(&self, completion: &serde_json::Value) -> bool {
+        let command_id = completion
+            .get("commandId")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let user_id = completion
+            .get("userId")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let act_as: Vec<String> = completion
+            .get("actAs")
+            .and_then(serde_json::Value::as_array)
+            .map(|parties| {
+                parties
+                    .iter()
+                    .filter_map(|party| party.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.matches_parts(command_id, user_id, &act_as)
+    }
+
+    fn matches_parts(&self, command_id: &str, user_id: &str, act_as: &[String]) -> bool {
+        if command_id != self.command_id {
             return false;
         }
-        if !self.user_id.is_empty() && completion.user_id != self.user_id {
+        if !self.user_id.is_empty() && user_id != self.user_id {
             return false;
         }
-        if completion.act_as.is_empty() {
+        if act_as.is_empty() {
             return true;
         }
         let normalise = |parties: &[String]| {
@@ -120,7 +156,7 @@ impl ChangeId {
             parties.dedup();
             parties
         };
-        normalise(&completion.act_as) == normalise(&self.act_as)
+        normalise(act_as) == normalise(&self.act_as)
     }
 }
 
