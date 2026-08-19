@@ -878,7 +878,11 @@ impl JsonClient {
         telemetry::instrument("ws_updates", TRANSPORT_JSON, async move {
             let request = updates_request(&parties, begin_exclusive, end_inclusive);
             let inner = crate::ws::subscribe(&self.ws_transport(), "/v2/updates", request).await?;
-            Ok(crate::ws::filter_checkpoints(inner))
+            Ok(telemetry::instrument_stream(
+                "ws_updates",
+                TRANSPORT_JSON,
+                crate::ws::filter_checkpoints(inner),
+            ))
         })
         .await
     }
@@ -900,7 +904,11 @@ impl JsonClient {
             let inner =
                 crate::ws::subscribe(&self.ws_transport(), "/v2/updates", request.json_body())
                     .await?;
-            Ok(crate::ws::filter_checkpoints(inner))
+            Ok(telemetry::instrument_stream(
+                "ws_updates",
+                TRANSPORT_JSON,
+                crate::ws::filter_checkpoints(inner),
+            ))
         })
         .await
     }
@@ -924,7 +932,14 @@ impl JsonClient {
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_active_contracts", TRANSPORT_JSON, async move {
             let request = active_contracts_request(&parties, active_at_offset);
-            crate::ws::subscribe(&self.ws_transport(), "/v2/state/active-contracts", request).await
+            let inner =
+                crate::ws::subscribe(&self.ws_transport(), "/v2/state/active-contracts", request)
+                    .await?;
+            Ok(telemetry::instrument_stream(
+                "ws_active_contracts",
+                TRANSPORT_JSON,
+                inner,
+            ))
         })
         .await
     }
@@ -942,12 +957,17 @@ impl JsonClient {
         request: &crate::request::ActiveContractsRequest,
     ) -> Result<impl futures_core::Stream<Item = Result<Value>> + Send + use<>> {
         telemetry::instrument("ws_active_contracts", TRANSPORT_JSON, async move {
-            crate::ws::subscribe(
+            let inner = crate::ws::subscribe(
                 &self.ws_transport(),
                 "/v2/state/active-contracts",
                 request.json_body(),
             )
-            .await
+            .await?;
+            Ok(telemetry::instrument_stream(
+                "ws_active_contracts",
+                TRANSPORT_JSON,
+                inner,
+            ))
         })
         .await
     }
@@ -973,7 +993,11 @@ impl JsonClient {
                 request,
             )
             .await?;
-            Ok(crate::ws::filter_checkpoints(inner))
+            Ok(telemetry::instrument_stream(
+                "ws_completions",
+                TRANSPORT_JSON,
+                crate::ws::filter_checkpoints(inner),
+            ))
         })
         .await
     }
@@ -998,7 +1022,11 @@ impl JsonClient {
                 request.json_body(),
             )
             .await?;
-            Ok(crate::ws::filter_checkpoints(inner))
+            Ok(telemetry::instrument_stream(
+                "ws_completions",
+                TRANSPORT_JSON,
+                crate::ws::filter_checkpoints(inner),
+            ))
         })
         .await
     }

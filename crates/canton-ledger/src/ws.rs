@@ -245,6 +245,20 @@ pub(crate) async fn subscribe(
     if let Some(token) = auth.bearer().await? {
         builder = builder.with_header("Authorization", format!("Bearer {token}"));
     }
+    // The upgrade request is the only request a WebSocket stream makes, so it
+    // is the only place trace context can be attached. Without this the whole
+    // streaming JSON lane sat outside the caller's trace, while every unary
+    // request on either transport joined it.
+    #[cfg(feature = "otel")]
+    {
+        let mut headers = http::HeaderMap::new();
+        canton_core::telemetry::otel::inject_trace_context(&mut headers);
+        for (name, value) in &headers {
+            if let Ok(value) = value.to_str() {
+                builder = builder.with_header(name.as_str(), value);
+            }
+        }
+    }
 
     // Left to its own defaults tungstenite caps an incoming message at 64 MiB
     // and a single frame at 16 MiB — a ceiling on ledger data that the caller

@@ -453,7 +453,7 @@ impl CantonClient {
                 .await?
                 .into_inner();
 
-            Ok(stream.filter_map(|item| match item {
+            let stream = stream.filter_map(|item| match item {
                 Ok(response) => match response.completion_response {
                     Some(pb::completion_stream_response::CompletionResponse::Completion(
                         completion,
@@ -461,7 +461,12 @@ impl CantonClient {
                     _ => None, // skip offset checkpoints
                 },
                 Err(status) => Some(Err(Error::from(status))),
-            }))
+            });
+            Ok(telemetry::instrument_stream(
+                "completions",
+                TRANSPORT_GRPC,
+                stream,
+            ))
         })
         .await
     }
@@ -812,10 +817,15 @@ impl CantonClient {
                 .await?
                 .into_inner();
 
-            Ok(stream.filter_map(|item| match item {
+            let stream = stream.filter_map(|item| match item {
                 Ok(response) => acs_entry(response.contract_entry).map(Ok),
                 Err(status) => Some(Err(Error::from(status))),
-            }))
+            });
+            Ok(telemetry::instrument_stream(
+                "active_contracts",
+                TRANSPORT_GRPC,
+                stream,
+            ))
         })
         .await
     }
@@ -999,10 +1009,17 @@ impl CantonClient {
             let mut client = service!(self, pb::update_service_client::UpdateServiceClient::new);
             let stream = client.get_updates(request.into_grpc()).await?.into_inner();
 
-            Ok(stream.filter_map(|item| match item {
+            let stream = stream.filter_map(|item| match item {
                 Ok(response) => response.update.map(Ok),
                 Err(status) => Some(Err(Error::from(status))),
-            }))
+            });
+            // Instrumented for the life of the stream, not just its opening:
+            // a subscription that fails an hour in is the failure that matters.
+            Ok(telemetry::instrument_stream(
+                "updates",
+                TRANSPORT_GRPC,
+                stream,
+            ))
         })
         .await
     }
