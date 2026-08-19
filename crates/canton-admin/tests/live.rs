@@ -18,6 +18,25 @@
 use canton_admin::{AdminClient, Config, Store, TopologyClient};
 use canton_auth::{OidcConfig, TokenProvider};
 
+/// Report a live test that could not run.
+///
+/// A skipped test and a passing test are the same line in cargo's output, so a
+/// live suite that reached no participant reads exactly like one that exercised
+/// everything — which is how "28 live tests passed" can be true and mean
+/// nothing. Set **`CANTON_TEST_REQUIRE_LIVE=1`**, as any run that claims to have
+/// exercised a node should, and a missing environment fails here instead of
+/// passing quietly.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
 fn endpoint() -> Option<String> {
     std::env::var("CANTON_TEST_ENDPOINT")
         .ok()
@@ -71,7 +90,7 @@ fn admin_client(config: OidcConfig) -> Option<AdminClient> {
 #[tokio::test]
 async fn user_self_inspect_reports_the_authenticated_user() {
     let Some(client) = ordinary_client() else {
-        eprintln!("skipping user_self_inspect: no endpoint or credentials in the environment");
+        skip!("user_self_inspect: no endpoint or credentials in the environment");
         return;
     };
 
@@ -91,9 +110,7 @@ async fn user_self_inspect_reports_the_authenticated_user() {
 #[tokio::test]
 async fn participant_id_is_returned() {
     let Some(client) = ordinary_client() else {
-        eprintln!(
-            "skipping participant_id_is_returned: no endpoint or credentials in the environment"
-        );
+        skip!("participant_id_is_returned: no endpoint or credentials in the environment");
         return;
     };
 
@@ -105,8 +122,8 @@ async fn participant_id_is_returned() {
 #[tokio::test]
 async fn party_admin_allocate_list_and_get() {
     let Some(client) = admin_oidc().and_then(admin_client) else {
-        eprintln!(
-            "skipping party_admin_allocate_list_and_get: set CANTON_TEST_ENDPOINT + \
+        skip!(
+            "party_admin_allocate_list_and_get: set CANTON_TEST_ENDPOINT + \
              CANTON_TEST_ADMIN_CLIENT_ID/CANTON_TEST_ADMIN_CLIENT_SECRET (ParticipantAdmin)"
         );
         return;
@@ -164,9 +181,7 @@ async fn party_admin_allocate_list_and_get() {
 #[tokio::test]
 async fn topology_reads_return_mappings() {
     let Some(admin_ep) = admin_endpoint() else {
-        eprintln!(
-            "skipping topology_reads_return_mappings: set CANTON_TEST_ADMIN_ENDPOINT (:3902)"
-        );
+        skip!("topology_reads_return_mappings: set CANTON_TEST_ADMIN_ENDPOINT (:3902)");
         return;
     };
 
@@ -233,7 +248,7 @@ async fn packages_read_lists_and_reports_status() {
     use canton_admin::PackageStatus;
 
     let Some(client) = ordinary_client() else {
-        eprintln!("skipping packages_read_lists_and_reports_status: no endpoint or credentials");
+        skip!("packages_read_lists_and_reports_status: no endpoint or credentials");
         return;
     };
 

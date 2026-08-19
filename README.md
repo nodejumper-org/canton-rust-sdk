@@ -234,6 +234,12 @@ cargo test --workspace --all-features
 below are set, and skip otherwise (so the command above stays green without a
 node). Every name is prefixed `CANTON_TEST_`:
 
+A skipped test and a passing one are the same line in cargo's output, so set
+**`CANTON_TEST_REQUIRE_LIVE=1`** whenever a run is meant to prove something:
+each test that would step aside for a missing variable fails instead. That is
+what makes "38 live tests passed" a claim about a participant rather than about
+an empty environment.
+
 | Variable | What it gates | Example (LocalNet App Provider) |
 |---|---|---|
 | `CANTON_TEST_ENDPOINT` | all gRPC live tests | `http://localhost:3901` |
@@ -245,6 +251,7 @@ node). Every name is prefixed `CANTON_TEST_`:
 | `CANTON_TEST_ADMIN_ENDPOINT` | `canton-admin` topology reads | `http://localhost:3902` |
 | `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | party-admin RPCs (need the `ParticipantAdmin` right) | `app-provider-validator`, … |
 | `CANTON_TEST_SYNC_ID` | optional: also assert vetted packages in the synchronizer store | |
+| `CANTON_TEST_REQUIRE_LIVE` | turns every skip into a failure — set it on any run whose result is being reported | `1` |
 
 ```sh
 export CANTON_TEST_ENDPOINT=http://localhost:3901
@@ -253,6 +260,7 @@ export CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/p
 export CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=…
 export CANTON_TEST_PARTY='app_provider_quickstart-…::1220…'
 export CANTON_TEST_LICENSING_PKG='#quickstart-licensing'
+export CANTON_TEST_REQUIRE_LIVE=1   # skipping is now a failure, not a pass
 cargo test -p canton-ledger --all-features --test live -- --nocapture
 ```
 
