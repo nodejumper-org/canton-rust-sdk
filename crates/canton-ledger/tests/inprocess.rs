@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use canton_auth::{OidcConfig, TokenProvider};
-use canton_ledger::{CantonClient, Config, RetryConfig};
+use canton_ledger::{AcsEntry, CantonClient, Config, RetryConfig};
 use canton_proto::com::daml::ledger::api::v2 as pb;
 use pb::update_service_server::{UpdateService, UpdateServiceServer};
 use pb::version_service_server::{VersionService, VersionServiceServer};
@@ -796,4 +796,191 @@ async fn exhausted_reconnects_report_the_participants_own_failure() {
         format!("{last}").contains("participant is restarting"),
         "the participant's own message must survive: {last}"
     );
+}
+
+// ---- gRPC: an ACS snapshot is not only active contracts ---------------------
+
+fn incomplete_unassigned_entry(cid: &str) -> pb::GetActiveContractsResponse {
+    pb::GetActiveContractsResponse {
+        contract_entry: Some(
+            pb::get_active_contracts_response::ContractEntry::IncompleteUnassigned(
+                pb::IncompleteUnassigned {
+                    created_event: Some(pb::CreatedEvent {
+                        contract_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                    unassigned_event: Some(pb::UnassignedEvent {
+                        contract_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                },
+            ),
+        ),
+        ..Default::default()
+    }
+}
+
+fn incomplete_assigned_entry(cid: &str) -> pb::GetActiveContractsResponse {
+    pb::GetActiveContractsResponse {
+        contract_entry: Some(
+            pb::get_active_contracts_response::ContractEntry::IncompleteAssigned(
+                pb::IncompleteAssigned {
+                    assigned_event: Some(pb::AssignedEvent {
+                        reassignment_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                },
+            ),
+        ),
+        ..Default::default()
+    }
+}
+
+/// A `StateService` whose single page carries one entry of each kind — the
+/// shape a multi-synchronizer participant returns while reassignments are in
+/// flight at the snapshot offset.
+#[derive(Clone, Default)]
+struct MixedAcs;
+
+#[tonic::async_trait]
+impl StateService for MixedAcs {
+    async fn get_active_contracts_page(
+        &self,
+        _request: Request<pb::GetActiveContractsPageRequest>,
+    ) -> Result<Response<pb::GetActiveContractsPageResponse>, Status> {
+        Ok(Response::new(pb::GetActiveContractsPageResponse {
+            active_contracts: vec![
+                acs_entry("active-1"),
+                incomplete_unassigned_entry("leaving-1"),
+                incomplete_assigned_entry("arriving-1"),
+            ],
+            next_page_token: None,
+            ..Default::default()
+        }))
+    }
+
+    type GetActiveContractsStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::GetActiveContractsResponse, Status>> + Send>,
+    >;
+    async fn get_active_contracts(
+        &self,
+        _r: Request<pb::GetActiveContractsRequest>,
+    ) -> Result<Response<Self::GetActiveContractsStream>, Status> {
+        let items: Vec<Result<pb::GetActiveContractsResponse, Status>> = vec![
+            Ok(acs_entry("active-1")),
+            Ok(incomplete_unassigned_entry("leaving-1")),
+            Ok(incomplete_assigned_entry("arriving-1")),
+        ];
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+    async fn get_connected_synchronizers(
+        &self,
+        _r: Request<pb::GetConnectedSynchronizersRequest>,
+    ) -> Result<Response<pb::GetConnectedSynchronizersResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_ledger_end(
+        &self,
+        _r: Request<pb::GetLedgerEndRequest>,
+    ) -> Result<Response<pb::GetLedgerEndResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_latest_pruned_offsets(
+        &self,
+        _r: Request<pb::GetLatestPrunedOffsetsRequest>,
+    ) -> Result<Response<pb::GetLatestPrunedOffsetsResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_state<S>(service: S) -> u16
+where
+    S: StateService,
+{
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(StateServiceServer::new(service), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+#[tokio::test]
+async fn the_lossless_acs_read_keeps_incomplete_reassignments() {
+    let port = serve_state(MixedAcs).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // Paged.
+    let (entries, next) = client
+        .acs_page(vec!["p".to_string()], 7, 10, None)
+        .await
+        .unwrap();
+    assert!(next.is_none());
+    assert_eq!(entries.len(), 3, "every entry kind survives: {entries:?}");
+    assert!(matches!(entries[0], AcsEntry::Active(_)));
+    assert!(matches!(entries[1], AcsEntry::IncompleteUnassigned(_)));
+    assert!(matches!(entries[2], AcsEntry::IncompleteAssigned(_)));
+
+    // Streaming.
+    let stream = client.acs_entries(vec!["p".to_string()], 7).await.unwrap();
+    tokio::pin!(stream);
+    let mut kinds = Vec::new();
+    while let Some(entry) = stream.next().await {
+        kinds.push(match entry.unwrap() {
+            AcsEntry::Active(_) => "active",
+            AcsEntry::IncompleteUnassigned(_) => "unassigned",
+            AcsEntry::IncompleteAssigned(_) => "assigned",
+            // `AcsEntry` is `#[non_exhaustive]`: a kind added by a future
+            // Ledger API must fail this test rather than be counted as one of
+            // the three.
+            other => panic!("unexpected entry kind: {other:?}"),
+        });
+    }
+    assert_eq!(kinds, vec!["active", "unassigned", "assigned"]);
+
+    // Resumable, page-based.
+    let stream = client.acs_entries_resumable(vec!["p".to_string()], 7, 10);
+    tokio::pin!(stream);
+    let mut count = 0;
+    while let Some(entry) = stream.next().await {
+        entry.unwrap();
+        count += 1;
+    }
+    assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn the_active_only_read_still_returns_active_contracts_only() {
+    let port = serve_state(MixedAcs).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // The convenience methods keep their meaning — the point of the lossless
+    // read is that it is now a caller's choice rather than the only behaviour.
+    let (contracts, _) = client
+        .active_contracts_page(vec!["p".to_string()], 7, 10, None)
+        .await
+        .unwrap();
+    assert_eq!(contracts.len(), 1);
+    assert_eq!(
+        contracts[0].created_event.as_ref().unwrap().contract_id,
+        "active-1"
+    );
+
+    let stream = client
+        .active_contracts(vec!["p".to_string()], 7)
+        .await
+        .unwrap();
+    tokio::pin!(stream);
+    let mut ids = Vec::new();
+    while let Some(contract) = stream.next().await {
+        ids.push(contract.unwrap().created_event.unwrap().contract_id);
+    }
+    assert_eq!(ids, vec!["active-1"]);
 }

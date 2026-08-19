@@ -42,6 +42,69 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
     }
 }
 
+/// One entry of an Active Contract Set snapshot.
+///
+/// A snapshot is not only active contracts. A reassignment that is half-done at
+/// the snapshot offset appears as an *incomplete* entry — unassigned from one
+/// synchronizer with no matching assignment yet, or assigned to one with the
+/// unassignment out of view — and an application that reads only
+/// [`Active`](Self::Active) sees a contract that has left one synchronizer and
+/// not arrived at the other simply vanish. The Ledger API sends these precisely
+/// so a multi-synchronizer application can bootstrap without that hole, which is
+/// why there is a lossless read.
+///
+/// `#[non_exhaustive]`: the Ledger API may add an entry kind.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum AcsEntry {
+    /// A contract active on the synchronizer named in the entry.
+    Active(pb::ActiveContract),
+    /// Unassigned before the snapshot offset with no assignment before it —
+    /// the contract is in flight *out of* this synchronizer.
+    IncompleteUnassigned(pb::IncompleteUnassigned),
+    /// Assigned before the snapshot offset with no unassignment before it.
+    /// Note this does **not** say the contract is active on the target
+    /// synchronizer; the proto is explicit about that.
+    IncompleteAssigned(pb::IncompleteAssigned),
+}
+
+impl AcsEntry {
+    /// The active contract, if this entry is one.
+    #[must_use]
+    pub fn active(&self) -> Option<&pb::ActiveContract> {
+        match self {
+            AcsEntry::Active(active) => Some(active),
+            _ => None,
+        }
+    }
+
+    /// Consume the entry, yielding the active contract if it is one.
+    #[must_use]
+    pub fn into_active(self) -> Option<pb::ActiveContract> {
+        match self {
+            AcsEntry::Active(active) => Some(active),
+            _ => None,
+        }
+    }
+}
+
+/// Convert one wire entry, dropping only the case the participant left empty
+/// (the `oneof` is required, so an empty entry is a participant that sent
+/// nothing to report).
+fn acs_entry(entry: Option<pb::get_active_contracts_response::ContractEntry>) -> Option<AcsEntry> {
+    use pb::get_active_contracts_response::ContractEntry;
+    match entry {
+        Some(ContractEntry::ActiveContract(active)) => Some(AcsEntry::Active(active)),
+        Some(ContractEntry::IncompleteUnassigned(unassigned)) => {
+            Some(AcsEntry::IncompleteUnassigned(unassigned))
+        }
+        Some(ContractEntry::IncompleteAssigned(assigned)) => {
+            Some(AcsEntry::IncompleteAssigned(assigned))
+        }
+        None => None,
+    }
+}
+
 /// The offset of an update, for resumable-stream position tracking.
 fn update_offset(update: &pb::get_updates_response::Update) -> i64 {
     use pb::get_updates_response::Update;
@@ -492,6 +555,46 @@ impl CantonClient {
         max_page_size: i32,
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<pb::ActiveContract>, Option<Vec<u8>>)> {
+        let (entries, next) = self
+            .acs_page_with(request, max_page_size, page_token)
+            .await?;
+        Ok((
+            entries
+                .into_iter()
+                .filter_map(AcsEntry::into_active)
+                .collect(),
+            next,
+        ))
+    }
+
+    /// One page of the Active Contract Set for `parties`, **losslessly**: every
+    /// entry the participant sent, active or incomplete (see [`AcsEntry`]).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn acs_page(
+        &self,
+        parties: Vec<String>,
+        active_at_offset: i64,
+        max_page_size: i32,
+        page_token: Option<Vec<u8>>,
+    ) -> Result<(Vec<AcsEntry>, Option<Vec<u8>>)> {
+        let request = crate::request::ActiveContractsRequest::new(parties, active_at_offset);
+        self.acs_page_with(&request, max_page_size, page_token)
+            .await
+    }
+
+    /// Like [`Self::acs_page`], with the full request surface of an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn acs_page_with(
+        &self,
+        request: &crate::request::ActiveContractsRequest,
+        max_page_size: i32,
+        page_token: Option<Vec<u8>>,
+    ) -> Result<(Vec<AcsEntry>, Option<Vec<u8>>)> {
         telemetry::instrument("active_contracts_page", TRANSPORT_GRPC, async move {
             let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
             let response = client
@@ -504,17 +607,12 @@ impl CantonClient {
                 .await?
                 .into_inner();
 
-            let contracts = response
+            let entries = response
                 .active_contracts
                 .into_iter()
-                .filter_map(|entry| match entry.contract_entry {
-                    Some(pb::get_active_contracts_response::ContractEntry::ActiveContract(
-                        active,
-                    )) => Some(active),
-                    _ => None,
-                })
+                .filter_map(|entry| acs_entry(entry.contract_entry))
                 .collect();
-            Ok((contracts, response.next_page_token))
+            Ok((entries, response.next_page_token))
         })
         .await
     }
@@ -615,6 +713,39 @@ impl CantonClient {
         &self,
         request: crate::request::ActiveContractsRequest,
     ) -> Result<impl Stream<Item = Result<pb::ActiveContract>> + Send + use<>> {
+        let stream = self.acs_entries_with(request).await?;
+        Ok(stream.filter_map(|item| match item {
+            Ok(entry) => entry.into_active().map(Ok),
+            Err(err) => Some(Err(err)),
+        }))
+    }
+
+    /// Stream the Active Contract Set for `parties` **losslessly**: every entry
+    /// the participant sends, active or incomplete (see [`AcsEntry`]).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails.
+    pub async fn acs_entries(
+        &self,
+        parties: Vec<String>,
+        active_at_offset: i64,
+    ) -> Result<impl Stream<Item = Result<AcsEntry>> + Send + use<>> {
+        self.acs_entries_with(crate::request::ActiveContractsRequest::new(
+            parties,
+            active_at_offset,
+        ))
+        .await
+    }
+
+    /// Like [`Self::acs_entries`], with the full request surface of an
+    /// [`ActiveContractsRequest`](crate::request::ActiveContractsRequest).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails.
+    pub async fn acs_entries_with(
+        &self,
+        request: crate::request::ActiveContractsRequest,
+    ) -> Result<impl Stream<Item = Result<AcsEntry>> + Send + use<>> {
         telemetry::instrument("active_contracts", TRANSPORT_GRPC, async move {
             let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
             let stream = client
@@ -627,12 +758,7 @@ impl CantonClient {
                 .into_inner();
 
             Ok(stream.filter_map(|item| match item {
-                Ok(response) => match response.contract_entry {
-                    Some(pb::get_active_contracts_response::ContractEntry::ActiveContract(
-                        active,
-                    )) => Some(Ok(active)),
-                    _ => None,
-                },
+                Ok(response) => acs_entry(response.contract_entry).map(Ok),
                 Err(status) => Some(Err(Error::from(status))),
             }))
         })
@@ -663,6 +789,36 @@ impl CantonClient {
         request: crate::request::ActiveContractsRequest,
         max_page_size: i32,
     ) -> impl Stream<Item = Result<pb::ActiveContract>> + Send + use<> {
+        self.acs_entries_resumable_with(request, max_page_size)
+            .filter_map(|item| match item {
+                Ok(entry) => entry.into_active().map(Ok),
+                Err(err) => Some(Err(err)),
+            })
+    }
+
+    /// Like [`Self::acs_entries`], but **resumable** and page-based: reads the
+    /// snapshot page by page and retries a failed page from the last
+    /// continuation token instead of restarting from zero. Every entry the
+    /// participant sent is yielded (see [`AcsEntry`]).
+    pub fn acs_entries_resumable(
+        &self,
+        parties: Vec<String>,
+        active_at_offset: i64,
+        max_page_size: i32,
+    ) -> impl Stream<Item = Result<AcsEntry>> + Send + use<> {
+        self.acs_entries_resumable_with(
+            crate::request::ActiveContractsRequest::new(parties, active_at_offset),
+            max_page_size,
+        )
+    }
+
+    /// Like [`Self::acs_entries_resumable`], with the full request surface of
+    /// an [`ActiveContractsRequest`](crate::request::ActiveContractsRequest).
+    pub fn acs_entries_resumable_with(
+        &self,
+        request: crate::request::ActiveContractsRequest,
+        max_page_size: i32,
+    ) -> impl Stream<Item = Result<AcsEntry>> + Send + use<> {
         let client = self.clone();
         let (max_reconnects, backoff_unit) = client.reconnect_policy();
         async_stream::stream! {
@@ -670,17 +826,17 @@ impl CantonClient {
             let mut reconnects = 0u32;
             loop {
                 match client
-                    .active_contracts_page_with(
+                    .acs_page_with(
                         &request,
                         max_page_size,
                         page_token.clone(),
                     )
                     .await
                 {
-                    Ok((contracts, next)) => {
+                    Ok((entries, next)) => {
                         reconnects = 0;
-                        for contract in contracts {
-                            yield Ok(contract);
+                        for entry in entries {
+                            yield Ok(entry);
                         }
                         match next {
                             Some(next) => page_token = Some(next),
@@ -690,9 +846,14 @@ impl CantonClient {
                     Err(err) if err.is_retriable() => {
                         reconnects += 1;
                         if reconnects > max_reconnects {
-                            yield Err(Error::UnexpectedResponse(format!(
-                                "acs stream failed to resume after {max_reconnects} reconnects"
-                            )));
+                            // The participant's own failure, for the reason the
+                            // update stream keeps it: the status and its
+                            // classification are what the caller acts on.
+                            tracing::warn!(
+                                max_reconnects,
+                                "acs page failed to resume; reporting the failure that caused it"
+                            );
+                            yield Err(err);
                             return;
                         }
                         tokio::time::sleep(backoff_unit * reconnects).await;
