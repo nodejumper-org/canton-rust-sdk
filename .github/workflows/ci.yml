@@ -233,13 +233,23 @@ jobs:
           ! grep -q 'skipping: set CANTON_SPLICE' /tmp/drift.log || {
             echo "::error::a guard skipped despite its DAR being present"; exit 1; }
 
-  # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
-  # crates.io — it guards the hand-written public API against accidental
-  # breaking changes (generated proto types are exempt per the stability
-  # policy in canton-proto).
+  # Guards the hand-written public API against a breaking change the version
+  # number does not admit to. The baseline is whatever is on crates.io, so this
+  # only became runnable once the first release was published — and a release
+  # that *does* break API passes by carrying the version bump that says so
+  # (pre-1.0, that is the minor).
   #
-  # semver:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-  #     - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2
+  # Generated proto types are exempt per the stability policy in canton-proto,
+  # which is why `canton-proto` is excluded rather than the job being advisory.
+  semver:
+    name: Public API breaks carry a version bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2
+        with:
+          # The crates with a published baseline to compare against. A crate
+          # cannot be checked before its first release, so each M2/M3 crate
+          # joins this list in the release after it first publishes.
+          package: canton-core, canton-auth, canton-ledger, canton-admin, canton
+          feature-group: all-features
