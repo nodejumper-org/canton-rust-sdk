@@ -104,10 +104,20 @@ where
                 // Canton attaches a `RetryInfo` recommendation to retryable
                 // errors; when the server asks for a longer pause than the
                 // local schedule, honour it (it knows why it rejected us).
-                let delay = err
-                    .retry_delay()
-                    .map_or(backoff, |server| server.max(backoff));
-                tokio::time::sleep(with_jitter(delay)).await;
+                //
+                // Jitter then spreads the herd — but only upwards. A server
+                // recommendation is a *minimum*: `RESOURCE_EXHAUSTED` with
+                // "retry in 3s" means the participant will refuse again before
+                // then, so coming back at 1.5s spends an attempt on a rejection
+                // that was guaranteed. Without a recommendation the local
+                // backoff is ours to scatter in either direction.
+                let recommended = err.retry_delay();
+                let delay = recommended.map_or(backoff, |server| server.max(backoff));
+                let delay = match recommended {
+                    Some(minimum) => with_jitter(delay).max(minimum),
+                    None => with_jitter(delay),
+                };
+                tokio::time::sleep(delay).await;
                 backoff = (backoff * 2).min(config.max_backoff);
                 attempt += 1;
             }
@@ -178,10 +188,12 @@ mod tests {
         .await;
 
         assert_eq!(result.unwrap(), 2);
-        // Jitter scales by 0.5–1.5, so 1.5s is the guaranteed floor.
+        // The recommendation is a floor, not a target: jitter may stretch the
+        // wait but must never bring the retry back before the participant said
+        // it would answer.
         assert!(
-            started.elapsed() >= delay / 2,
-            "the server's delay must be honoured, slept only {:?}",
+            started.elapsed() >= delay,
+            "the server's delay is a minimum, slept only {:?}",
             started.elapsed()
         );
     }
