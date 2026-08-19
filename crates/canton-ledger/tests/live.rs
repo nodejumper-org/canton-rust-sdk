@@ -1453,6 +1453,8 @@ async fn json_events_by_contract_id_finds_a_contract_we_created() {
 
 #[tokio::test]
 async fn ws_active_contracts_resumable_reads_the_snapshot() {
+    use tokio_stream::StreamExt as _;
+
     let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
         eprintln!("skipping ws_active_contracts_resumable_reads_the_snapshot: no environment");
         return;
@@ -1461,8 +1463,6 @@ async fn ws_active_contracts_resumable_reads_the_snapshot() {
         eprintln!("skipping: no credentials in the environment");
         return;
     };
-
-    use tokio_stream::StreamExt as _;
 
     let offset = json.ledger_end().await.expect("json ledger_end");
     let stream = json.ws_active_contracts_resumable(vec![party.clone()], offset);

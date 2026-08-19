@@ -1067,10 +1067,9 @@ impl JsonClient {
                                     if let Some(next) = frame
                                         .get("streamContinuationToken")
                                         .and_then(Value::as_str)
+                                        .filter(|next| !next.is_empty())
                                     {
-                                        if !next.is_empty() {
-                                            token = Some(next.to_string());
-                                        }
+                                        token = Some(next.to_string());
                                     }
                                     reconnects = 0;
                                     yield Ok(frame);

@@ -175,11 +175,15 @@ impl JsonSubmission {
     /// ledger rejected the command.
     #[cfg(feature = "ws")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+    #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
     pub async fn recover(&self, begin_offset: i64, timeout: Duration) -> Result<serde_json::Value> {
         use canton_core::Error;
         use tokio_stream::StreamExt as _;
 
-        let scan = async {
+        // Boxed: the WS handshake state makes both this future and the timeout
+        // around it several tens of kilobytes, which is not something to leave
+        // on a caller's stack.
+        let scan = Box::pin(async {
             let stream = self
                 .client
                 .ws_completions(self.change_id.act_as().to_vec(), begin_offset)
@@ -215,9 +219,9 @@ impl JsonSubmission {
                 "completion stream ended before command {} was seen",
                 self.change_id.command_id()
             )))
-        };
+        });
 
-        tokio::time::timeout(timeout, scan)
+        Box::pin(tokio::time::timeout(timeout, scan))
             .await
             .map_err(|_| canton_core::Error::Timeout)?
     }
