@@ -45,6 +45,34 @@ jobs:
       # CANTON_TEST_ENDPOINT. --all-features covers the ws + otel surface.
       - run: cargo test --workspace --all-features
 
+  # The proposal's supported matrix is Tier-1 Rust on x86_64 and aarch64, plus
+  # musl for static container binaries. The `test` job covers x86_64 Linux and
+  # Windows and aarch64 macOS (which is what `macos-latest` now is); these are
+  # the two claimed targets nothing was checking. `check` rather than `test`,
+  # because running the binaries needs those machines — but a claim that the
+  # SDK builds for a target is a claim CI can hold.
+  cross-targets:
+    name: The claimed targets still compile
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable, targets: "${{ matrix.target }}" }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with: { key: "${{ matrix.target }}" }
+      # The TLS stack compiles C for the target, so a cross toolchain is needed
+      # even for `cargo check`.
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+      - run: cargo check --workspace --all-features --target ${{ matrix.target }}
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
   msrv:
     runs-on: ubuntu-latest
     steps:
