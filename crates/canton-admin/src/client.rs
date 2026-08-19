@@ -185,15 +185,17 @@ impl AdminClient {
                 if next.is_empty() {
                     break;
                 }
-                // Guard against a server that never advances the token: without
-                // this a degenerate/buggy participant would loop forever.
+                // A server that never advances the token would loop forever.
+                // Stopping quietly is no better: the caller receives a prefix
+                // of the party list with nothing to say it is a prefix, and
+                // "which parties exist" is a question whose wrong answer looks
+                // exactly like a right one. So this fails.
                 if next == sent {
-                    tracing::warn!(
-                        "list_known_parties: server returned an unchanged page token; \
-                         stopping pagination with {} parties collected",
+                    return Err(Error::UnexpectedResponse(format!(
+                        "the participant repeated the same page token after {} parties; \
+                         the list is incomplete and cannot be continued",
                         all.len()
-                    );
-                    break;
+                    )));
                 }
                 page_token = next;
             }
