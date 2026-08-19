@@ -1079,7 +1079,12 @@ async fn a_submission_knows_its_identity_before_it_is_sent() {
     // exist before the call that might fail ambiguously, or there is nothing
     // to recover with afterwards.
     let client = CantonClient::connect_lazy(Config::new("http://localhost:1")).unwrap();
-    let submission = client.submission(canton_ledger::Submit::new("alice"));
+    let submission = client.submission(canton_ledger::Submit::new("alice").add_command(
+        canton_ledger::create(
+            canton_ledger::identifier("pkg", "M", "T"),
+            canton_ledger::record(vec![]),
+        ),
+    ));
 
     let change_id = submission.change_id().clone();
     assert!(change_id.command_id().starts_with("sdk-"));

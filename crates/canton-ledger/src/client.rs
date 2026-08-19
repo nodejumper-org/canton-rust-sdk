@@ -42,6 +42,31 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
     }
 }
 
+/// Refuse a command set the participant is certain to refuse.
+///
+/// Every one of these costs a round trip and comes back as a server-side error
+/// that reads like the ledger's fault. They are the caller's, and they are
+/// knowable here.
+fn validate_commands(commands: &pb::Commands) -> Result<()> {
+    if commands.act_as.is_empty() {
+        return Err(Error::InvalidRequest(
+            "a submission needs at least one acting party".to_string(),
+        ));
+    }
+    if commands.commands.is_empty() {
+        return Err(Error::InvalidRequest(
+            "a submission needs at least one command".to_string(),
+        ));
+    }
+    if commands.min_ledger_time_abs.is_some() && commands.min_ledger_time_rel.is_some() {
+        return Err(Error::InvalidRequest(
+            "min_ledger_time_abs and min_ledger_time_rel are mutually exclusive: set one"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
 /// One entry of an Active Contract Set snapshot.
 ///
 /// A snapshot is not only active contracts. A reassignment that is half-done at
@@ -272,6 +297,7 @@ impl CantonClient {
     }
 
     pub(crate) async fn submit_commands(&self, commands: pb::Commands) -> Result<()> {
+        validate_commands(&commands)?;
         telemetry::instrument("submit", TRANSPORT_GRPC, async move {
             self.with_retry(|| {
                 let commands = commands.clone();
@@ -313,6 +339,7 @@ impl CantonClient {
         &self,
         commands: pb::Commands,
     ) -> Result<pb::SubmitAndWaitResponse> {
+        validate_commands(&commands)?;
         telemetry::instrument("submit_and_wait", TRANSPORT_GRPC, async move {
             let request = pb::SubmitAndWaitRequest {
                 commands: Some(commands),
@@ -379,9 +406,19 @@ impl CantonClient {
         commands: pb::Commands,
         shape: crate::request::TransactionShape,
     ) -> Result<pb::Transaction> {
+        validate_commands(&commands)?;
+        // The filter covers `read_as` as well as `act_as`: the Ledger API's own
+        // default for a submission is both, and a command submitted with
+        // `read_as` set is one whose result the caller expects to see through
+        // those parties too. Filtering to `act_as` alone silently returned a
+        // transaction with events missing.
+        let mut parties = commands.act_as.clone();
+        parties.extend(commands.read_as.iter().cloned());
+        parties.sort_unstable();
+        parties.dedup();
         let request = pb::SubmitAndWaitForTransactionRequest {
             transaction_format: Some(pb::TransactionFormat {
-                event_format: Some(wildcard_event_format(&commands.act_as)),
+                event_format: Some(wildcard_event_format(&parties)),
                 transaction_shape: shape.as_grpc() as i32,
             }),
             commands: Some(commands),
@@ -443,6 +480,7 @@ impl CantonClient {
         &self,
         request: crate::request::CompletionsRequest,
     ) -> Result<impl Stream<Item = Result<pb::Completion>> + Send + use<>> {
+        request.validate()?;
         telemetry::instrument("completions", TRANSPORT_GRPC, async move {
             let mut client = service!(
                 self,
@@ -569,17 +607,26 @@ impl CantonClient {
     ) -> Result<pb::GetEventsByContractIdResponse> {
         let contract_id = contract_id.into();
         telemetry::instrument("events_by_contract_id", TRANSPORT_GRPC, async move {
-            let mut client = service!(
-                self,
-                pb::event_query_service_client::EventQueryServiceClient::new
-            );
-            Ok(client
-                .get_events_by_contract_id(pb::GetEventsByContractIdRequest {
-                    contract_id,
+            // Retried like the other reads: this is a lookup, so a transient
+            // failure is worth another attempt rather than a caller's error
+            // path. Only submissions have a reason to be careful here.
+            self.with_retry(|| {
+                let request = pb::GetEventsByContractIdRequest {
+                    contract_id: contract_id.clone(),
                     event_format: Some(wildcard_event_format(&parties)),
-                })
-                .await?
-                .into_inner())
+                };
+                async move {
+                    let mut client = service!(
+                        self,
+                        pb::event_query_service_client::EventQueryServiceClient::new
+                    );
+                    Ok(client
+                        .get_events_by_contract_id(request)
+                        .await?
+                        .into_inner())
+                }
+            })
+            .await
         })
         .await
     }
@@ -655,24 +702,32 @@ impl CantonClient {
         max_page_size: i32,
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<AcsEntry>, Option<Vec<u8>>)> {
+        request.validate()?;
         telemetry::instrument("active_contracts_page", TRANSPORT_GRPC, async move {
-            let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
-            let response = client
-                .get_active_contracts_page(pb::GetActiveContractsPageRequest {
+            self.with_retry(|| {
+                let page_request = pb::GetActiveContractsPageRequest {
                     active_at_offset: Some(request.active_at_offset),
                     event_format: Some(request.event_format()),
                     max_page_size: Some(max_page_size),
-                    page_token,
-                })
-                .await?
-                .into_inner();
+                    page_token: page_token.clone(),
+                };
+                async move {
+                    let mut client =
+                        service!(self, pb::state_service_client::StateServiceClient::new);
+                    let response = client
+                        .get_active_contracts_page(page_request)
+                        .await?
+                        .into_inner();
 
-            let entries = response
-                .active_contracts
-                .into_iter()
-                .filter_map(|entry| acs_entry(entry.contract_entry))
-                .collect();
-            Ok((entries, response.next_page_token))
+                    let entries = response
+                        .active_contracts
+                        .into_iter()
+                        .filter_map(|entry| acs_entry(entry.contract_entry))
+                        .collect();
+                    Ok((entries, response.next_page_token))
+                }
+            })
+            .await
         })
         .await
     }
@@ -719,6 +774,7 @@ impl CantonClient {
         max_page_size: i32,
         page_token: Option<Vec<u8>>,
     ) -> Result<(Vec<pb::GetUpdateResponse>, Option<Vec<u8>>)> {
+        request.validate()?;
         let (begin_exclusive, end_inclusive) = request.bounds();
         let Some(end_inclusive) = end_inclusive else {
             return Err(Error::InvalidRequest(
@@ -727,19 +783,23 @@ impl CantonClient {
             ));
         };
         telemetry::instrument("updates_page", TRANSPORT_GRPC, async move {
-            let mut client = service!(self, pb::update_service_client::UpdateServiceClient::new);
-            let response = client
-                .get_updates_page(pb::GetUpdatesPageRequest {
+            self.with_retry(|| {
+                let page_request = pb::GetUpdatesPageRequest {
                     begin_offset_exclusive: Some(begin_exclusive),
                     end_offset_inclusive: Some(end_inclusive),
                     max_page_size: Some(max_page_size),
                     update_format: Some(request.update_format()),
                     descending_order: request.is_descending(),
-                    page_token,
-                })
-                .await?
-                .into_inner();
-            Ok((response.updates, response.next_page_token))
+                    page_token: page_token.clone(),
+                };
+                async move {
+                    let mut client =
+                        service!(self, pb::update_service_client::UpdateServiceClient::new);
+                    let response = client.get_updates_page(page_request).await?.into_inner();
+                    Ok((response.updates, response.next_page_token))
+                }
+            })
+            .await
         })
         .await
     }
@@ -806,6 +866,7 @@ impl CantonClient {
         &self,
         request: crate::request::ActiveContractsRequest,
     ) -> Result<impl Stream<Item = Result<AcsEntry>> + Send + use<>> {
+        request.validate()?;
         telemetry::instrument("active_contracts", TRANSPORT_GRPC, async move {
             let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
             let stream = client
@@ -998,6 +1059,7 @@ impl CantonClient {
         &self,
         request: crate::request::UpdatesRequest,
     ) -> Result<impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<>> {
+        request.validate()?;
         let (_, end_inclusive) = request.bounds();
         if request.is_descending() && end_inclusive.is_none() {
             return Err(Error::InvalidRequest(
@@ -1070,6 +1132,10 @@ impl CantonClient {
         let client = self.clone();
         let (max_reconnects, backoff_unit) = client.reconnect_policy();
         async_stream::stream! {
+            if let Err(err) = request.validate() {
+                yield Err(err);
+                return;
+            }
             // Resume tracking assumes ascending offsets; a descending request
             // would silently re-read on every reconnect, so refuse it.
             if request.is_descending() {
@@ -1178,6 +1244,84 @@ mod tests {
 
     // The paged read is inherently bounded, so a request without an end offset
     // must be refused before any RPC is attempted.
+    // Every one of these is refused before a connection is even attempted: the
+    // client is pointed at a port nothing listens on, so anything that reaches
+    // the wire fails differently.
+    #[tokio::test]
+    async fn requests_the_participant_would_refuse_are_refused_here() {
+        use crate::request::{ActiveContractsRequest, CompletionsRequest, UpdatesRequest};
+
+        let Ok(client) = CantonClient::connect_lazy(Config::new("http://localhost:1")) else {
+            panic!("lazy connect accepts a valid endpoint");
+        };
+        let party = || vec!["alice".to_string()];
+        let invalid = |result: &Result<_, Error>| matches!(result, Err(Error::InvalidRequest(_)));
+
+        // Negative offsets.
+        assert!(invalid(
+            &client
+                .updates_with(UpdatesRequest::new(party(), -1))
+                .await
+                .map(|_| ())
+        ));
+        assert!(invalid(
+            &client
+                .acs_entries_with(ActiveContractsRequest::new(party(), -5))
+                .await
+                .map(|_| ())
+        ));
+        assert!(invalid(
+            &client
+                .completions_with(CompletionsRequest::new(party(), -1))
+                .await
+                .map(|_| ())
+        ));
+
+        // A range that ends before it begins.
+        assert!(invalid(
+            &client
+                .updates_with(UpdatesRequest::new(party(), 100).until(50))
+                .await
+                .map(|_| ())
+        ));
+
+        // No parties: a subscription that looks alive and can never yield.
+        assert!(invalid(
+            &client
+                .updates_with(UpdatesRequest::new(vec![], 0))
+                .await
+                .map(|_| ())
+        ));
+    }
+
+    #[tokio::test]
+    async fn submissions_that_cannot_succeed_are_refused_here() {
+        use crate::command::Submit;
+
+        let Ok(client) = CantonClient::connect_lazy(Config::new("http://localhost:1")) else {
+            panic!("lazy connect accepts a valid endpoint");
+        };
+
+        // No commands: a round trip to be told nothing was asked for.
+        let empty = client.submission(Submit::new("alice"));
+        assert!(matches!(
+            empty.submit().await,
+            Err(Error::InvalidRequest(_))
+        ));
+
+        // The two minimum-ledger-time forms are mutually exclusive.
+        let both = client.submission(
+            Submit::new("alice")
+                .add_command(crate::command::create(
+                    crate::command::identifier("pkg", "M", "T"),
+                    crate::command::record(vec![]),
+                ))
+                .with_min_ledger_time_rel(std::time::Duration::from_secs(1))
+                .with_min_ledger_time_abs(prost_types::Timestamp::default()),
+        );
+        assert!(matches!(both.submit().await, Err(Error::InvalidRequest(_))));
+    }
+
     #[tokio::test]
     async fn updates_page_with_requires_a_bounded_request() {
         let Ok(client) = CantonClient::connect_lazy(Config::new("http://localhost:1")) else {
