@@ -48,9 +48,21 @@ otel = [
 
 [dev-dependencies]
 # `test-util` powers the paused-clock retry-delay test.
-tokio              = { workspace = true, features = ["rt", "macros", "test-util"] }
+tokio              = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "test-util"] }
 tracing-subscriber = "0.3"
 metrics-util       = "0.19"
+# The OTLP export test is its own collector: it stands up the two OTLP services
+# and asserts what actually arrives, which is the half of the observability path
+# an emit-side assertion cannot reach.
+opentelemetry-proto   = { version = "0.27", features = ["gen-tonic", "trace", "metrics"] }
+opentelemetry         = "0.27"
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.28"
+# opentelemetry-proto 0.27's generated servers are built against tonic 0.12,
+# not the workspace's 0.14, so the collector in that test speaks the version its
+# own stubs were generated for.
+otlp-tonic            = { package = "tonic", version = "0.12", features = ["transport", "codegen"] }
+tokio-stream          = { workspace = true, features = ["net"] }
 
 [lints]
 workspace = true

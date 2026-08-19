@@ -212,14 +212,34 @@ pub mod otel {
         service_name: &'static str,
         endpoint: impl Into<String>,
     ) -> Result<opentelemetry_sdk::trace::Tracer, opentelemetry::trace::TraceError> {
+        Ok(otlp_tracer_provider(service_name, endpoint)?.tracer(service_name))
+    }
+
+    /// [`otlp_tracer`]'s provider, for an application that needs to flush or
+    /// shut it down.
+    ///
+    /// Spans are exported in batches, so a process that exits without calling
+    /// `force_flush()` or `shutdown()` loses whatever the last batch held —
+    /// which tends to be the spans around whatever made it exit. The tracer
+    /// alone does not expose its provider, so this returns it.
+    ///
+    /// # Errors
+    /// Returns a [`opentelemetry::trace::TraceError`] if the exporter cannot be
+    /// built (e.g. an invalid endpoint).
+    pub fn otlp_tracer_provider(
+        service_name: &'static str,
+        endpoint: impl Into<String>,
+    ) -> Result<opentelemetry_sdk::trace::TracerProvider, opentelemetry::trace::TraceError> {
         let exporter = opentelemetry_otlp::SpanExporter::builder()
             .with_tonic()
             .with_endpoint(endpoint.into())
             .build()?;
-        let provider = opentelemetry_sdk::trace::TracerProvider::builder()
+        Ok(opentelemetry_sdk::trace::TracerProvider::builder()
             .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
-            .build();
-        Ok(provider.tracer(service_name))
+            .with_resource(opentelemetry_sdk::Resource::new(vec![
+                opentelemetry::KeyValue::new("service.name", service_name),
+            ]))
+            .build())
     }
 
     /// Build an OTLP metrics pipeline and install it as the process's
