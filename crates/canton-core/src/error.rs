@@ -396,7 +396,13 @@ fn parse_spelled_duration(text: &str) -> Option<std::time::Duration> {
         "nanosecond" => amount / 1e9,
         _ => return None,
     };
-    (seconds.is_finite() && seconds >= 0.0).then(|| std::time::Duration::from_secs_f64(seconds))
+    // `from_secs_f64` panics on a value a `Duration` cannot hold, and this
+    // number arrives from the server: a `retryInfo` of `"1e300 seconds"` — or
+    // an ordinary-looking `"1e15 days"` — would abort the caller's process
+    // inside error classification, the one place that must stay infallible.
+    // `try_from_secs_f64` rejects those the same way it rejects the NaN and
+    // negative values this guarded against before.
+    std::time::Duration::try_from_secs_f64(seconds).ok()
 }
 
 /// Canton's error categories — the coarse classification every Ledger API
@@ -782,7 +788,21 @@ mod tests {
         ] {
             assert_eq!(parse_spelled_duration(text), Some(expected), "{text}");
         }
-        for bad in ["", "soon", "1", "1 fortnight", "-1 second", "1 second ago"] {
+        // A server-supplied number too large for a `Duration` is refused, not
+        // panicked on: this runs while an error is being classified, and the
+        // value is whatever the participant put in the body.
+        for bad in [
+            "",
+            "soon",
+            "1",
+            "1 fortnight",
+            "-1 second",
+            "1 second ago",
+            "1e300 seconds",
+            "1e300 days",
+            "NaN seconds",
+            "inf seconds",
+        ] {
             assert_eq!(parse_spelled_duration(bad), None, "{bad}");
         }
     }
