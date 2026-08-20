@@ -13,7 +13,38 @@ All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
 the rest. Everything the 0.1.x line gained after the M1 submission — the read
 request builders, the full `Commands` surface, Canton-native error
 classification (see 0.1.2 below) and the documentation fixes of 0.1.3/0.1.4 —
-is included; nothing from it was removed or changed in signature.
+is included.
+
+### Breaking, for code on 0.1.x
+
+Two signatures change, both because the old one could not express a correct
+call. Everything else from 0.1.x compiles unchanged.
+
+- **`OidcConfig::auth0(domain, client_id, secret)` → `auth0(domain, audience,
+  client_id, secret)`.** Auth0 answers a client-credentials request without an
+  `audience` by issuing a token for its own userinfo endpoint, which a
+  participant rejects — so the old preset could not produce a working request.
+  The audience identifies your Auth0 API and cannot be derived from the domain.
+
+  ```diff
+  - OidcConfig::auth0("my.eu.auth0.com", "client-id", "secret")
+  + OidcConfig::auth0("my.eu.auth0.com", "https://ledger.example", "client-id", "secret")
+  ```
+
+- **`CantonClient::await_completion(command_id, parties, offset, timeout)` →
+  `await_completion(&ChangeId, offset, timeout)`.** Canton identifies a command
+  by (user, acting parties, command id), and matching on the command id alone
+  can return another application's completion. The parties move inside the
+  change ID.
+
+  ```diff
+  - client.await_completion(&command_id, vec![party.clone()], offset, timeout)
+  + client.await_completion(&ChangeId::new("", vec![party.clone()], &command_id), offset, timeout)
+  ```
+
+  Better still, take the identity from the submission rather than rebuilding it:
+  `let submission = client.submission(submit);` then
+  `submission.recover(offset, timeout)`.
 
 ### Added — type-safe codegen from DARs
 
