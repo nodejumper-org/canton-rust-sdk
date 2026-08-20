@@ -673,6 +673,54 @@ mod tests {
 
     /// Under an installed OTel tracer, an active span's W3C trace context is
     /// injected into both HTTP headers (JSON) and gRPC metadata.
+    /// The trace id an application correlates a log line with. Without a
+    /// tracer there is nothing to report, and reporting a made-up id would be
+    /// worse than reporting none.
+    #[cfg(feature = "otel")]
+    #[test]
+    fn the_trace_id_in_a_structured_event_is_the_active_span_s() {
+        use opentelemetry::trace::TracerProvider as _;
+
+        assert_eq!(
+            super::current_trace_id(),
+            None,
+            "no tracer installed means no trace id to name"
+        );
+
+        let provider = opentelemetry_sdk::trace::TracerProvider::builder().build();
+        let otel_layer = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        let subscriber = tracing_subscriber::registry().with(otel_layer);
+        let _guard = set_default(subscriber);
+
+        let span = tracing::info_span!("test.rpc");
+        let _entered = span.enter();
+
+        let trace_id = super::current_trace_id().expect("a span is active");
+        assert_eq!(
+            trace_id.len(),
+            32,
+            "a W3C trace id is 32 hex digits: {trace_id}"
+        );
+        assert!(
+            trace_id.chars().all(|c| c.is_ascii_hexdigit()),
+            "not hex: {trace_id}"
+        );
+        assert_ne!(
+            trace_id, "00000000000000000000000000000000",
+            "the all-zero id means no trace, and must not be reported as one"
+        );
+
+        // The same id the W3C header carries, or the log line and the trace it
+        // points at belong to different requests.
+        let mut headers = http::HeaderMap::new();
+        super::otel::inject_trace_context(&mut headers);
+        let traceparent = headers["traceparent"].to_str().expect("ascii").to_string();
+        assert!(
+            traceparent.contains(&trace_id),
+            "traceparent {traceparent} should carry trace id {trace_id}"
+        );
+    }
+
     #[cfg(feature = "otel")]
     #[test]
     fn trace_context_is_injected_under_a_tracer() {

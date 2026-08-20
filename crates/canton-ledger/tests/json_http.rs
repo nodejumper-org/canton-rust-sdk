@@ -218,3 +218,25 @@ async fn an_http_error_keeps_its_status_and_body() {
         "{error}"
     );
 }
+
+/// `from_env_for` builds the variable name it looked for out of the role, and
+/// says which one it was. The name-mangling — uppercase, dashes to underscores
+/// — is the part with a bug in it, and the message is what a user sees when a
+/// network was not exported into their shell.
+#[test]
+fn a_missing_endpoint_names_the_variable_it_looked_for() {
+    // Deliberately a role nothing exports: the assertion is about the message,
+    // and a role that happened to be set would test nothing.
+    let error = JsonClient::from_env_for("app-user")
+        .expect_err("no local network is exported in the test environment");
+
+    let message = format!("{error}");
+    assert!(
+        message.contains("CANTON_APP_USER_JSON_LEDGER_API_URL"),
+        "the message must name the variable, dashes folded to underscores: {message}"
+    );
+    assert!(
+        message.contains("canton-devkit localnet env"),
+        "and say how to produce it: {message}"
+    );
+}

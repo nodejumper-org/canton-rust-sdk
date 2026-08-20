@@ -566,6 +566,66 @@ mod tests {
     }
 
     #[test]
+    fn the_json_matcher_reads_the_same_identity_from_camel_case() {
+        let change_id = ChangeId::new("app-1", vec!["alice".to_string()], "cmd-1");
+        let completion = |command_id: &str, user_id: &str, act_as: &[&str]| {
+            serde_json::json!({
+                "commandId": command_id,
+                "userId": user_id,
+                "actAs": act_as,
+            })
+        };
+
+        assert!(change_id.matches_json(&completion("cmd-1", "app-1", &["alice"])));
+        assert!(!change_id.matches_json(&completion("cmd-1", "app-2", &["alice"])));
+        assert!(!change_id.matches_json(&completion("cmd-1", "app-1", &["bob"])));
+        assert!(!change_id.matches_json(&completion("cmd-2", "app-1", &["alice"])));
+        // Order is not meaningful over either transport.
+        let unordered = ChangeId::new(
+            "app-1",
+            vec!["alice".to_string(), "bob".to_string()],
+            "cmd-1",
+        );
+        assert!(unordered.matches_json(&completion("cmd-1", "app-1", &["bob", "alice"])));
+    }
+
+    #[test]
+    fn the_two_transports_cannot_disagree_about_what_identifies_a_command() {
+        // The rule lives in one place; this is the assertion that says so. If
+        // the JSON reader ever grows its own opinion, these diverge.
+        let change_id = ChangeId::new("app-1", vec!["alice".to_string()], "cmd-1");
+        for (command_id, user_id, act_as) in [
+            ("cmd-1", "app-1", vec!["alice"]),
+            ("cmd-1", "app-2", vec!["alice"]),
+            ("cmd-1", "app-1", vec!["bob"]),
+            ("cmd-2", "app-1", vec!["alice"]),
+            ("cmd-1", "app-1", vec!["alice", "bob"]),
+        ] {
+            let grpc = completion(command_id, user_id, &act_as);
+            let json = serde_json::json!({
+                "commandId": command_id, "userId": user_id, "actAs": act_as,
+            });
+            assert_eq!(
+                change_id.matches(&grpc),
+                change_id.matches_json(&json),
+                "transports disagree on ({command_id}, {user_id}, {act_as:?})"
+            );
+        }
+    }
+
+    #[test]
+    fn a_json_completion_missing_its_fields_is_read_the_same_way_as_grpc() {
+        // Absent `actAs` reads as empty, which the shared rule treats as
+        // "unknown, do not reject" — the same as an empty repeated field on
+        // the wire.
+        let change_id = ChangeId::new("", vec!["alice".to_string()], "cmd-1");
+        assert!(change_id.matches_json(&serde_json::json!({ "commandId": "cmd-1" })));
+        assert!(!change_id.matches_json(&serde_json::json!({ "commandId": "other" })));
+        // A body that is not a completion at all matches nothing.
+        assert!(!change_id.matches_json(&serde_json::json!({})));
+    }
+
+    #[test]
     fn acting_parties_are_a_set_not_a_sequence() {
         let change_id = ChangeId::new(
             "app-1",
