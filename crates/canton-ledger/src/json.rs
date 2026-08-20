@@ -1086,7 +1086,10 @@ impl JsonClient {
                     max_decoding_message_size,
                     timeout,
                 };
-                match crate::ws::subscribe(&transport, "/v2/state/active-contracts", request).await {
+                // What made this reconnect necessary, carried out of the inner
+                // loop for the reason the gRPC streams carry it: giving up must
+                // report the participant's own failure, not an error of ours.
+                let cause = match crate::ws::subscribe(&transport, "/v2/state/active-contracts", request).await {
                     Ok(inner) => {
                         // Each connection is instrumented for its own life, so a
                         // subscription that dies mid-snapshot is counted rather
@@ -1110,7 +1113,7 @@ impl JsonClient {
                                     reconnects = 0;
                                     yield Ok(frame);
                                 }
-                                Some(Err(err)) if err.is_retriable() => break,
+                                Some(Err(err)) if err.is_retriable() => break err,
                                 Some(Err(err)) => {
                                     yield Err(err);
                                     return;
@@ -1122,18 +1125,20 @@ impl JsonClient {
                             }
                         }
                     }
-                    Err(err) if err.is_retriable() => {}
+                    Err(err) if err.is_retriable() => err,
                     Err(err) => {
                         yield Err(err);
                         return;
                     }
-                }
+                };
 
                 reconnects += 1;
                 if reconnects > max_reconnects {
-                    yield Err(Error::UnexpectedResponse(format!(
-                        "ws acs stream failed to resume after {max_reconnects} reconnects"
-                    )));
+                    tracing::warn!(
+                        max_reconnects,
+                        "ws acs stream gave up resuming; reporting the failure that caused it"
+                    );
+                    yield Err(cause);
                     return;
                 }
                 tokio::time::sleep(backoff_unit * reconnects).await;
@@ -1173,7 +1178,10 @@ impl JsonClient {
                     max_decoding_message_size,
                     timeout,
                 };
-                match crate::ws::subscribe(&transport, "/v2/updates", request).await {
+                // `Option`, unlike the other resumable streams: here a clean
+                // WS close is also a reason to reconnect, and it carries no
+                // failure to report. Everything else does.
+                let cause = match crate::ws::subscribe(&transport, "/v2/updates", request).await {
                     Ok(inner) => {
                         let inner =
                             telemetry::instrument_stream("ws_updates", TRANSPORT_JSON, inner);
@@ -1189,27 +1197,36 @@ impl JsonClient {
                                         yield Ok(frame);
                                     }
                                 }
-                                Some(Err(err)) if err.is_retriable() => break,
+                                Some(Err(err)) if err.is_retriable() => break Some(err),
                                 Some(Err(err)) => {
                                     yield Err(err);
                                     return;
                                 }
-                                None => break, // WS closed → reconnect from `offset`
+                                None => break None, // WS closed → reconnect from `offset`
                             }
                         }
                     }
-                    Err(err) if err.is_retriable() => {}
+                    Err(err) if err.is_retriable() => Some(err),
                     Err(err) => {
                         yield Err(err);
                         return;
                     }
-                }
+                };
 
                 reconnects += 1;
                 if reconnects > max_reconnects {
-                    yield Err(Error::UnexpectedResponse(format!(
-                        "ws update stream failed to resume after {max_reconnects} reconnects"
-                    )));
+                    tracing::warn!(
+                        max_reconnects,
+                        offset,
+                        "ws update stream gave up resuming; reporting the failure that caused it"
+                    );
+                    // No cause means the participant kept closing the socket
+                    // cleanly and the stream never got anywhere — which is not
+                    // a participant error, so it is described as what it is.
+                    yield Err(cause.unwrap_or_else(|| Error::UnexpectedResponse(format!(
+                        "ws update stream was closed and reopened {max_reconnects} times \
+                         without delivering an update"
+                    ))));
                     return;
                 }
                 tokio::time::sleep(backoff_unit * reconnects).await;

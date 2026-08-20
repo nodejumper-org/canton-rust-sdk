@@ -1100,3 +1100,125 @@ async fn a_submission_knows_its_identity_before_it_is_sent() {
     assert!(submission.submit().await.is_err(), "nothing is listening");
     assert_eq!(submission.change_id(), &change_id);
 }
+
+// ---- gRPC: what the submission asks the participant to show it -------------
+
+/// A `CommandService` that records the request and answers with an empty
+/// transaction. The interesting part is the *request*: which parties the
+/// transaction format filters to.
+#[derive(Clone, Default)]
+struct CapturingCommands {
+    requests: Arc<Mutex<Vec<pb::SubmitAndWaitForTransactionRequest>>>,
+}
+
+#[tonic::async_trait]
+impl pb::command_service_server::CommandService for CapturingCommands {
+    async fn submit_and_wait_for_transaction(
+        &self,
+        request: Request<pb::SubmitAndWaitForTransactionRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForTransactionResponse>, Status> {
+        self.requests.lock().unwrap().push(request.into_inner());
+        Ok(Response::new(pb::SubmitAndWaitForTransactionResponse {
+            transaction: Some(pb::Transaction {
+                update_id: "u-1".to_string(),
+                ..Default::default()
+            }),
+        }))
+    }
+    async fn submit_and_wait(
+        &self,
+        _r: Request<pb::SubmitAndWaitRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn submit_and_wait_for_reassignment(
+        &self,
+        _r: Request<pb::SubmitAndWaitForReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn the_transaction_filter_covers_read_as_as_well_as_act_as() {
+    use pb::command_service_server::CommandServiceServer;
+
+    let mock = CapturingCommands::default();
+    let requests = mock.requests.clone();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(CommandServiceServer::new(mock), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    client
+        .submit_and_wait_for_transaction(
+            canton_ledger::Submit::new("alice")
+                .with_read_as(vec!["bob".to_string()])
+                .add_command(canton_ledger::create(
+                    canton_ledger::identifier("pkg", "M", "T"),
+                    canton_ledger::record(vec![]),
+                )),
+        )
+        .await
+        .expect("the mock commits");
+
+    let captured = requests.lock().unwrap()[0].clone();
+    let filters = captured
+        .transaction_format
+        .expect("a transaction format")
+        .event_format
+        .expect("an event format")
+        .filters_by_party;
+
+    // Filtering to `act_as` alone returns a transaction whose events for the
+    // read-as party are simply absent — a wrong answer that looks like a right
+    // one. The Ledger API's own default for a submission is both sets.
+    let mut parties: Vec<&String> = filters.keys().collect();
+    parties.sort();
+    assert_eq!(
+        parties,
+        vec!["alice", "bob"],
+        "read_as must reach the filter too, saw {parties:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_submission_that_cannot_succeed_is_refused_before_it_is_sent() {
+    // Nothing is listening on port 1: if any of these reached the network the
+    // error would be a connection failure, not an InvalidRequest.
+    let client = CantonClient::connect_lazy(Config::new("http://localhost:1")).unwrap();
+    let command = || {
+        canton_ledger::create(
+            canton_ledger::identifier("pkg", "M", "T"),
+            canton_ledger::record(vec![]),
+        )
+    };
+
+    let no_parties = canton_ledger::Submit::new_multi(vec![]).add_command(command());
+    let no_commands = canton_ledger::Submit::new("alice");
+    let both_times = canton_ledger::Submit::new("alice")
+        .add_command(command())
+        .with_min_ledger_time_abs(prost_types::Timestamp::default())
+        .with_min_ledger_time_rel(Duration::from_secs(1));
+
+    for (name, submit) in [
+        ("no acting party", no_parties),
+        ("no commands", no_commands),
+        ("both min-ledger-times", both_times),
+    ] {
+        let result = client.submit_and_wait_for_transaction(submit).await;
+        assert!(
+            matches!(result, Err(canton_ledger::Error::InvalidRequest(_))),
+            "{name} should be refused locally, got {result:?}"
+        );
+    }
+}
