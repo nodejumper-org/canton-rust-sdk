@@ -38,7 +38,10 @@ Guidelines:
   [`docs/adr/`](docs/adr/README.md) — add a new numbered record rather than
   editing an old one.
 - **Versioning**: all `canton-*` crates release in lockstep with one shared
-  version ([ADR-0005](docs/adr/0005-lockstep-versioning.md)).
+  version ([ADR-0005](docs/adr/0005-lockstep-versioning.md)). Publishing has an
+  order and a checklist — [RELEASING.md](RELEASING.md); a crates.io version
+  cannot be taken back, and half a family published in the wrong order leaves
+  the rest unpublishable until the next version.
 - **CI actions are pinned to a commit**, with the human-readable version in a
   trailing comment (`actions/checkout@11d5960… # v4`). A tag is mutable: whoever
   controls the action's repository can repoint `v4` at anything, and it would

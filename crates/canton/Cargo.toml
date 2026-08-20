@@ -24,7 +24,11 @@ canton-daml   = { workspace = true }
 # Forwarded to the crates that implement them, so `canton = { features = [..] }`
 # is the only place users have to think about.
 ws   = ["canton-ledger/ws"]
-otel = ["canton-ledger/otel"]
+# Named on both, not only the ledger: `canton::telemetry::otel` is this crate's
+# own re-export, and forwarding through canton-ledger alone left it correct by
+# accident — one change to that crate's feature list and the facade's OTLP
+# setup would vanish from the API without anything failing to compile.
+otel = ["canton-ledger/otel", "canton-core/otel"]
 
 [lints]
 workspace = true

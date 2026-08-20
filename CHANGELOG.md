@@ -176,6 +176,13 @@ here; two of them (the `Debug` leak and the retry-hint panic) are in
   makes), structured events carry `trace_id`, and `otel::otlp_metrics` is a
   supported OTLP path for the counters, recorder and all.
 
+- **The facade reaches what the documentation promises.** `canton::telemetry`
+  was not re-exported, so `cargo add canton` could not see the metric names, the
+  transport labels, or — now — the OTLP setup those metrics are meant to be
+  exported through. The `otel` feature also reached `canton-core` only by way of
+  `canton-ledger`, which was correct by accident. Both fixed, with tests that
+  name the paths a reader of the README would try.
+
 **From the same review's non-blocking list:**
 
 - Requests the participant would certainly refuse are refused locally: a
