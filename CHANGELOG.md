@@ -207,6 +207,13 @@ here; two of them (the `Debug` leak and the retry-hint panic) are in
   makes), structured events carry `trace_id`, and `otel::otlp_metrics` is a
   supported OTLP path for the counters, recorder and all.
 
+- **`examples/recover_a_submission.rs`** walks the finding's own scenario end
+  to end: submit, submit the same change ID again (what a retry after a lost
+  response looks like to the participant), watch it be rejected as
+  `DUPLICATE_COMMAND`, and recover the original outcome. Verified live — the
+  recovered `update_id` is the one the first submission committed. The README's
+  other examples are backed by compiled example files; this one was not, and
+  the newest API is the worst one to leave uncompiled.
 - **The facade reaches what the documentation promises.** `canton::telemetry`
   was not re-exported, so `cargo add canton` could not see the metric names, the
   transport labels, or — now — the OTLP setup those metrics are meant to be
