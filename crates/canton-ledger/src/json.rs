@@ -1088,6 +1088,14 @@ impl JsonClient {
                 };
                 match crate::ws::subscribe(&transport, "/v2/state/active-contracts", request).await {
                     Ok(inner) => {
+                        // Each connection is instrumented for its own life, so a
+                        // subscription that dies mid-snapshot is counted rather
+                        // than disappearing into the reconnect loop.
+                        let inner = telemetry::instrument_stream(
+                            "ws_active_contracts",
+                            TRANSPORT_JSON,
+                            inner,
+                        );
                         tokio::pin!(inner);
                         loop {
                             match inner.next().await {
@@ -1167,6 +1175,8 @@ impl JsonClient {
                 };
                 match crate::ws::subscribe(&transport, "/v2/updates", request).await {
                     Ok(inner) => {
+                        let inner =
+                            telemetry::instrument_stream("ws_updates", TRANSPORT_JSON, inner);
                         tokio::pin!(inner);
                         loop {
                             match inner.next().await {
