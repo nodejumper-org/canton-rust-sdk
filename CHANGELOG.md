@@ -207,6 +207,21 @@ here; two of them (the `Debug` leak and the retry-hint panic) are in
   makes), structured events carry `trace_id`, and `otel::otlp_metrics` is a
   supported OTLP path for the counters, recorder and all.
 
+- **A retry the participant de-duplicates is a success, not a failure.** This
+  is the other half of the finding, and the half that was still open after the
+  recovery handle was added. When the SDK retries a submission whose response
+  was lost, the participant refuses the second attempt as `DUPLICATE_COMMAND` —
+  because the first one was accepted. `submit` was reporting that rejection to
+  the caller, which says the command did not happen at the exact moment it
+  provably did. It now reports success, over both transports. A duplicate on
+  the *first* attempt is untouched: nothing of ours is at the participant, so
+  the caller reused a change id and needs to hear about it.
+
+  The waiting variants cannot do this — their result is a transaction, and a
+  de-duplicated retry does not carry one — so they surface the rejection and
+  their documentation now says to recover through the handle rather than
+  describing a caveat and leaving it there.
+
 - **`examples/recover_a_submission.rs`** walks the finding's own scenario end
   to end: submit, submit the same change ID again (what a retry after a lost
   response looks like to the participant), watch it be rejected as

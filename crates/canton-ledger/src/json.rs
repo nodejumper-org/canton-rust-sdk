@@ -337,6 +337,17 @@ fn completions_request(parties: &[String], begin_exclusive: i64) -> Value {
     crate::request::CompletionsRequest::new(parties.to_vec(), begin_exclusive).json_body()
 }
 
+/// Whether a failed submission is the participant refusing a command it already
+/// has. Canton's JSON lane maps `ALREADY_EXISTS` to HTTP 409, and names the
+/// error in the body — either signal is enough, and a body that names
+/// `DUPLICATE_COMMAND` under some other status still means the same thing.
+fn is_duplicate_submission(error: &Error) -> bool {
+    match error {
+        Error::Http { status, body } => *status == 409 || body.contains("DUPLICATE_COMMAND"),
+        _ => false,
+    }
+}
+
 /// Add W3C trace-context headers to an outgoing request (a no-op without the
 /// `otel` feature, or when no OpenTelemetry context is active).
 fn with_trace_context(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
@@ -611,23 +622,30 @@ impl JsonClient {
         path: &str,
         body: &B,
     ) -> Result<T> {
-        canton_core::retry::run_with_retry(self.retry.as_ref(), || async {
-            let mut request = self
-                .http
-                .post(format!("{}{path}", self.base_url))
-                .timeout(self.timeout)
-                .json(body);
-            if let Some(token) = self.auth.bearer().await? {
-                request = request.bearer_auth(token);
-            }
-            request = with_trace_context(request);
-            let response = request
-                .send()
-                .await
-                .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
-            read_json(response, path).await
-        })
-        .await
+        canton_core::retry::run_with_retry(self.retry.as_ref(), || self.post_once(path, body)).await
+    }
+
+    /// One POST, no retry. The retrying wrappers are built on this so that a
+    /// submission can tell its own retries apart from its first attempt.
+    async fn post_once<B: Serialize, T: for<'de> Deserialize<'de>>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T> {
+        let mut request = self
+            .http
+            .post(format!("{}{path}", self.base_url))
+            .timeout(self.timeout)
+            .json(body);
+        if let Some(token) = self.auth.bearer().await? {
+            request = request.bearer_auth(token);
+        }
+        request = with_trace_context(request);
+        let response = request
+            .send()
+            .await
+            .map_err(|e| Error::Connection(format!("json request to {path} failed: {e}")))?;
+        read_json(response, path).await
     }
 
     /// The participant's Ledger API version (`GET /v2/version`, unauthenticated).
@@ -693,8 +711,33 @@ impl JsonClient {
             // wrapping it. The participant rejects the wrong one with a 400
             // naming the fields it could not find.
             // The response body is an empty object; accepting it is the answer.
-            let _: serde_json::Value = self.post("/v2/commands/async/submit", commands).await?;
-            Ok(())
+            self.post_submission("/v2/commands/async/submit", commands)
+                .await
+        })
+        .await
+    }
+
+    /// `post`, with the one rule a submission needs that a read does not: a
+    /// retry the participant refuses as a duplicate means our *own* earlier
+    /// attempt was accepted and its response was lost, so the command
+    /// succeeded. Reporting the rejection would tell the caller their command
+    /// failed when it did the opposite — which is the failure this change ID
+    /// exists to prevent, and it is not the JSON lane's to have differently
+    /// from gRPC.
+    async fn post_submission<B: Serialize>(&self, path: &str, body: &B) -> Result<()> {
+        let attempt = std::sync::atomic::AtomicU32::new(0);
+        canton_core::retry::run_with_retry(self.retry.as_ref(), || async {
+            let retry = attempt.fetch_add(1, std::sync::atomic::Ordering::Relaxed) > 0;
+            match self.post_once::<B, serde_json::Value>(path, body).await {
+                Ok(_) => Ok(()),
+                Err(error) if retry && is_duplicate_submission(&error) => {
+                    tracing::debug!(
+                        "submission retry was de-duplicated; the earlier attempt is the one that landed"
+                    );
+                    Ok(())
+                }
+                Err(error) => Err(error),
+            }
         })
         .await
     }

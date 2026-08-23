@@ -1222,3 +1222,143 @@ async fn a_submission_that_cannot_succeed_is_refused_before_it_is_sent() {
         );
     }
 }
+
+// ---- gRPC: a de-duplicated retry is the earlier attempt having landed -------
+
+/// A participant that loses the response to an accepted submission, then
+/// refuses the retry as a duplicate — the exact sequence a network failure
+/// after acceptance produces.
+#[derive(Clone, Default)]
+struct AcceptedThenDuplicate {
+    calls: Arc<AtomicUsize>,
+    command_ids: Arc<Mutex<Vec<String>>>,
+}
+
+#[tonic::async_trait]
+impl pb::command_submission_service_server::CommandSubmissionService for AcceptedThenDuplicate {
+    async fn submit(
+        &self,
+        request: Request<pb::SubmitRequest>,
+    ) -> Result<Response<pb::SubmitResponse>, Status> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
+        self.command_ids
+            .lock()
+            .unwrap()
+            .push(request.into_inner().commands.expect("commands").command_id);
+        if call == 1 {
+            // Accepted by the participant; the response never reaches us.
+            Err(Status::unavailable("connection lost after acceptance"))
+        } else {
+            Err(Status::already_exists("duplicate command"))
+        }
+    }
+    async fn submit_reassignment(
+        &self,
+        _r: Request<pb::SubmitReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_submissions(mock: AcceptedThenDuplicate) -> u16 {
+    use pb::command_submission_service_server::CommandSubmissionServiceServer;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(CommandSubmissionServiceServer::new(mock), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+fn one_command() -> canton_ledger::Submit {
+    canton_ledger::Submit::new("alice").add_command(canton_ledger::create(
+        canton_ledger::identifier("pkg", "M", "T"),
+        canton_ledger::record(vec![]),
+    ))
+}
+
+#[tokio::test]
+async fn a_retry_the_participant_de_duplicates_is_not_a_failure() {
+    let mock = AcceptedThenDuplicate::default();
+    let command_ids = mock.command_ids.clone();
+    let port = serve_submissions(mock).await;
+
+    let client = CantonClient::connect_lazy(
+        Config::new(format!("http://localhost:{port}")).with_retry(
+            RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        ),
+    )
+    .unwrap();
+
+    // The command committed on the attempt whose response was lost. Telling the
+    // caller it failed would be the exact wrong answer, and without the id they
+    // could not go and find out.
+    let command_id = client
+        .submit(one_command())
+        .await
+        .expect("the accepted command's id must come back, not the duplicate rejection");
+
+    let seen = command_ids.lock().unwrap();
+    assert_eq!(seen.len(), 2, "one attempt and its retry");
+    assert_eq!(
+        seen[0], seen[1],
+        "the retry reuses the change id — that is what makes it a duplicate rather than a second commit"
+    );
+    assert_eq!(command_id, seen[0], "and the caller is given that id");
+}
+
+/// A participant that refuses the very first submission as a duplicate.
+#[derive(Clone, Default)]
+struct AlwaysDuplicate;
+
+#[tonic::async_trait]
+impl pb::command_submission_service_server::CommandSubmissionService for AlwaysDuplicate {
+    async fn submit(
+        &self,
+        _r: Request<pb::SubmitRequest>,
+    ) -> Result<Response<pb::SubmitResponse>, Status> {
+        Err(Status::already_exists("duplicate command"))
+    }
+    async fn submit_reassignment(
+        &self,
+        _r: Request<pb::SubmitReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn a_duplicate_on_the_first_attempt_is_a_rejection_the_caller_must_see() {
+    use pb::command_submission_service_server::CommandSubmissionServiceServer;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(
+                CommandSubmissionServiceServer::new(AlwaysDuplicate),
+                incoming,
+            )
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // Nothing of ours is at the participant: the caller reused a change id from
+    // an earlier submission, and swallowing that would hide a real mistake.
+    let error = client
+        .submit(one_command())
+        .await
+        .expect_err("a first-attempt duplicate is a genuine rejection");
+    assert_eq!(error.code(), Some(tonic::Code::AlreadyExists), "{error:?}");
+}

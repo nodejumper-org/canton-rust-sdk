@@ -47,6 +47,18 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
 /// Every one of these costs a round trip and comes back as a server-side error
 /// that reads like the ledger's fault. They are the caller's, and they are
 /// knowable here.
+/// Whether a failed submission is the participant refusing a command it already
+/// has — and, on a retry, one this client is responsible for having sent.
+///
+/// `ALREADY_EXISTS` is what Canton's `DUPLICATE_COMMAND` arrives as. On a first
+/// attempt it means the *caller* reused a change ID from an earlier submission,
+/// which is a genuine rejection they must see. On a retry it means our own
+/// previous attempt was accepted, which is the opposite of a failure — so the
+/// caller of this predicate checks that first.
+fn is_duplicate_of_our_own(status: &tonic::Status) -> bool {
+    status.code() == tonic::Code::AlreadyExists
+}
+
 fn validate_commands(commands: &pb::Commands) -> Result<()> {
     if commands.act_as.is_empty() {
         return Err(Error::InvalidRequest(
@@ -300,19 +312,41 @@ impl CantonClient {
     pub(crate) async fn submit_commands(&self, commands: pb::Commands) -> Result<()> {
         validate_commands(&commands)?;
         telemetry::instrument("submit", TRANSPORT_GRPC, async move {
+            let attempt = std::sync::atomic::AtomicU32::new(0);
+            let command_id = commands.command_id.clone();
             self.with_retry(|| {
                 let commands = commands.clone();
+                let command_id = command_id.clone();
+                let retry = attempt.fetch_add(1, std::sync::atomic::Ordering::Relaxed) > 0;
                 async move {
                     let mut client = service!(
                         self,
                         pb::command_submission_service_client::CommandSubmissionServiceClient::new
                     );
-                    client
+                    match client
                         .submit(pb::SubmitRequest {
                             commands: Some(commands),
                         })
-                        .await?;
-                    Ok(())
+                        .await
+                    {
+                        Ok(_) => Ok(()),
+                        Err(status) if retry && is_duplicate_of_our_own(&status) => {
+                            // The command we are retrying is already at the
+                            // participant, and we are the ones who put it
+                            // there: a previous attempt of this same retry loop
+                            // was accepted and its response was lost. Reporting
+                            // the duplicate rejection would tell the caller
+                            // their command failed when it did precisely the
+                            // opposite — the failure mode this whole change ID
+                            // exists to prevent.
+                            tracing::debug!(
+                                %command_id,
+                                "submission retry was de-duplicated; the earlier attempt is the one that landed"
+                            );
+                            Ok(())
+                        }
+                        Err(status) => Err(Error::from(status)),
+                    }
                 }
             })
             .await
@@ -386,13 +420,22 @@ impl CantonClient {
     /// ```
     ///
     /// # Retry caveat (exactly-once)
-    /// With retry enabled ([`Config::with_retry`]), a submission that commits on
-    /// the ledger but whose response is lost to a retriable error is re-sent
-    /// with the same `command_id` and de-duplicated by the participant — the
-    /// retry then surfaces as a duplicate rejection even though the original
-    /// succeeded. For exactly-once semantics, set an explicit
-    /// `Submit::with_command_id` and recover the outcome with
-    /// [`Self::await_completion`] rather than relying on the return value alone.
+    /// With retry enabled ([`Config::with_retry`]), a submission that commits
+    /// on the ledger but whose response is lost to a retriable error is re-sent
+    /// with the same `command_id` and de-duplicated by the participant.
+    ///
+    /// [`Self::submit`] can answer that on its own: a duplicate rejection of a
+    /// retry it made itself means its earlier attempt was accepted, which is
+    /// success, so it reports success. **This method cannot.** Its result is
+    /// the committed transaction, and a de-duplicated retry does not carry one
+    /// — so the duplicate rejection reaches the caller, and the transaction has
+    /// to be read back rather than invented.
+    ///
+    /// Take a [`Submission`](crate::Submission) from [`Self::submission`]
+    /// before submitting, and on any error recover the outcome with
+    /// [`Submission::recover`](crate::Submission::recover) — it knows the
+    /// change ID, which is the only way back to a command whose response was
+    /// lost. See the `recover_a_submission` example.
     pub async fn submit_and_wait_for_transaction(
         &self,
         submit: crate::command::Submit,

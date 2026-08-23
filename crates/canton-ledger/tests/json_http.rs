@@ -240,3 +240,60 @@ fn a_missing_endpoint_names_the_variable_it_looked_for() {
         "and say how to produce it: {message}"
     );
 }
+
+/// A retry the participant refuses as a duplicate is our own earlier attempt
+/// having landed — over JSON exactly as over gRPC. Reporting it as a failure
+/// tells the caller their command did not happen when it did, which is the
+/// failure the change ID exists to prevent.
+#[tokio::test]
+async fn a_de_duplicated_retry_is_a_success_not_a_failure() {
+    // First attempt: a 503 the client will retry. Second: the participant
+    // refusing the same change id as a duplicate.
+    let (url, seen) = scripted_server(vec![
+        (
+            503,
+            r#"{"cause":"connection lost after acceptance"}"#.to_string(),
+        ),
+        (
+            409,
+            r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists"}"#.to_string(),
+        ),
+    ])
+    .await;
+    let client = JsonClient::new(url).with_retry(
+        canton_ledger::RetryConfig::default()
+            .with_max_attempts(3)
+            .with_initial_backoff(Duration::from_millis(1)),
+    );
+
+    client
+        .submit(&commands())
+        .await
+        .expect("the command committed on the attempt whose response was lost");
+
+    let requests = seen.lock().unwrap();
+    assert_eq!(requests.len(), 2, "one attempt, then one retry");
+    assert_eq!(
+        requests[0].body["commandId"], requests[1].body["commandId"],
+        "the retry must reuse the change id — that is what makes it a duplicate"
+    );
+}
+
+/// The same rejection on the *first* attempt is a real one: nothing of ours is
+/// at the participant, so the caller reused a change id from an earlier
+/// submission and needs to hear about it.
+#[tokio::test]
+async fn a_duplicate_on_the_first_attempt_is_still_an_error() {
+    let (url, _seen) = scripted_server(vec![(
+        409,
+        r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists"}"#.to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let error = client
+        .submit(&commands())
+        .await
+        .expect_err("a change id the caller reused is a rejection they must see");
+    assert!(format!("{error}").contains("DUPLICATE_COMMAND"), "{error}");
+}
