@@ -26,8 +26,8 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.1.4 (released) | 3.5.7 (pinned protos) | v2 | 1.88 |
-| 0.2.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.2.x (current) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.1.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
 supported Canton range re-vendors them in a new SDK minor (see the stability
