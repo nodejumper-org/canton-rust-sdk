@@ -94,6 +94,24 @@ jobs:
         env:
           RUSTDOCFLAGS: "-D warnings"
 
+  # What docs.rs will actually do, which the stable job above cannot see.
+  # docs.rs builds on nightly with `--cfg docsrs`, and that cfg is what turns
+  # on the `doc(cfg)` attributes — nightly-only ones that a crate must declare
+  # `feature(doc_cfg)` to use. Without this job, a missing declaration is
+  # invisible in CI and surfaces as a failed build on the published crate's
+  # documentation page, where it cannot be fixed without a new release.
+  docsrs:
+    name: Documents the way docs.rs will build it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: nightly }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - run: cargo doc --workspace --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
+
   # Every feature combination must build & lint (default, ws, otel, server, …).
   feature-matrix:
     runs-on: ubuntu-latest

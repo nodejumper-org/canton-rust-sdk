@@ -20,6 +20,11 @@
 //! # Ok(())
 //! # }
 //! ```
+// `doc(cfg)` marks the `ws`-gated items on docs.rs, and that attribute is
+// nightly-only. docs.rs builds with `--cfg docsrs`, so without this the
+// attributes below are a hard error there and the crate documents as failed —
+// while a plain `cargo doc`, which never sets `docsrs`, stays green.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod client;
 mod command;
