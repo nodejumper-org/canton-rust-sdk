@@ -3,7 +3,7 @@ resolver = "2"
 members  = ["crates/*"]
 
 [workspace.package]
-version      = "0.2.1"
+version      = "0.2.2"
 edition      = "2024"
 rust-version = "1.88"
 license      = "Apache-2.0"
@@ -16,15 +16,15 @@ keywords     = ["canton", "grpc", "ledger", "blockchain", "daml"]
 
 [workspace.dependencies]
 # internal crates (path = local build, version = published requirement)
-canton-proto  = { path = "crates/canton-proto",  version = "0.2.1" }
-canton-core   = { path = "crates/canton-core",   version = "0.2.1" }
-canton-auth   = { path = "crates/canton-auth",   version = "0.2.1" }
-canton-ledger = { path = "crates/canton-ledger", version = "0.2.1" }
-canton-admin  = { path = "crates/canton-admin",  version = "0.2.1" }
+canton-proto  = { path = "crates/canton-proto",  version = "0.2.2" }
+canton-core   = { path = "crates/canton-core",   version = "0.2.2" }
+canton-auth   = { path = "crates/canton-auth",   version = "0.2.2" }
+canton-ledger = { path = "crates/canton-ledger", version = "0.2.2" }
+canton-admin  = { path = "crates/canton-admin",  version = "0.2.2" }
 # M2 crates
-canton-lf      = { path = "crates/canton-lf",      version = "0.2.1" }
-canton-daml    = { path = "crates/canton-daml",    version = "0.2.1" }
-canton-codegen = { path = "crates/canton-codegen", version = "0.2.1" }
+canton-lf      = { path = "crates/canton-lf",      version = "0.2.2" }
+canton-daml    = { path = "crates/canton-daml",    version = "0.2.2" }
+canton-codegen = { path = "crates/canton-codegen", version = "0.2.2" }
 
 # external
 tonic        = { version = "0.14", default-features = false }
