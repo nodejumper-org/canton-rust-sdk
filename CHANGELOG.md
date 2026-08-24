@@ -22,6 +22,13 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   published, hence this patch.
 - A `docsrs` CI job now builds the workspace the way docs.rs will, so the class
   of error that produced this cannot reach a release again.
+- **The MSRV job never checked the MSRV.** `rust-toolchain.toml` pins the
+  channel for anything run inside the checkout and wins over the toolchain the
+  CI action installs — rustup says so in its own log, then uses stable. So a job
+  that asked for 1.88 ran on stable, and `rust-version = "1.88"` went unverified
+  every time it was claimed. It happens to be true (1.88 checks clean), but
+  nothing was establishing that. Both jobs that want a specific toolchain now
+  set `RUSTUP_TOOLCHAIN`, which is the override that beats the file.
 - The `canton` facade declared `all-features` for docs.rs without the matching
   `rustdoc-args`, the same inconsistency one step behind.
 
