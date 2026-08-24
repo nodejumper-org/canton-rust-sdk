@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.2.1] — 2026-08-24
+
+### Fixed
+
+- **`canton-ledger` documented as failed on docs.rs.** Two
+  `#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]` attributes went in without the
+  crate declaring `#![cfg_attr(docsrs, feature(doc_cfg))]`, which that attribute
+  requires. `cargo doc` never sets `docsrs`, so the attributes compiled out and
+  every gate stayed green; docs.rs does set it, on nightly, and the published
+  crate's documentation page said the build failed. The crates themselves
+  installed and built correctly throughout — this only ever affected the
+  rendered documentation, and it cannot be fixed for a version already
+  published, hence this patch.
+- A `docsrs` CI job now builds the workspace the way docs.rs will, so the class
+  of error that produced this cannot reach a release again.
+- The `canton` facade declared `all-features` for docs.rs without the matching
+  `rustdoc-args`, the same inconsistency one step behind.
+
+### Changed
+
+- `RELEASING.md` carries the post-publish verification the pre-publish gate
+  cannot do: `cargo package` runs `--no-verify` because verifying needs the
+  siblings to already be on crates.io, so the packaged artefact is first built
+  by whoever installs it. The runbook now says to be that person first.
+- The README compatibility table listed 0.2 as unreleased.
+
 ## [0.2.0] — 2026-08-24
 
 All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
