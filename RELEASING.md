@@ -57,7 +57,11 @@ with "no matching package" if it is not there yet).
   and the same for `-p canton-admin`
 - The reference app end to end on both transports: `cargo run -p canton-sample`
 - `CHANGELOG.md`: turn `— unreleased` into the date
-- `README.md`: the status line names what is released
+- `README.md`: **every** place that names a version — the status line, the
+  compatibility table, and any "unreleased"/"this branch" wording. The README is
+  frozen into each published crate's page at publish time, so a stale line there
+  is not fixable until the next release:
+  `grep -nE "unreleased|this branch|0\.[0-9]+\.[0-9]+" README.md`
 - The tree is clean and tagged `v<version>`
 
 ## After publishing
