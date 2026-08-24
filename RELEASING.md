@@ -62,5 +62,27 @@ with "no matching package" if it is not there yet).
 
 ## After publishing
 
+The pre-publish `cargo package` runs with `--no-verify`, and it has to: verifying
+builds the packaged crate, which needs its siblings at the new version to exist
+on crates.io, and they do not yet. So the packaged artefact is first built by
+whoever installs it. Do that yourself, from a directory **outside this
+workspace** so nothing resolves by path:
+
+```sh
+cargo new /tmp/consumer && cd /tmp/consumer
+cargo add canton --features ws,otel
+cargo add canton-daml canton-splice-amulet
+cargo build            # the family, as a user gets it
+
+cargo install canton-codegen-cli --root /tmp/tools
+/tmp/tools/bin/dpm-codegen-rust --dar <any>.dar --out /tmp/bindings
+cd /tmp/bindings && cargo build   # generated code against the published runtime
+```
+
+Then check every crate documented, not just built —
+`https://docs.rs/crate/<name>/<version>/status.json` reports `doc_status`. A
+crate can publish and install perfectly while its documentation page says the
+build failed, and that cannot be fixed without another release.
+
 - GitHub release on the tag, notes from the changelog section
 - `docs/compatibility-matrix.md` (M3 onward) names the released version

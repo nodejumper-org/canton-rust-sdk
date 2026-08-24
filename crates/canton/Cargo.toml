@@ -35,3 +35,7 @@ workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
+# Same cfg every other crate in the family sets. Without it a `doc(cfg)` added
+# here would silently not render — and the sibling crates show that the
+# attribute arrives long after the manifest is written.
+rustdoc-args = ["--cfg", "docsrs"]
