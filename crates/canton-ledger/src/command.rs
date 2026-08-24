@@ -47,7 +47,7 @@ pub struct Submit {
 /// command is sent, which is the point: after an ambiguous failure the id is
 /// the only way back to the outcome, and a generated id the caller never saw
 /// is no way back at all.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ChangeId {
     user_id: String,
     act_as: Vec<String>,
@@ -162,6 +162,7 @@ impl ChangeId {
 
 impl Submit {
     /// Start a submission acting as a single party.
+    #[must_use]
     pub fn new(act_as: impl Into<String>) -> Self {
         Self::new_multi(vec![act_as.into()])
     }

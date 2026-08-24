@@ -18,7 +18,7 @@ use topo::topology_manager_read_service_client::TopologyManagerReadServiceClient
 ///
 /// `#[non_exhaustive]` so new store kinds can be added without a breaking
 /// change.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Store {
     /// The node's authorized store (its own local topology state).

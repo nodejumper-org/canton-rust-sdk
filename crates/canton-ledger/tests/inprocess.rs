@@ -1370,3 +1370,97 @@ async fn a_duplicate_on_the_first_attempt_is_a_rejection_the_caller_must_see() {
         .expect_err("a first-attempt duplicate is a genuine rejection");
     assert_eq!(error.code(), Some(tonic::Code::AlreadyExists), "{error:?}");
 }
+
+#[tokio::test]
+async fn the_grpc_handle_recovers_through_its_own_method() {
+    // `await_completion` is covered above; this walks the same collision
+    // through `Submission::recover`, the door an application actually uses —
+    // coverage showed the wrapper itself never executed in a hermetic test.
+    use pb::command_completion_service_server::CommandCompletionServiceServer;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(
+                CommandCompletionServiceServer::new(CollidingCompletions),
+                incoming,
+            )
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+    let submission = client.submission(
+        canton_ledger::Submit::new("alice")
+            .with_user_id("us")
+            .with_command_id("shared-command-id")
+            .add_command(canton_ledger::create(
+                canton_ledger::identifier("pkg", "M", "T"),
+                canton_ledger::record(vec![]),
+            )),
+    );
+
+    let completion = submission
+        .recover(0, Duration::from_secs(5))
+        .await
+        .expect("our completion is on the stream");
+    assert_eq!(completion.update_id, "ours");
+}
+
+#[tokio::test]
+async fn the_waiting_handle_returns_what_the_participant_answered() {
+    // `Submission::submit_and_wait` — the other uncovered door of the handle.
+    use pb::command_service_server::CommandServiceServer;
+
+    #[derive(Clone, Default)]
+    struct WaitOk;
+    #[tonic::async_trait]
+    impl pb::command_service_server::CommandService for WaitOk {
+        async fn submit_and_wait(
+            &self,
+            _r: Request<pb::SubmitAndWaitRequest>,
+        ) -> Result<Response<pb::SubmitAndWaitResponse>, Status> {
+            Ok(Response::new(pb::SubmitAndWaitResponse {
+                update_id: "u-wait".to_string(),
+                completion_offset: 41,
+            }))
+        }
+        async fn submit_and_wait_for_transaction(
+            &self,
+            _r: Request<pb::SubmitAndWaitForTransactionRequest>,
+        ) -> Result<Response<pb::SubmitAndWaitForTransactionResponse>, Status> {
+            Err(Status::unimplemented("test"))
+        }
+        async fn submit_and_wait_for_reassignment(
+            &self,
+            _r: Request<pb::SubmitAndWaitForReassignmentRequest>,
+        ) -> Result<Response<pb::SubmitAndWaitForReassignmentResponse>, Status> {
+            Err(Status::unimplemented("test"))
+        }
+    }
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(CommandServiceServer::new(WaitOk), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+    let submission = client.submission(one_command());
+    let response = submission
+        .submit_and_wait()
+        .await
+        .expect("the mock commits");
+    assert_eq!(response.update_id, "u-wait");
+    assert_eq!(response.completion_offset, 41);
+}

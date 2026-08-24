@@ -36,6 +36,7 @@ impl Party {
     /// Wrap a party-id string **without validating it** — for values that came
     /// off the wire, where the participant has already vouched for them.
     /// Prefer [`Party::parse`] for a value a caller supplied.
+    #[must_use]
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }
@@ -117,6 +118,7 @@ pub struct ContractId<T> {
 
 impl<T> ContractId<T> {
     /// Wrap a contract-id string.
+    #[must_use]
     pub fn new(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -839,6 +841,7 @@ pub struct NestedOpt<T>(pub Option<T>);
 
 impl<T> NestedOpt<T> {
     /// Wrap an [`Option`].
+    #[must_use]
     pub fn new(value: Option<T>) -> Self {
         Self(value)
     }

@@ -86,7 +86,7 @@ pub struct OidcConfig {
 /// provider presets choose for you; this is here for a custom endpoint that
 /// wants the other one. `#[non_exhaustive]`: a provider may need a third form
 /// (a signed assertion, say) without that being a breaking change.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ClientAuth {
     /// `client_secret_post` — id and secret in the request body. The default,

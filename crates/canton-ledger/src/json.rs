@@ -912,6 +912,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on a
     /// participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_updates(
         &self,
         parties: Vec<String>,
@@ -939,6 +940,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
     /// a participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_updates_with(
         &self,
         request: &crate::request::UpdatesRequest,
@@ -968,6 +970,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on a
     /// participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_active_contracts(
         &self,
         parties: Vec<String>,
@@ -995,6 +998,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
     /// a participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_active_contracts_with(
         &self,
         request: &crate::request::ActiveContractsRequest,
@@ -1023,6 +1027,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on a
     /// participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_completions(
         &self,
         parties: Vec<String>,
@@ -1054,6 +1059,7 @@ impl JsonClient {
     /// Returns an [`Error`] if the handshake fails; the stream yields `Err` on
     /// a participant error frame or a transport failure.
     #[allow(clippy::large_futures)] // the WS handshake state is inherently large; awaited once.
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub async fn ws_completions_with(
         &self,
         request: &crate::request::CompletionsRequest,
@@ -1197,6 +1203,7 @@ impl JsonClient {
     /// position tracking and not yielded.
     ///
     /// [`CantonClient::updates_resumable`]: crate::CantonClient::updates_resumable
+    #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
     pub fn ws_updates_resumable(
         &self,
         parties: Vec<String>,

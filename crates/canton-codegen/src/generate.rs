@@ -140,6 +140,7 @@ impl Options {
     /// Generate bindings for `dar` into the crate directory `out` (created if
     /// absent). The crate name defaults to one derived from the DAR file name
     /// and the runtime to the matching published `canton-daml`.
+    #[must_use]
     pub fn new(dar: impl Into<PathBuf>, out: impl Into<PathBuf>) -> Self {
         Self {
             dar: dar.into(),

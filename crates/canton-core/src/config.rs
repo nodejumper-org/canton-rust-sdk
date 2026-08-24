@@ -242,6 +242,7 @@ impl std::fmt::Debug for Config {
 impl Config {
     /// Create a configuration targeting `endpoint`, with no authentication and
     /// no retrying.
+    #[must_use]
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
             endpoint: endpoint.into(),

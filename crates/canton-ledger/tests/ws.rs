@@ -393,3 +393,92 @@ async fn a_ws_stream_that_gives_up_reports_the_failure_that_caused_it() {
         "and so must its classification: {error:?}"
     );
 }
+
+// ---- the JSON recovery handle reads its answer off the completion stream ----
+
+fn full_completion_frame(command_id: &str, act_as: &[&str], update_id: &str, code: i64) -> String {
+    json!({
+        "completionResponse": { "Completion": { "value": {
+            "commandId": command_id,
+            "userId": "app-1",
+            "actAs": act_as,
+            "updateId": update_id,
+            "status": { "code": code, "message": if code == 0 { "" } else { "rejected: DUPLICATE_COMMAND" } },
+        } } }
+    })
+    .to_string()
+}
+
+/// A completion stream carrying somebody else's completion under the same
+/// command id, then ours — the collision `matches_json` exists to resolve.
+async fn start_completion_scan_server(our_code: i64) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let mut ws = accept(stream).await;
+                let _ = ws.next().await; // subscription frame
+                let _ = ws
+                    .send(Message::text(full_completion_frame(
+                        "shared-id",
+                        &["alice", "intruder"],
+                        "not-ours",
+                        0,
+                    )))
+                    .await;
+                let _ = ws
+                    .send(Message::text(full_completion_frame(
+                        "shared-id",
+                        &["alice"],
+                        "ours",
+                        our_code,
+                    )))
+                    .await;
+                let _ = ws.close(None).await;
+            });
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    format!("http://localhost:{port}")
+}
+
+#[tokio::test]
+async fn json_recover_finds_its_own_completion_by_the_whole_change_id() {
+    let url = start_completion_scan_server(0).await;
+    let client = JsonClient::new(url);
+
+    let submission = client.submission(
+        canton_ledger::JsonCommands::new(vec!["alice".to_string()])
+            .with_user_id("app-1")
+            .with_command_id("shared-id"),
+    );
+    let completion = submission
+        .recover(0, Duration::from_secs(5))
+        .await
+        .expect("our completion is on the stream");
+    assert_eq!(
+        completion["updateId"], "ours",
+        "a same-command-id completion with a different act_as set must not win"
+    );
+}
+
+#[tokio::test]
+async fn json_recover_reports_a_rejection_as_command_rejected() {
+    let url = start_completion_scan_server(6).await; // 6 = ALREADY_EXISTS
+    let client = JsonClient::new(url);
+
+    let submission = client.submission(
+        canton_ledger::JsonCommands::new(vec!["alice".to_string()])
+            .with_user_id("app-1")
+            .with_command_id("shared-id"),
+    );
+    let error = submission
+        .recover(0, Duration::from_secs(5))
+        .await
+        .expect_err("a non-OK completion status is the ledger's answer");
+    assert!(
+        matches!(&error, canton_ledger::Error::CommandRejected { code, .. } if code == "6"),
+        "got {error:?}"
+    );
+}

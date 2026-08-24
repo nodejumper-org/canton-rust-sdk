@@ -459,6 +459,23 @@ pub enum ErrorCategory {
     InternalUnsupportedOperation,
 }
 
+/// The std spelling of [`ErrorCategory::from_i32`], so the category can be
+/// used with generic conversion bounds. The inherent method stays: it is the
+/// documented name and the `Option` shape matches "unknown id" better than an
+/// error type would.
+impl TryFrom<i32> for ErrorCategory {
+    type Error = i32;
+    fn try_from(id: i32) -> std::result::Result<Self, i32> {
+        Self::from_i32(id).ok_or(id)
+    }
+}
+
+impl From<ErrorCategory> for i32 {
+    fn from(category: ErrorCategory) -> i32 {
+        category.as_i32()
+    }
+}
+
 impl ErrorCategory {
     /// The category for Canton's numeric id, `None` when unrecognized.
     #[must_use]

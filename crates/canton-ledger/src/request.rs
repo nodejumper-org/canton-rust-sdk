@@ -41,7 +41,7 @@ use canton_proto::com::daml::ledger::api::v2 as pb;
 
 /// The shape of transactions in an update stream — which events are returned
 /// and who has to see them (see the Ledger API's `TransactionShape`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum TransactionShape {
     /// Created and archived events describing the net change to the active

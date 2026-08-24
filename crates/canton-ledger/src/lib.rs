@@ -34,7 +34,7 @@ mod submission;
 #[cfg(feature = "ws")]
 mod ws;
 
-pub use canton_core::{Config, Error, ErrorCategory, Result, RetryConfig, TlsConfig};
+pub use canton_core::{Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig};
 pub use canton_proto::grpc::health::v1::health_check_response::ServingStatus;
 pub use client::{AcsEntry, CantonClient};
 pub use command::{ChangeId, Submit, create, exercise, identifier, record, value};

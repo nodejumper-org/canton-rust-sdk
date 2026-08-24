@@ -8,7 +8,7 @@
 //! notices.
 //!
 //! These assertions are compile-time; the futures are never polled.
-#![allow(dead_code, unused_must_use)]
+#![allow(dead_code, unused_must_use, clippy::needless_pass_by_value)]
 
 use std::time::Duration;
 
