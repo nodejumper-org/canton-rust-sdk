@@ -307,7 +307,13 @@ jobs:
       - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2
         with:
           # The crates with a published baseline to compare against. A crate
-          # cannot be checked before its first release, so each M2/M3 crate
-          # joins this list in the release after it first publishes.
-          package: canton-core, canton-auth, canton-ledger, canton-admin, canton
+          # cannot be checked before its first release, so each one joins this
+          # list in the release after it first publishes — the M2 crates below
+          # did so at 0.2.0. `canton-proto` stays out: its generated types are
+          # exempt from the stability promise (ADR-0002), and `canton-codegen-cli`
+          # is binary-only, so there is no API to compare.
+          package: >-
+            canton-core, canton-auth, canton-ledger, canton-admin, canton,
+            canton-lf, canton-daml, canton-codegen,
+            canton-splice-amulet, canton-splice-wallet, canton-splice-wallet-payments
           feature-group: all-features

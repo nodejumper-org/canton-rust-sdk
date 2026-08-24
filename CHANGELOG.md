@@ -31,6 +31,10 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   set `RUSTUP_TOOLCHAIN`, which is the override that beats the file.
 - The `canton` facade declared `all-features` for docs.rs without the matching
   `rustdoc-args`, the same inconsistency one step behind.
+- `cargo-semver-checks` covered 5 crates of 11. The M2 crates had no published
+  baseline to compare against until 0.2.0, and the job's own comment said they
+  should join afterwards — this is afterwards. `canton-proto` stays out by
+  ADR-0002 and `canton-codegen-cli` has no library API.
 
 ### Changed
 
