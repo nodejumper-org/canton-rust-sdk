@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. Token-standard support (CIP-56 / CIP-0112), a PQS client, and external signing are next.
+> **Status:** the Ledger API client and the type-safe DAR codegen are both **released** on crates.io (0.2.x). Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. Token-standard support (CIP-56 / CIP-0112), a PQS client, and external signing are next.
 
 ## Crates
 

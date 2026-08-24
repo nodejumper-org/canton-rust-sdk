@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [0.2.0] — unreleased
+## [0.2.0] — 2026-08-24
 
 All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
 the rest. Everything the 0.1.x line gained after the M1 submission — the read
