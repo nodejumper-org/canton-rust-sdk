@@ -1,0 +1,35 @@
+[package]
+name         = "canton-lf"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["parser-implementations", "encoding", "development-tools"]
+keywords     = ["canton", "daml", "daml-lf", "dar", "codegen"]
+description  = "Daml-LF archive (DAR/DALF) reader and decoder for the Canton Rust SDK."
+include      = ["src/**/*", "proto/**/*", "build.rs", "README.md", "LICENSE"]
+
+[dependencies]
+zip       = { workspace = true }
+thiserror = { workspace = true }
+prost     = { workspace = true }
+sha2      = { workspace = true }
+
+[dev-dependencies]
+sha2 = { workspace = true }
+prost = { workspace = true }
+zip = { workspace = true }
+# The conformance oracle test renders the decoded signature surface as JSON and
+# compares it against the official JVM `daml-lf-archive` reader's output.
+serde_json = { workspace = true }
+
+[build-dependencies]
+prost-build         = { workspace = true }
+protoc-bin-vendored = { workspace = true }
+
+[lints]
+workspace = true

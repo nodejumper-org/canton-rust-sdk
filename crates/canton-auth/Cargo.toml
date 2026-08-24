@@ -11,6 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "JWT/OIDC authentication for the Canton Rust SDK (client-credentials, caching, refresh)."
+include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-core = { workspace = true }
@@ -21,7 +22,7 @@ tokio       = { workspace = true, features = ["sync"] }
 tracing     = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util"] }
 
 [lints]
 workspace = true

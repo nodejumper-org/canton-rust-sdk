@@ -11,6 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Async Canton Ledger API client (gRPC): commands, streaming, de-duplication, recovery."
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-proto = { workspace = true }
@@ -35,6 +36,10 @@ rustls              = { workspace = true, optional = true }
 rustls-pki-types    = { workspace = true, optional = true }
 rustls-native-certs = { workspace = true, optional = true }
 
+# `otel` feature: the WebSocket handshake carries W3C trace context, which needs
+# a header map to inject into.
+http = { version = "1", optional = true }
+
 [features]
 # WebSocket streaming for the JSON transport (unbounded live tails).
 ws = [
@@ -46,7 +51,7 @@ ws = [
 ]
 # OpenTelemetry: OTLP span export + W3C trace-context propagation on outgoing
 # requests (forwards to canton-core's `otel`).
-otel = ["canton-core/otel"]
+otel = ["canton-core/otel", "dep:http"]
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
@@ -54,6 +59,13 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 canton-proto = { workspace = true, features = ["server"] }
 tokio-stream = { workspace = true, features = ["net"] }
 rcgen = "0.13"
+# The trace-propagation test needs a real OpenTelemetry context to propagate:
+# without a tracer installed there is no trace id, and the test would pass on a
+# client that injects nothing.
+tracing-subscriber    = "0.3"
+tracing-opentelemetry = "0.28"
+opentelemetry         = "0.27"
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"] }
 
 [lints]
 workspace = true

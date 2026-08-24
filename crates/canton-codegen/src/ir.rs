@@ -1,0 +1,416 @@
+//! A decoder-agnostic intermediate representation (IR) of Daml types.
+//!
+//! The IR is the seam between "decode Daml-LF" (`canton-lf`) and "emit Rust"
+//! (this crate's generator). Neither side knows about the other: a decoder
+//! produces this IR, the generator consumes it — so the LF-decoder choice stays
+//! isolated to lowering, the one step that reads the LF AST
+//! ([`lower_dar`](crate::lower_dar)).
+
+/// A Daml type — a primitive, a container, or a reference to a named data type.
+///
+/// This is the type a record field, choice argument, or contract key can take.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DamlType {
+    /// The `Unit` type `()`.
+    Unit,
+    /// `Bool`.
+    Bool,
+    /// `Int64`.
+    Int64,
+    /// `Numeric n` — a fixed-scale decimal; the value is the scale (decimals).
+    Numeric(u8),
+    /// `Text`.
+    Text,
+    /// `Timestamp` (microseconds since the Unix epoch, UTC).
+    Timestamp,
+    /// `Date` (days since the Unix epoch).
+    Date,
+    /// `Party`.
+    Party,
+    /// `ContractId t` — a handle to a contract of the referenced payload type.
+    ContractId(Box<DamlType>),
+    /// `List t` / `[t]`.
+    List(Box<DamlType>),
+    /// `Optional t`.
+    Optional(Box<DamlType>),
+    /// `TextMap t` — a map keyed by `Text`.
+    TextMap(Box<DamlType>),
+    /// `GenMap k v` — a map with arbitrary key type.
+    GenMap(Box<DamlType>, Box<DamlType>),
+    /// A reference to a named data type (record / variant / enum).
+    Ref(TypeRef),
+    /// A type parameter (`a`, `b`, …) inside a generic data type.
+    Var(String),
+    /// A type behind a `Box`, used to give recursive types the indirection Rust
+    /// requires (Daml allows a type to contain itself directly; Rust does not).
+    Boxed(Box<DamlType>),
+}
+
+/// A reference to a named Daml data type, with any applied type arguments.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct TypeRef {
+    /// The Rust path to the referenced type, as segments. A local reference is a
+    /// single segment (`["Foo"]`); a qualified one carries its full path
+    /// (`["crate", "splice_amulet", "Amulet"]`), which is how cross-module and
+    /// cross-package references are disambiguated.
+    pub path: Vec<String>,
+    /// Applied type arguments, if the referenced type is generic.
+    pub args: Vec<DamlType>,
+}
+
+impl TypeRef {
+    /// A local (single-segment) reference to `name`, no path qualification.
+    #[must_use]
+    pub fn local(name: impl Into<String>, args: Vec<DamlType>) -> Self {
+        Self {
+            path: vec![name.into()],
+            args,
+        }
+    }
+}
+
+/// One field of a record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Field {
+    /// The Daml field label, in its source casing (usually camelCase).
+    pub label: String,
+    /// The field's type.
+    pub ty: DamlType,
+}
+
+/// A record data type. Template payloads are records too, so this is reused for
+/// both a plain `data … = … with` record and a `template … with` payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Record {
+    /// The type name (PascalCase, as in Daml).
+    pub name: String,
+    /// Type parameters, in order, if the record is generic.
+    pub type_params: Vec<String>,
+    /// The fields, in declaration order.
+    pub fields: Vec<Field>,
+}
+
+/// A named data type declared in a module: a record, a variant, or an enum.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DataType {
+    /// A record (product) type.
+    Record(Record),
+    /// A variant (sum) type.
+    Variant(Variant),
+    /// An enumeration (constructors carrying no payload).
+    Enum(Enum),
+    /// An interface **marker**: a phantom tag emitted so references to the
+    /// interface (always `ContractId<I>`) resolve. The interface itself is not
+    /// serializable and carries no data of its own — its view and choices are
+    /// emitted separately, from [`Interface`]. The `String` is the name.
+    InterfaceMarker(String),
+}
+
+/// A variant (sum) type: named constructors, each optionally carrying a payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Variant {
+    /// The type name (PascalCase).
+    pub name: String,
+    /// Type parameters, in order, if generic.
+    pub type_params: Vec<String>,
+    /// The constructors, in declaration order.
+    pub constructors: Vec<VariantConstructor>,
+}
+
+/// One constructor of a [`Variant`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct VariantConstructor {
+    /// The constructor name (PascalCase).
+    pub name: String,
+    /// The payload type, or `None` for a constructor that carries no data.
+    pub payload: Option<DamlType>,
+}
+
+/// An enumeration: named constructors that carry no payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Enum {
+    /// The type name (PascalCase).
+    pub name: String,
+    /// The constructor names, in declaration order.
+    pub constructors: Vec<String>,
+}
+
+/// A template: its payload fields, its choices, and an optional contract key.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Template {
+    /// The template name (PascalCase) — also the Rust payload struct name.
+    pub name: String,
+    /// The Daml module the template is defined in, dotted (e.g. `Splice.Amulet`).
+    /// Part of the on-ledger template id.
+    pub module_name: String,
+    /// The id (hash) of the package the template is defined in. Pins the exact
+    /// template version in an on-ledger template id.
+    pub package_id: String,
+    /// The Daml package **name** (e.g. `splice-amulet`), used for the
+    /// upgrade-friendly `#<package-name>` template-id form so the participant
+    /// resolves the vetted version under Smart Contract Upgrade.
+    pub package_name: String,
+    /// The payload fields, in declaration order.
+    pub fields: Vec<Field>,
+    /// The choices exercisable on a contract of this template.
+    pub choices: Vec<Choice>,
+    /// The contract key type, if the template declares a key.
+    pub key: Option<DamlType>,
+}
+
+/// A choice on a [`Template`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Choice {
+    /// The choice name (PascalCase).
+    pub name: String,
+    /// Whether exercising the choice archives the contract.
+    pub consuming: bool,
+    /// The choice argument type (usually a reference to a record).
+    pub argument: DamlType,
+    /// The type the choice returns.
+    pub returns: DamlType,
+}
+
+/// A module's worth of generated declarations: its data types, templates, and
+/// interfaces.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct Module {
+    /// The named data types (records, variants, enums).
+    pub data_types: Vec<DataType>,
+    /// The templates.
+    pub templates: Vec<Template>,
+    /// The interfaces: their view type and choices, emitted as impls on the
+    /// marker struct that the corresponding [`DataType::InterfaceMarker`]
+    /// declares.
+    pub interfaces: Vec<Interface>,
+}
+
+/// A Daml interface: its view type and choices, plus the on-ledger identity a
+/// choice exercised through the interface needs. The marker struct itself is
+/// emitted from the interface's `DataCons::Interface` data type; this adds the
+/// `Interface`/`Choice` impls on that marker.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Interface {
+    /// The interface name (PascalCase) — also the marker struct's name.
+    pub name: String,
+    /// The Daml module the interface is defined in, dotted (e.g. `Splice.Api…`).
+    pub module_name: String,
+    /// The id (hash) of the package the interface is defined in.
+    pub package_id: String,
+    /// The Daml package **name**, for the `#<package-name>` id form.
+    pub package_name: String,
+    /// The interface's view type (its `viewtype`), if known.
+    pub view: Option<DamlType>,
+    /// The choices the interface declares.
+    pub choices: Vec<Choice>,
+}
+
+/// A whole generated crate: every package in a DAR, each as its own Rust module
+/// (so cross-module and cross-package references resolve, and names from
+/// different modules cannot collide).
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct Crate {
+    /// The packages, each a top-level module in the generated crate.
+    pub packages: Vec<PackageModule>,
+}
+
+/// One package rendered as a Rust module (`pub mod <name> { … }`), containing a
+/// submodule per Daml module.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PackageModule {
+    /// The Rust module name for this package (derived from its name + version).
+    pub name: String,
+    /// The Daml modules of this package.
+    pub modules: Vec<NamedModule>,
+}
+
+/// A Daml module rendered as a Rust submodule.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NamedModule {
+    /// The Rust module name for this Daml module (dotted name, `.` → `_`).
+    pub name: String,
+    /// The module's declarations.
+    pub module: Module,
+}
+
+// ---- constructors ------------------------------------------------------------
+//
+// The types above are `#[non_exhaustive]`, so a struct literal only works inside
+// this crate. That is deliberate: this IR gains fields as Daml-LF does — it took
+// forty of them during Milestone 2 alone — and once the crate is published, one
+// more would be a breaking change for everyone who wrote a literal.
+//
+// Fields stay public, so the documented use (lower a DAR, then post-process the
+// IR) still reads and mutates them freely. Only construction goes through these,
+// which take what a value cannot exist without and leave the rest empty.
+
+impl TypeRef {
+    /// A reference to the type at `path`, with no type arguments.
+    #[must_use]
+    pub fn new(path: Vec<String>) -> Self {
+        Self {
+            path,
+            args: Vec::new(),
+        }
+    }
+}
+
+impl Field {
+    /// A field named `label` of type `ty`.
+    #[must_use]
+    pub fn new(label: impl Into<String>, ty: DamlType) -> Self {
+        Self {
+            label: label.into(),
+            ty,
+        }
+    }
+}
+
+impl Record {
+    /// An empty, non-generic record named `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_params: Vec::new(),
+            fields: Vec::new(),
+        }
+    }
+}
+
+impl Variant {
+    /// A variant named `name` with no constructors yet.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_params: Vec::new(),
+            constructors: Vec::new(),
+        }
+    }
+}
+
+impl VariantConstructor {
+    /// A constructor carrying no payload.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            payload: None,
+        }
+    }
+
+    /// A constructor carrying `payload`.
+    #[must_use]
+    pub fn with_payload(name: impl Into<String>, payload: DamlType) -> Self {
+        Self {
+            name: name.into(),
+            payload: Some(payload),
+        }
+    }
+}
+
+impl Enum {
+    /// An enumeration of `constructors`.
+    #[must_use]
+    pub fn new(name: impl Into<String>, constructors: Vec<String>) -> Self {
+        Self {
+            name: name.into(),
+            constructors,
+        }
+    }
+}
+
+impl Template {
+    /// A template with its on-ledger identity, and no fields, choices or key
+    /// yet.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        module_name: impl Into<String>,
+        package_id: impl Into<String>,
+        package_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            module_name: module_name.into(),
+            package_id: package_id.into(),
+            package_name: package_name.into(),
+            fields: Vec::new(),
+            choices: Vec::new(),
+            key: None,
+        }
+    }
+}
+
+impl Choice {
+    /// A non-consuming choice. Set `consuming` on the value to change that —
+    /// it is a plain field, and a bool argument here would read as
+    /// `Choice::new(name, arg, ret, true)` at every call site.
+    #[must_use]
+    pub fn new(name: impl Into<String>, argument: DamlType, returns: DamlType) -> Self {
+        Self {
+            name: name.into(),
+            consuming: false,
+            argument,
+            returns,
+        }
+    }
+}
+
+impl Interface {
+    /// An interface with its on-ledger identity, no view and no choices yet.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        module_name: impl Into<String>,
+        package_id: impl Into<String>,
+        package_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            module_name: module_name.into(),
+            package_id: package_id.into(),
+            package_name: package_name.into(),
+            view: None,
+            choices: Vec::new(),
+        }
+    }
+}
+
+impl PackageModule {
+    /// A package with no modules yet.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            modules: Vec::new(),
+        }
+    }
+}
+
+impl NamedModule {
+    /// `module`, to be emitted as the Rust module `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>, module: Module) -> Self {
+        Self {
+            name: name.into(),
+            module,
+        }
+    }
+}

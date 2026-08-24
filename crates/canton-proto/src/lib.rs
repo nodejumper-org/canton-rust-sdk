@@ -11,11 +11,12 @@
 //! `.proto` files, which are **pinned to a Canton release** (currently 3.5.7)
 //! and re-vendored when the supported Canton range moves — such re-vendoring
 //! (and `prost`/`tonic` major bumps) may change these types in any release.
-//! Until the M2 typed bindings land, client crates intentionally expose these
-//! wire types on the dynamic path (re-exported as `canton_ledger::proto` and
-//! friends); treat that surface as *protocol-stable* (stable while the pinned
-//! Canton release line is stable) rather than *SemVer-stable*. The hand-written
-//! SDK types (`Config`, `Error`, builders, clients) carry the SemVer promise.
+//! Client crates expose these wire types on the **dynamic** command path
+//! (re-exported as `canton_ledger::proto` and friends); treat that surface as
+//! *protocol-stable* (stable while the pinned Canton release line is stable)
+//! rather than *SemVer-stable*. The hand-written SDK types (`Config`, `Error`,
+//! builders, clients) carry the SemVer promise. For typed payloads generated
+//! from a DAR, use `canton-codegen` with the `canton-daml` runtime instead.
 #![allow(missing_docs, clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::large_enum_variant, clippy::doc_lazy_continuation)]
 #![allow(rustdoc::all)]

@@ -32,6 +32,9 @@ struct MockParty {
     allocate_calls: Arc<AtomicUsize>,
     allocate_fails: bool,
     deny: bool,
+    /// Hand back the token that was sent, forever — a participant that never
+    /// advances its cursor.
+    repeat_page_token: bool,
 }
 
 fn party(n: usize) -> pb::PartyDetails {
@@ -60,7 +63,14 @@ impl PartyManagementService for MockParty {
         if self.deny {
             return Err(Status::permission_denied("needs ParticipantAdmin"));
         }
-        let (party_details, next_page_token) = match request.into_inner().page_token.as_str() {
+        let sent = request.into_inner().page_token;
+        if self.repeat_page_token && !sent.is_empty() {
+            return Ok(Response::new(pb::ListKnownPartiesResponse {
+                party_details: vec![party(9)],
+                next_page_token: sent,
+            }));
+        }
+        let (party_details, next_page_token) = match sent.as_str() {
             "" => (vec![party(0), party(1)], "p1".to_string()),
             "p1" => (vec![party(2), party(3)], "p2".to_string()),
             "p2" => (vec![party(4)], String::new()),
@@ -415,4 +425,32 @@ async fn acting_parties_keeps_only_can_act_as() {
 
     // And the full rights list is available for callers that need the wildcard.
     assert_eq!(client.current_user_rights().await.unwrap().len(), 4);
+}
+
+#[tokio::test]
+async fn a_participant_that_repeats_its_page_token_is_an_error_not_a_short_list() {
+    let endpoint = start_party_server(MockParty {
+        repeat_page_token: true,
+        ..Default::default()
+    })
+    .await;
+    let client = AdminClient::connect_lazy(Config::new(endpoint)).unwrap();
+
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a cursor that never advances cannot be followed");
+
+    // The alternative failure modes are both worse: looping forever, or
+    // returning a prefix of the party list with nothing to mark it as one.
+    // "Which parties exist" is a question whose wrong answer looks exactly
+    // like a right one.
+    assert!(
+        matches!(error, canton_admin::Error::UnexpectedResponse(_)),
+        "got {error:?}"
+    );
+    assert!(
+        format!("{error}").contains("repeated the same page token"),
+        "{error}"
+    );
 }

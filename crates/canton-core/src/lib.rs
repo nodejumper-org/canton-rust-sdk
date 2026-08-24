@@ -10,9 +10,12 @@
 pub mod auth;
 pub mod config;
 mod error;
+pub mod localnet;
 pub mod retry;
 pub mod telemetry;
 
-pub use config::{Auth, Config, TlsConfig, TokenSource};
-pub use error::{Error, ErrorCategory, ErrorInfo, Result};
+pub use config::{
+    Auth, Config, DEFAULT_MAX_DECODING_MESSAGE_SIZE, TlsConfig, TokenSource, redact_url,
+};
+pub use error::{Error, ErrorCategory, ErrorInfo, ResourceInfo, Result};
 pub use retry::RetryConfig;

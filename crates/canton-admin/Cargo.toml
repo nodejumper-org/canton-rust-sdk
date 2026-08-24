@@ -11,6 +11,7 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Canton admin client: party management, user self-inspect, and topology read (gRPC)."
+include      = ["src/**/*", "README.md", "LICENSE"]
 
 [dependencies]
 canton-proto = { workspace = true }

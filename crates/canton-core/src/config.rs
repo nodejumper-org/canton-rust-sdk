@@ -75,7 +75,7 @@ impl fmt::Debug for Auth {
 /// the platform's native root certificates. Add a custom CA for private/self-
 /// signed servers, a domain-name override for SNI/verification, and a client
 /// identity for mutual TLS. `#[non_exhaustive]`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 #[non_exhaustive]
 pub struct TlsConfig {
     /// Custom CA certificate chain (PEM). When set, replaces the native roots
@@ -86,6 +86,36 @@ pub struct TlsConfig {
     pub domain_name: Option<String>,
     /// Client identity `(certificate_pem, private_key_pem)` for mutual TLS.
     pub client_identity_pem: Option<(Vec<u8>, Vec<u8>)>,
+}
+
+/// Hand-written so PEM bytes never reach a log. The derived `Debug` printed
+/// `client_identity_pem` in full, which is the mutual-TLS **private key** — one
+/// `tracing` field capturing a `Config` was enough to put it in a log
+/// aggregator. Presence and length are what a reader debugging a handshake
+/// actually needs.
+impl std::fmt::Debug for TlsConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn pem(bytes: Option<&Vec<u8>>) -> String {
+            bytes.map_or_else(|| "None".to_string(), |b| format!("<{} bytes>", b.len()))
+        }
+        f.debug_struct("TlsConfig")
+            .field("ca_certificate_pem", &pem(self.ca_certificate_pem.as_ref()))
+            .field("domain_name", &self.domain_name)
+            .field(
+                "client_identity_pem",
+                &self.client_identity_pem.as_ref().map_or_else(
+                    || "None".to_string(),
+                    |(cert, key)| {
+                        format!(
+                            "Some((<{} bytes>, <{} bytes, redacted>))",
+                            cert.len(),
+                            key.len()
+                        )
+                    },
+                ),
+            )
+            .finish()
+    }
 }
 
 impl TlsConfig {
@@ -138,15 +168,75 @@ fn build_tls(tls: Option<&TlsConfig>) -> ClientTlsConfig {
     config
 }
 
+/// Replace the userinfo of a URL with `***`, so a connection string can be put
+/// in an error message or a log line without carrying credentials with it.
+///
+/// `https://alice:s3cret@host:3901/x` becomes `https://***@host:3901/x`; a URL
+/// without userinfo is returned untouched, and so is anything that does not
+/// parse as one. Deliberately not a real URL parse: this is used on the failure
+/// path of *invalid* URIs, where a parser would have nothing to work with.
+#[must_use]
+pub fn redact_url(url: &str) -> std::borrow::Cow<'_, str> {
+    let Some(scheme_end) = url.find("://") else {
+        return std::borrow::Cow::Borrowed(url);
+    };
+    let authority_start = scheme_end + 3;
+    let authority_end = url[authority_start..]
+        .find(['/', '?', '#'])
+        .map_or(url.len(), |i| authority_start + i);
+    let authority = &url[authority_start..authority_end];
+    let Some(at) = authority.rfind('@') else {
+        return std::borrow::Cow::Borrowed(url);
+    };
+    std::borrow::Cow::Owned(format!(
+        "{}***{}",
+        &url[..authority_start],
+        &url[authority_start + at..]
+    ))
+}
+
 /// Configuration for an SDK gRPC client (shared by `canton-ledger` and
 /// `canton-admin`).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Config {
     endpoint: String,
     auth: Auth,
     retry: Option<RetryConfig>,
     tls: Option<TlsConfig>,
     timeout: Option<Duration>,
+    max_decoding_message_size: usize,
+}
+
+/// The largest gRPC response this SDK will decode, unless configured otherwise.
+///
+/// `tonic` defaults to 4 MiB, which a Ledger API client meets in ordinary use:
+/// one `GetActiveContractsPageResponse` carries a whole page, the participant
+/// permits page sizes up to 10 000, and a page of that size on a modest ledger
+/// is several times over the limit. It surfaces as a client-side
+/// `OUT_OF_RANGE` — "decoded message length too large" — which reads like a
+/// server fault and is not retriable, so the caller has nothing useful to do
+/// with it.
+///
+/// 128 MiB is a bound that a real page, transaction or created-event blob
+/// stays under while still refusing a response large enough to be a memory
+/// problem.
+pub const DEFAULT_MAX_DECODING_MESSAGE_SIZE: usize = 128 * 1024 * 1024;
+
+/// Hand-written so the endpoint's userinfo is redacted. `auth` and `tls` redact
+/// themselves; the endpoint was the remaining way a credential reached a log
+/// through a `Config`, and a `Config` is exactly the thing an application
+/// attaches to a tracing span while debugging a connection.
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("endpoint", &redact_url(&self.endpoint))
+            .field("auth", &self.auth)
+            .field("retry", &self.retry)
+            .field("tls", &self.tls)
+            .field("timeout", &self.timeout)
+            .field("max_decoding_message_size", &self.max_decoding_message_size)
+            .finish()
+    }
 }
 
 impl Config {
@@ -159,6 +249,7 @@ impl Config {
             retry: None,
             tls: None,
             timeout: None,
+            max_decoding_message_size: DEFAULT_MAX_DECODING_MESSAGE_SIZE,
         }
     }
 
@@ -199,6 +290,23 @@ impl Config {
         self
     }
 
+    /// The largest gRPC response to decode, in bytes
+    /// (default [`DEFAULT_MAX_DECODING_MESSAGE_SIZE`], 128 MiB).
+    ///
+    /// Raise it for a participant that returns very large ACS pages or
+    /// transactions; lower it to bound the memory a single response can claim.
+    #[must_use]
+    pub fn with_max_decoding_message_size(mut self, bytes: usize) -> Self {
+        self.max_decoding_message_size = bytes;
+        self
+    }
+
+    /// The largest gRPC response this configuration will decode, in bytes.
+    #[must_use]
+    pub fn max_decoding_message_size(&self) -> usize {
+        self.max_decoding_message_size
+    }
+
     /// The gRPC endpoint of the target service, e.g. `http://localhost:3901`.
     #[must_use]
     pub fn endpoint(&self) -> &str {
@@ -230,7 +338,9 @@ impl Config {
     pub fn connect_channel(&self) -> Result<Channel> {
         let (uri, want_tls) = resolve_endpoint(&self.endpoint, self.tls.is_some());
         let mut endpoint = Endpoint::from_shared(uri.clone())
-            .map_err(|e| Error::InvalidRequest(format!("invalid endpoint uri {uri:?}: {e}")))?
+            .map_err(|e| {
+                Error::InvalidRequest(format!("invalid endpoint uri {}: {e}", redact_url(&uri)))
+            })?
             .timeout(self.timeout.unwrap_or(Duration::from_secs(30)))
             .connect_timeout(Duration::from_secs(10))
             .http2_keep_alive_interval(Duration::from_secs(30))
@@ -259,6 +369,16 @@ impl Config {
 /// applied. Scheme detection is case-insensitive (tonic lowercases the parsed
 /// scheme, so `HTTPS://…` must be treated as `https`).
 fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
+    // A bare `host:port` is what a gRPC client dials, so it is what tooling
+    // hands out — canton-devkit's `CANTON_GRPC_LEDGER_API_URL` is exactly this
+    // shape. `Endpoint::from_shared` needs a scheme, and without one the
+    // failure arrives at connect time as an unexplained transport error, so
+    // supply the scheme the rest of this function would have chosen anyway.
+    if !endpoint.contains("://") {
+        let scheme = if tls_configured { "https" } else { "http" };
+        return (format!("{scheme}://{endpoint}"), tls_configured);
+    }
+
     let is_https = endpoint
         .get(..8)
         .is_some_and(|s| s.eq_ignore_ascii_case("https://"));
@@ -270,6 +390,106 @@ fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
         (format!("https://{}", &endpoint[7..]), true)
     } else {
         (endpoint.to_string(), want_tls)
+    }
+}
+
+#[cfg(test)]
+mod decode_limit_tests {
+    use super::*;
+
+    #[test]
+    fn the_default_is_far_above_what_a_real_page_needs() {
+        // tonic's own default is 4 MiB. A `GetActiveContractsPageResponse`
+        // carries a whole page in one message and the participant allows page
+        // sizes up to 10 000, so the default is reachable in ordinary use —
+        // measured against a live 3.5.7 participant, 627 trivial contracts with
+        // created-event blobs already fill a quarter of it.
+        assert_eq!(DEFAULT_MAX_DECODING_MESSAGE_SIZE, 128 * 1024 * 1024);
+        const { assert!(DEFAULT_MAX_DECODING_MESSAGE_SIZE > 4 * 1024 * 1024) };
+        assert_eq!(
+            Config::new("http://localhost:3901").max_decoding_message_size(),
+            DEFAULT_MAX_DECODING_MESSAGE_SIZE
+        );
+    }
+
+    #[test]
+    fn the_limit_is_configurable_in_both_directions() {
+        // Raise it for a participant returning very large pages…
+        let big = Config::new("http://x").with_max_decoding_message_size(512 * 1024 * 1024);
+        assert_eq!(big.max_decoding_message_size(), 512 * 1024 * 1024);
+        // …or lower it to bound what one response can claim.
+        let small = Config::new("http://x").with_max_decoding_message_size(1024);
+        assert_eq!(small.max_decoding_message_size(), 1024);
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod redaction_tests {
+    use super::*;
+
+    const KEY: &[u8] = b"-----BEGIN PRIVATE KEY-----SUPERSECRET-----END PRIVATE KEY-----";
+
+    /// The mutual-TLS private key must never reach a log. The derived `Debug`
+    /// printed it byte by byte, and a `Config` is exactly what an application
+    /// attaches to a span while debugging a handshake.
+    #[test]
+    fn debug_never_prints_key_material() {
+        let tls = TlsConfig::new().with_client_identity(b"certbytes".to_vec(), KEY.to_vec());
+        let rendered = format!("{tls:?}");
+
+        // 'S','U','P' as Debug-formatted bytes, which is how the leak looked.
+        assert!(
+            !rendered.contains("83, 85, 80"),
+            "key bytes leaked: {rendered}"
+        );
+        assert!(!rendered.contains("PRIVATE KEY"), "{rendered}");
+        // What a reader debugging a handshake actually needs is still there.
+        assert!(rendered.contains("redacted"), "{rendered}");
+        assert!(
+            rendered.contains(&format!("{} bytes", KEY.len())),
+            "{rendered}"
+        );
+
+        // And through a Config, which is the realistic path.
+        let cfg = Config::new("https://host:3901").with_tls(tls);
+        let rendered = format!("{cfg:?}");
+        assert!(
+            !rendered.contains("83, 85, 80"),
+            "leaked via Config: {rendered}"
+        );
+    }
+
+    #[test]
+    fn debug_redacts_credentials_in_the_endpoint() {
+        let cfg = Config::new("https://alice:s3cr3t@localhost:3901");
+        let rendered = format!("{cfg:?}");
+        assert!(!rendered.contains("s3cr3t"), "{rendered}");
+        assert!(!rendered.contains("alice"), "{rendered}");
+        assert!(
+            rendered.contains("localhost:3901"),
+            "host must survive: {rendered}"
+        );
+    }
+
+    #[test]
+    fn redact_url_keeps_everything_that_is_not_a_credential() {
+        // Redacted.
+        assert_eq!(redact_url("https://u:p@h:1/x?q=1"), "https://***@h:1/x?q=1");
+        assert_eq!(redact_url("ws://tok@h/v2/updates"), "ws://***@h/v2/updates");
+        // An '@' later in the path is not userinfo.
+        assert_eq!(redact_url("https://h/a@b"), "https://h/a@b");
+        // Untouched: no userinfo, no scheme, empty, and the malformed input
+        // this is most likely to meet — it runs on the *invalid*-URI path.
+        for url in [
+            "https://localhost:3901",
+            "http://kc:8082/realms/AppProvider/protocol/openid-connect/token",
+            "not a url at all",
+            "://",
+            "",
+        ] {
+            assert_eq!(redact_url(url), url, "should be untouched: {url}");
+        }
     }
 }
 
@@ -315,5 +535,31 @@ mod tests {
         let (uri, tls) = resolve_endpoint("HTTP://host:5001", true);
         assert_eq!(uri, "https://host:5001");
         assert_eq!(tls, true);
+    }
+
+    /// A bare `host:port` is what a gRPC client dials, so it is the form
+    /// tooling hands out — `canton-devkit localnet env` exports
+    /// `CANTON_GRPC_LEDGER_API_URL` exactly this way. `Endpoint::from_shared`
+    /// needs a scheme, and without one nothing complains until the first RPC
+    /// fails as an unexplained transport error.
+    #[test]
+    fn a_scheme_less_host_and_port_gets_the_scheme_it_implies() {
+        let (uri, tls) =
+            resolve_endpoint("grpc-ledger-api.app-provider.demo.localhost:3901", false);
+        assert_eq!(
+            uri,
+            "http://grpc-ledger-api.app-provider.demo.localhost:3901"
+        );
+        assert_eq!(tls, false);
+
+        // With TLS configured it is the same choice the rest of this function
+        // makes: never plaintext when the caller asked for TLS.
+        let (uri, tls) = resolve_endpoint("ledger.example:443", true);
+        assert_eq!(uri, "https://ledger.example:443");
+        assert_eq!(tls, true);
+
+        // An IPv6 literal has colons of its own and still is not a scheme.
+        let (uri, _) = resolve_endpoint("[::1]:3901", false);
+        assert_eq!(uri, "http://[::1]:3901");
     }
 }

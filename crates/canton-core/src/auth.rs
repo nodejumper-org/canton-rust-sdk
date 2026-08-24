@@ -18,9 +18,29 @@ use crate::config::Auth;
 pub type Intercepted = InterceptedService<Channel, AuthInterceptor>;
 
 /// Injects an `authorization: Bearer <token>` header when a token is present.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct AuthInterceptor {
     token: Option<String>,
+}
+
+/// Hand-written for the reason [`crate::Auth`]'s is: the derived `Debug`
+/// printed the bearer token in full. An interceptor travels inside every
+/// client that holds a channel, so a single `{:?}` on client state — in a log
+/// line, a panic message, or an error context — put a live credential
+/// wherever that text went. Whether a token is present is the only thing a
+/// reader debugging authentication needs from here.
+impl std::fmt::Debug for AuthInterceptor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthInterceptor")
+            .field(
+                "token",
+                match &self.token {
+                    Some(_) => &"Some(<redacted>)",
+                    None => &"None",
+                },
+            )
+            .finish()
+    }
 }
 
 impl AuthInterceptor {
@@ -84,5 +104,20 @@ mod tests {
         let mut interceptor = AuthInterceptor::new(Some("bad\ntoken".to_string()));
         let result = interceptor.call(Request::new(()));
         assert!(result.is_err(), "a token with a newline must be rejected");
+    }
+
+    // Applications routinely put client state in a log line or an error
+    // context, so the token must not be in the text that produces.
+    #[test]
+    fn debug_redacts_the_bearer_token() {
+        let token = "secret-bearer-token";
+        let rendered = format!("{:?}", AuthInterceptor::new(Some(token.to_string())));
+        assert!(!rendered.contains(token), "{rendered}");
+        assert!(rendered.contains("redacted"), "{rendered}");
+
+        // Absence still reads as absence: "no token" is what a reader
+        // debugging an unauthenticated call is looking for.
+        let rendered = format!("{:?}", AuthInterceptor::new(None));
+        assert!(rendered.contains("None"), "{rendered}");
     }
 }

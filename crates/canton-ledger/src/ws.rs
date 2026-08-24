@@ -163,6 +163,17 @@ pub(crate) fn is_offset_checkpoint(value: &Value) -> bool {
     })
 }
 
+/// The completion object inside a WS completion frame, if the frame is one.
+///
+/// The envelope is `{"completionResponse": {"Completion": {"value": {…}}}}`;
+/// an `OffsetCheckpoint` frame has no completion to return.
+pub(crate) fn completion_value(frame: &Value) -> Option<&Value> {
+    frame
+        .get("completionResponse")?
+        .get("Completion")?
+        .get("value")
+}
+
 /// Drop `OffsetCheckpoint` heartbeat frames from a stream (matching the gRPC
 /// client's `updates`/`completions`, which surface only real items).
 pub(crate) fn filter_checkpoints(
@@ -179,41 +190,122 @@ pub(crate) fn filter_checkpoints(
     }
 }
 
+/// Everything the WS lane takes from its [`JsonClient`], gathered into one
+/// value.
+///
+/// These used to be positional arguments to [`subscribe`]. Adding the fifth
+/// meant editing seven call sites, one of which — the reconnecting stream —
+/// builds its arguments from clones inside an async block and was only caught
+/// because the parameter was mandatory. A struct makes the next setting one
+/// edit instead of seven.
+///
+/// [`JsonClient`]: crate::JsonClient
+pub(crate) struct WsTransport<'a> {
+    /// The HTTP(S) base URL; rewritten to `ws(s)` per request.
+    pub base_url: &'a str,
+    /// Bearer credentials for the handshake.
+    pub auth: &'a Auth,
+    /// TLS material for a `wss` handshake.
+    pub tls: Option<&'a TlsConfig>,
+    /// The ceiling on an incoming message *and* a single frame.
+    pub max_decoding_message_size: usize,
+    /// How long the handshake may take before it is abandoned.
+    pub timeout: std::time::Duration,
+}
+
 /// Open a WS subscription at `path` with `request` as the single subscription
 /// frame, and yield each response frame as JSON.
 ///
 /// # Errors
 /// Returns an [`Error`] if the URL is invalid, auth fails, or the handshake
-/// fails. The returned stream yields `Err` on a participant error frame or a
-/// transport failure.
+/// fails or times out. The returned stream yields `Err` on a participant error
+/// frame or a transport failure.
 pub(crate) async fn subscribe(
-    base_url: &str,
-    auth: &Auth,
-    tls: Option<&TlsConfig>,
+    transport: &WsTransport<'_>,
     path: &str,
     request: Value,
 ) -> Result<impl Stream<Item = Result<Value>> + Send + use<>> {
+    let &WsTransport {
+        base_url,
+        auth,
+        tls,
+        max_decoding_message_size,
+        timeout,
+    } = transport;
+
     let url = ws_url(base_url, path);
-    let uri: Uri = url
-        .parse()
-        .map_err(|e| Error::InvalidRequest(format!("invalid ws url {url}: {e}")))?;
+    let uri: Uri = url.parse().map_err(|e| {
+        Error::InvalidRequest(format!(
+            "invalid ws url {}: {e}",
+            canton_core::redact_url(&url)
+        ))
+    })?;
 
     let mut builder = ClientRequestBuilder::new(uri).with_sub_protocol(WS_SUBPROTOCOL);
     if let Some(token) = auth.bearer().await? {
         builder = builder.with_header("Authorization", format!("Bearer {token}"));
     }
+    // The upgrade request is the only request a WebSocket stream makes, so it
+    // is the only place trace context can be attached. Without this the whole
+    // streaming JSON lane sat outside the caller's trace, while every unary
+    // request on either transport joined it.
+    #[cfg(feature = "otel")]
+    {
+        let mut headers = http::HeaderMap::new();
+        canton_core::telemetry::otel::inject_trace_context(&mut headers);
+        for (name, value) in &headers {
+            if let Ok(value) = value.to_str() {
+                builder = builder.with_header(name.as_str(), value);
+            }
+        }
+    }
+
+    // Left to its own defaults tungstenite caps an incoming message at 64 MiB
+    // and a single frame at 16 MiB — a ceiling on ledger data that the caller
+    // never chose and, until now, could not raise. Both come from the client's
+    // configured size so the frame limit, which a large update meets first, is
+    // never the tighter of the two.
+    let ws_config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
+        .max_message_size(Some(max_decoding_message_size))
+        .max_frame_size(Some(max_decoding_message_size));
 
     let connector = build_connector(tls)?;
-    let (mut socket, _response) =
-        tokio_tungstenite::connect_async_tls_with_config(builder, None, false, connector)
-            .await
-            .map_err(|e| Error::Connection(format!("ws connect to {url} failed: {e}")))?;
+    // The handshake is bounded for the same reason the HTTP lane's requests
+    // are: a participant that accepts the socket and never completes the
+    // upgrade would otherwise hold the caller's task open indefinitely, and
+    // tungstenite imposes no deadline of its own. Only the handshake — the
+    // stream that follows is a live tail with no deadline to speak of.
+    let connect = tokio_tungstenite::connect_async_tls_with_config(
+        builder,
+        Some(ws_config),
+        false,
+        connector,
+    );
+    let (mut socket, _response) = tokio::time::timeout(timeout, connect)
+        .await
+        .map_err(|_| {
+            Error::Connection(format!(
+                "ws handshake with {} did not complete within {timeout:?}",
+                canton_core::redact_url(&url)
+            ))
+        })?
+        .map_err(|e| {
+            Error::Connection(format!(
+                "ws connect to {} failed: {e}",
+                canton_core::redact_url(&url)
+            ))
+        })?;
 
     // A single subscription frame (same JSON as the equivalent HTTP POST body).
     socket
         .send(Message::text(request.to_string()))
         .await
-        .map_err(|e| Error::Connection(format!("ws send to {url} failed: {e}")))?;
+        .map_err(|e| {
+            Error::Connection(format!(
+                "ws send to {} failed: {e}",
+                canton_core::redact_url(&url)
+            ))
+        })?;
 
     Ok(async_stream::try_stream! {
         while let Some(message) = socket.next().await {

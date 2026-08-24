@@ -20,12 +20,33 @@
 
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{
-    CantonClient, Config, JsonClient, JsonCommands, RetryConfig, Submit, create, exercise,
-    identifier, record, value,
+    CantonClient, ChangeId, Config, JsonClient, JsonCommands, RetryConfig, Submit, create,
+    exercise, identifier, record, value,
 };
 
+/// Report a live test that could not run.
+///
+/// A skipped test and a passing test are the same line in cargo's output, so a
+/// live suite that reached no participant reads exactly like one that exercised
+/// everything — which is how "28 live tests passed" can be true and mean
+/// nothing. Set **`CANTON_TEST_REQUIRE_LIVE=1`**, as any run that claims to have
+/// exercised a node should, and a missing environment fails here instead of
+/// passing quietly.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
 fn endpoint() -> Option<String> {
-    std::env::var("CANTON_TEST_ENDPOINT").ok()
+    std::env::var("CANTON_TEST_ENDPOINT")
+        .ok()
+        .or_else(|| canton_core::localnet::grpc_endpoint(None))
 }
 
 fn oidc() -> Option<OidcConfig> {
@@ -36,12 +57,56 @@ fn oidc() -> Option<OidcConfig> {
     ))
 }
 
+/// Attach whatever credentials the environment offers.
+///
+/// Two local networks are worth running this suite against and they authenticate
+/// differently. cn-quickstart runs Keycloak, so the OIDC client-credentials path
+/// applies. A Splice LocalNet — what `canton-devkit localnet up` starts — has no
+/// issuer at all: it signs HS256 tokens with a fixed development secret and
+/// exports them ready-made, so there is nothing to exchange credentials with.
+///
+/// Only two tests in this file are *about* authentication. The rest need a
+/// client that gets past the participant's auth check and nothing more, so
+/// insisting on OIDC to build one silenced twenty-eight tests on any network
+/// without Keycloak — reported as "skipped", which reads exactly like "passed".
+fn authenticate(config: Config) -> Option<Config> {
+    if let Some(oidc) = oidc() {
+        return Some(config.with_oidc(TokenProvider::new(oidc)));
+    }
+    Some(config.with_token(canton_core::localnet::token(None)?))
+}
+
+/// [`authenticate`] for the JSON lane, which has its own builder.
+fn authenticate_json(client: JsonClient) -> Option<JsonClient> {
+    if let Some(oidc) = oidc() {
+        return Some(client.with_oidc(TokenProvider::new(oidc)));
+    }
+    Some(client.with_token(canton_core::localnet::token(None)?))
+}
+
+/// The JSON base URL, from either environment.
+fn json_endpoint() -> Option<String> {
+    std::env::var("CANTON_TEST_JSON_ENDPOINT")
+        .ok()
+        .filter(|url| !url.is_empty())
+        .or_else(|| canton_core::localnet::json_endpoint(None))
+}
+
+/// The party to act as, from either environment.
+fn test_party() -> Option<String> {
+    std::env::var("CANTON_TEST_PARTY")
+        .ok()
+        // `std::env::var` reports `FOO=` as a value; an empty party is not one,
+        // and taking it produces a `PermissionDenied` on every submit instead
+        // of a skip.
+        .filter(|party| !party.is_empty())
+        .or_else(|| canton_core::localnet::party("app-provider"))
+}
+
 /// Full authenticated setup: `(client, party, pkg)`, or `None` to skip.
 fn full_setup() -> Option<(CantonClient, String, String)> {
-    let client =
-        CantonClient::connect_lazy(Config::new(endpoint()?).with_oidc(TokenProvider::new(oidc()?)))
-            .ok()?;
-    let party = std::env::var("CANTON_TEST_PARTY").ok()?;
+    let client = CantonClient::connect_lazy(authenticate(Config::new(endpoint()?))?).ok()?;
+    let party = test_party()?;
     let pkg = std::env::var("CANTON_TEST_LICENSING_PKG").ok()?;
     Some((client, party, pkg))
 }
@@ -83,7 +148,7 @@ fn app_install(party: &str, pkg: &str) -> canton_ledger::proto::Command {
 #[tokio::test]
 async fn version_returns_from_live_node() {
     let Some(ep) = endpoint() else {
-        eprintln!("skipping version_returns_from_live_node: set CANTON_TEST_ENDPOINT");
+        skip!("version_returns_from_live_node: set CANTON_TEST_ENDPOINT");
         return;
     };
 
@@ -102,7 +167,7 @@ async fn health_check_reports_serving() {
     use canton_ledger::ServingStatus;
 
     let Some(ep) = endpoint() else {
-        eprintln!("skipping health_check_reports_serving: set CANTON_TEST_ENDPOINT");
+        skip!("health_check_reports_serving: set CANTON_TEST_ENDPOINT");
         return;
     };
 
@@ -124,8 +189,8 @@ async fn health_check_reports_serving() {
 #[tokio::test]
 async fn ledger_end_with_oidc_auth() {
     let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!(
-            "skipping ledger_end_with_oidc_auth: set CANTON_TEST_ENDPOINT + \
+        skip!(
+            "ledger_end_with_oidc_auth: set CANTON_TEST_ENDPOINT + \
              CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET"
         );
         return;
@@ -145,21 +210,10 @@ async fn ledger_end_with_oidc_auth() {
 
 #[tokio::test]
 async fn create_contract_and_read_transaction() {
-    let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!("skipping create_contract_and_read_transaction: auth env not set");
+    let Some((client, party, pkg)) = full_setup() else {
+        skip!("create_contract_and_read_transaction: no endpoint, credentials, party or package");
         return;
     };
-    let (Ok(party), Ok(pkg)) = (
-        std::env::var("CANTON_TEST_PARTY"),
-        std::env::var("CANTON_TEST_LICENSING_PKG"),
-    ) else {
-        eprintln!("skipping: set CANTON_TEST_PARTY + CANTON_TEST_LICENSING_PKG");
-        return;
-    };
-
-    let provider = TokenProvider::new(oidc_config);
-    let client =
-        CantonClient::connect_lazy(Config::new(ep).with_oidc(provider)).expect("valid config");
 
     // Create an AppInstallRequest with the acting party as both provider and
     // user, and empty metadata. signatory = user, so acting-as `party` suffices.
@@ -194,21 +248,10 @@ async fn create_contract_and_read_transaction() {
 
 #[tokio::test]
 async fn duplicate_command_id_is_deduplicated() {
-    let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!("skipping duplicate_command_id_is_deduplicated: auth env not set");
+    let Some((client, party, pkg)) = full_setup() else {
+        skip!("duplicate_command_id_is_deduplicated: no endpoint, credentials, party or package");
         return;
     };
-    let (Ok(party), Ok(pkg)) = (
-        std::env::var("CANTON_TEST_PARTY"),
-        std::env::var("CANTON_TEST_LICENSING_PKG"),
-    ) else {
-        eprintln!("skipping: set CANTON_TEST_PARTY + CANTON_TEST_LICENSING_PKG");
-        return;
-    };
-
-    let provider = TokenProvider::new(oidc_config);
-    let client =
-        CantonClient::connect_lazy(Config::new(ep).with_oidc(provider)).expect("valid config");
 
     // A fixed command id makes the change ID stable across both submissions.
     let command_id = format!("sdk-dedup-{}", uuid::Uuid::new_v4());
@@ -240,21 +283,12 @@ async fn duplicate_command_id_is_deduplicated() {
 
 #[tokio::test]
 async fn await_completion_recovers_a_submitted_command() {
-    let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!("skipping await_completion_recovers_a_submitted_command: auth env not set");
+    let Some((client, party, pkg)) = full_setup() else {
+        skip!(
+            "await_completion_recovers_a_submitted_command: no endpoint, credentials, party or package"
+        );
         return;
     };
-    let (Ok(party), Ok(pkg)) = (
-        std::env::var("CANTON_TEST_PARTY"),
-        std::env::var("CANTON_TEST_LICENSING_PKG"),
-    ) else {
-        eprintln!("skipping: set CANTON_TEST_PARTY + CANTON_TEST_LICENSING_PKG");
-        return;
-    };
-
-    let provider = TokenProvider::new(oidc_config);
-    let client =
-        CantonClient::connect_lazy(Config::new(ep).with_oidc(provider)).expect("valid config");
 
     // Remember the offset before submitting, so recovery can scan from there.
     let begin = client.ledger_end().await.expect("ledger_end");
@@ -279,14 +313,11 @@ async fn await_completion_recovers_a_submitted_command() {
         .expect("submit should succeed");
 
     // Recover the command's completion from the stream (the method bounds the
-    // wait internally so a missing completion can't hang).
+    // wait internally so a missing completion can't hang). The identity is the
+    // whole change ID, which for a token-derived user is (parties, command id).
+    let change_id = ChangeId::new("", vec![party.clone()], &command_id);
     let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+        .await_completion(&change_id, begin, std::time::Duration::from_secs(15))
         .await
         .expect("completion should be found");
 
@@ -305,7 +336,7 @@ async fn await_completion_recovers_a_submitted_command() {
 async fn active_contract_set_snapshot() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping active_contract_set_snapshot: env not set");
+        skip!("active_contract_set_snapshot: env not set");
         return;
     };
 
@@ -349,7 +380,7 @@ async fn active_contract_set_snapshot() {
 async fn updates_stream_replays_a_created_transaction() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping updates_stream_replays_a_created_transaction: env not set");
+        skip!("updates_stream_replays_a_created_transaction: env not set");
         return;
     };
 
@@ -392,7 +423,7 @@ async fn updates_stream_replays_a_created_transaction() {
 async fn resumable_updates_yield_a_transaction() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping resumable_updates_yield_a_transaction: env not set");
+        skip!("resumable_updates_yield_a_transaction: env not set");
         return;
     };
 
@@ -426,7 +457,7 @@ async fn bounded_filtered_updates_via_the_request_builder() {
     use canton_ledger::{TransactionShape, UpdatesRequest};
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping bounded_filtered_updates_via_the_request_builder: env not set");
+        skip!("bounded_filtered_updates_via_the_request_builder: env not set");
         return;
     };
 
@@ -483,7 +514,7 @@ async fn filtered_acs_shape_selection_and_json_builder_reads() {
     use canton_ledger::{ActiveContractsRequest, Submit, TransactionShape, UpdatesRequest};
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping filtered_acs_shape_selection_and_json_builder_reads: env not set");
+        skip!("filtered_acs_shape_selection_and_json_builder_reads: env not set");
         return;
     };
 
@@ -532,8 +563,10 @@ async fn filtered_acs_shape_selection_and_json_builder_reads() {
     assert!(seen >= 1, "the just-created contract should be in the ACS");
 
     // The same filtered bounded read over the JSON transport.
-    if let Ok(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT") {
-        let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc().expect("oidc")));
+    if let Some(json_url) = json_endpoint() {
+        let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+            return;
+        };
         let request = UpdatesRequest::new(vec![party.clone()], begin)
             .until(end)
             .with_shape(TransactionShape::AcsDelta)
@@ -565,7 +598,7 @@ async fn descending_reads_on_both_transports() {
     use canton_ledger::UpdatesRequest;
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping descending_reads_on_both_transports: env not set");
+        skip!("descending_reads_on_both_transports: env not set");
         return;
     };
 
@@ -604,12 +637,14 @@ async fn descending_reads_on_both_transports() {
         "grpc offsets should be strictly descending: {offsets:?}"
     );
 
-    if let Ok(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT") {
+    if let Some(json_url) = json_endpoint() {
         // With retry enabled: the happy path is untouched, errors would follow
         // the category-first policy.
-        let json = JsonClient::new(json_url)
-            .with_oidc(TokenProvider::new(oidc().expect("oidc")))
-            .with_retry(canton_ledger::RetryConfig::default());
+        let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+            skip!("the json half: no credentials in the environment");
+            return;
+        };
+        let json = json.with_retry(canton_ledger::RetryConfig::default());
         let updates = json
             .updates_with(&request, Some(100))
             .await
@@ -638,7 +673,7 @@ async fn completions_via_the_request_builder() {
     use canton_ledger::CompletionsRequest;
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping completions_via_the_request_builder: env not set");
+        skip!("completions_via_the_request_builder: env not set");
         return;
     };
 
@@ -670,8 +705,8 @@ async fn completions_via_the_request_builder() {
 
 #[tokio::test]
 async fn json_transport_version_and_ledger_end() {
-    let Some(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT").ok() else {
-        eprintln!("skipping json_transport_version_and_ledger_end: set CANTON_TEST_JSON_ENDPOINT");
+    let Some(json_url) = json_endpoint() else {
+        skip!("json_transport_version_and_ledger_end: no JSON endpoint");
         return;
     };
 
@@ -683,12 +718,11 @@ async fn json_transport_version_and_ledger_end() {
     assert!(!version.is_empty());
 
     // ledger end is authenticated
-    let Some(oidc_config) = oidc() else {
-        eprintln!("skipping json ledger-end: auth env not set");
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("json ledger-end: no credentials in the environment");
         return;
     };
-    let offset = JsonClient::new(&json_url)
-        .with_oidc(TokenProvider::new(oidc_config))
+    let offset = json
         .ledger_end()
         .await
         .expect("json ledger_end should succeed");
@@ -699,17 +733,16 @@ async fn json_transport_version_and_ledger_end() {
 
 #[tokio::test]
 async fn retry_enabled_client_works_on_the_happy_path() {
-    let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!("skipping retry_enabled_client_works_on_the_happy_path: auth env not set");
+    let Some(config) = endpoint().map(Config::new).and_then(authenticate) else {
+        skip!(
+            "retry_enabled_client_works_on_the_happy_path: \
+             no endpoint or credentials in the environment"
+        );
         return;
     };
 
-    let client = CantonClient::connect_lazy(
-        Config::new(ep)
-            .with_oidc(TokenProvider::new(oidc_config))
-            .with_retry(RetryConfig::default()),
-    )
-    .expect("valid config");
+    let client = CantonClient::connect_lazy(config.with_retry(RetryConfig::default()))
+        .expect("valid config");
 
     let offset = client
         .ledger_end()
@@ -722,7 +755,7 @@ async fn retry_enabled_client_works_on_the_happy_path() {
 #[tokio::test]
 async fn rejected_command_surfaces_a_non_retriable_error() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping rejected_command_surfaces_a_non_retriable_error: env not set");
+        skip!("rejected_command_surfaces_a_non_retriable_error: env not set");
         return;
     };
 
@@ -755,7 +788,7 @@ async fn rejected_command_surfaces_a_non_retriable_error() {
 #[tokio::test]
 async fn exercise_choice_on_a_created_contract() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping exercise_choice_on_a_created_contract: env not set");
+        skip!("exercise_choice_on_a_created_contract: env not set");
         return;
     };
 
@@ -797,7 +830,7 @@ async fn exercise_choice_on_a_created_contract() {
 #[tokio::test]
 async fn multiple_commands_submit_atomically() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping multiple_commands_submit_atomically: env not set");
+        skip!("multiple_commands_submit_atomically: env not set");
         return;
     };
 
@@ -831,8 +864,8 @@ async fn multiple_commands_submit_atomically() {
 
 #[tokio::test]
 async fn json_bad_token_is_an_http_error() {
-    let Some(json_url) = std::env::var("CANTON_TEST_JSON_ENDPOINT").ok() else {
-        eprintln!("skipping json_bad_token_is_an_http_error: set CANTON_TEST_JSON_ENDPOINT");
+    let Some(json_url) = json_endpoint() else {
+        skip!("json_bad_token_is_an_http_error: no JSON endpoint in the environment");
         return;
     };
 
@@ -854,16 +887,107 @@ async fn json_bad_token_is_an_http_error() {
     println!("json bad-token — {error}");
 }
 
+/// The two transports must describe the *same failure* the same way.
+///
+/// Not a nicety: an application that classifies errors — retry here, alert
+/// there — is written once and must keep working if it is pointed at the other
+/// lane. Each accessor is a separate parse (a `google.rpc` status detail on one
+/// side, a JSON field on the other), so parity is something that holds only
+/// while someone checks it, which is how `error_info` and `code` came to answer
+/// on gRPC and return `None` on JSON.
+///
+/// Reading past the ledger end is the right probe: it is a self-service error
+/// (so nothing is redacted), it carries a category, a retry delay and an error
+/// id, and it needs no write.
 #[tokio::test]
-async fn grpc_and_json_transports_agree() {
-    let (Some((client, _, _)), Ok(json_url)) =
-        (full_setup(), std::env::var("CANTON_TEST_JSON_ENDPOINT"))
-    else {
-        eprintln!("skipping grpc_and_json_transports_agree: env not set");
+async fn both_transports_describe_the_same_failure_identically() {
+    use canton_ledger::UpdatesRequest;
+    use tokio_stream::StreamExt as _;
+
+    const PAST_THE_END: i64 = 999_999_999;
+
+    let (Some((client, party, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("both_transports_describe_the_same_failure_identically: env not set");
         return;
     };
-    let Some(oidc_config) = oidc() else { return };
-    let json = JsonClient::new(&json_url).with_oidc(TokenProvider::new(oidc_config));
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let request = UpdatesRequest::new(vec![party.clone()], PAST_THE_END).until(PAST_THE_END);
+
+    // gRPC rejects at the stream rather than at the call, so drain until it does.
+    let grpc_error = match client.updates_with(request).await {
+        Err(error) => error,
+        Ok(stream) => {
+            let mut stream = Box::pin(stream);
+            loop {
+                match stream.next().await {
+                    Some(Err(error)) => break error,
+                    Some(Ok(_)) => {}
+                    None => panic!("reading past the ledger end should fail"),
+                }
+            }
+        }
+    };
+    let json_error = json
+        .updates(vec![party], PAST_THE_END, None, Some(1))
+        .await
+        .expect_err("reading past the ledger end should fail");
+
+    assert_eq!(grpc_error.code(), json_error.code(), "gRPC code");
+    assert_eq!(grpc_error.category(), json_error.category(), "category");
+    assert_eq!(
+        grpc_error.is_retriable(),
+        json_error.is_retriable(),
+        "retriability"
+    );
+    assert_eq!(
+        grpc_error.retry_delay(),
+        json_error.retry_delay(),
+        "retry delay"
+    );
+
+    let grpc_info = grpc_error.error_info().expect("gRPC names the error");
+    let json_info = json_error.error_info().expect("JSON names the error too");
+    assert_eq!(grpc_info.reason, json_info.reason, "error id");
+    // The correlation id is per-request, so compare the keys and the rest of
+    // the values rather than the whole map.
+    let keys = |info: &canton_core::ErrorInfo| {
+        let mut keys: Vec<_> = info.metadata.keys().cloned().collect();
+        keys.sort();
+        keys
+    };
+    assert_eq!(keys(&grpc_info), keys(&json_info), "metadata keys");
+    assert_eq!(
+        grpc_info.metadata.get("category"),
+        json_info.metadata.get("category"),
+    );
+
+    // The correlation id is what the operator is asked for, so both lanes have
+    // to produce one — they just won't be the same request.
+    assert!(grpc_error.correlation_id().is_some(), "gRPC correlation id");
+    assert!(json_error.correlation_id().is_some(), "JSON correlation id");
+
+    println!(
+        "both lanes: {:?} / {:?} / {}",
+        grpc_error.code(),
+        grpc_error.category(),
+        grpc_info.reason
+    );
+}
+
+#[tokio::test]
+async fn grpc_and_json_transports_agree() {
+    let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("grpc_and_json_transports_agree: no endpoints or credentials");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
 
     // version must match exactly across transports.
     let grpc_version = client.version().await.expect("grpc version");
@@ -886,7 +1010,7 @@ async fn grpc_and_json_transports_agree() {
 #[tokio::test]
 async fn event_query_returns_the_created_event() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping event_query_returns_the_created_event: env not set");
+        skip!("event_query_returns_the_created_event: env not set");
         return;
     };
 
@@ -910,7 +1034,7 @@ async fn event_query_returns_the_created_event() {
 #[tokio::test]
 async fn acs_paging_walks_pages_via_token() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping acs_paging_walks_pages_via_token: env not set");
+        skip!("acs_paging_walks_pages_via_token: env not set");
         return;
     };
 
@@ -959,7 +1083,7 @@ async fn acs_paging_walks_pages_via_token() {
 #[tokio::test]
 async fn updates_page_reverse_order_is_newest_first() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping updates_page_reverse_order_is_newest_first: env not set");
+        skip!("updates_page_reverse_order_is_newest_first: env not set");
         return;
     };
 
@@ -998,21 +1122,22 @@ async fn updates_page_reverse_order_is_newest_first() {
 
 #[tokio::test]
 async fn json_submit_and_read_back() {
-    let (Some(json_url), Some(oidc_config), Ok(party), Ok(pkg)) = (
-        std::env::var("CANTON_TEST_JSON_ENDPOINT").ok(),
-        oidc(),
-        std::env::var("CANTON_TEST_PARTY"),
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
         std::env::var("CANTON_TEST_LICENSING_PKG"),
     ) else {
-        eprintln!(
-            "skipping json_submit_and_read_back: set CANTON_TEST_JSON_ENDPOINT + \
-             CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET + CANTON_TEST_PARTY + \
-             CANTON_TEST_LICENSING_PKG"
+        skip!(
+            "json_submit_and_read_back: no JSON endpoint, party or package \
+             in the environment"
         );
         return;
     };
 
-    let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc_config));
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
 
     // Submit an AppInstallRequest create over the JSON transport.
     let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
@@ -1073,16 +1198,15 @@ async fn json_submit_and_read_back() {
 
 #[tokio::test]
 async fn json_updates_too_large_is_a_413() {
-    let (Some(json_url), Some(oidc_config), Ok(party)) = (
-        std::env::var("CANTON_TEST_JSON_ENDPOINT").ok(),
-        oidc(),
-        std::env::var("CANTON_TEST_PARTY"),
-    ) else {
-        eprintln!("skipping json_updates_too_large_is_a_413: set JSON endpoint + token + party");
+    let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
+        skip!("json_updates_too_large_is_a_413: no JSON endpoint or party");
         return;
     };
 
-    let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc_config));
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
     let end = json.ledger_end().await.expect("ledger end");
 
     // Unbounded (0, end] with no limit exceeds the node's list cap → 413.
@@ -1107,18 +1231,15 @@ async fn json_updates_too_large_is_a_413() {
 async fn ws_streams_active_contracts_and_updates() {
     use tokio_stream::StreamExt as _;
 
-    let (Some(json_url), Some(oidc_config), Ok(party)) = (
-        std::env::var("CANTON_TEST_JSON_ENDPOINT").ok(),
-        oidc(),
-        std::env::var("CANTON_TEST_PARTY"),
-    ) else {
-        eprintln!(
-            "skipping ws_streams_active_contracts_and_updates: set JSON endpoint + token + party"
-        );
+    let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
+        skip!("ws_streams_active_contracts_and_updates: no JSON endpoint or party");
         return;
     };
 
-    let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc_config));
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
     let end = json.ledger_end().await.expect("ledger end");
 
     // The ACS snapshot over WebSocket closes itself when fully delivered.
@@ -1156,30 +1277,27 @@ async fn ws_streams_active_contracts_and_updates() {
 #[tokio::test]
 async fn submit_fire_and_forget_then_recover() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping submit_fire_and_forget_then_recover: full setup env not set");
+        skip!("submit_fire_and_forget_then_recover: full setup env not set");
         return;
     };
 
     let begin = client.ledger_end().await.expect("ledger_end");
 
-    // Fire-and-forget submit returns the change-ID command_id used.
-    let command_id = client
-        .submit(Submit::new(&party).add_command(app_install(&party, &pkg)))
-        .await
-        .expect("submit should be accepted");
+    // The handle knows the command's identity before anything is sent, which
+    // is what makes the outcome recoverable when the send itself is what fails.
+    let submission = client.submission(Submit::new(&party).add_command(app_install(&party, &pkg)));
+    let command_id = submission.change_id().command_id().to_string();
     assert!(
         command_id.starts_with("sdk-"),
         "expected a generated command id, got {command_id}"
     );
+    submission
+        .submit()
+        .await
+        .expect("submit should be accepted");
 
-    // The outcome is recoverable via the completion stream.
-    let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(15))
         .await
         .expect("the submitted command's completion should be found");
     assert_eq!(
@@ -1192,7 +1310,7 @@ async fn submit_fire_and_forget_then_recover() {
 #[tokio::test]
 async fn submit_and_wait_returns_the_update_id() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping submit_and_wait_returns_the_update_id: full setup env not set");
+        skip!("submit_and_wait_returns_the_update_id: full setup env not set");
         return;
     };
 
@@ -1212,4 +1330,166 @@ async fn submit_and_wait_returns_the_update_id() {
         "submit-and-wait — update_id={} offset={}",
         response.update_id, response.completion_offset
     );
+}
+
+#[cfg(feature = "ws")]
+#[tokio::test]
+async fn json_async_submit_is_recoverable_by_its_change_id() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_async_submit_is_recoverable_by_its_change_id: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    // The offset to scan completions from, taken before anything is sent.
+    let begin = json.ledger_end().await.expect("json ledger_end");
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let submission =
+        json.submission(JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments));
+    let command_id = submission.change_id().command_id().to_string();
+
+    // Fire-and-forget over JSON, which had no such endpoint before.
+    submission
+        .submit()
+        .await
+        .expect("json async submit should be accepted");
+
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(30))
+        .await
+        .expect("the completion should be found over the WS lane");
+    assert_eq!(
+        completion.get("commandId").and_then(|v| v.as_str()),
+        Some(command_id.as_str())
+    );
+    println!("json async submit — command_id={command_id} recovered over WS");
+}
+
+#[tokio::test]
+async fn json_submit_and_wait_reports_where_the_command_landed() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_submit_and_wait_reports_where_the_command_landed: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+
+    let response = json
+        .submit_and_wait(&commands)
+        .await
+        .expect("json submit-and-wait should commit");
+    assert!(!response.update_id.is_empty());
+    assert!(response.completion_offset > 0);
+    println!(
+        "json submit-and-wait — update_id={} completion_offset={}",
+        response.update_id, response.completion_offset
+    );
+}
+
+#[tokio::test]
+async fn json_events_by_contract_id_finds_a_contract_we_created() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_events_by_contract_id_finds_a_contract_we_created: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+    let response = json
+        .submit_and_wait_for_transaction(&commands)
+        .await
+        .expect("json submit should commit");
+
+    // Dig the contract id out of the created event the submit returned.
+    let contract_id = response
+        .transaction
+        .events
+        .iter()
+        .find_map(|event| {
+            event
+                .get("CreatedEvent")
+                .and_then(|created| created.get("contractId"))
+                .and_then(|id| id.as_str())
+                .map(str::to_string)
+        })
+        .expect("the create should report a contract id");
+
+    let events = json
+        .events_by_contract_id(&contract_id, vec![party.clone()])
+        .await
+        .expect("events-by-contract-id");
+    assert!(
+        events.to_string().contains(&contract_id),
+        "the response should describe the contract we asked about: {events}"
+    );
+    println!("json events-by-contract-id — {contract_id} found");
+}
+
+#[cfg(feature = "ws")]
+#[tokio::test]
+async fn ws_active_contracts_resumable_reads_the_snapshot() {
+    use tokio_stream::StreamExt as _;
+
+    let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
+        skip!("ws_active_contracts_resumable_reads_the_snapshot: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let offset = json.ledger_end().await.expect("json ledger_end");
+    let stream = json.ws_active_contracts_resumable(vec![party.clone()], offset);
+    tokio::pin!(stream);
+
+    let mut entries = 0usize;
+    while let Some(frame) = stream.next().await {
+        frame.expect("the resumable ACS stream should not fail");
+        entries += 1;
+        if entries >= 5 {
+            break; // enough to prove the subscription delivers
+        }
+    }
+    println!("ws resumable acs — {entries} entries read from the snapshot");
 }

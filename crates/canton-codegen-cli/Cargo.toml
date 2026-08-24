@@ -1,0 +1,29 @@
+[package]
+name         = "canton-codegen-cli"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["development-tools", "command-line-utilities"]
+keywords     = ["canton", "daml", "codegen", "dar", "dpm"]
+description  = "dpm codegen-rust: generate a typed Rust crate of bindings from a DAR."
+include      = ["src/**/*", "README.md", "LICENSE"]
+
+# A binary-only crate: the codegen pipeline itself is the `canton-codegen`
+# library (so a build script can call it without pulling in a CLI).
+# Invoked as `dpm codegen-rust` (dpm's git/cargo-style subcommand convention),
+# or standalone as `dpm-codegen-rust`.
+[[bin]]
+name = "dpm-codegen-rust"
+path = "src/main.rs"
+
+[dependencies]
+canton-codegen = { workspace = true }
+thiserror      = { workspace = true }
+
+[lints]
+workspace = true

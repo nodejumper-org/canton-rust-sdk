@@ -15,18 +15,18 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: rustfmt }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable, components: rustfmt }
       - run: cargo fmt --all --check
 
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: clippy }
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable, components: clippy }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       # --all-features so the ws / otel / server code paths are linted too.
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
@@ -37,27 +37,59 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       # Unit / in-process / TLS / ws tests need no node; live tests skip without
       # CANTON_TEST_ENDPOINT. --all-features covers the ws + otel surface.
       - run: cargo test --workspace --all-features
 
+  # The proposal's supported matrix is Tier-1 Rust on x86_64 and aarch64, plus
+  # musl for static container binaries. The `test` job covers x86_64 Linux and
+  # Windows and aarch64 macOS (which is what `macos-latest` now is); these are
+  # the two claimed targets nothing was checking. `check` rather than `test`,
+  # because running the binaries needs those machines — but a claim that the
+  # SDK builds for a target is a claim CI can hold.
+  cross-targets:
+    name: The claimed targets still compile
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable, targets: "${{ matrix.target }}" }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with: { key: "${{ matrix.target }}" }
+      # The TLS stack compiles C for the target, so a cross toolchain is needed
+      # even for `cargo check`.
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+      - run: cargo check --workspace --all-features --target ${{ matrix.target }}
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.88.0 # == workspace.package.rust-version
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        # == workspace.package.rust-version
+        with: { toolchain: 1.88.0 }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo check --workspace --all-features
 
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo doc --workspace --no-deps --all-features
         env:
           RUSTDOCFLAGS: "-D warnings"
@@ -66,27 +98,186 @@ jobs:
   feature-matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: clippy }
-      - uses: taiki-e/install-action@cargo-hack
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable, components: clippy }
+      - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2
+        with: { tool: cargo-hack }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo hack clippy --workspace --feature-powerset --no-dev-deps -- -D warnings
 
   deny:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
         with: { command: check all }
 
-  # NOTE (post-first-release): enable cargo-semver-checks once a baseline is on
-  # crates.io — it guards the hand-written public API against accidental
-  # breaking changes (generated proto types are exempt per the stability
-  # policy in canton-proto).
+  # Manifest breakage (a bad `include`, a missing licence file, a path
+  # dependency without a version) otherwise surfaces only at `cargo publish`,
+  # when half the crates are already live and the order cannot be undone.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Every publishable crate packages cleanly
+        run: |
+          for crate in canton-proto canton-core canton-auth canton-lf canton-daml \
+                       canton-ledger canton-admin canton-codegen canton-codegen-cli canton \
+                       canton-splice-amulet canton-splice-wallet canton-splice-wallet-payments; do
+            cargo package --no-verify --list -p "$crate" > /tmp/files.txt
+            grep -qx 'LICENSE' /tmp/files.txt || { echo "::error::$crate ships no LICENSE"; exit 1; }
+            grep -qx 'README.md' /tmp/files.txt || { echo "::error::$crate ships no README"; exit 1; }
+            # Integration tests read fixtures from the repo root, which is not in
+            # the package — shipping them gives a published crate a failing
+            # `cargo test`.
+            ! grep -q '^tests/' /tmp/files.txt || { echo "::error::$crate ships integration tests"; exit 1; }
+          done
+
+  # The four committed binding crates prove that *some* past generator emitted
+  # compilable code. This proves the one on this commit does.
+  codegen-output:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Generate from the fixture DAR and compile the result
+        run: |
+          cargo run -p canton-codegen-cli -- \
+            --dar testdata/splice-api-token-holding-v1-1.0.0.dar \
+            --out "$RUNNER_TEMP/bindings" \
+            --runtime-path "$GITHUB_WORKSPACE/crates/canton-daml"
+          # No Cargo.lock is generated for the output crate, so --locked could
+          # only ever fail here.
+          cd "$RUNNER_TEMP/bindings" && cargo check
+      - name: The generated crate compiles and round-trips against the runtime
+        env:
+          CODEGEN_COMPILE_TEST: "1"
+        run: |
+          # Gated on this variable because it spawns cargo, and nothing set it —
+          # so the one test that proves generated code *compiles and runs*
+          # skipped on every push, and went stale without anybody seeing it.
+          cargo test -p canton-codegen --test compile -- --nocapture | tee /tmp/compile.log
+          grep -qE 'test result: ok\. [1-9]' /tmp/compile.log || {
+            echo "::error::the codegen compile test did not run"; exit 1; }
+
+      - name: The emitter still produces the committed fixture
+        run: |
+          # The four drift guards over the published bindings crates need a DAR
+          # from a Splice / cn-quickstart checkout, which this runner does not
+          # have, so they skip — and a skipped test is a passing one. This fifth
+          # guard uses the DAR in the repository and therefore actually runs;
+          # assert that it did, the way the conformance-oracle job does.
+          cargo test -p canton-codegen --test up_to_date -- --nocapture | tee /tmp/drift.log
+          grep -q 'emitter fixture agreement: ok' /tmp/drift.log || {
+            echo "::error::the emitter drift guard skipped instead of running"; exit 1; }
+
+  # The native LF decoder claims to agree with the official JVM reader. That
+  # claim is only worth what a reviewer can re-run, so run it here rather than
+  # leaving it to a local machine. Its own job: it pulls a JVM and the Maven
+  # artifact, which the fast gates should not wait on.
+  lf-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: VirtusLab/scala-cli-setup@42e5f90b7aed2c0478e8074e5c25a030e1db3af6 # v1
+      - name: Native decoder agrees with daml-lf-archive-reader
+        env:
+          CANTON_LF_ORACLE_DAR: testdata/splice-api-token-holding-v1-1.0.0.dar
+        run: |
+          # The test skips silently when the DAR or scala-cli is absent, which
+          # here would mean a green job that verified nothing.
+          cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle.log
+          grep -q 'oracle agreement:' /tmp/oracle.log || {
+            echo "::error::the oracle skipped instead of running"; exit 1; }
+
+  # The three published bindings crates are checked-in generated code, and the
+  # tests that keep them in step with the emitter are gated on a DAR that lives
+  # in someone else's repository. Without one they skip — and a skipped test is
+  # reported as a passing one, so on every push so far nothing had checked that
+  # the emitter still produces what is on crates.io.
   #
-  # semver:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: obi1kenobi/cargo-semver-checks-action@v2
+  # cn-quickstart tracks those DARs in git, so they are fetched from a pinned
+  # commit and checked against their SHA-256 rather than vendored: no repo
+  # bloat, and the pin is what makes the run reproducible. Bumping the pin is a
+  # deliberate edit that comes with new checksums.
+  #
+  # canton-quickstart-licensing is absent on purpose: its DAR is built from
+  # source in cn-quickstart rather than committed, so there is nothing to pin.
+  # That guard stays local-only.
+  bindings-drift:
+    name: Committed bindings match the emitter
+    runs-on: ubuntu-latest
+    env:
+      QUICKSTART_COMMIT: 41f2d75cd16eff28aedfaf2e9a2278a881b1c71a
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Fetch the DARs the committed crates were generated from
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dars"
+          base="https://raw.githubusercontent.com/digital-asset/cn-quickstart/${QUICKSTART_COMMIT}/quickstart/daml/dars"
+          cat > "$RUNNER_TEMP/dars/SHA256SUMS" <<'SUMS'
+          48aaa72dfc992c6c89d5bfa84aece9fd9dad992e281252674fe33e203b2a391b  splice-amulet-0.1.14.dar
+          f5897dbe3a8c6da1ce1b25f46ab739777a70c0ed0e4057d6336c77cab9a7d6fc  splice-wallet-0.1.14.dar
+          e12ab52b325f488e87adcd4143058e16341c001bb77eb0adc0715bf5badee457  splice-wallet-payments-0.1.14.dar
+          SUMS
+          sed -i 's/^ *//' "$RUNNER_TEMP/dars/SHA256SUMS"
+          cd "$RUNNER_TEMP/dars"
+          while read -r _ name; do curl -fsSL -o "$name" "$base/$name"; done < SHA256SUMS
+          # A DAR that is not the one the crate was generated from would make the
+          # guard compare against the wrong thing and pass for the wrong reason.
+          sha256sum -c SHA256SUMS
+      - name: The emitter still produces the committed crates
+        env:
+          CANTON_SPLICE_AMULET_DAR: ${{ runner.temp }}/dars/splice-amulet-0.1.14.dar
+          CANTON_SPLICE_WALLET_DAR: ${{ runner.temp }}/dars/splice-wallet-0.1.14.dar
+          CANTON_SPLICE_WALLET_PAYMENTS_DAR: ${{ runner.temp }}/dars/splice-wallet-payments-0.1.14.dar
+        run: |
+          set -euo pipefail
+          cargo test -p canton-codegen --test up_to_date -- --nocapture | tee /tmp/drift.log
+          # Assert each guard ran. Without this the job is green when a variable
+          # is misspelled, which is the failure mode it exists to remove.
+          for var in CANTON_SPLICE_AMULET_DAR CANTON_SPLICE_WALLET_DAR \
+                     CANTON_SPLICE_WALLET_PAYMENTS_DAR; do
+            grep -q "bindings agreement: ${var} ok" /tmp/drift.log || {
+              echo "::error::the ${var} drift guard did not run"; exit 1; }
+          done
+          ! grep -q 'skipping: set CANTON_SPLICE' /tmp/drift.log || {
+            echo "::error::a guard skipped despite its DAR being present"; exit 1; }
+
+  # Guards the hand-written public API against a breaking change the version
+  # number does not admit to. The baseline is whatever is on crates.io, so this
+  # only became runnable once the first release was published — and a release
+  # that *does* break API passes by carrying the version bump that says so
+  # (pre-1.0, that is the minor).
+  #
+  # Generated proto types are exempt per the stability policy in canton-proto,
+  # which is why `canton-proto` is excluded rather than the job being advisory.
+  semver:
+    name: Public API breaks carry a version bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2
+        with:
+          # The crates with a published baseline to compare against. A crate
+          # cannot be checked before its first release, so each M2/M3 crate
+          # joins this list in the release after it first publishes.
+          package: canton-core, canton-auth, canton-ledger, canton-admin, canton
+          feature-group: all-features

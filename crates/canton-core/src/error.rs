@@ -69,14 +69,32 @@ pub enum Error {
     /// The operation exceeded its configured deadline. Retriable.
     #[error("operation timed out")]
     Timeout,
+
+    /// A typed payload failed to convert to or from the Ledger API `Value` —
+    /// a `canton-daml` codec error. Not retriable: the shape will not change
+    /// on a retry.
+    // The cause is in the message *and* kept as `source`: every other variant
+    // here prints its detail, and an application that logs `{err}` without
+    // walking the chain would otherwise be told only that something failed.
+    #[error("payload conversion failed: {0}")]
+    Payload(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl Error {
-    /// The gRPC status code, if this error originates from a gRPC status.
+    /// The gRPC status code the participant answered with, on **either**
+    /// transport.
+    ///
+    /// The JSON Ledger API reports it numerically as `grpcCodeValue`, so the
+    /// same failure yields the same code whichever lane carried it — the HTTP
+    /// status alone does not, since Canton maps several codes onto one status.
+    /// `None` when there is no participant verdict to report: a transport
+    /// failure, a timeout, or an HTTP body that is not a Canton error object
+    /// (a proxy's error page, say).
     #[must_use]
     pub fn code(&self) -> Option<tonic::Code> {
         match self {
             Error::Status(status) => Some(status.code()),
+            Error::Http { body, .. } => http_grpc_code(body),
             _ => None,
         }
     }
@@ -175,11 +193,54 @@ impl Error {
         }
     }
 
-    /// The structured `google.rpc.ErrorInfo` carried by a gRPC status, when
-    /// present. Canton populates this with the machine-readable error `reason`
-    /// (e.g. `DUPLICATE_COMMAND`) plus context `metadata` — prefer it over
-    /// string-matching [`Display`](std::fmt::Display) output. Returns `None` for
-    /// non-status errors or statuses without an `ErrorInfo` detail.
+    /// The resources this error is about: which contract, package, party or
+    /// synchronizer the participant is complaining of. Canton attaches these to
+    /// the errors where "which one?" is the first question — `CONTRACT_NOT_FOUND`
+    /// names the contract id, contention names the locked contracts.
+    ///
+    /// A `Vec` rather than an `Option` because the wire carries a list: the JSON
+    /// Ledger API's `resources` is an array of `[type, name]` pairs, and one
+    /// error can name several. The gRPC side yields at most one today — that is
+    /// a limit of `tonic_types`, which models a single `google.rpc.ResourceInfo`
+    /// detail, not of the protocol.
+    #[must_use]
+    pub fn resource_info(&self) -> Vec<ResourceInfo> {
+        match self {
+            Error::Status(status) => {
+                use tonic_types::StatusExt as _;
+                status
+                    .get_details_resource_info()
+                    .map(|info| ResourceInfo {
+                        resource_type: info.resource_type,
+                        resource_name: info.resource_name,
+                        owner: info.owner,
+                        description: info.description,
+                    })
+                    .into_iter()
+                    .collect()
+            }
+            Error::Http { body, .. } => http_resource_info(body),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The machine-readable identity of the failure: Canton's error `reason`
+    /// (e.g. `DUPLICATE_COMMAND`) plus its context `metadata`. Prefer it over
+    /// string-matching [`Display`](std::fmt::Display) output.
+    ///
+    /// Available on **either** transport. gRPC carries it as a
+    /// `google.rpc.ErrorInfo` detail; the JSON Ledger API spells the same two
+    /// things as `code` and `context`, and this reads whichever is there. That
+    /// matters because the alternative on the JSON lane was the string matching
+    /// this method exists to replace.
+    ///
+    /// `None` when the participant published no identity to report: a transport
+    /// failure, a status without the detail, or a **redacted** error — Canton
+    /// answers a security-sensitive failure with the literal `"NA"`, which is
+    /// the absence of an error id rather than an error id.
+    ///
+    /// `domain` is empty on the JSON lane, and Canton leaves it empty on gRPC
+    /// too.
     #[must_use]
     pub fn error_info(&self) -> Option<ErrorInfo> {
         match self {
@@ -194,6 +255,7 @@ impl Error {
                         metadata: info.metadata.clone(),
                     })
             }
+            Error::Http { body, .. } => http_error_info(body),
             _ => None,
         }
     }
@@ -228,6 +290,84 @@ fn http_retry_delay(body: &str) -> Option<std::time::Duration> {
     parse_spelled_duration(body.get("retryInfo")?.as_str()?)
 }
 
+/// The `resources` of a JSON Ledger API error body: an array of `[type, name]`
+/// pairs (e.g. `[["ErrorResource(CONTRACT_ID)", "00abc…"]]`). Entries that are
+/// not a pair of strings are skipped rather than failing the whole read — a
+/// diagnostic must not itself become an error.
+fn http_resource_info(body: &str) -> Vec<ResourceInfo> {
+    let Ok(body) = serde_json::from_str::<serde_json::Value>(body) else {
+        return Vec::new();
+    };
+    let Some(resources) = body.get("resources").and_then(serde_json::Value::as_array) else {
+        return Vec::new();
+    };
+    resources
+        .iter()
+        .filter_map(|entry| {
+            let pair = entry.as_array()?;
+            Some(ResourceInfo {
+                resource_type: pair.first()?.as_str()?.to_string(),
+                resource_name: pair.get(1)?.as_str()?.to_string(),
+                owner: String::new(),
+                description: String::new(),
+            })
+        })
+        .collect()
+}
+
+/// The `grpcCodeValue` of a JSON Ledger API error body — the numeric gRPC code
+/// the participant would have answered with over the other transport.
+///
+/// Only reported when the field is actually there: `tonic::Code::from` maps an
+/// unknown number to `Unknown`, and manufacturing `Unknown` for a body that
+/// never carried a code would claim a verdict the participant never gave.
+fn http_grpc_code(body: &str) -> Option<tonic::Code> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    let value = body.get("grpcCodeValue")?.as_i64()?;
+    Some(tonic::Code::from(i32::try_from(value).ok()?))
+}
+
+/// The `code` and `context` of a JSON Ledger API error body, as the
+/// `ErrorInfo` the gRPC lane carries as a status detail.
+///
+/// `"NA"` is Canton's placeholder on a redacted (security-sensitive) error and
+/// is treated as no id at all — reporting it would hand the caller a string
+/// that looks like an error code and matches nothing.
+///
+/// A context value that is not a string keeps its JSON spelling rather than
+/// being dropped: `metadata` is a string map, and losing a field silently is
+/// worse than rendering it.
+fn http_error_info(body: &str) -> Option<ErrorInfo> {
+    let body: serde_json::Value = serde_json::from_str(body).ok()?;
+    let reason = body.get("code")?.as_str()?;
+    if reason.is_empty() || reason == "NA" {
+        return None;
+    }
+    let metadata = body
+        .get("context")
+        .and_then(serde_json::Value::as_object)
+        .map(|context| {
+            context
+                .iter()
+                .map(|(key, value)| {
+                    let value = match value.as_str() {
+                        Some(text) => text.to_string(),
+                        None => value.to_string(),
+                    };
+                    (key.clone(), value)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(ErrorInfo {
+        reason: reason.to_string(),
+        // Canton sets no domain on either transport, and the JSON body has no
+        // field for one. Empty here says the same thing gRPC says.
+        domain: String::new(),
+        metadata,
+    })
+}
+
 /// The `correlationId` (or, failing that, `traceId`) of a JSON Ledger API
 /// error body, when present.
 fn http_correlation_id(body: &str) -> Option<String> {
@@ -256,7 +396,13 @@ fn parse_spelled_duration(text: &str) -> Option<std::time::Duration> {
         "nanosecond" => amount / 1e9,
         _ => return None,
     };
-    (seconds.is_finite() && seconds >= 0.0).then(|| std::time::Duration::from_secs_f64(seconds))
+    // `from_secs_f64` panics on a value a `Duration` cannot hold, and this
+    // number arrives from the server: a `retryInfo` of `"1e300 seconds"` — or
+    // an ordinary-looking `"1e15 days"` — would abort the caller's process
+    // inside error classification, the one place that must stay infallible.
+    // `try_from_secs_f64` rejects those the same way it rejects the NaN and
+    // negative values this guarded against before.
+    std::time::Duration::try_from_secs_f64(seconds).ok()
 }
 
 /// Canton's error categories — the coarse classification every Ledger API
@@ -381,6 +527,25 @@ pub struct ErrorInfo {
     pub domain: String,
     /// Additional structured context for the error.
     pub metadata: std::collections::HashMap<String, String>,
+}
+
+/// A resource a failure is about, from a `google.rpc.ResourceInfo` detail on a
+/// gRPC status or an entry of a JSON API error body's `resources`.
+/// `#[non_exhaustive]`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ResourceInfo {
+    /// What kind of thing it is, as Canton names it (e.g.
+    /// `ErrorResource(CONTRACT_ID)`).
+    pub resource_type: String,
+    /// The identifier itself — a contract id, package name, party, …
+    pub resource_name: String,
+    /// The owner, when the server reports one. Empty on the JSON transport,
+    /// whose `resources` entries carry only the type and the name.
+    pub owner: String,
+    /// A human-readable note, when the server reports one. Empty on the JSON
+    /// transport for the same reason.
+    pub description: String,
 }
 
 impl From<tonic::Status> for Error {
@@ -562,6 +727,23 @@ mod tests {
             Some("36a33702b2fa7908a7349be166ccfa38")
         );
 
+        // The same failure over gRPC yields OutOfRange and an ErrorInfo naming
+        // OFFSET_AFTER_LEDGER_END. The JSON body spells both — `grpcCodeValue`
+        // and `code`/`context` — so both accessors must answer here too, or a
+        // caller on this transport is left with the string matching
+        // `error_info` exists to replace.
+        assert_eq!(err.code(), Some(tonic::Code::OutOfRange));
+        let info = err.error_info().expect("the body names the error");
+        assert_eq!(info.reason, "OFFSET_AFTER_LEDGER_END");
+        assert_eq!(
+            info.metadata.get("category").map(String::as_str),
+            Some("12")
+        );
+        assert_eq!(
+            info.metadata.get("participant").map(String::as_str),
+            Some("'app-provider'")
+        );
+
         // A non-retryable category on a retryable-looking HTTP status: the
         // category still wins (e.g. a 503 whose body says "invalid argument").
         let err = Error::Http {
@@ -606,7 +788,21 @@ mod tests {
         ] {
             assert_eq!(parse_spelled_duration(text), Some(expected), "{text}");
         }
-        for bad in ["", "soon", "1", "1 fortnight", "-1 second", "1 second ago"] {
+        // A server-supplied number too large for a `Duration` is refused, not
+        // panicked on: this runs while an error is being classified, and the
+        // value is whatever the participant put in the body.
+        for bad in [
+            "",
+            "soon",
+            "1",
+            "1 fortnight",
+            "-1 second",
+            "1 second ago",
+            "1e300 seconds",
+            "1e300 days",
+            "NaN seconds",
+            "inf seconds",
+        ] {
             assert_eq!(parse_spelled_duration(bad), None, "{bad}");
         }
     }
@@ -623,6 +819,129 @@ mod tests {
         // 13 (BackgroundProcessDegradationWarning) never reaches the API.
         assert_eq!(ErrorCategory::from_i32(13), None);
         assert_eq!(ErrorCategory::from_i32(15), None);
+    }
+
+    /// Canton strips the detail from security-sensitive failures — auth,
+    /// permission, internal — and tells the caller to ask the operator. Every
+    /// accessor must degrade to "nothing" rather than mislead, and the one
+    /// thing that survives must keep surviving: without the correlation id
+    /// there is no way to ask.
+    ///
+    /// Both fixtures are the real shapes, taken from a live 3.5.7 participant
+    /// answering with an invalid token.
+    #[test]
+    fn a_redacted_status_yields_nothing_except_the_correlation_id() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        // gRPC: no ErrorInfo, no RetryInfo, no ResourceInfo — only RequestInfo.
+        let mut details = ErrorDetails::new();
+        details.set_request_info("93199811c5b2090c51cf45fe8c88060c", "");
+        let status = tonic::Status::with_error_details(
+            tonic::Code::Unauthenticated,
+            "An error occurred. Please contact the operator and inquire about the request \
+             93199811c5b2090c51cf45fe8c88060c",
+            details,
+        );
+        let err = Error::from(status);
+
+        assert_eq!(err.category(), None, "a redacted status has no category");
+        assert_eq!(err.error_info(), None);
+        assert!(err.resource_info().is_empty());
+        assert_eq!(err.retry_delay(), None);
+        assert_eq!(
+            err.correlation_id().as_deref(),
+            Some("93199811c5b2090c51cf45fe8c88060c"),
+            "the correlation id is the only actionable thing left"
+        );
+        // Classification falls back to the code, which is the right answer:
+        // bad credentials will not become good on a retry.
+        assert!(!err.is_retriable());
+
+        // JSON: the category is reported as -1 rather than omitted, which must
+        // not be mistaken for a real category.
+        let body = r#"{"code":"NA","cause":"An error occurred. Please contact the operator",
+            "errorCategory":-1,"retryInfo":null,"resources":[],
+            "correlationId":"41f217564e4e76f6cbc853a94a82fa80",
+            "traceId":"41f217564e4e76f6cbc853a94a82fa80"}"#;
+        let err = Error::Http {
+            status: 401,
+            body: body.to_string(),
+        };
+
+        assert_eq!(err.category(), None, "-1 is not a category");
+        assert!(err.resource_info().is_empty());
+        assert_eq!(err.retry_delay(), None);
+        // `"NA"` is Canton saying it withheld the id, not an id spelled "NA".
+        assert_eq!(err.error_info(), None, "\"NA\" is not an error id");
+        assert_eq!(
+            err.correlation_id().as_deref(),
+            Some("41f217564e4e76f6cbc853a94a82fa80")
+        );
+        assert!(!err.is_retriable(), "401 is not transient");
+    }
+
+    #[test]
+    fn resource_info_names_what_the_error_is_about() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+
+        // gRPC: one `google.rpc.ResourceInfo` detail is all tonic_types models.
+        let mut details = ErrorDetails::new();
+        details.set_resource_info("ErrorResource(CONTRACT_ID)", "00abc", "alice", "not found");
+        let status = tonic::Status::with_error_details(tonic::Code::NotFound, "gone", details);
+        let found = Error::from(status).resource_info();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].resource_type, "ErrorResource(CONTRACT_ID)");
+        assert_eq!(found[0].resource_name, "00abc");
+        assert_eq!(found[0].owner, "alice");
+
+        // A status with no such detail yields nothing, not a default-filled entry.
+        assert!(
+            Error::from(tonic::Status::not_found("x"))
+                .resource_info()
+                .is_empty()
+        );
+        assert!(Error::Timeout.resource_info().is_empty());
+    }
+
+    #[test]
+    fn resource_info_reads_the_json_apis_resources_array() {
+        // The body shape is verbatim from a live Canton 3.5.7 participant
+        // answering an exercise on a contract that does not exist.
+        let body = r#"{"code":"CONTRACT_NOT_FOUND","cause":"…","errorCategory":11,
+            "resources":[["ErrorResource(CONTRACT_ID)","00ababab"]],"retryInfo":null}"#;
+        let err = Error::Http {
+            status: 404,
+            body: body.to_string(),
+        };
+        let found = err.resource_info();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].resource_type, "ErrorResource(CONTRACT_ID)");
+        assert_eq!(found[0].resource_name, "00ababab");
+        // The JSON pairs carry no owner or description; they are empty, not absent.
+        assert!(found[0].owner.is_empty());
+
+        // Several resources — contention names more than one, which is why this
+        // returns a Vec and not an Option.
+        let many = Error::Http {
+            status: 409,
+            body: r#"{"resources":[["A","1"],["B","2"]]}"#.to_string(),
+        };
+        assert_eq!(many.resource_info().len(), 2);
+
+        // A malformed entry is skipped, and an empty/absent array is not an error:
+        // a diagnostic accessor must never itself fail.
+        let ragged = Error::Http {
+            status: 500,
+            body: r#"{"resources":[["A"],["B","2"],42,null]}"#.to_string(),
+        };
+        assert_eq!(ragged.resource_info().len(), 1);
+        for body in [r#"{"resources":[]}"#, "{}", "not json at all", ""] {
+            let err = Error::Http {
+                status: 500,
+                body: body.to_string(),
+            };
+            assert!(err.resource_info().is_empty(), "{body}");
+        }
     }
 
     #[test]

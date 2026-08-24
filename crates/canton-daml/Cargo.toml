@@ -1,0 +1,36 @@
+[package]
+name         = "canton-daml"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = { workspace = true }
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["api-bindings", "encoding"]
+keywords     = ["canton", "daml", "ledger", "bindings", "codegen"]
+description  = "Runtime types and Value codecs for canton-codegen-generated Daml bindings."
+include      = ["src/**/*", "README.md", "LICENSE"]
+
+[dependencies]
+canton-core  = { workspace = true }
+canton-proto = { workspace = true }
+serde        = { workspace = true }
+# Not only for tests: the LF-JSON side of this crate's job needs a JSON value
+# type, and `serde` alone has none. `Template::from_json_created_event` takes
+# one, and generated code already derives `Deserialize` unconditionally, so no
+# consumer gains a dependency it did not already have transitively.
+serde_json   = { workspace = true }
+time         = { workspace = true }
+
+[dev-dependencies]
+# Only for the test that keeps the "as the generator emits" fixture honest.
+# There is no cycle: `canton-codegen` depends on `canton-lf`, never on this
+# crate. A dev-dependency is invisible to consumers, and the alternative is a
+# comment claiming a correspondence nothing checks — which drifted twice.
+canton-codegen = { workspace = true }
+canton-lf      = { workspace = true }
+
+[lints]
+workspace = true

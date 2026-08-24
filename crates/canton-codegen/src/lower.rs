@@ -1,0 +1,3146 @@
+//! The AST→IR bridge: lower decoded Daml-LF [`Package`](lf::Package)s into the
+//! codegen [`ir`](crate::ir).
+//!
+//! This is the one module that touches the LF AST; everything else stays
+//! decoder-agnostic. Serializable records, variants, and enums lower fully, as
+//! do **templates** (payload record, choices, contract key, on-ledger id) and
+//! **interfaces** (view type, choices, and the identity choices are exercised
+//! through — on the marker struct emitted from the interface's data type). Field
+//! types cover the LF builtins, references to named types, and type variables;
+//! unsupported LF type shapes yield a [`SkippedType`] rather than silently-wrong
+//! output.
+//!
+//! # Qualified references (PackageMap)
+//!
+//! A DAR bundles a package and its whole dependency closure. A type reference
+//! (`Con`) carries the target module *and* package (self, or an imported
+//! package identified by its id-hash). Lowering a **whole DAR**
+//! resolves every reference to a fully-qualified Rust path —
+//! `crate::<package>::<module>::<Type>` — so cross-module and cross-package
+//! references resolve and names from different modules can never collide.
+
+use std::collections::HashMap;
+
+use heck::ToUpperCamelCase;
+
+use canton_lf::pb::daml_lf_2 as lf;
+use canton_lf::{
+    Dar, DecodeError, decode_all, imported_package_id, interned_dotted_name, interned_str,
+    interned_type, package_name, package_version,
+};
+
+use crate::ir::{
+    Choice, Crate, DamlType, DataType, Enum, Field, Interface, Module, NamedModule, PackageModule,
+    Record, Template, TypeRef, Variant, VariantConstructor,
+};
+
+/// A declaration that could not be lowered into the IR, and why.
+///
+/// Lowering is best-effort: an LF shape the codegen cannot represent (a type
+/// name that is not a Rust identifier, a non-serializable builtin, two fields
+/// that would collide after snake-casing) is skipped and reported here rather
+/// than failing the whole DAR or emitting something wrong. Callers surface
+/// these as warnings — see [`crate::lower_dar`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkippedType {
+    module: String,
+    reason: String,
+}
+
+impl SkippedType {
+    fn new(reason: impl Into<String>) -> Self {
+        Self {
+            module: String::new(),
+            reason: reason.into(),
+        }
+    }
+
+    /// Attribute the skip to the Daml module it arose in, so the warning tells
+    /// the user *where* to look.
+    fn in_module(mut self, module: &str) -> Self {
+        self.module = module.to_string();
+        self
+    }
+
+    /// The dotted Daml module the skipped declaration lives in, or `""` when
+    /// the skip could not be attributed to one.
+    #[must_use]
+    pub fn module(&self) -> &str {
+        &self.module
+    }
+
+    /// Why the declaration was skipped.
+    #[must_use]
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
+}
+
+impl std::fmt::Display for SkippedType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.module.is_empty() {
+            f.write_str(&self.reason)
+        } else {
+            write!(f, "{}: {}", self.module, self.reason)
+        }
+    }
+}
+
+impl std::error::Error for SkippedType {}
+
+/// Lower a whole DAR (its main package and its full dependency closure) into a
+/// [`Crate`] of qualified modules, plus the list of types that could not be
+/// lowered (best-effort: see [`SkippedType`]).
+///
+/// # Errors
+/// Returns [`DecodeError`] if any package's bytes are malformed or not LF 2.x.
+pub fn lower_dar(dar: &Dar) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
+    lower_dar_with(dar, &ExternalPackages::default())
+}
+
+/// The same, with packages that are **already published as their own crates**
+/// referenced instead of re-emitted.
+///
+/// A DAR's dependency closure is shared: `splice-api-token-holding-v1` sits
+/// under amulet, wallet and wallet-payments alike. Emitting it into each crate
+/// gives every crate its own `Holding`, and Rust treats those as unrelated
+/// types — a `ContractId<Holding>` obtained from one crate does not typecheck
+/// against the other, though both name the same interface in the same package.
+///
+/// Naming such a package here makes references to it point at the published
+/// crate, and leaves its modules out of the output entirely.
+///
+/// # Errors
+/// As [`lower_dar`].
+pub fn lower_dar_with(
+    dar: &Dar,
+    external: &ExternalPackages,
+) -> Result<(Crate, Vec<SkippedType>), DecodeError> {
+    Ok(lower_crate_with(&decode_all(dar)?, external))
+}
+
+/// Packages to reference rather than generate, keyed by package **id** or
+/// package **name**.
+///
+/// The name form is the one to prefer: a package id is the hash of one build,
+/// so pinning by id stops matching the moment the dependency is rebuilt, while
+/// the name survives a version bump — which is the whole point of addressing
+/// packages by name under Smart Contract Upgrade.
+#[derive(Clone, Debug, Default)]
+pub struct ExternalPackages {
+    by_key: HashMap<String, String>,
+}
+
+impl ExternalPackages {
+    /// An empty map — everything in the DAR is generated.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Reference the package identified by `key` (its name, or its id hash) at
+    /// the crate `crate_name`, instead of generating it.
+    #[must_use]
+    pub fn with(mut self, key: impl Into<String>, crate_name: impl Into<String>) -> Self {
+        self.by_key.insert(key.into(), crate_name.into());
+        self
+    }
+
+    /// The crate names named here, sorted — what a generated manifest must
+    /// depend on.
+    #[must_use]
+    pub fn crate_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.by_key.values().cloned().collect();
+        names.sort_unstable();
+        names.dedup();
+        names
+    }
+
+    /// Resolve to `package id → crate name` for the packages actually present,
+    /// matching a key against each package's id and its name.
+    fn resolve(&self, packages: &[(String, lf::Package)]) -> HashMap<String, String> {
+        let mut resolved = HashMap::new();
+        for (id, package) in packages {
+            let by_id = self.by_key.get(id.as_str());
+            let by_name = canton_lf::package_name(package).and_then(|n| self.by_key.get(n));
+            if let Some(crate_name) = by_id.or(by_name) {
+                resolved.insert(id.clone(), crate_name.clone());
+            }
+        }
+        resolved
+    }
+}
+
+/// Lower a set of decoded packages (a DAR's closure, each with its package id)
+/// into a [`Crate`]: one Rust module per package, one submodule per Daml module,
+/// with every type reference resolved to a fully-qualified path.
+///
+/// Best-effort: a type that cannot be lowered is skipped and its error recorded,
+/// so a package with a few unsupported types still produces output.
+#[must_use]
+/// The no-externals form, which is what the tests exercise.
+#[cfg(test)]
+pub(crate) fn lower_crate(packages: &[(String, lf::Package)]) -> (Crate, Vec<SkippedType>) {
+    lower_crate_with(packages, &ExternalPackages::default())
+}
+
+pub(crate) fn lower_crate_with(
+    packages: &[(String, lf::Package)],
+    external: &ExternalPackages,
+) -> (Crate, Vec<SkippedType>) {
+    let external = external.resolve(packages);
+    let module_names = package_module_names(packages);
+
+    let mut krate = Crate::default();
+    let mut errors = Vec::new();
+
+    // `package_module_names` is keyed by package id and so can only hold one
+    // name per id, but the input is a slice: a DAR carrying the same id twice
+    // would get one name emitted twice and a crate that fails with E0428. The
+    // second copy is the same package by definition — an id is a hash of its
+    // content — so dropping it loses nothing.
+    let mut lowered: std::collections::HashSet<&str> = std::collections::HashSet::new();
+
+    for (id, package) in packages {
+        if !lowered.insert(id.as_str()) {
+            continue;
+        }
+        // Published elsewhere: referenced, never emitted. Emitting it too would
+        // put a second copy of every type in this crate, which is the thing
+        // being fixed.
+        if external.contains_key(id.as_str()) {
+            continue;
+        }
+        let lowering = Lowering {
+            package,
+            qualify: Some(Qualify {
+                module_names: &module_names,
+                current_id: id,
+                external: &external,
+            }),
+            depth: std::cell::Cell::new(0),
+        };
+        let mut package_module = PackageModule {
+            name: module_names[id.as_str()].clone(),
+            modules: Vec::new(),
+        };
+        // The same flattening applies to module names: `A.B` and `A_B` would
+        // both become `pub mod A_B`. Detect it here rather than emitting a
+        // crate that fails to compile.
+        let colliding_modules = colliding_module_names(package);
+        // The same guard the package-id loop above carries, one level down. Two
+        // modules declaring the identical dotted name emit `pub mod M` twice
+        // (E0428) — and the flattening collision check cannot see it, because
+        // it groups *distinct* dotted names that flatten together and a
+        // duplicate is not distinct.
+        let mut seen_modules: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for lf_module in &package.modules {
+            let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
+                errors.push(SkippedType::new("unresolved module name"));
+                continue;
+            };
+            if !seen_modules.insert(dotted.clone()) {
+                errors.push(SkippedType::new(format!(
+                    "module `{dotted}` is declared more than once in this package"
+                )));
+                continue;
+            }
+            let module_ident = dotted.replace('.', "_");
+            if !is_rust_ident(&module_ident) {
+                errors.push(SkippedType::new(format!(
+                    "module `{dotted}` is not representable as a Rust module name"
+                )));
+                continue;
+            }
+            if let Some(sources) = colliding_modules.get(&module_ident) {
+                errors.push(SkippedType::new(format!(
+                    "modules `{}` both map to the Rust module `{}`; \
+                     rename one in Daml to generate either",
+                    sources.join("` and `"),
+                    dotted.replace('.', "_"),
+                )));
+                continue;
+            }
+            let ir_module = lowering.module(lf_module, &dotted, &mut errors);
+            if !ir_module.data_types.is_empty()
+                || !ir_module.templates.is_empty()
+                || !ir_module.interfaces.is_empty()
+            {
+                package_module.modules.push(NamedModule {
+                    name: dotted.replace('.', "_"),
+                    module: ir_module,
+                });
+            }
+        }
+        if !package_module.modules.is_empty() {
+            krate.packages.push(package_module);
+        }
+    }
+
+    // An `Optional` handed to a generic that nests it under its own `Optional`
+    // has no correct JSON form here — reject those before they ship.
+    drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+
+    // A skipped declaration leaves its name unresolvable, so anything that
+    // referenced it cannot be emitted either. Drop those too, transitively.
+    drop_dangling_references(&mut krate, &mut errors);
+
+    // With every package lowered, break containment cycles crate-wide (direct,
+    // Optional-wrapped, mutual, cross-module, and generic-instantiation ones).
+    box_recursion(&mut krate);
+
+    (krate, errors)
+}
+
+/// For each generic data type, which of its declared parameters land **directly
+/// under an `Optional`** once instantiated — the question that decides whether
+/// an `Optional` type argument is a nested optional on the wire.
+///
+/// Two ways a parameter gets there, and the analysis needs both:
+///
+/// - **Directly**, as `Optional a` in the type's own fields.
+/// - **Through another generic**, as the k-th argument of a reference to a type
+///   that nests *its* k-th parameter: with `Wrap a = { value : Optional a }`,
+///   the parameter of `Outer a = { inner : Wrap a }` nests too, even though
+///   `Outer` has no `Optional` of its own. Answering that needs a fixpoint —
+///   one pass cannot, since the two may be declared in either order, or be
+///   mutually recursive.
+///
+/// The relation is deliberately *not* propagated through `List`, `TextMap`,
+/// `GenMap` or `ContractId`. LF-JSON's list form disambiguates an `Optional`
+/// whose argument is *itself* an `Optional`; a container boundary already
+/// disambiguates, so `Optional [a]` at `a = Optional Text` is the ordinary
+/// `Option<Vec<Option<String>>>` and encodes correctly. `map.rs` draws the line
+/// in exactly the same place (see `nested_optional_inner`), and the two must
+/// agree or this pass either refuses code the emitter handles or lets through
+/// code it does not.
+fn parameters_used_under_optional(krate: &Crate) -> HashMap<String, Vec<bool>> {
+    struct Generic<'a> {
+        params: &'a [String],
+        /// `Optional a` occurrences: the parameter is nested outright.
+        direct: std::collections::BTreeSet<&'a str>,
+        /// `Ref(target, args)` occurrences where `args[k]` is a bare parameter:
+        /// it nests if the target nests its own k-th parameter.
+        forwards: Vec<(String, usize, &'a str)>,
+    }
+
+    let mut generics: HashMap<String, Generic<'_>> = HashMap::new();
+    for package in &krate.packages {
+        for module in &package.modules {
+            for data_type in &module.module.data_types {
+                let (name, params, types) = match data_type {
+                    DataType::Record(record) => (
+                        &record.name,
+                        &record.type_params,
+                        record
+                            .fields
+                            .iter()
+                            .map(|field| &field.ty)
+                            .collect::<Vec<_>>(),
+                    ),
+                    DataType::Variant(variant) => (
+                        &variant.name,
+                        &variant.type_params,
+                        variant
+                            .constructors
+                            .iter()
+                            .filter_map(|constructor| constructor.payload.as_ref())
+                            .collect(),
+                    ),
+                    DataType::Enum(_) | DataType::InterfaceMarker(_) => continue,
+                };
+                if params.is_empty() {
+                    continue;
+                }
+                let mut generic = Generic {
+                    params,
+                    direct: std::collections::BTreeSet::new(),
+                    forwards: Vec::new(),
+                };
+                for ty in types {
+                    collect_nesting_positions(ty, &mut generic.direct, &mut generic.forwards);
+                }
+                generics.insert(path_key_for(&package.name, &module.name, name), generic);
+            }
+        }
+    }
+
+    // Seed with the direct occurrences, then propagate along the forward edges
+    // until nothing changes. Monotone (a flag is only ever set) over a finite
+    // lattice, so this terminates even on mutually recursive generics.
+    let mut nests_parameter: HashMap<String, Vec<bool>> = generics
+        .iter()
+        .map(|(key, generic)| {
+            let flags = generic
+                .params
+                .iter()
+                .map(|param| generic.direct.contains(param.as_str()))
+                .collect();
+            (key.clone(), flags)
+        })
+        .collect();
+
+    loop {
+        let mut changed = false;
+        for (key, generic) in &generics {
+            for (target, index, param) in &generic.forwards {
+                let target_nests = nests_parameter
+                    .get(target)
+                    .and_then(|flags| flags.get(*index))
+                    .copied()
+                    .unwrap_or(false);
+                if !target_nests {
+                    continue;
+                }
+                let Some(position) = generic.params.iter().position(|p| p == param) else {
+                    continue;
+                };
+                let Some(flag) = nests_parameter
+                    .get_mut(key)
+                    .and_then(|flags| flags.get_mut(position))
+                else {
+                    continue;
+                };
+                if !*flag {
+                    *flag = true;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    nests_parameter
+}
+
+/// The two ways a type mentions a parameter in a position that decides nesting:
+/// as the immediate argument of an `Optional`, or as a bare argument to another
+/// generic.
+fn collect_nesting_positions<'a>(
+    ty: &'a DamlType,
+    direct: &mut std::collections::BTreeSet<&'a str>,
+    forwards: &mut Vec<(String, usize, &'a str)>,
+) {
+    match ty {
+        DamlType::Optional(inner) => {
+            if let Some(param) = bare_parameter(inner) {
+                direct.insert(param);
+            }
+            collect_nesting_positions(inner, direct, forwards);
+        }
+        DamlType::Ref(reference) => {
+            let target = path_key_of(reference);
+            for (index, arg) in reference.args.iter().enumerate() {
+                if let Some(param) = bare_parameter(arg) {
+                    forwards.push((target.clone(), index, param));
+                }
+                collect_nesting_positions(arg, direct, forwards);
+            }
+        }
+        // Not `ContractId`: its type argument is a phantom tag. `ContractId<T>`
+        // is a string on both wires whatever `T` is, so nothing under one can be
+        // a nested optional, and descending would refuse code that encodes fine.
+        DamlType::List(inner) | DamlType::TextMap(inner) | DamlType::Boxed(inner) => {
+            collect_nesting_positions(inner, direct, forwards);
+        }
+        DamlType::GenMap(key, value) => {
+            collect_nesting_positions(key, direct, forwards);
+            collect_nesting_positions(value, direct, forwards);
+        }
+        _ => {}
+    }
+}
+
+/// The parameter a type *is*, looking through `Box` (a codegen artifact with no
+/// wire form). `None` for anything else, including a parameter buried inside a
+/// container — that occurrence is a different position.
+fn bare_parameter(ty: &DamlType) -> Option<&str> {
+    match ty {
+        DamlType::Var(name) => Some(name),
+        DamlType::Boxed(inner) => bare_parameter(inner),
+        _ => None,
+    }
+}
+
+/// Reject a generic instantiation whose `Optional` argument lands under the
+/// target's own `Optional`.
+///
+/// LF-JSON encodes an `Optional` as `null`/value unless its *immediate*
+/// argument is itself an `Optional`, in which case that one takes the list form
+/// (`[]` / `[x]`) — which is why the mapping turns `Optional (Optional t)` into
+/// `Option<NestedOpt<T>>`. That rewrite is structural, so it cannot see through
+/// a type parameter: for `data Wrap a = Wrap { value : Optional a }`
+/// instantiated at `Wrap (Optional Text)`, the nesting exists on the wire but
+/// not in the spelled-out type, and the emitted `Option<Option<String>>` would
+/// serialize the inner layer as `null` instead of `[]`.
+///
+/// Encoding that correctly needs the instantiation site to know how the target
+/// uses its parameter, and a distinct IR node for "this `Optional` is nested".
+/// Until then the case is refused rather than emitted wrong — it does not occur
+/// anywhere in the Splice corpus, so nothing real is lost.
+///
+/// Which parameters land under an `Optional` is
+/// [`parameters_used_under_optional`]'s answer.
+fn drop_ambiguous_nested_optionals(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+    let nests_parameter = parameters_used_under_optional(krate);
+
+    // Every declaration kind is an instantiation site: a template's payload is
+    // folded into `Template.fields` and never appears in `data_types` at all,
+    // so scanning only data types missed exactly the case that matters most.
+    let mut ambiguous: Vec<(String, String, String, String)> = Vec::new();
+    for package in &krate.packages {
+        for module in &package.modules {
+            let mut check = |name: &str, types: Vec<&TypeRef>| {
+                if let Some(target) = types.iter().find_map(|reference| {
+                    let nests = nests_parameter.get(&path_key_of(reference))?;
+                    reference
+                        .args
+                        .iter()
+                        .zip(nests)
+                        .any(|(arg, &nested)| nested && matches!(arg, DamlType::Optional(_)))
+                        .then(|| path_key_of(reference))
+                }) {
+                    ambiguous.push((
+                        package.name.clone(),
+                        module.name.clone(),
+                        name.to_string(),
+                        target,
+                    ));
+                }
+            };
+
+            for data_type in &module.module.data_types {
+                let mut types = Vec::new();
+                collect_type_refs_of_data_type(data_type, &mut types);
+                check(data_type_name(data_type), types);
+            }
+            for template in &module.module.templates {
+                let mut types = Vec::new();
+                each_type_of_template(template, &mut |ty| {
+                    collect_type_refs(ty, &mut types);
+                });
+                check(&template.name, types);
+            }
+            for interface in &module.module.interfaces {
+                let mut types = Vec::new();
+                each_type_of_interface(interface, &mut |ty| {
+                    collect_type_refs(ty, &mut types);
+                });
+                check(&interface.name, types);
+            }
+        }
+    }
+
+    for (package_name, module_name, name, target) in ambiguous {
+        let key = path_key_for(&package_name, &module_name, &name);
+        for package in &mut krate.packages {
+            for module in &mut package.modules {
+                let at = |name: &str| path_key_for(&package.name, &module.name, name);
+                module
+                    .module
+                    .data_types
+                    .retain(|data_type| at(data_type_name(data_type)) != key);
+                module
+                    .module
+                    .templates
+                    .retain(|template| at(&template.name) != key);
+                module
+                    .module
+                    .interfaces
+                    .retain(|interface| at(&interface.name) != key);
+            }
+        }
+        errors.push(
+            SkippedType::new(format!(
+                "`{name}` instantiates `{}` with an Optional that the target nests \
+                 under its own Optional; the LF-JSON form of that is not yet representable",
+                target.rsplit("::").next().unwrap_or(&target),
+            ))
+            .in_module(&module_name),
+        );
+    }
+}
+
+/// Every `TypeRef` reachable from a data type (the references themselves, so
+/// their type arguments can be inspected).
+fn collect_type_refs_of_data_type<'a>(data_type: &'a DataType, out: &mut Vec<&'a TypeRef>) {
+    let mut walk = |ty: &'a DamlType| collect_type_refs(ty, out);
+    match data_type {
+        DataType::Record(record) => record.fields.iter().for_each(|field| walk(&field.ty)),
+        DataType::Variant(variant) => variant
+            .constructors
+            .iter()
+            .filter_map(|constructor| constructor.payload.as_ref())
+            .for_each(walk),
+        DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+    }
+}
+
+/// [`collect_type_refs_of_data_type`] for one type.
+fn collect_type_refs<'a>(ty: &'a DamlType, out: &mut Vec<&'a TypeRef>) {
+    match ty {
+        DamlType::Ref(reference) => {
+            out.push(reference);
+            reference
+                .args
+                .iter()
+                .for_each(|arg| collect_type_refs(arg, out));
+        }
+        DamlType::List(inner)
+        | DamlType::Optional(inner)
+        | DamlType::TextMap(inner)
+        | DamlType::Boxed(inner) => collect_type_refs(inner, out),
+        DamlType::GenMap(key, value) => {
+            collect_type_refs(key, out);
+            collect_type_refs(value, out);
+        }
+        // `ContractId` lands here on purpose: its type argument is a phantom
+        // tag, so an instantiation under one has no wire form to get wrong.
+        // The dangling-reference pass wants the opposite and walks its own
+        // `collect_all_refs_*`, since a `ContractId<Iface>` must still name a
+        // type the crate emits.
+        _ => {}
+    }
+}
+
+/// The path key of every declaration the crate emits under its own name. An
+/// interface is absent on purpose: its key belongs to the marker `struct` in
+/// `data_types`, which is what a `ContractId<Iface>` resolves to.
+fn declared_keys(krate: &Crate) -> std::collections::HashSet<String> {
+    krate
+        .packages
+        .iter()
+        .flat_map(|package| {
+            package.modules.iter().flat_map(move |module| {
+                let at = |name: &str| path_key_for(&package.name, &module.name, name);
+                module
+                    .module
+                    .data_types
+                    .iter()
+                    .map(move |data_type| at(data_type_name(data_type)))
+                    .chain(
+                        module
+                            .module
+                            .templates
+                            .iter()
+                            .map(move |template| at(&template.name)),
+                    )
+            })
+        })
+        .collect()
+}
+
+/// Whether a surviving declaration in `module` still owns `key`. An interface
+/// and its marker `struct` share one, and the marker outlives the interface.
+fn still_declares(module: &Module, key: &str, at: &impl Fn(&str) -> String) -> bool {
+    module
+        .data_types
+        .iter()
+        .any(|data_type| at(data_type_name(data_type)) == key)
+        || module.templates.iter().any(|t| at(&t.name) == key)
+}
+
+/// Remove declarations that reference a type which was skipped, repeating until
+/// nothing changes.
+///
+/// Lowering is best-effort, so an unrepresentable type is skipped with a
+/// warning — but a *surviving* type that mentioned it still emits
+/// `crate::pkg::Mod::Gone` in a field, and the crate handed to the user fails
+/// to compile (E0425) with nothing tying the error back to the warning. A
+/// binding that cannot compile is worth no more than the one that was skipped,
+/// so its dependents go the same way, each reported with the name it was
+/// waiting on.
+fn drop_dangling_references(krate: &mut Crate, errors: &mut Vec<SkippedType>) {
+    let mut declared = declared_keys(krate);
+
+    loop {
+        let mut dropped = false;
+        for package in &mut krate.packages {
+            let package_name = package.name.clone();
+            for module in &mut package.modules {
+                let module_name = module.name.clone();
+                let at = |name: &str| path_key_for(&package_name, &module_name, name);
+
+                let missing = |referenced: Vec<String>| -> Option<String> {
+                    referenced
+                        .into_iter()
+                        .find(|key| key.starts_with("crate::") && !declared.contains(key))
+                };
+
+                let mut report = Vec::new();
+                module.module.data_types.retain(|data_type| {
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_data_type(data_type, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((
+                                at(data_type_name(data_type)),
+                                data_type_name(data_type).to_string(),
+                                gone,
+                            ));
+                            false
+                        }
+                        None => true,
+                    }
+                });
+                module.module.templates.retain(|template| {
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_template(template, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((at(&template.name), template.name.clone(), gone));
+                            false
+                        }
+                        None => true,
+                    }
+                });
+                // An interface's impls name its view and choice types, so it
+                // dangles the same way a record does — and its marker must
+                // still exist.
+                module.module.interfaces.retain(|interface| {
+                    if !declared.contains(&at(&interface.name)) {
+                        return false;
+                    }
+                    let mut referenced = Vec::new();
+                    collect_all_refs_of_interface(interface, &mut referenced);
+                    match missing(referenced) {
+                        Some(gone) => {
+                            report.push((at(&interface.name), interface.name.clone(), gone));
+                            false
+                        }
+                        None => true,
+                    }
+                });
+
+                for (key, name, gone) in report {
+                    // An interface and its marker `struct` share one path key,
+                    // and the marker is a separate `data_types` entry that
+                    // survives. Unregistering the key would make every holder
+                    // of a `ContractId<Iface>` look dangling and cascade-drop
+                    // it, naming a type the crate does emit.
+                    if !still_declares(&module.module, &key, &at) {
+                        declared.remove(&key);
+                    }
+                    errors.push(
+                        SkippedType::new(format!(
+                            "`{name}` references `{}`, which was skipped",
+                            gone.rsplit("::").next().unwrap_or(&gone),
+                        ))
+                        .in_module(&module_name),
+                    );
+                    dropped = true;
+                }
+            }
+        }
+        if !dropped {
+            break;
+        }
+    }
+
+    krate.packages.iter_mut().for_each(|package| {
+        package.modules.retain(|module| {
+            !module.module.data_types.is_empty()
+                || !module.module.templates.is_empty()
+                || !module.module.interfaces.is_empty()
+        });
+    });
+    krate.packages.retain(|package| !package.modules.is_empty());
+}
+
+/// Every named-type reference reachable from a data type.
+fn collect_all_refs_of_data_type(data_type: &DataType, out: &mut Vec<String>) {
+    match data_type {
+        DataType::Record(record) => record
+            .fields
+            .iter()
+            .for_each(|field| collect_all_refs(&field.ty, out)),
+        DataType::Variant(variant) => variant
+            .constructors
+            .iter()
+            .filter_map(|constructor| constructor.payload.as_ref())
+            .for_each(|payload| collect_all_refs(payload, out)),
+        DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+    }
+}
+
+/// Every named-type reference reachable from a template: its payload, its
+/// choices' argument and return types, and its contract key.
+fn collect_all_refs_of_template(template: &Template, out: &mut Vec<String>) {
+    each_type_of_template(template, &mut |ty| collect_all_refs(ty, out));
+}
+
+/// Every named-type reference reachable from an interface: its view type and
+/// its choices' argument and return types.
+fn collect_all_refs_of_interface(interface: &Interface, out: &mut Vec<String>) {
+    each_type_of_interface(interface, &mut |ty| collect_all_refs(ty, out));
+}
+
+/// Visit every type a template mentions. Both post-lowering passes go through
+/// this rather than each walking the fields it happens to remember.
+fn each_type_of_template<'a>(template: &'a Template, visit: &mut impl FnMut(&'a DamlType)) {
+    for field in &template.fields {
+        visit(&field.ty);
+    }
+    for choice in &template.choices {
+        visit(&choice.argument);
+        visit(&choice.returns);
+    }
+    if let Some(key) = &template.key {
+        visit(key);
+    }
+}
+
+/// Visit every type an interface mentions.
+fn each_type_of_interface<'a>(interface: &'a Interface, visit: &mut impl FnMut(&'a DamlType)) {
+    if let Some(view) = &interface.view {
+        visit(view);
+    }
+    for choice in &interface.choices {
+        visit(&choice.argument);
+        visit(&choice.returns);
+    }
+}
+
+/// Every named-type reference inside a type, at any depth (unlike
+/// `collect_inline_refs`, which stops at heap indirection).
+fn collect_all_refs(ty: &DamlType, out: &mut Vec<String>) {
+    match ty {
+        DamlType::Ref(reference) => {
+            out.push(path_key_of(reference));
+            reference
+                .args
+                .iter()
+                .for_each(|arg| collect_all_refs(arg, out));
+        }
+        DamlType::ContractId(inner)
+        | DamlType::List(inner)
+        | DamlType::Optional(inner)
+        | DamlType::TextMap(inner)
+        | DamlType::Boxed(inner) => collect_all_refs(inner, out),
+        DamlType::GenMap(key, value) => {
+            collect_all_refs(key, out);
+            collect_all_refs(value, out);
+        }
+        _ => {}
+    }
+}
+
+/// The Rust module name each package's types live under, keyed by package id.
+///
+/// The name alone (`splice_amulet`), **not** name-and-version: under Smart
+/// Contract Upgrade the participant resolves which vetted version a command
+/// targets, so a routine DAR bump should not rename every path a caller
+/// imports. The version is appended only where it is doing work — when one DAR
+/// genuinely bundles two versions of the same package — and the package-id
+/// prefix only if even that is ambiguous.
+fn package_module_names(packages: &[(String, lf::Package)]) -> HashMap<&str, String> {
+    let mut names: HashMap<&str, String> = packages
+        .iter()
+        .map(|(id, package)| {
+            let base =
+                package_name(package).map_or_else(|| format!("p_{}", ident_prefix(id)), sanitize);
+            (id.as_str(), base)
+        })
+        .collect();
+
+    // One pass per disambiguation step: add the version where the bare name
+    // repeats, then the id prefix where even that repeats (a rebuilt package
+    // keeps its metadata but gets a new id).
+    // An empty or metadata-less version is no disambiguator — several packages
+    // carry `version: ""`, and using it would collapse them all onto one name.
+    let versioned = |id: &str| {
+        packages
+            .iter()
+            .find(|(candidate, _)| candidate == id)
+            .and_then(|(_, package)| package_version(package))
+            .map(sanitize)
+            .filter(|version| !version.is_empty())
+    };
+    // The last step appends the whole package id, which is the map's key and so
+    // is unique by construction: the loop always terminates with distinct names
+    // rather than leaving a duplicate for rustc to report as E0428. Two ids
+    // agreeing on their first 8 hex characters is not going to happen, but
+    // "not going to happen" is a poor reason to emit a crate that will not
+    // compile.
+    for step in 0..3 {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for name in names.values() {
+            *counts.entry(name.clone()).or_default() += 1;
+        }
+        let ambiguous: std::collections::HashSet<String> = counts
+            .into_iter()
+            .filter(|(_, count)| *count > 1)
+            .map(|(name, _)| name)
+            .collect();
+        if ambiguous.is_empty() {
+            break;
+        }
+        for (id, name) in &mut names {
+            if !ambiguous.contains(name.as_str()) {
+                continue;
+            }
+            let suffix = match step {
+                0 => versioned(id).unwrap_or_else(|| ident_prefix(id)),
+                1 => ident_prefix(id),
+                _ => sanitize(id),
+            };
+            *name = format!("{name}_{suffix}");
+        }
+    }
+    names
+}
+
+/// The first 8 identifier-safe characters of a package id, for `p_<hash8>` /
+/// collision-suffix module names. Character-based (a byte slice could panic on
+/// a hostile non-ASCII id) and filtered to alphanumerics. An id with no
+/// alphanumerics at all would yield an *empty* suffix, defeating the
+/// de-collision this exists for, so it falls back to a hash of the id.
+fn ident_prefix(package_id: &str) -> String {
+    let prefix: String = package_id
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .take(8)
+        .collect();
+    if prefix.is_empty() {
+        use std::hash::{Hash as _, Hasher as _};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        package_id.hash(&mut hasher);
+        format!("h{:x}", hasher.finish())
+    } else {
+        prefix
+    }
+}
+
+/// Rust module names claimed by more than one distinct Daml module name in a
+/// package, mapped to the Daml names that claim them.
+fn colliding_module_names(
+    package: &lf::Package,
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut claims: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for lf_module in package.modules.iter().filter(|m| emits_anything(m)) {
+        let Some(dotted) = interned_dotted_name(package, lf_module.name_interned_dname) else {
+            continue;
+        };
+        let sources = claims.entry(dotted.replace('.', "_")).or_default();
+        if !sources.contains(&dotted) {
+            sources.push(dotted);
+        }
+    }
+    claims.retain(|_, sources| sources.len() > 1);
+    claims
+}
+
+/// Whether a data type reaches the generated crate: an interface contributes
+/// its marker `struct`, anything else has to be serializable.
+fn emits_a_type(def: &lf::DefDataType) -> bool {
+    matches!(
+        def.data_cons,
+        Some(lf::def_data_type::DataCons::Interface(_))
+    ) || def.serializable
+}
+
+/// Whether a module reaches the generated crate at all. A Daml module of pure
+/// functions lowers to nothing and is never pushed as a `pub mod`, so it cannot
+/// collide with one that is — and must not be counted as if it could.
+fn emits_anything(lf_module: &lf::Module) -> bool {
+    !lf_module.templates.is_empty()
+        || !lf_module.interfaces.is_empty()
+        || lf_module.data_types.iter().any(emits_a_type)
+}
+
+/// Map each non-alphanumeric character to `_` so the result is a valid Rust
+/// identifier fragment (`splice-amulet` → `splice_amulet`, `0.1.14` → `0_1_14`).
+fn sanitize(input: &str) -> String {
+    input
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect()
+}
+
+/// How a lowering resolves references, given the current package.
+struct Lowering<'a> {
+    package: &'a lf::Package,
+    /// `None` → local references (bare type name). `Some` → fully-qualified
+    /// paths resolved through the DAR's package map.
+    qualify: Option<Qualify<'a>>,
+    /// How many frames of [`Lowering::apply`] are currently on the stack.
+    ///
+    /// Held here rather than passed as an argument so the eleven call sites of
+    /// `type_`/`apply` keep their signatures; `Lowering` is used from one thread
+    /// for the length of one package.
+    depth: std::cell::Cell<u32>,
+}
+
+/// How deep type resolution may go before the DAR is refused.
+///
+/// Every other axis of this recursion is already bounded: prost caps nested
+/// messages, so a type nested inside a type inside a type runs out long before
+/// the stack does. Interned types are the exception, and they are not nested at
+/// all — they are a flat table of indices, so `interned_types[0]` may be
+/// `Interned(0)`, or two entries may point at each other, and prost sees
+/// nothing to object to. Resolving that recurses until the stack ends, and a
+/// stack overflow **aborts the process** rather than failing the DAR: the one
+/// place in this reader where hostile input still killed the caller after the
+/// zip-bomb, entry-size, archive-size, package-id and LF-version guards.
+///
+/// Far above anything real: the deepest type across the 648-package corpus
+/// resolves in 15 levels, so this leaves seventeen times the headroom and only
+/// ever fires on an archive built to fire it.
+const MAX_TYPE_DEPTH: u32 = 256;
+
+/// Decrements [`Lowering::depth`] however the frame it guards is left.
+struct DepthGuard<'a>(&'a std::cell::Cell<u32>);
+
+impl Drop for DepthGuard<'_> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() - 1);
+    }
+}
+
+/// The first segment of a path into another crate. Emitted as a leading `::`,
+/// which no Daml name can produce, so it cannot collide with one.
+pub(crate) const EXTERNAL_CRATE_ROOT: &str = "::";
+
+/// The context for qualifying a reference to a fully-qualified Rust path.
+struct Qualify<'a> {
+    /// package id (archive hash) → the package's Rust module name. Resolves all
+    /// three reference forms, since each ultimately names a package by its id.
+    module_names: &'a HashMap<&'a str, String>,
+    /// The id of the package currently being lowered (resolves `SelfPackageId`).
+    current_id: &'a str,
+    /// package id → the crate that already publishes it. A reference to one of
+    /// these points at that crate; its modules are not emitted here.
+    external: &'a HashMap<String, String>,
+}
+
+impl Lowering<'_> {
+    /// Lower a whole Daml module: its data types and its templates. A template's
+    /// payload is a same-named record; it is folded into the [`Template`] (as its
+    /// `fields`) and *not* emitted as a standalone record, so the payload struct
+    /// is generated exactly once.
+    fn module(
+        &self,
+        lf_module: &lf::Module,
+        module_dotted: &str,
+        errors: &mut Vec<SkippedType>,
+    ) -> Module {
+        // Daml names are dotted and Rust identifiers are not, so `A.B` and `A_B`
+        // both flatten to `A_B`. Emitting both would either overwrite one
+        // silently (a template taking another type's payload — wrong commands,
+        // no compile error) or produce a duplicate definition. Detect the clash
+        // up front and skip the whole colliding set, naming both Daml sources.
+        let colliding = self.colliding_flattened_names(lf_module);
+
+        // The names that are templates — their payload record is folded in below.
+        let template_names: std::collections::HashSet<String> = lf_module
+            .templates
+            .iter()
+            .filter_map(|def| rust_name(self.package, def.tycon_interned_dname).ok())
+            .filter(|name| !colliding.contains_key(name))
+            .collect();
+
+        for (flattened, sources) in &colliding {
+            errors.push(
+                SkippedType::new(format!(
+                    "`{}` both map to the Rust name `{flattened}`; \
+                     rename one in Daml to generate either",
+                    sources.join("` and `"),
+                ))
+                .in_module(module_dotted),
+            );
+        }
+        let skip = |name: &str| colliding.contains_key(name);
+
+        let mut module = Module::default();
+        // Payload records held aside for their template (name → fields).
+        let mut payloads: HashMap<String, Vec<Field>> = HashMap::new();
+        // Two declarations under one name is the shape the flattening check
+        // cannot catch: it groups *distinct* dotted names that collide after
+        // flattening, and a duplicate is the same name, not a distinct one. The
+        // consequence is worse than a redefinition, because when the name is
+        // also a template's, the payload map takes the last writer and the
+        // template is emitted with another type's fields — wrong commands, and
+        // it compiles.
+        let mut seen_types: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for data_type in &lf_module.data_types {
+            match self.data_type(data_type) {
+                Ok(Some(lowered)) if skip(data_type_name(&lowered)) => {}
+                Ok(Some(lowered)) if !seen_types.insert(data_type_name(&lowered).to_string()) => {
+                    errors.push(
+                        SkippedType::new(format!(
+                            "`{}` is declared more than once in this module",
+                            data_type_name(&lowered)
+                        ))
+                        .in_module(module_dotted),
+                    );
+                }
+                Ok(Some(DataType::Record(record))) if template_names.contains(&record.name) => {
+                    payloads.insert(record.name, record.fields);
+                }
+                Ok(Some(lowered)) => module.data_types.push(lowered),
+                Ok(None) => {}
+                Err(error) => errors.push(error.in_module(module_dotted)),
+            }
+        }
+
+        for def in &lf_module.templates {
+            match self.template(def, module_dotted, &mut payloads) {
+                Ok(template) if skip(&template.name) => {}
+                Ok(template) => module.templates.push(template),
+                Err(error) => errors.push(error.in_module(module_dotted)),
+            }
+        }
+
+        for def in &lf_module.interfaces {
+            match self.interface(def, module_dotted) {
+                Ok(interface) if skip(&interface.name) => {}
+                Ok(interface) => module.interfaces.push(interface),
+                Err(error) => errors.push(error.in_module(module_dotted)),
+            }
+        }
+        module
+    }
+
+    /// Rust names claimed by more than one *distinct* Daml name in this module,
+    /// mapped to the Daml names that claim them. A template and its payload
+    /// record share one Daml name, so they never collide with each other.
+    fn colliding_flattened_names(
+        &self,
+        lf_module: &lf::Module,
+    ) -> std::collections::BTreeMap<String, Vec<String>> {
+        // Only what the crate emits can collide. A non-serializable data type
+        // is dropped by `data_type`, so counting its name here took a real type
+        // down with a claimant that never appears.
+        let declared = lf_module
+            .data_types
+            .iter()
+            .filter(|def| emits_a_type(def))
+            .map(|def| def.name_interned_dname)
+            .chain(
+                lf_module
+                    .templates
+                    .iter()
+                    .map(|def| def.tycon_interned_dname),
+            )
+            .chain(
+                lf_module
+                    .interfaces
+                    .iter()
+                    .map(|def| def.tycon_interned_dname),
+            );
+
+        let mut claims: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for index in declared {
+            let Some(dotted) = interned_dotted_name(self.package, index) else {
+                continue;
+            };
+            let flattened = dotted.replace('.', "_");
+            let sources = claims.entry(flattened).or_default();
+            if !sources.contains(&dotted) {
+                sources.push(dotted);
+            }
+        }
+        claims.retain(|_, sources| sources.len() > 1);
+        claims
+    }
+
+    /// Lower one `DefInterface`: its view type and choices, plus the on-ledger
+    /// identity choices are exercised through. The marker struct is emitted from
+    /// the interface's data type; this carries the impls on it.
+    fn interface(
+        &self,
+        def: &lf::DefInterface,
+        module_dotted: &str,
+    ) -> Result<Interface, SkippedType> {
+        let name = rust_name(self.package, def.tycon_interned_dname)?;
+        let choices = def
+            .choices
+            .iter()
+            .map(|choice| self.choice(choice))
+            .collect::<Result<Vec<_>, _>>()?;
+        let view = def
+            .view
+            .as_ref()
+            .map(|ty| self.type_(ty))
+            .transpose()?
+            // An interface always has a view; `Unit` means an empty view record.
+            .filter(|view| !matches!(view, DamlType::Unit));
+        Ok(Interface {
+            name,
+            module_name: module_dotted.to_string(),
+            package_id: self
+                .qualify
+                .as_ref()
+                .map_or_else(String::new, |q| q.current_id.to_string()),
+            package_name: package_name(self.package).unwrap_or_default().to_string(),
+            view,
+            choices,
+        })
+    }
+
+    /// Lower one `DefTemplate`: its payload fields (taken from the folded-in
+    /// record), choices, and optional contract key.
+    fn template(
+        &self,
+        def: &lf::DefTemplate,
+        module_dotted: &str,
+        payloads: &mut HashMap<String, Vec<Field>>,
+    ) -> Result<Template, SkippedType> {
+        let name = rust_name(self.package, def.tycon_interned_dname)?;
+        let fields = payloads.remove(&name).ok_or_else(|| {
+            SkippedType::new(format!("template {name}: payload record not found"))
+        })?;
+        let choices = def
+            .choices
+            .iter()
+            .map(|choice| self.choice(choice))
+            .collect::<Result<Vec<_>, _>>()?;
+        let key = match def.key.as_ref() {
+            // A declared key with no type is malformed LF: lowering it to a
+            // keyless template would silently drop `exercise_by_key`.
+            Some(key) => Some(self.type_(key.r#type.as_ref().ok_or_else(|| {
+                SkippedType::new(format!("template {name}: contract key has no type"))
+            })?)?),
+            None => None,
+        };
+        Ok(Template {
+            name,
+            module_name: module_dotted.to_string(),
+            package_id: self
+                .qualify
+                .as_ref()
+                .map_or_else(String::new, |q| q.current_id.to_string()),
+            package_name: package_name(self.package).unwrap_or_default().to_string(),
+            fields,
+            choices,
+            key,
+        })
+    }
+
+    /// Lower one `TemplateChoice`: its name, consuming flag, argument type, and
+    /// return type. The controller/observer/body expressions are term-level and
+    /// intentionally not modelled (see the decoder note on `Expr`).
+    fn choice(&self, choice: &lf::TemplateChoice) -> Result<Choice, SkippedType> {
+        let name = interned_str(self.package, choice.name_interned_str)
+            .ok_or_else(|| SkippedType::new("unresolved choice name"))?
+            .to_string();
+        let argument = choice
+            .arg_binder
+            .as_ref()
+            .and_then(|binder| binder.r#type.as_ref())
+            .ok_or_else(|| SkippedType::new(format!("choice {name}: no argument type")))?;
+        let returns = choice
+            .ret_type
+            .as_ref()
+            .ok_or_else(|| SkippedType::new(format!("choice {name}: no return type")))?;
+        Ok(Choice {
+            name,
+            consuming: choice.consuming,
+            argument: self.type_(argument)?,
+            returns: self.type_(returns)?,
+        })
+    }
+
+    /// Lower one `DefDataType`. `Ok(None)` when intentionally skipped
+    /// (non-serializable, or an interface view marker).
+    fn data_type(&self, data_type: &lf::DefDataType) -> Result<Option<DataType>, SkippedType> {
+        let name = rust_name(self.package, data_type.name_interned_dname)?;
+
+        // An interface is not serializable, but references to it (always
+        // `ContractId<I>`) must resolve — emit a phantom marker. Handle it
+        // before the serializable gate, which would otherwise skip it.
+        if let Some(lf::def_data_type::DataCons::Interface(_)) = &data_type.data_cons {
+            return Ok(Some(DataType::InterfaceMarker(name)));
+        }
+
+        // Codegen otherwise only wants serializable types (skip functions, and
+        // internal non-serializable records like the interface `Any` wrappers).
+        if !data_type.serializable {
+            return Ok(None);
+        }
+        let type_params = data_type
+            .params
+            .iter()
+            .map(|param| {
+                interned_str(self.package, param.var_interned_str)
+                    .map(str::to_string)
+                    .ok_or_else(|| SkippedType::new("unresolved type parameter"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        check_type_params(&name, &type_params)?;
+
+        let Some(data_cons) = &data_type.data_cons else {
+            return Err(SkippedType::new(format!("{name}: no data constructor")));
+        };
+
+        match data_cons {
+            lf::def_data_type::DataCons::Record(fields) => {
+                let fields = self.fields(&fields.fields)?;
+                Ok(Some(DataType::Record(Record {
+                    name,
+                    type_params,
+                    fields,
+                })))
+            }
+            lf::def_data_type::DataCons::Variant(fields) => {
+                let constructors = fields
+                    .fields
+                    .iter()
+                    .map(|field| self.variant_constructor(field))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Some(DataType::Variant(Variant {
+                    name,
+                    type_params,
+                    constructors,
+                })))
+            }
+            lf::def_data_type::DataCons::Enum(constructors) => {
+                let constructors = constructors
+                    .constructors_interned_str
+                    .iter()
+                    .map(|&index| {
+                        let name = interned_str(self.package, index)
+                            .ok_or_else(|| SkippedType::new("unresolved enum constructor"))?;
+                        if is_rust_ident(name) {
+                            Ok(name.to_string())
+                        } else {
+                            Err(SkippedType::new(format!(
+                                "enum constructor `{name}` is not representable as a Rust identifier"
+                            )))
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Some(DataType::Enum(Enum { name, constructors })))
+            }
+            // An interface's view marker — reserved, lowered separately later.
+            lf::def_data_type::DataCons::Interface(_) => Ok(None),
+        }
+    }
+
+    fn fields(&self, fields: &[lf::FieldWithType]) -> Result<Vec<Field>, SkippedType> {
+        let lowered = fields
+            .iter()
+            .map(|field| {
+                let label = interned_str(self.package, field.field_interned_str)
+                    .ok_or_else(|| SkippedType::new("unresolved field label"))?
+                    .to_string();
+                let ty = self.type_(field_type(field)?)?;
+                Ok(Field { label, ty })
+            })
+            .collect::<Result<Vec<Field>, SkippedType>>()?;
+
+        // Two Daml labels can collapse onto one Rust field name (`fooBar` and
+        // `foo_bar` both snake_case to `foo_bar`); the emitted struct would not
+        // compile. Fail the type with a clear message instead.
+        let mut by_rust_name: HashMap<String, &str> = HashMap::new();
+        for field in &lowered {
+            let rust = heck::ToSnakeCase::to_snake_case(field.label.as_str());
+            if let Some(previous) = by_rust_name.insert(rust.clone(), &field.label) {
+                return Err(SkippedType::new(format!(
+                    "fields `{previous}` and `{}` both map to the Rust field `{rust}`",
+                    field.label
+                )));
+            }
+        }
+        Ok(lowered)
+    }
+
+    fn variant_constructor(
+        &self,
+        field: &lf::FieldWithType,
+    ) -> Result<VariantConstructor, SkippedType> {
+        let name = interned_str(self.package, field.field_interned_str)
+            .ok_or_else(|| SkippedType::new("unresolved variant constructor"))?
+            .to_string();
+        if !is_rust_ident(&name) {
+            return Err(SkippedType::new(format!(
+                "variant constructor `{name}` is not representable as a Rust identifier"
+            )));
+        }
+        // A `Unit` payload is a nullary constructor.
+        let payload = match self.type_(field_type(field)?)? {
+            DamlType::Unit => None,
+            other => Some(other),
+        };
+        Ok(VariantConstructor { name, payload })
+    }
+
+    /// Lower an LF [`Type`](lf::Type) into a [`DamlType`], resolving interned
+    /// types and (when qualifying) references to fully-qualified paths.
+    fn type_(&self, ty: &lf::Type) -> Result<DamlType, SkippedType> {
+        self.apply(ty, &[])
+    }
+
+    /// Claim one frame of type-resolution depth, or refuse the type.
+    ///
+    /// Refusing is a `SkippedType`, which is how every other unrepresentable
+    /// type is reported: the DAR still generates, minus the type that could not
+    /// be resolved and — through the existing dependent-skip pass — anything
+    /// that referred to it. The alternative on this path is not a worse error
+    /// message, it is `SIGABRT`.
+    fn enter(&self) -> Result<DepthGuard<'_>, SkippedType> {
+        let depth = self.depth.get();
+        if depth >= MAX_TYPE_DEPTH {
+            return Err(SkippedType::new(format!(
+                "type nests deeper than {MAX_TYPE_DEPTH} levels, or its interned \
+                 types refer to each other in a cycle"
+            )));
+        }
+        self.depth.set(depth + 1);
+        Ok(DepthGuard(&self.depth))
+    }
+
+    /// Lower `ty` applied to `extra` type arguments. This unifies the flattened
+    /// form (`Con`/`Builtin` with an `args` list) and the curried `TApp` form
+    /// (LF 2.dev): `TApp(lhs, rhs)` applies `lhs` to `rhs` prepended to `extra`,
+    /// so `((f a) b)` collapses to `f` applied to `[a, b]` regardless of shape.
+    fn apply(&self, ty: &lf::Type, extra: &[&lf::Type]) -> Result<DamlType, SkippedType> {
+        // Held for the whole frame, so the count unwinds with every early
+        // return below as well as the successful one.
+        let _guard = self.enter()?;
+        let Some(sum) = &ty.sum else {
+            return Err(SkippedType::new("empty type"));
+        };
+        match sum {
+            lf::r#type::Sum::Tapp(app) => {
+                let lhs = app
+                    .lhs
+                    .as_deref()
+                    .ok_or_else(|| SkippedType::new("type application without a function"))?;
+                let rhs = app
+                    .rhs
+                    .as_deref()
+                    .ok_or_else(|| SkippedType::new("type application without an argument"))?;
+                let mut args = Vec::with_capacity(extra.len() + 1);
+                args.push(rhs);
+                args.extend_from_slice(extra);
+                self.apply(lhs, &args)
+            }
+            lf::r#type::Sum::Var(var) => {
+                // A higher-kinded application (`f a`) has no Rust equivalent.
+                // `Var` carries its own `args` as well as any from a curried
+                // `TApp`; dropping either would silently emit the bare
+                // parameter in place of the applied type.
+                if !extra.is_empty() || !var.args.is_empty() {
+                    return Err(SkippedType::new("type-variable application is unsupported"));
+                }
+                let name = interned_str(self.package, var.var_interned_str)
+                    .ok_or_else(|| SkippedType::new("unresolved type variable"))?
+                    .to_string();
+                Ok(DamlType::Var(name))
+            }
+            lf::r#type::Sum::Con(con) => {
+                let tycon = con
+                    .tycon
+                    .as_ref()
+                    .ok_or_else(|| SkippedType::new("type constructor without a name"))?;
+                let path = self.con_path(tycon)?;
+                let args = con
+                    .args
+                    .iter()
+                    .chain(extra.iter().copied())
+                    .map(|arg| self.type_(arg))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(DamlType::Ref(TypeRef { path, args }))
+            }
+            lf::r#type::Sum::Builtin(builtin) => {
+                let args: Vec<&lf::Type> =
+                    builtin.args.iter().chain(extra.iter().copied()).collect();
+                self.builtin(builtin.builtin, &args)
+            }
+            lf::r#type::Sum::Interned(index) => {
+                let resolved = interned_type(self.package, *index)
+                    .ok_or_else(|| SkippedType::new("unresolved interned type"))?;
+                self.apply(resolved, extra)
+            }
+            lf::r#type::Sum::Nat(_) => Err(SkippedType::new("unexpected bare type-level Nat")),
+            lf::r#type::Sum::Forall(_) | lf::r#type::Sum::Struct(_) | lf::r#type::Sum::Syn(_) => {
+                Err(SkippedType::new(
+                    "unsupported LF type (forall / struct / syn)",
+                ))
+            }
+        }
+    }
+
+    /// The Rust path segments for a type constructor reference. Local when not
+    /// qualifying; otherwise `["crate", <package>, <module>, <Type>]`.
+    ///
+    /// The target package is resolved from the reference's package identity,
+    /// which LF spells three ways — **self**, an **imported** package by its
+    /// interned id-hash, and (newer LF) an index into the explicit import table
+    /// — each of which ends at an id hash, and from there at the package's Rust
+    /// module name.
+    ///
+    /// Not a fourth way: the `#<package-name>` form of Smart Contract Upgrade is
+    /// a Ledger API spelling for a template id, not an LF type reference, and
+    /// never reaches here.
+    fn con_path(&self, tycon: &lf::TypeConId) -> Result<Vec<String>, SkippedType> {
+        use lf::self_or_imported_package_id::Sum;
+
+        let type_name = rust_name(self.package, tycon.name_interned_dname)?;
+        let Some(qualify) = &self.qualify else {
+            return Ok(vec![type_name]);
+        };
+
+        let module_id = tycon
+            .module
+            .as_ref()
+            .ok_or_else(|| SkippedType::new("type constructor without a module"))?;
+        let module_dotted =
+            interned_dotted_name(self.package, module_id.module_name_interned_dname)
+                .ok_or_else(|| SkippedType::new("unresolved referenced module name"))?;
+
+        // Every reference form ultimately names a package by its id hash;
+        // resolve to that hash, then to the package's Rust module name.
+        let target_id = match module_id.package_id.as_ref().and_then(|p| p.sum.as_ref()) {
+            // A self reference, or an absent package id, targets this package.
+            None | Some(Sum::SelfPackageId(_)) => qualify.current_id.to_string(),
+            // An imported package identified by its id-hash, interned here.
+            Some(Sum::ImportedPackageIdInternedStr(index)) => interned_str(self.package, *index)
+                .ok_or_else(|| SkippedType::new("unresolved imported package id"))?
+                .to_string(),
+            // Newer LF: an index into the package's explicit import table, whose
+            // entry is the target package's id hash.
+            Some(Sum::PackageImportId(index)) => imported_package_id(self.package, *index)
+                .ok_or_else(|| SkippedType::new("unresolved package import id"))?
+                .to_string(),
+        };
+        let package_module = qualify
+            .module_names
+            .get(target_id.as_str())
+            .ok_or_else(|| {
+                SkippedType::new(format!("reference to package {target_id} not in the DAR"))
+            })?;
+
+        // A package published as its own crate is referenced there, so both
+        // crates name one type rather than each declaring its own. The leading
+        // `::` marker makes the path absolute — without it a generated module
+        // sharing the crate's name would shadow it.
+        if let Some(crate_name) = qualify.external.get(&target_id) {
+            // The package module segment stays: the other crate wraps its
+            // packages exactly as this one does, so the path there is
+            // `::<crate>::<package>::<module>::<Type>`. Dropping it produced
+            // `::<crate>::<module>::<Type>`, which does not resolve.
+            return Ok(vec![
+                EXTERNAL_CRATE_ROOT.to_string(),
+                crate_name.clone(),
+                package_module.clone(),
+                module_dotted.replace('.', "_"),
+                type_name,
+            ]);
+        }
+
+        Ok(vec![
+            "crate".to_string(),
+            package_module.clone(),
+            module_dotted.replace('.', "_"),
+            type_name,
+        ])
+    }
+
+    fn builtin(&self, builtin: i32, args: &[&lf::Type]) -> Result<DamlType, SkippedType> {
+        use lf::BuiltinType;
+
+        let kind = BuiltinType::try_from(builtin)
+            .map_err(|_| SkippedType::new(format!("unknown builtin type {builtin}")))?;
+        let arg = |index: usize| -> Result<DamlType, SkippedType> {
+            let ty = args.get(index).copied().ok_or_else(|| {
+                SkippedType::new(format!("{kind:?} missing type argument {index}"))
+            })?;
+            self.type_(ty)
+        };
+
+        let ty = match kind {
+            BuiltinType::Unit => DamlType::Unit,
+            BuiltinType::Bool => DamlType::Bool,
+            BuiltinType::Int64 => DamlType::Int64,
+            BuiltinType::Date => DamlType::Date,
+            BuiltinType::Timestamp => DamlType::Timestamp,
+            BuiltinType::Party => DamlType::Party,
+            BuiltinType::Text => DamlType::Text,
+            BuiltinType::Numeric => DamlType::Numeric(self.numeric_scale(args)?),
+            BuiltinType::ContractId => DamlType::ContractId(Box::new(arg(0)?)),
+            BuiltinType::Optional => DamlType::Optional(Box::new(arg(0)?)),
+            BuiltinType::List => DamlType::List(Box::new(arg(0)?)),
+            BuiltinType::Textmap => DamlType::TextMap(Box::new(arg(0)?)),
+            BuiltinType::Genmap => DamlType::GenMap(Box::new(arg(0)?), Box::new(arg(1)?)),
+            other => {
+                return Err(SkippedType::new(format!(
+                    "builtin type {other:?} is not representable in codegen"
+                )));
+            }
+        };
+        Ok(ty)
+    }
+
+    /// The scale of a `Numeric n` from its type-level `Nat` argument.
+    fn numeric_scale(&self, args: &[&lf::Type]) -> Result<u8, SkippedType> {
+        let mut ty = *args
+            .first()
+            .ok_or_else(|| SkippedType::new("Numeric without a scale argument"))?;
+        // Follow one level of interning if the scale is stored in the type table.
+        if let Some(lf::r#type::Sum::Interned(index)) = &ty.sum {
+            ty = interned_type(self.package, *index)
+                .ok_or_else(|| SkippedType::new("unresolved Numeric scale"))?;
+        }
+        match &ty.sum {
+            Some(lf::r#type::Sum::Nat(scale)) => u8::try_from(*scale)
+                .map_err(|_| SkippedType::new(format!("Numeric scale {scale} out of range"))),
+            _ => Err(SkippedType::new("Numeric scale is not a type-level Nat")),
+        }
+    }
+}
+
+// ---- recursion breaking -----------------------------------------------------
+//
+// Daml permits arbitrarily recursive data types; Rust requires indirection on
+// every cycle. `Vec` / `BTreeMap` / `GenMap` heap-allocate and so break cycles,
+// but `Option<T>` stores `T` **inline** — `Optional` recursion (`data Tree =
+// Node { left : Optional Tree }`), mutual recursion (`A` ↔ `B`, including
+// across modules), and recursion through a generic instantiation (`Wrap T`
+// where `Wrap a` stores `a` inline) all need a `Box`, or the generated crate
+// fails to compile (E0072). `Box` is transparent to both codecs, so boxing is
+// always safe; the pass below is therefore deliberately conservative — it may
+// box an occurrence that a finer analysis could leave bare, but it can never
+// produce an infinitely-sized type.
+
+/// Break every containment cycle in the crate by boxing the reference
+/// occurrences that close one.
+///
+/// A type "inline-contains" the types its fields reach without crossing heap
+/// indirection: through `Optional`, and through the *arguments* of a named-type
+/// reference (a generic target may store its parameter inline — assumed
+/// conservatively). `List` / `TextMap` / `GenMap` / `Boxed` stop containment
+/// (heap), as does `ContractId` (a phantom-typed id, it does not contain its
+/// payload). Every reference occurrence whose target can inline-reach back to
+/// the type that holds the field is wrapped in [`DamlType::Boxed`].
+fn box_recursion(krate: &mut Crate) {
+    // Pass 1: the inline-containment graph, node = fully-qualified path key.
+    let mut edges: HashMap<String, Vec<String>> = HashMap::new();
+    for package in &krate.packages {
+        for module in &package.modules {
+            let at = |name: &str| path_key_for(&package.name, &module.name, name);
+            module_containment_edges(&module.module, &at, &mut edges);
+        }
+    }
+
+    // Pass 2: box every reference occurrence that closes a cycle back to the
+    // type holding it.
+    for package in &mut krate.packages {
+        let package_name = package.name.clone();
+        for module in &mut package.modules {
+            let module_name = module.name.clone();
+            let at = |name: &str| path_key_for(&package_name, &module_name, name);
+            module_box_cycles(&mut module.module, &at, &edges);
+        }
+    }
+}
+
+/// Pass 1 for one module: record which reference keys each declared type
+/// inline-contains. `at` maps a declared type name to its graph key.
+fn module_containment_edges(
+    module: &Module,
+    at: &impl Fn(&str) -> String,
+    edges: &mut HashMap<String, Vec<String>>,
+) {
+    for data_type in &module.data_types {
+        match data_type {
+            DataType::Record(record) => {
+                let node = edges.entry(at(&record.name)).or_default();
+                for field in &record.fields {
+                    collect_inline_refs(&field.ty, node);
+                }
+            }
+            DataType::Variant(variant) => {
+                let node = edges.entry(at(&variant.name)).or_default();
+                for constructor in &variant.constructors {
+                    if let Some(payload) = &constructor.payload {
+                        collect_inline_refs(payload, node);
+                    }
+                }
+            }
+            DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+        }
+    }
+    // Template payloads are types too (other types may reference them).
+    for template in &module.templates {
+        let node = edges.entry(at(&template.name)).or_default();
+        for field in &template.fields {
+            collect_inline_refs(&field.ty, node);
+        }
+    }
+}
+
+/// Pass 2 for one module: box every cycle-closing reference occurrence.
+fn module_box_cycles(
+    module: &mut Module,
+    at: &impl Fn(&str) -> String,
+    edges: &HashMap<String, Vec<String>>,
+) {
+    for data_type in &mut module.data_types {
+        match data_type {
+            DataType::Record(record) => {
+                let holder = at(&record.name);
+                for field in &mut record.fields {
+                    box_cycle_closers(&mut field.ty, &holder, edges);
+                }
+            }
+            DataType::Variant(variant) => {
+                let holder = at(&variant.name);
+                for constructor in &mut variant.constructors {
+                    if let Some(payload) = &mut constructor.payload {
+                        box_cycle_closers(payload, &holder, edges);
+                    }
+                }
+            }
+            DataType::Enum(_) | DataType::InterfaceMarker(_) => {}
+        }
+    }
+    for template in &mut module.templates {
+        let holder = at(&template.name);
+        for field in &mut template.fields {
+            box_cycle_closers(&mut field.ty, &holder, edges);
+        }
+    }
+}
+
+/// The graph key of a type declared in (`package`, `module`) — the same shape
+/// [`Lowering::con_path`] resolves references to, joined.
+fn path_key_for(package_module: &str, module_name: &str, type_name: &str) -> String {
+    format!("crate::{package_module}::{module_name}::{type_name}")
+}
+
+/// The graph key of a reference occurrence. Local (unqualified) references have
+/// a single segment; qualified ones are `crate::pkg::module::Type`.
+fn path_key_of(reference: &TypeRef) -> String {
+    reference.path.join("::")
+}
+
+/// Collect into `out` the reference keys `ty` reaches inline (without crossing
+/// heap indirection).
+fn collect_inline_refs(ty: &DamlType, out: &mut Vec<String>) {
+    match ty {
+        DamlType::Optional(inner) => collect_inline_refs(inner, out),
+        DamlType::Ref(reference) => {
+            out.push(path_key_of(reference));
+            // A generic target may store its arguments inline (conservative).
+            for arg in &reference.args {
+                collect_inline_refs(arg, out);
+            }
+        }
+        // Heap containers / phantom ids stop inline containment; the rest of
+        // the leaf types contain no references.
+        _ => {}
+    }
+}
+
+/// True if `from` can reach `to` through the inline-containment graph.
+fn inline_reaches(edges: &HashMap<String, Vec<String>>, from: &str, to: &str) -> bool {
+    let mut stack = vec![from];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(node) = stack.pop() {
+        if node == to {
+            return true;
+        }
+        if seen.insert(node)
+            && let Some(next) = edges.get(node)
+        {
+            stack.extend(next.iter().map(String::as_str));
+        }
+    }
+    false
+}
+
+/// Box, in place, every reference occurrence inside `ty` (at an inline
+/// position) whose target inline-reaches `holder` — i.e. every occurrence that
+/// closes a containment cycle.
+fn box_cycle_closers(ty: &mut DamlType, holder: &str, edges: &HashMap<String, Vec<String>>) {
+    match ty {
+        DamlType::Optional(inner) => box_cycle_closers(inner, holder, edges),
+        DamlType::Ref(reference) => {
+            for arg in &mut reference.args {
+                box_cycle_closers(arg, holder, edges);
+            }
+            let key = path_key_of(reference);
+            if key == holder || inline_reaches(edges, &key, holder) {
+                let inner = std::mem::replace(ty, DamlType::Unit);
+                *ty = DamlType::Boxed(Box::new(inner));
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The `Type` of a field, or an error if absent.
+fn field_type(field: &lf::FieldWithType) -> Result<&lf::Type, SkippedType> {
+    field
+        .r#type
+        .as_ref()
+        .ok_or_else(|| SkippedType::new("field without a type"))
+}
+
+/// The Rust name a lowered declaration will be emitted under.
+fn data_type_name(data_type: &DataType) -> &str {
+    match data_type {
+        DataType::Record(record) => &record.name,
+        DataType::Variant(variant) => &variant.name,
+        DataType::Enum(enumeration) => &enumeration.name,
+        DataType::InterfaceMarker(name) => name,
+    }
+}
+
+/// Resolve an interned dotted type name into a Rust-usable identifier: the Daml
+/// qualified name with `.` replaced by `_` (Daml type names are otherwise valid
+/// Rust identifiers). Definitions and references use this same mapping, so they
+/// agree. A name that is not a valid Rust identifier (LF permits characters
+/// like `$` in compiler-internal names) is a [`SkippedType`], not a panic in
+/// the emitter.
+fn rust_name(package: &lf::Package, name_interned_dname: i32) -> Result<String, SkippedType> {
+    let dotted = interned_dotted_name(package, name_interned_dname)
+        .ok_or_else(|| SkippedType::new("unresolved dotted name"))?;
+    let name = dotted.replace('.', "_");
+    if is_rust_ident(&name) {
+        Ok(name)
+    } else {
+        Err(SkippedType::new(format!(
+            "`{dotted}` is not representable as a Rust identifier"
+        )))
+    }
+}
+
+/// Reject a generic whose parameters cannot become distinct Rust generic
+/// parameters.
+///
+/// Every other naming boundary is guarded; this one was not, and
+/// `emit::type_var_ident` upper-camel-cases (`a` -> `A`), which is not
+/// injective. Daml `data Pair a A = …` produced `pub struct Pair<A, A>`, which
+/// parses — so generation reported success and wrote the file — and then failed
+/// in the user's build with E0403, having silently merged the two parameters.
+fn check_type_params(name: &str, params: &[String]) -> Result<(), SkippedType> {
+    let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
+    for param in params {
+        let ident = param.to_upper_camel_case();
+        if !is_rust_ident(&ident) {
+            return Err(SkippedType::new(format!(
+                "{name}: type parameter `{param}` is not representable as a Rust \
+                 generic parameter"
+            )));
+        }
+        if let Some(previous) = seen.insert(ident.clone(), param) {
+            return Err(SkippedType::new(format!(
+                "{name}: type parameters `{previous}` and `{param}` both map to the \
+                 Rust generic parameter `{ident}`; rename one in Daml"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Whether `name` can be emitted as a Rust identifier.
+///
+/// Everything handed to the emitter must pass this: `Ident::new` **panics** on
+/// anything else, and Daml permits names Rust does not — an apostrophe suffix
+/// (`Red'`) is ordinary Daml and Haskell. A name that fails is skipped with a
+/// reason, which is the contract this crate documents; aborting the process
+/// with a `proc_macro2` backtrace is not.
+fn is_rust_ident(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use canton_lf::Dar;
+
+    // ---- name flattening (always-on, synthetic LF) -------------------------
+    //
+    // Daml names are dotted, Rust identifiers are not. These build the minimal
+    // LF packages where that difference used to produce silently-wrong output.
+
+    /// An LF package with the given interned strings and dotted names, where
+    /// dotted name `i` is built from the single string `i` unless it contains
+    /// a `.`, in which case it is split into segments.
+    fn package_with(names: &[&str]) -> lf::Package {
+        let mut strings: Vec<String> = Vec::new();
+        let mut dotted = Vec::new();
+        for name in names {
+            let segments = name
+                .split('.')
+                .map(|segment| {
+                    strings.push(segment.to_string());
+                    i32::try_from(strings.len() - 1).unwrap()
+                })
+                .collect();
+            dotted.push(lf::InternedDottedName {
+                segments_interned_str: segments,
+            });
+        }
+        lf::Package {
+            interned_strings: strings,
+            interned_dotted_names: dotted,
+            ..lf::Package::default()
+        }
+    }
+
+    /// A serializable record data type named by dotted-name index `name`, with
+    /// one `Party` field labelled by interned-string index `label`.
+    fn record_def(name: i32, label: i32) -> lf::DefDataType {
+        lf::DefDataType {
+            name_interned_dname: name,
+            serializable: true,
+            data_cons: Some(lf::def_data_type::DataCons::Record(
+                lf::def_data_type::Fields {
+                    fields: vec![lf::FieldWithType {
+                        field_interned_str: label,
+                        r#type: Some(lf::Type {
+                            sum: Some(lf::r#type::Sum::Builtin(lf::r#type::Builtin {
+                                builtin: lf::BuiltinType::Party as i32,
+                                args: vec![],
+                            })),
+                        }),
+                    }],
+                },
+            )),
+            ..lf::DefDataType::default()
+        }
+    }
+
+    #[test]
+    fn two_daml_names_that_flatten_alike_are_skipped_not_silently_merged() {
+        // `Foo.Bar` (a data type) and `Foo_Bar` (a template) both flatten to the
+        // Rust name `Foo_Bar`. The payload fold was keyed on the flattened name,
+        // so the data type's fields silently replaced the template's — a create
+        // command with the wrong shape, and no compile error anywhere.
+        // strings: 0=Foo 1=Bar 2=Foo_Bar 3=owner 4=note ; dnames: 0=Foo.Bar 1=Foo_Bar
+        let mut package = package_with(&["Foo.Bar", "Foo_Bar"]);
+        package.interned_strings.push("owner".to_string());
+        package.interned_strings.push("note".to_string());
+        let (owner, note) = (3, 4);
+
+        package.modules.push(lf::Module {
+            name_interned_dname: 1, // reuse `Foo_Bar` as the module name
+            data_types: vec![record_def(0, note), record_def(1, owner)],
+            templates: vec![lf::DefTemplate {
+                tycon_interned_dname: 1,
+                ..lf::DefTemplate::default()
+            }],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons.iter().any(|r| r.contains("Foo.Bar")
+                && r.contains("Foo_Bar")
+                && r.contains("map to the Rust name")),
+            "the clash must be reported naming both Daml sources: {reasons:?}"
+        );
+        // Nothing under that name is emitted — better no bindings than bindings
+        // that submit the wrong payload.
+        let emitted: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .flat_map(|m| m.module.templates.iter().map(|t| t.name.as_str()))
+            .collect();
+        assert!(!emitted.contains(&"Foo_Bar"), "emitted: {emitted:?}");
+    }
+
+    /// A package carrying just the metadata `package_module_names` reads.
+    fn named_package(name: &str, version: Option<&str>) -> lf::Package {
+        lf::Package {
+            interned_strings: vec![name.to_string(), version.unwrap_or_default().to_string()],
+            metadata: Some(lf::PackageMetadata {
+                name_interned_str: 0,
+                version_interned_str: 1,
+                upgraded_package_id: None,
+            }),
+            ..lf::Package::default()
+        }
+    }
+
+    fn module_names(packages: &[(&str, lf::Package)]) -> Vec<String> {
+        let owned: Vec<(String, lf::Package)> = packages
+            .iter()
+            .map(|(id, package)| ((*id).to_string(), package.clone()))
+            .collect();
+        let names = package_module_names(&owned);
+        // Report in the caller's order, not the map's.
+        owned
+            .iter()
+            .map(|(id, _)| names[id.as_str()].clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_package_module_is_named_after_the_package_alone() {
+        // The DAR's own version is not in the path: bumping the package must not
+        // rename every type a consumer imports. See docs/scu-regeneration.md.
+        assert_eq!(
+            module_names(&[
+                ("aaa", named_package("quickstart-licensing", Some("0.0.1"))),
+                ("bbb", named_package("splice-amulet", Some("0.1.14"))),
+            ]),
+            ["quickstart_licensing", "splice_amulet"],
+        );
+    }
+
+    #[test]
+    fn two_versions_of_one_package_are_separated_by_version() {
+        // The SCU shape: one DAR bundling v1 and v2 of the same package. Both
+        // must be reachable, so here — and only here — the version is the
+        // disambiguator.
+        assert_eq!(
+            module_names(&[
+                ("aaa", named_package("my-app", Some("1.0.0"))),
+                ("bbb", named_package("my-app", Some("2.0.0"))),
+                ("ccc", named_package("other", Some("1.0.0"))),
+            ]),
+            ["my_app_1_0_0", "my_app_2_0_0", "other"],
+        );
+    }
+
+    #[test]
+    fn packages_alike_down_to_the_version_fall_back_to_the_id() {
+        // A rebuilt package keeps its metadata but gets a new id; and several
+        // real packages (daml-prim, …) carry `version: ""`, which would collapse
+        // them all onto one name if it were used as a suffix.
+        assert_eq!(
+            module_names(&[
+                ("aaaaaaaaaaaa", named_package("my-app", Some("1.0.0"))),
+                ("bbbbbbbbbbbb", named_package("my-app", Some("1.0.0"))),
+                ("cccccccccccc", named_package("no-version", Some(""))),
+                ("dddddddddddd", named_package("no-version", None)),
+                ("eeeeeeeeeeee", lf::Package::default()),
+            ]),
+            [
+                "my_app_1_0_0_aaaaaaaa",
+                "my_app_1_0_0_bbbbbbbb",
+                "no_version_cccccccc",
+                "no_version_dddddddd",
+                "p_eeeeeeee",
+            ],
+        );
+    }
+
+    #[test]
+    fn ids_sharing_a_prefix_still_get_distinct_module_names() {
+        // Two package ids agreeing on their first 8 identifier-safe characters
+        // would have collided after the last disambiguation step, and the crate
+        // would have failed to compile with E0428 instead of naming the cause.
+        let names = module_names(&[
+            ("aaaaaaaa1111", named_package("my-app", Some("1.0.0"))),
+            ("aaaaaaaa2222", named_package("my-app", Some("1.0.0"))),
+        ]);
+        assert_eq!(names.len(), 2);
+        assert_ne!(names[0], names[1], "{names:?}");
+        assert!(
+            names.iter().all(|n| n.starts_with("my_app_1_0_0_")),
+            "{names:?}"
+        );
+    }
+
+    #[test]
+    fn a_non_serializable_claimant_does_not_take_a_real_type_down() {
+        // The Rust-name clash was computed over the raw LF, before lowering
+        // decides what is emitted. A non-serializable data type is dropped, so
+        // counting its flattened name refused the serializable type it "clashed"
+        // with — and, through the dangling-reference pass, everything using it.
+        let mut package = package_with(&["Mod", "Handler.OnEvent", "Handler_OnEvent"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        let mut ghost = record_def(1, owner);
+        ghost.serializable = false;
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![ghost, record_def(2, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(skipped.is_empty(), "nothing collides: {skipped:?}");
+        let emitted: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(emitted, ["Handler_OnEvent"]);
+    }
+
+    #[test]
+    fn a_module_that_emits_nothing_does_not_block_one_that_does() {
+        // Same shape one level up: a Daml module of pure functions lowers to no
+        // items and is never pushed as a `pub mod`, so it cannot collide — but
+        // it was counted, and both modules were refused.
+        let mut package = package_with(&["Util.Text", "Util_Text"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0, // Util.Text — functions only
+            ..lf::Module::default()
+        });
+        package.modules.push(lf::Module {
+            name_interned_dname: 1, // Util_Text — a real record
+            data_types: vec![record_def(1, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(skipped.is_empty(), "nothing collides: {skipped:?}");
+        let modules: Vec<&str> = krate.packages[0]
+            .modules
+            .iter()
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(modules, ["Util_Text"]);
+    }
+
+    #[test]
+    fn two_type_parameters_that_upper_camel_alike_are_skipped() {
+        // `emit::type_var_ident` upper-camel-cases, which is not injective:
+        // `data Pair a A` emitted `pub struct Pair<A, A>`. That parses, so
+        // generation reported success and the user's build failed with E0403.
+        let mut package = package_with(&["Mod", "Pair"]);
+        let base = i32::try_from(package.interned_strings.len()).unwrap();
+        package.interned_strings.push("a".to_string());
+        package.interned_strings.push("A".to_string());
+        let mut pair = record_def(1, base);
+        pair.params = vec![
+            lf::TypeVarWithKind {
+                var_interned_str: base,
+                kind: None,
+            },
+            lf::TypeVarWithKind {
+                var_interned_str: base + 1,
+                kind: None,
+            },
+        ];
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![pair],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("Rust generic parameter `A`")),
+            "{skipped:?}"
+        );
+        assert!(krate.packages.is_empty(), "nothing emitted");
+    }
+
+    #[test]
+    fn the_same_package_id_twice_yields_one_module() {
+        // The name map is keyed by id, so it cannot see a duplicate in the input
+        // slice: both entries got the same name and the crate failed with E0428.
+        let mut package = package_with(&["Mod", "T"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(1, owner)],
+            ..lf::Module::default()
+        });
+
+        let (krate, _) = lower_crate(&[
+            ("aa".to_string(), package.clone()),
+            ("aa".to_string(), package),
+        ]);
+        let names: Vec<&str> = krate.packages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names.len(), 1, "{names:?}");
+    }
+
+    #[test]
+    fn two_module_names_that_flatten_alike_are_skipped() {
+        // `A.B` and `A_B` would both become `pub mod A_B` — E0428 in the crate
+        // we hand the user, reported as a successful generation.
+        let mut package = package_with(&["A.B", "A_B", "T"]);
+        package.interned_strings.push("owner".to_string());
+        let owner = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        for name in [0, 1] {
+            package.modules.push(lf::Module {
+                name_interned_dname: name,
+                data_types: vec![record_def(2, owner)],
+                ..lf::Module::default()
+            });
+        }
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("map to the Rust module")),
+            "{skipped:?}"
+        );
+        let modules: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| p.modules.iter().map(|m| m.name.as_str()))
+            .collect();
+        assert!(modules.is_empty(), "no module may be emitted: {modules:?}");
+    }
+
+    #[test]
+    fn an_optional_passed_to_a_generic_that_nests_it_is_refused_not_mis_encoded() {
+        // `Wrap a = { value : Optional a }` puts its parameter under an
+        // Optional, so `Wrap (Optional Text)` is a nested optional on the wire
+        // and needs the LF-JSON list form — which the structural mapping cannot
+        // see through a type parameter. Refuse it rather than emit
+        // `Option<Option<String>>`, which serializes the inner layer as `null`.
+        let reference = |name: &str, args: Vec<DamlType>| {
+            DamlType::Ref(TypeRef {
+                path: vec![
+                    "crate".to_string(),
+                    "pkg_1_0_0".to_string(),
+                    "Mod".to_string(),
+                    name.to_string(),
+                ],
+                args,
+            })
+        };
+        let field = |label: &str, ty: DamlType| Field {
+            label: label.to_string(),
+            ty,
+        };
+        let module = |data_types: Vec<DataType>| Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        ..Module::default()
+                    },
+                }],
+            }],
+        };
+
+        // The generic that nests its parameter, plus a user of it.
+        let wrap_nesting = DataType::Record(Record {
+            name: "Wrap".to_string(),
+            type_params: vec!["a".to_string()],
+            fields: vec![field(
+                "value",
+                DamlType::Optional(Box::new(DamlType::Var("a".to_string()))),
+            )],
+        });
+        let user = |arg: DamlType| {
+            DataType::Record(Record {
+                name: "User".to_string(),
+                type_params: vec![],
+                fields: vec![field("w", reference("Wrap", vec![arg]))],
+            })
+        };
+
+        let mut krate = module(vec![
+            wrap_nesting.clone(),
+            user(DamlType::Optional(Box::new(DamlType::Text))),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "{errors:?}"
+        );
+        let names: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(names, ["Wrap"], "only the ambiguous user is dropped");
+
+        // A non-Optional argument is unaffected…
+        let mut fine = module(vec![wrap_nesting, user(DamlType::Text)]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut fine, &mut errors);
+        assert!(errors.is_empty(), "{errors:?}");
+
+        // …and so is an Optional argument to a generic that does *not* nest it
+        // (there the top-level `null`/value form is the correct one).
+        let wrap_plain = DataType::Record(Record {
+            name: "Wrap".to_string(),
+            type_params: vec!["a".to_string()],
+            fields: vec![field("value", DamlType::Var("a".to_string()))],
+        });
+        let mut plain = module(vec![
+            wrap_plain,
+            user(DamlType::Optional(Box::new(DamlType::Text))),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut plain, &mut errors);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(plain.packages[0].modules[0].module.data_types.len(), 2);
+    }
+
+    #[test]
+    fn nesting_introduced_through_an_intermediate_generic_is_still_refused() {
+        // `Outer` has no `Optional` of its own, so a one-level analysis clears
+        // it — but `Outer (Optional Text)` reaches `Wrap`'s `Optional a` all the
+        // same, and the emitted `Option<Option<String>>` would put `null` on the
+        // wire where the ledger expects `[]`.
+        //
+        //   Wrap a  = { value : Optional a }
+        //   Outer a = { inner : Wrap a }
+        //   User    = { o : Outer (Optional Text) }
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["a"], vec![("value", optional(var("a")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![("inner", reference("Wrap", vec![var("a")]))],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "the transitive nesting must be refused, not mis-encoded: {errors:?}"
+        );
+        let names: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(
+            names,
+            ["Wrap", "Outer"],
+            "only the instantiation site is dropped"
+        );
+    }
+
+    #[test]
+    fn mutually_recursive_generics_reach_a_fixpoint() {
+        // Neither declaration alone shows the nesting, and each depends on the
+        // other, so a worklist that visits declarations once in either order
+        // gets a different answer than the one that runs to fixpoint. It must
+        // also terminate.
+        //
+        //   Ping a = { p : Optional a }
+        //   Pong a = { q : Ping a, r : Optional (Pong a) }
+        let mut krate = generics_module(vec![
+            generic_record("Ping", &["a"], vec![("p", optional(var("a")))]),
+            generic_record(
+                "Pong",
+                &["a"],
+                vec![
+                    ("q", reference("Ping", vec![var("a")])),
+                    ("r", optional(reference("Pong", vec![var("a")]))),
+                ],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Pong", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "{errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_container_between_the_two_optionals_is_not_a_nested_optional() {
+        // `Optional [a]` at `a = Optional Text` is `Optional (List (Optional
+        // Text))`. The list form exists to tell an inner `None` from an outer
+        // one; a list element boundary already does that, so the inner Optional
+        // keeps the plain `null`/value form and `Option<Vec<Option<String>>>`
+        // is correct. Refusing it would reject code the emitter handles — and
+        // `map.rs` agrees, since `nested_optional_inner` stops at the container
+        // too.
+        for container in [
+            DamlType::List(Box::new(var("a"))),
+            DamlType::TextMap(Box::new(var("a"))),
+            DamlType::GenMap(Box::new(DamlType::Text), Box::new(var("a"))),
+        ] {
+            let mut krate = generics_module(vec![
+                generic_record("Wrap", &["a"], vec![("value", optional(container))]),
+                generic_record(
+                    "User",
+                    &[],
+                    vec![("w", reference("Wrap", vec![optional(DamlType::Text)]))],
+                ),
+            ]);
+            let mut errors = Vec::new();
+            drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+            assert!(errors.is_empty(), "must not be refused: {errors:?}");
+            assert_eq!(krate.packages[0].modules[0].module.data_types.len(), 2);
+        }
+    }
+
+    #[test]
+    fn dropping_an_interface_keeps_its_marker_reachable() {
+        // An interface and its marker `struct` share a path key. When the
+        // interface goes (its view type was unrepresentable) the marker stays
+        // and is still emitted, so a template holding a `ContractId<Iface>`
+        // must survive too — dropping it would blame a type the crate emits.
+        let mut krate = Crate {
+            packages: vec![PackageModule {
+                name: "pkg".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types: vec![DataType::InterfaceMarker("Holding".to_string())],
+                        templates: vec![Template {
+                            name: "Vault".to_string(),
+                            module_name: "Mod".to_string(),
+                            package_id: "id".to_string(),
+                            package_name: "pkg".to_string(),
+                            fields: vec![Field {
+                                label: "held".to_string(),
+                                ty: DamlType::ContractId(Box::new(reference("Holding", vec![]))),
+                            }],
+                            choices: vec![],
+                            key: None,
+                        }],
+                        interfaces: vec![Interface {
+                            name: "Holding".to_string(),
+                            module_name: "Mod".to_string(),
+                            package_id: "id".to_string(),
+                            package_name: "pkg".to_string(),
+                            // The view type was skipped by an earlier pass.
+                            view: Some(reference("HoldingView", vec![])),
+                            choices: vec![],
+                        }],
+                    },
+                }],
+            }],
+        };
+
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+
+        let module = &krate.packages[0].modules[0].module;
+        assert!(module.interfaces.is_empty(), "the interface itself must go");
+        assert_eq!(
+            module.data_types.len(),
+            1,
+            "the marker is still emitted: {:?}",
+            module
+                .data_types
+                .iter()
+                .map(data_type_name)
+                .collect::<Vec<_>>()
+        );
+        let templates: Vec<&str> = module.templates.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(
+            templates,
+            ["Vault"],
+            "a ContractId of the marker still resolves; reasons: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_contract_id_type_argument_is_not_a_value_position() {
+        // `ContractId<T>` is a tagged string: the tag never reaches either
+        // wire, so nothing under a `ContractId` can be a nested optional.
+        // Refusing here would drop a declaration that encodes perfectly.
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["a"], vec![("value", optional(var("a")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![(
+                    "c",
+                    DamlType::ContractId(Box::new(reference("Wrap", vec![var("a")]))),
+                )],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(errors.is_empty(), "must not be refused: {errors:?}");
+        assert_eq!(krate.packages[0].modules[0].module.data_types.len(), 3);
+    }
+
+    #[test]
+    fn a_parameter_handed_on_inside_a_container_does_not_propagate() {
+        // `Outer a = { inner : Wrap [a] }` instantiates `Wrap`'s parameter at
+        // `[a]`, not at `a`, so `Wrap`'s `Optional b` becomes `Optional [a]` —
+        // a container between the two Optionals again. Propagating the flag
+        // through the container would be a false refusal.
+        let mut krate = generics_module(vec![
+            generic_record("Wrap", &["b"], vec![("value", optional(var("b")))]),
+            generic_record(
+                "Outer",
+                &["a"],
+                vec![(
+                    "inner",
+                    reference("Wrap", vec![DamlType::List(Box::new(var("a")))]),
+                )],
+            ),
+            generic_record(
+                "User",
+                &[],
+                vec![("o", reference("Outer", vec![optional(DamlType::Text)]))],
+            ),
+        ]);
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(errors.is_empty(), "must not be refused: {errors:?}");
+    }
+
+    // Builders for the nested-Optional tests above.
+    fn var(name: &str) -> DamlType {
+        DamlType::Var(name.to_string())
+    }
+
+    fn optional(ty: DamlType) -> DamlType {
+        DamlType::Optional(Box::new(ty))
+    }
+
+    fn reference(name: &str, args: Vec<DamlType>) -> DamlType {
+        DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg".to_string(),
+                "Mod".to_string(),
+                name.to_string(),
+            ],
+            args,
+        })
+    }
+
+    fn generic_record(name: &str, params: &[&str], fields: Vec<(&str, DamlType)>) -> DataType {
+        DataType::Record(Record {
+            name: name.to_string(),
+            type_params: params.iter().map(|p| (*p).to_string()).collect(),
+            fields: fields
+                .into_iter()
+                .map(|(label, ty)| Field {
+                    label: label.to_string(),
+                    ty,
+                })
+                .collect(),
+        })
+    }
+
+    fn generics_module(data_types: Vec<DataType>) -> Crate {
+        Crate {
+            packages: vec![PackageModule {
+                name: "pkg".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        ..Module::default()
+                    },
+                }],
+            }],
+        }
+    }
+
+    /// The two post-lowering passes each walk every declaration kind. They were
+    /// written one kind at a time and both missed one — the dangling-reference
+    /// pass judged interfaces only by their marker, and the nested-Optional
+    /// pass never looked at templates, whose payload is folded into
+    /// `Template.fields` and so never appears in `data_types` at all.
+    #[test]
+    fn both_post_lowering_passes_cover_templates_and_interfaces() {
+        let reference = |name: &str, args: Vec<DamlType>| {
+            DamlType::Ref(TypeRef {
+                path: vec![
+                    "crate".to_string(),
+                    "pkg_1_0_0".to_string(),
+                    "Mod".to_string(),
+                    name.to_string(),
+                ],
+                args,
+            })
+        };
+        let module_of = |data_types: Vec<DataType>,
+                         templates: Vec<Template>,
+                         interfaces: Vec<Interface>| Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        templates,
+                        interfaces,
+                    },
+                }],
+            }],
+        };
+        let choice = |ty: DamlType| Choice {
+            name: "Do".to_string(),
+            consuming: true,
+            argument: DamlType::Unit,
+            returns: ty,
+        };
+        let template_of = |name: &str, field: DamlType| Template {
+            name: name.to_string(),
+            module_name: "Mod".to_string(),
+            package_id: "aa".to_string(),
+            package_name: "pkg".to_string(),
+            fields: vec![Field {
+                label: "x".to_string(),
+                ty: field,
+            }],
+            choices: vec![],
+            key: None,
+        };
+
+        // (1) An interface whose choice returns a skipped type used to survive,
+        // emitting `type Return = crate::…::Bad` and failing the user's build
+        // with E0425 — the very error the pass exists to prevent.
+        let mut krate = module_of(
+            vec![DataType::InterfaceMarker("Iface".to_string())],
+            vec![],
+            vec![Interface {
+                name: "Iface".to_string(),
+                module_name: "Mod".to_string(),
+                package_id: "aa".to_string(),
+                package_name: "pkg".to_string(),
+                view: None,
+                choices: vec![choice(reference("Bad", vec![]))], // `Bad` was skipped
+            }],
+        );
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("`Iface` references `Bad`")),
+            "an interface dangles like anything else: {errors:?}"
+        );
+        assert!(
+            krate.packages.is_empty() || krate.packages[0].modules[0].module.interfaces.is_empty(),
+            "the interface must not be emitted"
+        );
+
+        // (2) The same ambiguous instantiation inside a *template payload* used
+        // to be emitted, serialising the inner Optional as `null` where LF-JSON
+        // requires `[]`.
+        let wrap = DataType::Record(Record {
+            name: "Wrap".to_string(),
+            type_params: vec!["a".to_string()],
+            fields: vec![Field {
+                label: "value".to_string(),
+                ty: DamlType::Optional(Box::new(DamlType::Var("a".to_string()))),
+            }],
+        });
+        let mut krate = module_of(
+            vec![wrap],
+            vec![template_of(
+                "Tpl",
+                reference("Wrap", vec![DamlType::Optional(Box::new(DamlType::Text))]),
+            )],
+            vec![],
+        );
+        let mut errors = Vec::new();
+        drop_ambiguous_nested_optionals(&mut krate, &mut errors);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.to_string().contains("not yet representable")),
+            "a template payload is an instantiation site too: {errors:?}"
+        );
+        assert!(
+            krate.packages[0].modules[0].module.templates.is_empty(),
+            "the template must not be emitted"
+        );
+    }
+
+    #[test]
+    fn a_type_referencing_a_skipped_type_is_dropped_transitively() {
+        // `Bad` is unrepresentable and skipped; `Good` has a field of type
+        // `Bad`, and `Worse` a field of type `Good`. Emitting either leaves
+        // `crate::…::Bad` dangling and the user's crate fails with E0425, with
+        // nothing tying that to the warning — so both must go too.
+        let path = |name: &str| {
+            DamlType::Ref(TypeRef {
+                path: vec![
+                    "crate".to_string(),
+                    "pkg_1_0_0".to_string(),
+                    "Mod".to_string(),
+                    name.to_string(),
+                ],
+                args: vec![],
+            })
+        };
+        let record = |name: &str, field: DamlType| {
+            DataType::Record(Record {
+                name: name.to_string(),
+                type_params: vec![],
+                fields: vec![Field {
+                    label: "x".to_string(),
+                    ty: field,
+                }],
+            })
+        };
+        let mut krate = Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        // `Bad` is absent — as if lowering had skipped it.
+                        data_types: vec![
+                            record("Good", path("Bad")),
+                            record("Worse", path("Good")),
+                            record("Fine", DamlType::Text),
+                        ],
+                        ..Module::default()
+                    },
+                }],
+            }],
+        };
+
+        let mut errors = Vec::new();
+        drop_dangling_references(&mut krate, &mut errors);
+
+        let surviving: Vec<&str> = krate.packages[0].modules[0]
+            .module
+            .data_types
+            .iter()
+            .map(data_type_name)
+            .collect();
+        assert_eq!(surviving, ["Fine"], "only the self-contained type survives");
+
+        let reasons: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("`Good` references `Bad`")),
+            "{reasons:?}"
+        );
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("`Worse` references `Good`")),
+            "the drop must cascade: {reasons:?}"
+        );
+    }
+
+    #[test]
+    fn a_daml_name_rust_cannot_spell_is_skipped_not_panicked_on() {
+        // `Red'` is ordinary Daml and Haskell. Only *type* names were checked,
+        // so a module or constructor carrying an apostrophe reached
+        // `Ident::new` and aborted the CLI with a proc_macro2 panic instead of
+        // the skip-with-a-reason this crate promises.
+        assert!(is_rust_ident("Red"));
+        assert!(is_rust_ident("_x9"));
+        for bad in ["Red'", "", "9lives", "naïve", "a-b", "A.B"] {
+            assert!(!is_rust_ident(bad), "{bad:?} is not a Rust identifier");
+        }
+
+        // An enum constructor Rust cannot spell skips its declaration.
+        // strings: 0=Colour 1=Red' ; dnames: 0=Colour
+        let mut package = package_with(&["Colour"]);
+        package.interned_strings.push("Red'".to_string());
+        let constructor = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.modules.push(lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![lf::DefDataType {
+                name_interned_dname: 0,
+                serializable: true,
+                data_cons: Some(lf::def_data_type::DataCons::Enum(
+                    lf::def_data_type::EnumConstructors {
+                        constructors_interned_str: vec![constructor],
+                    },
+                )),
+                ..lf::DefDataType::default()
+            }],
+            ..lf::Module::default()
+        });
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped
+                .iter()
+                .any(|s| s.to_string().contains("enum constructor `Red'`")),
+            "{skipped:?}"
+        );
+        assert!(krate.packages.is_empty(), "nothing may be emitted");
+    }
+
+    #[test]
+    fn the_collision_suffix_is_never_empty() {
+        // Two metadata-less packages whose ids share no ASCII alphanumerics both
+        // derived `p_`, and the de-collision suffix was empty — two `pub mod p__`.
+        assert_ne!(ident_prefix("€€€€"), ident_prefix("£££££"));
+        assert!(!ident_prefix("€€€€").is_empty());
+        assert_eq!(ident_prefix("aabbccddee"), "aabbccdd");
+    }
+
+    // ---- recursion breaking (always-on, pure IR) ---------------------------
+
+    fn qualified(name: &str) -> DamlType {
+        DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg_1_0_0".to_string(),
+                "Mod".to_string(),
+                name.to_string(),
+            ],
+            args: vec![],
+        })
+    }
+
+    fn record(name: &str, fields: Vec<(&str, DamlType)>) -> DataType {
+        DataType::Record(Record {
+            name: name.to_string(),
+            type_params: vec![],
+            fields: fields
+                .into_iter()
+                .map(|(label, ty)| Field {
+                    label: label.to_string(),
+                    ty,
+                })
+                .collect(),
+        })
+    }
+
+    fn crate_of(data_types: Vec<DataType>) -> Crate {
+        Crate {
+            packages: vec![PackageModule {
+                name: "pkg_1_0_0".to_string(),
+                modules: vec![NamedModule {
+                    name: "Mod".to_string(),
+                    module: Module {
+                        data_types,
+                        ..Module::default()
+                    },
+                }],
+            }],
+        }
+    }
+
+    fn field_ty(krate: &Crate, type_index: usize, field_index: usize) -> &DamlType {
+        match &krate.packages[0].modules[0].module.data_types[type_index] {
+            DataType::Record(record) => &record.fields[field_index].ty,
+            other => panic!("expected a record, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optional_self_recursion_is_boxed() {
+        // data Tree = Node { left : Optional Tree } — `Option<Tree>` stores the
+        // payload inline, so without a Box the generated struct is E0072.
+        let mut krate = crate_of(vec![record(
+            "Tree",
+            vec![
+                ("left", DamlType::Optional(Box::new(qualified("Tree")))),
+                ("size", DamlType::Int64),
+            ],
+        )]);
+        box_recursion(&mut krate);
+        assert_eq!(
+            field_ty(&krate, 0, 0),
+            &DamlType::Optional(Box::new(DamlType::Boxed(Box::new(qualified("Tree"))))),
+        );
+        // Non-recursive fields are untouched.
+        assert_eq!(field_ty(&krate, 0, 1), &DamlType::Int64);
+    }
+
+    #[test]
+    fn mutual_recursion_is_boxed() {
+        // data A = A { b : B }; data B = B { a : Optional A } — the cycle is
+        // A → B → A; every occurrence that closes it must be boxed.
+        let mut krate = crate_of(vec![
+            record("A", vec![("b", qualified("B"))]),
+            record(
+                "B",
+                vec![("a", DamlType::Optional(Box::new(qualified("A"))))],
+            ),
+        ]);
+        box_recursion(&mut krate);
+        assert_eq!(
+            field_ty(&krate, 0, 0),
+            &DamlType::Boxed(Box::new(qualified("B")))
+        );
+        assert_eq!(
+            field_ty(&krate, 1, 0),
+            &DamlType::Optional(Box::new(DamlType::Boxed(Box::new(qualified("A"))))),
+        );
+    }
+
+    #[test]
+    fn generic_instantiation_recursion_is_boxed() {
+        // data T = T { w : Wrap T } — Wrap may store its parameter inline, so
+        // the argument occurrence is (conservatively) boxed: Wrap<Box<T>>.
+        let wrap_of_t = DamlType::Ref(TypeRef {
+            path: vec![
+                "crate".to_string(),
+                "pkg_1_0_0".to_string(),
+                "Mod".to_string(),
+                "Wrap".to_string(),
+            ],
+            args: vec![qualified("T")],
+        });
+        let mut krate = crate_of(vec![
+            DataType::Record(Record {
+                name: "Wrap".to_string(),
+                type_params: vec!["a".to_string()],
+                fields: vec![Field {
+                    label: "w".to_string(),
+                    ty: DamlType::Var("a".to_string()),
+                }],
+            }),
+            record("T", vec![("w", wrap_of_t)]),
+        ]);
+        box_recursion(&mut krate);
+        let DamlType::Ref(reference) = field_ty(&krate, 1, 0) else {
+            panic!("outer Wrap reference must stay a Ref");
+        };
+        assert_eq!(
+            reference.args[0],
+            DamlType::Boxed(Box::new(qualified("T"))),
+            "the recursive argument occurrence is boxed"
+        );
+    }
+
+    #[test]
+    fn heap_containers_already_break_cycles() {
+        // Vec/TextMap/GenMap heap-allocate; recursion through them needs no Box.
+        let mut krate = crate_of(vec![record(
+            "Tree",
+            vec![
+                ("children", DamlType::List(Box::new(qualified("Tree")))),
+                ("index", DamlType::TextMap(Box::new(qualified("Tree")))),
+            ],
+        )]);
+        let before = krate.clone();
+        box_recursion(&mut krate);
+        assert_eq!(krate, before, "heap-indirected recursion is left alone");
+    }
+
+    #[test]
+    fn lowers_a_real_dar_to_a_qualified_crate() {
+        // Env-gated: point at a real .dar (e.g. one from cn-quickstart).
+        let Ok(path) = std::env::var("CANTON_TEST_DAR") else {
+            eprintln!("skipping lower test: set CANTON_TEST_DAR=/path/to/x.dar");
+            return;
+        };
+
+        let dar = Dar::open(&path).expect("open DAR");
+        let (krate, errors) = lower_dar(&dar).expect("decode + lower DAR");
+
+        assert!(
+            !krate.packages.is_empty(),
+            "a DAR should lower at least one package"
+        );
+
+        // Every reference must resolve to a package present in the DAR closure —
+        // if the imported-package-id interning were wrong, this would surface as
+        // a "reference to package … not in the DAR" error.
+        let unresolved: Vec<&SkippedType> = errors
+            .iter()
+            .filter(|error| error.reason().contains("not in the DAR"))
+            .collect();
+        assert!(
+            unresolved.is_empty(),
+            "every cross-package reference should resolve: {unresolved:?}"
+        );
+
+        // The lowered IR generates syntactically valid Rust end to end.
+        let src = crate::generate_crate(&krate).expect("generate crate");
+        syn::parse_file(&src).expect("generated source must be valid Rust");
+
+        let modules: usize = krate.packages.iter().map(|p| p.modules.len()).sum();
+        let types: usize = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .map(|m| m.module.data_types.len())
+            .sum();
+        println!(
+            "lowered {} packages / {modules} modules / {types} data types → {} bytes of Rust ({} skipped)",
+            krate.packages.len(),
+            src.len(),
+            errors.len(),
+        );
+    }
+
+    /// An interned type that resolves to itself. prost cannot object: the
+    /// interned table is a flat list of indices, not nested messages, so
+    /// nothing about the archive is malformed until something follows the
+    /// index. Following it used to recurse until the stack ended, and a stack
+    /// overflow aborts the process — the DAR does not fail, the caller dies.
+    ///
+    /// A `.dalf` like this is not something `daml build` emits; it is something
+    /// a person writes. The archive-integrity guards do not help, because the
+    /// package id is the hash of whatever payload the author chose.
+    #[test]
+    fn an_interned_type_cycle_is_refused_instead_of_overflowing_the_stack() {
+        let mut package = package_with(&["M.T"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        // interned_types[0] = Interned(0)
+        package.interned_types = vec![lf::Type {
+            sum: Some(lf::r#type::Sum::Interned(0)),
+        }];
+        let mut def = record_def(0, label);
+        if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
+            fields.fields[0].r#type = Some(lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            });
+        }
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![def],
+            ..lf::Module::default()
+        }];
+
+        // Reaching this line at all is the assertion: before the depth bound
+        // the process aborted here with SIGABRT.
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped.iter().any(|s| s.to_string().contains("cycle")),
+            "should be reported as a skipped type: {skipped:?}"
+        );
+        // And the type it defeated is not emitted half-formed.
+        let emitted: usize = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .map(|m| m.module.data_types.len())
+            .sum();
+        assert_eq!(
+            emitted, 0,
+            "a type that could not be resolved is not emitted"
+        );
+    }
+
+    /// Two interned types pointing at each other — the same defect one step
+    /// removed, and the shape a counter that only watched the direct
+    /// `Interned` arm would miss.
+    #[test]
+    fn an_indirect_interned_cycle_is_refused_too() {
+        let mut package = package_with(&["M.T"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.interned_types = vec![
+            lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(1)),
+            },
+            lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            },
+        ];
+        let mut def = record_def(0, label);
+        if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
+            fields.fields[0].r#type = Some(lf::Type {
+                sum: Some(lf::r#type::Sum::Interned(0)),
+            });
+        }
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![def],
+            ..lf::Module::default()
+        }];
+
+        let (_krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        assert!(
+            skipped.iter().any(|s| s.to_string().contains("cycle")),
+            "{skipped:?}"
+        );
+    }
+    /// Two declarations under one name, where that name is also a template's.
+    ///
+    /// The flattening collision check cannot see this: it groups *distinct*
+    /// dotted names that collide once `.` becomes `_`, and a duplicate is the
+    /// same name, not a distinct one. So nothing was reported, both records
+    /// were folded into the payload map, and the last writer won — the template
+    /// came out carrying another type's fields. That is the exact outcome the
+    /// collision check's own comment says it exists to prevent: wrong commands,
+    /// and it compiles.
+    #[test]
+    fn a_name_declared_twice_is_refused_rather_than_silently_resolved() {
+        let mut package = package_with(&["M", "T"]);
+        package.interned_strings.push("a".to_string());
+        let a = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        package.interned_strings.push("b".to_string());
+        let b = i32::try_from(package.interned_strings.len() - 1).unwrap();
+
+        package.modules = vec![lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(1, a), record_def(1, b)],
+            templates: vec![lf::DefTemplate {
+                tycon_interned_dname: 1,
+                ..lf::DefTemplate::default()
+            }],
+            ..lf::Module::default()
+        }];
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("declared more than once")),
+            "the duplicate must be reported: {reasons:?}"
+        );
+        // And no template is emitted carrying a payload it cannot be sure of.
+        let templates: Vec<&str> = krate
+            .packages
+            .iter()
+            .flat_map(|p| &p.modules)
+            .flat_map(|m| &m.module.templates)
+            .flat_map(|t| t.fields.iter().map(|f| f.label.as_str()))
+            .collect();
+        assert!(
+            templates.is_empty() || templates == ["a"],
+            "a template must not silently take the second declaration's fields: {templates:?}"
+        );
+    }
+
+    /// The same one level up: two modules under one dotted name emit `pub mod M`
+    /// twice, which is E0428 in the crate handed to the user — reported as a
+    /// successful generation, because `syn::parse_file` accepts duplicate items.
+    #[test]
+    fn a_module_declared_twice_is_refused() {
+        let mut package = package_with(&["M"]);
+        package.interned_strings.push("f".to_string());
+        let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
+        let module = lf::Module {
+            name_interned_dname: 0,
+            data_types: vec![record_def(0, label)],
+            ..lf::Module::default()
+        };
+        package.modules = vec![module.clone(), module];
+
+        let (krate, skipped) = lower_crate(&[("aa".to_string(), package)]);
+        let reasons: Vec<String> = skipped.iter().map(ToString::to_string).collect();
+        assert!(
+            reasons
+                .iter()
+                .any(|r| r.contains("declared more than once")),
+            "{reasons:?}"
+        );
+        let modules: usize = krate.packages.iter().map(|p| p.modules.len()).sum();
+        assert_eq!(modules, 1, "only one module may be emitted");
+    }
+}

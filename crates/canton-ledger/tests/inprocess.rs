@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use canton_auth::{OidcConfig, TokenProvider};
-use canton_ledger::{CantonClient, Config, RetryConfig};
+use canton_ledger::{AcsEntry, CantonClient, ChangeId, Config, RetryConfig};
 use canton_proto::com::daml::ledger::api::v2 as pb;
 use pb::update_service_server::{UpdateService, UpdateServiceServer};
 use pb::version_service_server::{VersionService, VersionServiceServer};
@@ -598,4 +598,767 @@ async fn resumable_acs_resumes_from_the_last_page_token() {
         vec![b"".to_vec(), b"t1".to_vec(), b"t1".to_vec()],
         "the retry must resume from the last continuation token, not restart"
     );
+}
+
+// ---- gRPC: the resumable stream honours checkpoints and keeps the cause -----
+
+fn checkpoint_update(offset: i64) -> pb::GetUpdatesResponse {
+    pb::GetUpdatesResponse {
+        update: Some(pb::get_updates_response::Update::OffsetCheckpoint(
+            pb::OffsetCheckpoint {
+                offset,
+                synchronizer_times: Vec::new(),
+            },
+        )),
+    }
+}
+
+/// `UpdateService` whose first stream carries nothing but a checkpoint at
+/// offset 10 before dropping with `Unavailable`. A client that tracks only the
+/// updates it yielded has no position to resume from and restarts at 0 — which
+/// after pruning the participant can refuse outright.
+#[derive(Clone, Default)]
+struct CheckpointThenDrop {
+    calls: Arc<AtomicUsize>,
+    begins: Arc<Mutex<Vec<i64>>>,
+}
+
+#[tonic::async_trait]
+impl UpdateService for CheckpointThenDrop {
+    type GetUpdatesStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::GetUpdatesResponse, Status>> + Send>>;
+
+    async fn get_updates(
+        &self,
+        request: Request<pb::GetUpdatesRequest>,
+    ) -> Result<Response<Self::GetUpdatesStream>, Status> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
+        self.begins
+            .lock()
+            .unwrap()
+            .push(request.into_inner().begin_exclusive);
+        let items: Vec<Result<pb::GetUpdatesResponse, Status>> = if call == 1 {
+            vec![
+                Ok(checkpoint_update(10)),
+                Err(Status::unavailable("connection dropped")),
+            ]
+        } else {
+            vec![Ok(tx_update(11))]
+        };
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+
+    async fn get_update_by_offset(
+        &self,
+        _r: Request<pb::GetUpdateByOffsetRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_id(
+        &self,
+        _r: Request<pb::GetUpdateByIdRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_hash(
+        &self,
+        _r: Request<pb::GetUpdateByHashRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_updates_page(
+        &self,
+        _r: Request<pb::GetUpdatesPageRequest>,
+    ) -> Result<Response<pb::GetUpdatesPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_updates<S>(service: S) -> u16
+where
+    S: UpdateService,
+{
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(UpdateServiceServer::new(service), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+#[tokio::test]
+async fn resumable_stream_restarts_after_the_latest_checkpoint() {
+    let mock = CheckpointThenDrop::default();
+    let begins = mock.begins.clone();
+    let port = serve_updates(mock).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    let stream = client.updates_resumable(vec!["p".to_string()], 0);
+    tokio::pin!(stream);
+    let first = tokio::time::timeout(Duration::from_secs(5), stream.next())
+        .await
+        .expect("timed out waiting for the update after the reconnect");
+    match first {
+        Some(Ok(pb::get_updates_response::Update::Transaction(t))) => assert_eq!(t.offset, 11),
+        other => panic!("expected the transaction that follows the checkpoint, got {other:?}"),
+    }
+
+    assert_eq!(
+        *begins.lock().unwrap(),
+        vec![0, 10],
+        "the reconnect must resume from the checkpoint the participant sent, not from 0"
+    );
+}
+
+/// `UpdateService` that is never available, so the reconnect budget runs out.
+#[derive(Clone, Default)]
+struct AlwaysUnavailable;
+
+#[tonic::async_trait]
+impl UpdateService for AlwaysUnavailable {
+    type GetUpdatesStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::GetUpdatesResponse, Status>> + Send>>;
+
+    async fn get_updates(
+        &self,
+        _request: Request<pb::GetUpdatesRequest>,
+    ) -> Result<Response<Self::GetUpdatesStream>, Status> {
+        Err(Status::unavailable("participant is restarting"))
+    }
+
+    async fn get_update_by_offset(
+        &self,
+        _r: Request<pb::GetUpdateByOffsetRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_id(
+        &self,
+        _r: Request<pb::GetUpdateByIdRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_hash(
+        &self,
+        _r: Request<pb::GetUpdateByHashRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_updates_page(
+        &self,
+        _r: Request<pb::GetUpdatesPageRequest>,
+    ) -> Result<Response<pb::GetUpdatesPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn exhausted_reconnects_report_the_participants_own_failure() {
+    let port = serve_updates(AlwaysUnavailable).await;
+
+    let client = CantonClient::connect_lazy(
+        Config::new(format!("http://localhost:{port}")).with_retry(
+            RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        ),
+    )
+    .unwrap();
+
+    let stream = client.updates_resumable(vec!["p".to_string()], 0);
+    tokio::pin!(stream);
+    let last = tokio::time::timeout(Duration::from_secs(5), stream.next())
+        .await
+        .expect("timed out waiting for the stream to give up")
+        .expect("the stream must yield the failure rather than ending silently")
+        .expect_err("an unavailable participant cannot produce an update");
+
+    // The status, its details and its classification are what an application
+    // branches on; replacing them with a message of our own throws all three
+    // away at the moment they matter most.
+    assert_eq!(
+        last.code(),
+        Some(tonic::Code::Unavailable),
+        "the original gRPC status must survive: {last:?}"
+    );
+    assert!(
+        last.is_retriable(),
+        "a transient failure stays classified as retriable: {last:?}"
+    );
+    assert!(
+        format!("{last}").contains("participant is restarting"),
+        "the participant's own message must survive: {last}"
+    );
+}
+
+// ---- gRPC: an ACS snapshot is not only active contracts ---------------------
+
+fn incomplete_unassigned_entry(cid: &str) -> pb::GetActiveContractsResponse {
+    pb::GetActiveContractsResponse {
+        contract_entry: Some(
+            pb::get_active_contracts_response::ContractEntry::IncompleteUnassigned(
+                pb::IncompleteUnassigned {
+                    created_event: Some(pb::CreatedEvent {
+                        contract_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                    unassigned_event: Some(pb::UnassignedEvent {
+                        contract_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                },
+            ),
+        ),
+        ..Default::default()
+    }
+}
+
+fn incomplete_assigned_entry(cid: &str) -> pb::GetActiveContractsResponse {
+    pb::GetActiveContractsResponse {
+        contract_entry: Some(
+            pb::get_active_contracts_response::ContractEntry::IncompleteAssigned(
+                pb::IncompleteAssigned {
+                    assigned_event: Some(pb::AssignedEvent {
+                        reassignment_id: cid.to_string(),
+                        ..Default::default()
+                    }),
+                },
+            ),
+        ),
+        ..Default::default()
+    }
+}
+
+/// A `StateService` whose single page carries one entry of each kind — the
+/// shape a multi-synchronizer participant returns while reassignments are in
+/// flight at the snapshot offset.
+#[derive(Clone, Default)]
+struct MixedAcs;
+
+#[tonic::async_trait]
+impl StateService for MixedAcs {
+    async fn get_active_contracts_page(
+        &self,
+        _request: Request<pb::GetActiveContractsPageRequest>,
+    ) -> Result<Response<pb::GetActiveContractsPageResponse>, Status> {
+        Ok(Response::new(pb::GetActiveContractsPageResponse {
+            active_contracts: vec![
+                acs_entry("active-1"),
+                incomplete_unassigned_entry("leaving-1"),
+                incomplete_assigned_entry("arriving-1"),
+            ],
+            next_page_token: None,
+            ..Default::default()
+        }))
+    }
+
+    type GetActiveContractsStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::GetActiveContractsResponse, Status>> + Send>,
+    >;
+    async fn get_active_contracts(
+        &self,
+        _r: Request<pb::GetActiveContractsRequest>,
+    ) -> Result<Response<Self::GetActiveContractsStream>, Status> {
+        let items: Vec<Result<pb::GetActiveContractsResponse, Status>> = vec![
+            Ok(acs_entry("active-1")),
+            Ok(incomplete_unassigned_entry("leaving-1")),
+            Ok(incomplete_assigned_entry("arriving-1")),
+        ];
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+    async fn get_connected_synchronizers(
+        &self,
+        _r: Request<pb::GetConnectedSynchronizersRequest>,
+    ) -> Result<Response<pb::GetConnectedSynchronizersResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_ledger_end(
+        &self,
+        _r: Request<pb::GetLedgerEndRequest>,
+    ) -> Result<Response<pb::GetLedgerEndResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_latest_pruned_offsets(
+        &self,
+        _r: Request<pb::GetLatestPrunedOffsetsRequest>,
+    ) -> Result<Response<pb::GetLatestPrunedOffsetsResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_state<S>(service: S) -> u16
+where
+    S: StateService,
+{
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(StateServiceServer::new(service), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+#[tokio::test]
+async fn the_lossless_acs_read_keeps_incomplete_reassignments() {
+    let port = serve_state(MixedAcs).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // Paged.
+    let (entries, next) = client
+        .acs_page(vec!["p".to_string()], 7, 10, None)
+        .await
+        .unwrap();
+    assert!(next.is_none());
+    assert_eq!(entries.len(), 3, "every entry kind survives: {entries:?}");
+    assert!(matches!(entries[0], AcsEntry::Active(_)));
+    assert!(matches!(entries[1], AcsEntry::IncompleteUnassigned(_)));
+    assert!(matches!(entries[2], AcsEntry::IncompleteAssigned(_)));
+
+    // Streaming.
+    let stream = client.acs_entries(vec!["p".to_string()], 7).await.unwrap();
+    tokio::pin!(stream);
+    let mut kinds = Vec::new();
+    while let Some(entry) = stream.next().await {
+        kinds.push(match entry.unwrap() {
+            AcsEntry::Active(_) => "active",
+            AcsEntry::IncompleteUnassigned(_) => "unassigned",
+            AcsEntry::IncompleteAssigned(_) => "assigned",
+            // `AcsEntry` is `#[non_exhaustive]`: a kind added by a future
+            // Ledger API must fail this test rather than be counted as one of
+            // the three.
+            other => panic!("unexpected entry kind: {other:?}"),
+        });
+    }
+    assert_eq!(kinds, vec!["active", "unassigned", "assigned"]);
+
+    // Resumable, page-based.
+    let stream = client.acs_entries_resumable(vec!["p".to_string()], 7, 10);
+    tokio::pin!(stream);
+    let mut count = 0;
+    while let Some(entry) = stream.next().await {
+        entry.unwrap();
+        count += 1;
+    }
+    assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn the_active_only_read_still_returns_active_contracts_only() {
+    let port = serve_state(MixedAcs).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // The convenience methods keep their meaning — the point of the lossless
+    // read is that it is now a caller's choice rather than the only behaviour.
+    let (contracts, _) = client
+        .active_contracts_page(vec!["p".to_string()], 7, 10, None)
+        .await
+        .unwrap();
+    assert_eq!(contracts.len(), 1);
+    assert_eq!(
+        contracts[0].created_event.as_ref().unwrap().contract_id,
+        "active-1"
+    );
+
+    let stream = client
+        .active_contracts(vec!["p".to_string()], 7)
+        .await
+        .unwrap();
+    tokio::pin!(stream);
+    let mut ids = Vec::new();
+    while let Some(contract) = stream.next().await {
+        ids.push(contract.unwrap().created_event.unwrap().contract_id);
+    }
+    assert_eq!(ids, vec!["active-1"]);
+}
+
+// ---- gRPC: recovering a command by its whole identity -----------------------
+
+/// A completion stream carrying, in order: somebody else's completion with the
+/// *same* command id, then this command's own. A recovery that matches on the
+/// command id alone answers with the first — the wrong application's outcome,
+/// reported as this one's.
+#[derive(Clone, Default)]
+struct CollidingCompletions;
+
+#[tonic::async_trait]
+impl pb::command_completion_service_server::CommandCompletionService for CollidingCompletions {
+    type CompletionStreamStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::CompletionStreamResponse, Status>> + Send>,
+    >;
+
+    async fn completion_stream(
+        &self,
+        _request: Request<pb::CompletionStreamRequest>,
+    ) -> Result<Response<Self::CompletionStreamStream>, Status> {
+        let response = |completion: pb::Completion| {
+            Ok(pb::CompletionStreamResponse {
+                completion_response: Some(
+                    pb::completion_stream_response::CompletionResponse::Completion(completion),
+                ),
+            })
+        };
+        let items: Vec<Result<pb::CompletionStreamResponse, Status>> = vec![
+            response(pb::Completion {
+                command_id: "shared-command-id".to_string(),
+                user_id: "someone-else".to_string(),
+                act_as: vec!["alice".to_string()],
+                update_id: "not-ours".to_string(),
+                ..Default::default()
+            }),
+            response(pb::Completion {
+                command_id: "shared-command-id".to_string(),
+                user_id: "us".to_string(),
+                act_as: vec!["alice".to_string()],
+                update_id: "ours".to_string(),
+                ..Default::default()
+            }),
+        ];
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+
+    type GetCompletionsStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::CompletionStreamResponse, Status>> + Send>,
+    >;
+    async fn get_completions(
+        &self,
+        _r: Request<pb::GetCompletionsRequest>,
+    ) -> Result<Response<Self::GetCompletionsStream>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn recovery_matches_the_whole_change_id() {
+    use pb::command_completion_service_server::CommandCompletionServiceServer;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(
+                CommandCompletionServiceServer::new(CollidingCompletions),
+                incoming,
+            )
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    let ours = ChangeId::new("us", vec!["alice".to_string()], "shared-command-id");
+    let completion = client
+        .await_completion(&ours, 0, Duration::from_secs(5))
+        .await
+        .expect("our completion is on the stream");
+    assert_eq!(
+        completion.update_id, "ours",
+        "a command id is not an identity: the user must match too"
+    );
+}
+
+#[tokio::test]
+async fn a_submission_knows_its_identity_before_it_is_sent() {
+    // Nothing is submitted here, and that is the point: the change ID has to
+    // exist before the call that might fail ambiguously, or there is nothing
+    // to recover with afterwards.
+    let client = CantonClient::connect_lazy(Config::new("http://localhost:1")).unwrap();
+    let submission = client.submission(canton_ledger::Submit::new("alice").add_command(
+        canton_ledger::create(
+            canton_ledger::identifier("pkg", "M", "T"),
+            canton_ledger::record(vec![]),
+        ),
+    ));
+
+    let change_id = submission.change_id().clone();
+    assert!(change_id.command_id().starts_with("sdk-"));
+    assert_eq!(change_id.act_as(), ["alice".to_string()]);
+    assert!(
+        change_id.user_id().is_empty(),
+        "unset means token-derived, and the client must not invent one"
+    );
+
+    // And it stays the same across sends, which is what makes a retry
+    // de-duplicate rather than execute twice.
+    assert_eq!(submission.change_id(), &change_id);
+    assert!(submission.submit().await.is_err(), "nothing is listening");
+    assert_eq!(submission.change_id(), &change_id);
+}
+
+// ---- gRPC: what the submission asks the participant to show it -------------
+
+/// A `CommandService` that records the request and answers with an empty
+/// transaction. The interesting part is the *request*: which parties the
+/// transaction format filters to.
+#[derive(Clone, Default)]
+struct CapturingCommands {
+    requests: Arc<Mutex<Vec<pb::SubmitAndWaitForTransactionRequest>>>,
+}
+
+#[tonic::async_trait]
+impl pb::command_service_server::CommandService for CapturingCommands {
+    async fn submit_and_wait_for_transaction(
+        &self,
+        request: Request<pb::SubmitAndWaitForTransactionRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForTransactionResponse>, Status> {
+        self.requests.lock().unwrap().push(request.into_inner());
+        Ok(Response::new(pb::SubmitAndWaitForTransactionResponse {
+            transaction: Some(pb::Transaction {
+                update_id: "u-1".to_string(),
+                ..Default::default()
+            }),
+        }))
+    }
+    async fn submit_and_wait(
+        &self,
+        _r: Request<pb::SubmitAndWaitRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn submit_and_wait_for_reassignment(
+        &self,
+        _r: Request<pb::SubmitAndWaitForReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn the_transaction_filter_covers_read_as_as_well_as_act_as() {
+    use pb::command_service_server::CommandServiceServer;
+
+    let mock = CapturingCommands::default();
+    let requests = mock.requests.clone();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(CommandServiceServer::new(mock), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    client
+        .submit_and_wait_for_transaction(
+            canton_ledger::Submit::new("alice")
+                .with_read_as(vec!["bob".to_string()])
+                .add_command(canton_ledger::create(
+                    canton_ledger::identifier("pkg", "M", "T"),
+                    canton_ledger::record(vec![]),
+                )),
+        )
+        .await
+        .expect("the mock commits");
+
+    let captured = requests.lock().unwrap()[0].clone();
+    let filters = captured
+        .transaction_format
+        .expect("a transaction format")
+        .event_format
+        .expect("an event format")
+        .filters_by_party;
+
+    // Filtering to `act_as` alone returns a transaction whose events for the
+    // read-as party are simply absent — a wrong answer that looks like a right
+    // one. The Ledger API's own default for a submission is both sets.
+    let mut parties: Vec<&String> = filters.keys().collect();
+    parties.sort();
+    assert_eq!(
+        parties,
+        vec!["alice", "bob"],
+        "read_as must reach the filter too, saw {parties:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_submission_that_cannot_succeed_is_refused_before_it_is_sent() {
+    // Nothing is listening on port 1: if any of these reached the network the
+    // error would be a connection failure, not an InvalidRequest.
+    let client = CantonClient::connect_lazy(Config::new("http://localhost:1")).unwrap();
+    let command = || {
+        canton_ledger::create(
+            canton_ledger::identifier("pkg", "M", "T"),
+            canton_ledger::record(vec![]),
+        )
+    };
+
+    let no_parties = canton_ledger::Submit::new_multi(vec![]).add_command(command());
+    let no_commands = canton_ledger::Submit::new("alice");
+    let both_times = canton_ledger::Submit::new("alice")
+        .add_command(command())
+        .with_min_ledger_time_abs(prost_types::Timestamp::default())
+        .with_min_ledger_time_rel(Duration::from_secs(1));
+
+    for (name, submit) in [
+        ("no acting party", no_parties),
+        ("no commands", no_commands),
+        ("both min-ledger-times", both_times),
+    ] {
+        let result = client.submit_and_wait_for_transaction(submit).await;
+        assert!(
+            matches!(result, Err(canton_ledger::Error::InvalidRequest(_))),
+            "{name} should be refused locally, got {result:?}"
+        );
+    }
+}
+
+// ---- gRPC: a de-duplicated retry is the earlier attempt having landed -------
+
+/// A participant that loses the response to an accepted submission, then
+/// refuses the retry as a duplicate — the exact sequence a network failure
+/// after acceptance produces.
+#[derive(Clone, Default)]
+struct AcceptedThenDuplicate {
+    calls: Arc<AtomicUsize>,
+    command_ids: Arc<Mutex<Vec<String>>>,
+}
+
+#[tonic::async_trait]
+impl pb::command_submission_service_server::CommandSubmissionService for AcceptedThenDuplicate {
+    async fn submit(
+        &self,
+        request: Request<pb::SubmitRequest>,
+    ) -> Result<Response<pb::SubmitResponse>, Status> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
+        self.command_ids
+            .lock()
+            .unwrap()
+            .push(request.into_inner().commands.expect("commands").command_id);
+        if call == 1 {
+            // Accepted by the participant; the response never reaches us.
+            Err(Status::unavailable("connection lost after acceptance"))
+        } else {
+            Err(Status::already_exists("duplicate command"))
+        }
+    }
+    async fn submit_reassignment(
+        &self,
+        _r: Request<pb::SubmitReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+async fn serve_submissions(mock: AcceptedThenDuplicate) -> u16 {
+    use pb::command_submission_service_server::CommandSubmissionServiceServer;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(CommandSubmissionServiceServer::new(mock), incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    port
+}
+
+fn one_command() -> canton_ledger::Submit {
+    canton_ledger::Submit::new("alice").add_command(canton_ledger::create(
+        canton_ledger::identifier("pkg", "M", "T"),
+        canton_ledger::record(vec![]),
+    ))
+}
+
+#[tokio::test]
+async fn a_retry_the_participant_de_duplicates_is_not_a_failure() {
+    let mock = AcceptedThenDuplicate::default();
+    let command_ids = mock.command_ids.clone();
+    let port = serve_submissions(mock).await;
+
+    let client = CantonClient::connect_lazy(
+        Config::new(format!("http://localhost:{port}")).with_retry(
+            RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        ),
+    )
+    .unwrap();
+
+    // The command committed on the attempt whose response was lost. Telling the
+    // caller it failed would be the exact wrong answer, and without the id they
+    // could not go and find out.
+    let command_id = client
+        .submit(one_command())
+        .await
+        .expect("the accepted command's id must come back, not the duplicate rejection");
+
+    let seen = command_ids.lock().unwrap();
+    assert_eq!(seen.len(), 2, "one attempt and its retry");
+    assert_eq!(
+        seen[0], seen[1],
+        "the retry reuses the change id — that is what makes it a duplicate rather than a second commit"
+    );
+    assert_eq!(command_id, seen[0], "and the caller is given that id");
+}
+
+/// A participant that refuses the very first submission as a duplicate.
+#[derive(Clone, Default)]
+struct AlwaysDuplicate;
+
+#[tonic::async_trait]
+impl pb::command_submission_service_server::CommandSubmissionService for AlwaysDuplicate {
+    async fn submit(
+        &self,
+        _r: Request<pb::SubmitRequest>,
+    ) -> Result<Response<pb::SubmitResponse>, Status> {
+        Err(Status::already_exists("duplicate command"))
+    }
+    async fn submit_reassignment(
+        &self,
+        _r: Request<pb::SubmitReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn a_duplicate_on_the_first_attempt_is_a_rejection_the_caller_must_see() {
+    use pb::command_submission_service_server::CommandSubmissionServiceServer;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    tokio::spawn(async move {
+        Server::builder()
+            .serve_with_incoming(
+                CommandSubmissionServiceServer::new(AlwaysDuplicate),
+                incoming,
+            )
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+
+    // Nothing of ours is at the participant: the caller reused a change id from
+    // an earlier submission, and swallowing that would hide a real mistake.
+    let error = client
+        .submit(one_command())
+        .await
+        .expect_err("a first-attempt duplicate is a genuine rejection");
+    assert_eq!(error.code(), Some(tonic::Code::AlreadyExists), "{error:?}");
 }
