@@ -75,6 +75,12 @@ fn the_vendored_protos_match_their_recorded_checksums() {
          re-run tools/vendor-protos.sh --rehash after a deliberate re-vendor"
     );
 
+    // These hashes are over the bytes on disk, which makes them a hostage to
+    // line-ending conversion: git on Windows defaults to `core.autocrlf=true`
+    // and would hand this test CRLF copies of files vendored with LF, failing
+    // every one of them while the tree is untouched. `.gitattributes` marks the
+    // vendored tree `-text` to prevent that, and this test is the reason it is
+    // there.
     for (name, path) in present_names.iter().zip(present.iter()) {
         let expected = recorded[name.as_str()];
         let actual = sha256(&root.join(path));
