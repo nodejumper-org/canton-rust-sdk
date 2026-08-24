@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [Unreleased]
+
+### Added
+
+- **Conversion and hashing polish from a Rust API Guidelines audit** (16
+  observations, none blocking; the audit's two breaking items are *decided*
+  rather than fixed — [ADR-0010](docs/adr/0010-api-decisions-deferred-to-1.0.md)
+  defers the `*ParseError` renames and the removal of `Party`'s unvalidated
+  `From<&str>`/`From<String>` to 1.0, the latter blocked from gaining a checked
+  `TryFrom` today by std's blanket impl).
+  - `ChangeId` derives `Hash` — it is the key the docs tell applications to
+    track submissions by, and it could not be a `HashMap` key. `Store`,
+    `TransactionShape` and `ClientAuth` follow.
+  - `canton-ledger` and `canton-admin` re-export `Auth`, `ErrorInfo` and
+    `ResourceInfo` (and admin gains `ErrorCategory`): these appear in the
+    signatures of `Error::error_info`/`resource_info` and `Config::auth`, so a
+    user of one client crate could not previously name the types their own
+    functions return without adding a `canton-core` dependency.
+  - `ErrorCategory` implements `TryFrom<i32>` and `From<ErrorCategory> for i32`
+    alongside the inherent methods.
+  - `#[must_use]` on the constructors that lacked it; docs.rs feature badges on
+    all seven remaining `ws`-gated methods (two of nine had them).
+- **A compile-time proof that every public future is `Send`**
+  (`tests/futures_are_spawnable.rs`) — an async API that cannot be
+  `tokio::spawn`ed is unusable in a server, and the property breaks silently.
+- **Hermetic coverage for the paths only live tests exercised**, found by
+  measuring coverage rather than reading it: the three `TopologyClient` list
+  reads (36% file coverage, all three public methods untested without a node —
+  the same shape of gap the M1 review named about live tests), both recovery
+  handles' `recover`, and `Submission::submit_and_wait`. Hand-written code
+  measures 87.7% line coverage; `cargo udeps` reports no unused dependencies.
+
+### Fixed
+
+- The in-process duplicate-submission mocks answer synchronously on the
+  fire-and-forget lane; a live Canton 3.5.7 participant does not — it accepts
+  the RPC and reports the rejection on the completion stream. Established by
+  adversarial probes run with the published 0.2.1 crates against a real node
+  (which also confirmed the JSON duplicate answer is exactly the
+  HTTP 409 + `DUPLICATE_COMMAND` the `is_duplicate_submission` predicate was
+  written against, and that OIDC refresh survives a real token expiry). The
+  mocks stay as pins of the synchronous case; their comments now say where
+  reality differs.
+
 ## [0.2.1] — 2026-08-24
 
 ### Fixed

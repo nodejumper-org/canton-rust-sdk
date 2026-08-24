@@ -47,7 +47,9 @@
 mod client;
 mod topology;
 
-pub use canton_core::{Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig};
+pub use canton_core::{
+    Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,
+};
 pub use canton_proto::com::daml::ledger::api::v2::PackageStatus;
 pub use client::AdminClient;
 pub use topology::{Entry, Store, TopologyClient};
