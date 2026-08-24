@@ -1334,6 +1334,14 @@ impl pb::command_submission_service_server::CommandSubmissionService for AlwaysD
     }
 }
 
+// A note on fidelity, established against a live Canton 3.5.7 participant:
+// the real node answers a duplicate *synchronously* only on the waiting lane
+// (`submit_and_wait`); on fire-and-forget `Submit` it accepts the RPC and
+// reports the rejection through the completion stream, where `recover` reads
+// it. This mock answers synchronously on the async lane too — which is a
+// simplification, and fine for what these two tests pin down: *if* a
+// synchronous ALREADY_EXISTS arrives, a first attempt must surface it and only
+// a retry may treat it as its own earlier success.
 #[tokio::test]
 async fn a_duplicate_on_the_first_attempt_is_a_rejection_the_caller_must_see() {
     use pb::command_submission_service_server::CommandSubmissionServiceServer;
