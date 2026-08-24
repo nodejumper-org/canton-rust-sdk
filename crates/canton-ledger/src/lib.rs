@@ -8,7 +8,7 @@
 //! node health check, and an opt-in retry pipeline. [`JsonClient`] mirrors the
 //! core surface over the HTTP JSON Ledger API (submit + bounded reads, plus
 //! WebSocket streaming behind the `ws` feature). Both share the
-//! [`canton_core`] connection kernel (endpoint, [`Auth`](canton_core::Auth),
+//! [`canton_core`] connection kernel (endpoint, [`Auth`],
 //! TLS, retry) and error model.
 //!
 //! ```no_run
