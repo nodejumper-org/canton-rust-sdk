@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [Unreleased]
+
+### Fixed
+
+- **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
+  asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
+  while the assertion was not — so the default-feature build failed to compile.
+  Invisible because CI ran tests only with `--all-features`; a second
+  `cargo test --workspace` job (default features) now guards the whole class.
+  Found by running the suite under every feature combination.
+- **`tokio-stream`'s declared lower bound was `0.1`, but the `net` feature it
+  uses landed in `0.1.1`** — a minimal-versions resolve does not build against
+  `0.1.0`. Corrected to `0.1.1`. Found by `cargo +nightly build
+  -Z direct-minimal-versions`.
+
 ## [0.2.2] — 2026-08-24
 
 ### Added
@@ -40,17 +55,6 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   measures 87.7% line coverage; `cargo udeps` reports no unused dependencies.
 
 ### Fixed
-
-- **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
-  asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
-  while the assertion was not — so the default-feature build failed to compile.
-  Invisible because CI ran tests only with `--all-features`; a second
-  `cargo test --workspace` job (default features) now guards the whole class.
-  Found by running the suite under every feature combination.
-- **`tokio-stream`'s declared lower bound was `0.1`, but the `net` feature it
-  uses landed in `0.1.1`** — a minimal-versions resolve does not build against
-  `0.1.0`. Corrected to `0.1.1`. Found by `cargo +nightly build
-  -Z direct-minimal-versions`.
 
 - The in-process duplicate-submission mocks answer synchronously on the
   fire-and-forget lane; a live Canton 3.5.7 participant does not — it accepts
