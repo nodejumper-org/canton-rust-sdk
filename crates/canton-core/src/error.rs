@@ -124,13 +124,14 @@ impl Error {
                 Some(category) => category.is_retriable(),
                 // No category ⇒ not a Canton self-service error. A RetryInfo
                 // detail is still an explicit "retry me"; else fall back to
-                // the transient codes.
+                // the transient codes, plus a connection that died in flight.
                 None => {
                     status_retry_delay(status).is_some()
                         || matches!(
                             status.code(),
                             Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
                         )
+                        || is_transport_death(status)
                 }
             },
             // The JSON Ledger API carries the same verdict in the error body
@@ -262,6 +263,30 @@ impl Error {
 }
 
 /// The category of the status's `ErrorInfo`, when present and recognized.
+/// Whether a status is a connection that died *mid-call*, rather than a verdict
+/// the participant returned.
+///
+/// tonic maps a broken stream or a dropped unary connection to a `Status` with
+/// code `Unknown` (message "transport error" / "h2 protocol error"), not to a
+/// `transport::Error` — that variant is only for connection *establishment*. So
+/// a real drop reaches [`Error::is_retriable`] as a category-less `Unknown` and,
+/// without this, is treated as terminal: the resumable stream gives up on the
+/// first blip and the retry pipeline never fires on the most ordinary failure
+/// there is.
+///
+/// The signal is the source chain, not the message text (which is
+/// tonic-version-specific). A client-side transport failure carries a `source`
+/// — tonic built the status *from* the underlying h2/hyper/io error. A status
+/// decoded from response trailers, which is how a genuine application `Unknown`
+/// arrives, has none. So `Unknown` (or `Internal`, tonic's other transport-error
+/// code) with a source present is a dropped connection; the same code without a
+/// source is the server's own answer and stays terminal.
+fn is_transport_death(status: &tonic::Status) -> bool {
+    use std::error::Error as _;
+    matches!(status.code(), tonic::Code::Unknown | tonic::Code::Internal)
+        && status.source().is_some()
+}
+
 fn status_category(status: &tonic::Status) -> Option<ErrorCategory> {
     use tonic_types::StatusExt as _;
     let info = status.get_details_error_info()?;
@@ -969,6 +994,43 @@ mod tests {
         assert!(Error::from(tonic::Status::deadline_exceeded("x")).is_retriable());
         assert!(Error::from(tonic::Status::resource_exhausted("x")).is_retriable());
         assert!(Error::from(tonic::Status::aborted("x")).is_retriable());
+    }
+
+    #[test]
+    fn a_connection_that_dies_mid_call_is_retriable_but_a_server_unknown_is_not() {
+        use std::io;
+
+        // What tonic hands back when a stream or unary connection dies in
+        // flight: code Unknown, built *from* the transport error, so the source
+        // chain is populated. This is the ordinary dropped connection, and the
+        // resumable stream and the retry pipeline both depend on it being
+        // retriable — before this, they gave up on the first blip.
+        let dropped = tonic::Status::from_error(Box::new(io::Error::new(
+            io::ErrorKind::ConnectionReset,
+            "h2 protocol error: error reading a body from connection",
+        )));
+        assert_eq!(
+            dropped.code(),
+            tonic::Code::Unknown,
+            "from_error yields Unknown"
+        );
+        assert!(Error::from(dropped).is_retriable());
+
+        // A genuine `Unknown` the participant returned is decoded from response
+        // trailers and carries no local source. That is the server's verdict,
+        // and retrying it would just re-ask the same losing question.
+        let server_unknown = tonic::Status::new(tonic::Code::Unknown, "business rule failed");
+        assert!(!Error::from(server_unknown).is_retriable());
+
+        // `Internal` follows the same rule: transport-built is retriable, a
+        // bare server Internal is not.
+        assert!(
+            Error::from(tonic::Status::from_error(Box::new(io::Error::other(
+                "broken pipe"
+            ))))
+            .is_retriable()
+        );
+        assert!(!Error::from(tonic::Status::internal("server bug")).is_retriable());
     }
 
     #[test]

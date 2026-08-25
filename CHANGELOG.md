@@ -11,6 +11,26 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ### Fixed
 
+- **A gRPC stream or submit did not retry a connection that died in flight.**
+  tonic surfaces a dropped connection mid-call as a `Status` with code
+  `Unknown` (message "transport error" / "h2 protocol error"), not as a
+  `transport::Error` — that variant is only for connection *establishment*. So
+  `Error::is_retriable()` treated the most ordinary failure there is as
+  terminal: `updates_resumable` gave up on the first blip and `run_with_retry`
+  never fired. Data integrity was never at risk (no loss, no duplicate — the
+  failure surfaced as an error), but the resilience did not engage. A
+  category-less `Unknown`/`Internal` status whose source chain is populated is
+  now retriable; a bare server `Unknown` (decoded from trailers, no source)
+  stays terminal. Found by killing a real TCP connection under load through a
+  chaos proxy — in-process mocks had emitted `Status::unavailable`, which is
+  why it never showed. The WebSocket resumable lane was already correct (it
+  treats a socket close as a reconnect trigger, not via this predicate).
+- **`Template::from_json_created_event` rejected the `events-by-contract-id`
+  response shape.** That endpoint wraps the created event as
+  `{"created": {"createdEvent": …}}`; the helper peeled only the inner key and
+  errored with "carries no createArgument". It now unwraps both layers, so all
+  four JSON shapes the API uses decode.
+
 - **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
   asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
   while the assertion was not — so the default-feature build failed to compile.
