@@ -42,7 +42,10 @@ serde_json   = { version = "1" }
 metrics      = { version = "0.24" }
 futures-core = { version = "0.3" }
 futures-util = { version = "0.3" }
-tokio-stream = { version = "0.1" }
+# 0.1.1, not 0.1.0: the `net` feature (used by canton-admin and the test
+# harnesses) was added in 0.1.1, so 0.1.0 does not build. A minimal-versions
+# resolve caught the wrong lower bound.
+tokio-stream = { version = "0.1.1" }
 async-stream = { version = "0.3" }
 tokio-tungstenite = { version = "0.26", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
 # WS-TLS connector construction (same rustls family tokio-tungstenite pins).

@@ -44,6 +44,12 @@ jobs:
       # Unit / in-process / TLS / ws tests need no node; live tests skip without
       # CANTON_TEST_ENDPOINT. --all-features covers the ws + otel surface.
       - run: cargo test --workspace --all-features
+      # ...and again with default features only. A test that names a
+      # feature-gated item without gating itself compiles under --all-features
+      # and breaks a plain `cargo test` — invisible to the line above. The
+      # powerset clippy job does not run tests, so this is the only gate that
+      # would catch it.
+      - run: cargo test --workspace
 
   # The proposal's supported matrix is Tier-1 Rust on x86_64 and aarch64, plus
   # musl for static container binaries. The `test` job covers x86_64 Linux and

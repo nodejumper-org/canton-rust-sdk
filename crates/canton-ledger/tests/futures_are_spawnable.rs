@@ -50,6 +50,9 @@ fn public_futures_are_send(grpc: CantonClient, json: JsonClient) {
     let json_submission = json.submission(commands);
     assert_send(json_submission.submit());
     assert_send(json_submission.submit_and_wait());
+    // `JsonSubmission::recover` is `ws`-gated; assert it only when the feature is on,
+    // or `cargo test` without `--all-features` fails to compile.
+    #[cfg(feature = "ws")]
     assert_send(json_submission.recover(0, Duration::from_secs(1)));
 
     let grpc_submission = grpc.submission(Submit::new("alice"));

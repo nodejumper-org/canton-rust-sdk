@@ -33,6 +33,17 @@ offered while the unchecked one holds the slot. At 1.0 the `From` impls go,
 `TryFrom<&str>` arrives with `PartyParseError`, and `Party::new` remains the
 documented unchecked door for wire values.
 
+**3. `TlsConfig::client_identity_pem` becomes a private field behind a typed
+accessor.** Today it is a `pub` field of type `Option<(Vec<u8>, Vec<u8>)>` — the
+mutual-TLS certificate and **private key** as an untyped pair, with "which
+element is the key" an undocumented invariant. The `#[non_exhaustive]` attribute
+and the `with_client_identity` builder already steer callers to the safe path,
+and `Debug` redacts the key, so nothing leaks today; but a `pub` field carrying
+key material, tuple-ordered, is a shape 1.0 should not freeze. At 1.0 the field
+goes private and the identity is read through a small typed accessor. Deferred
+rather than done now for the same reason as the others: it is a breaking change,
+and 0.x users should migrate once.
+
 ## Consequences
 
 - Both changes ride the 1.0 release train, listed in its migration notes.
