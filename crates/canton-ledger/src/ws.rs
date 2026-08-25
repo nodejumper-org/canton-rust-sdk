@@ -163,6 +163,17 @@ pub(crate) fn is_offset_checkpoint(value: &Value) -> bool {
     })
 }
 
+/// The completion object inside a WS completion frame, if the frame is one.
+///
+/// The envelope is `{"completionResponse": {"Completion": {"value": {…}}}}`;
+/// an `OffsetCheckpoint` frame has no completion to return.
+pub(crate) fn completion_value(frame: &Value) -> Option<&Value> {
+    frame
+        .get("completionResponse")?
+        .get("Completion")?
+        .get("value")
+}
+
 /// Drop `OffsetCheckpoint` heartbeat frames from a stream (matching the gRPC
 /// client's `updates`/`completions`, which surface only real items).
 pub(crate) fn filter_checkpoints(
@@ -233,6 +244,20 @@ pub(crate) async fn subscribe(
     let mut builder = ClientRequestBuilder::new(uri).with_sub_protocol(WS_SUBPROTOCOL);
     if let Some(token) = auth.bearer().await? {
         builder = builder.with_header("Authorization", format!("Bearer {token}"));
+    }
+    // The upgrade request is the only request a WebSocket stream makes, so it
+    // is the only place trace context can be attached. Without this the whole
+    // streaming JSON lane sat outside the caller's trace, while every unary
+    // request on either transport joined it.
+    #[cfg(feature = "otel")]
+    {
+        let mut headers = http::HeaderMap::new();
+        canton_core::telemetry::otel::inject_trace_context(&mut headers);
+        for (name, value) in &headers {
+            if let Ok(value) = value.to_str() {
+                builder = builder.with_header(name.as_str(), value);
+            }
+        }
     }
 
     // Left to its own defaults tungstenite caps an incoming message at 64 MiB

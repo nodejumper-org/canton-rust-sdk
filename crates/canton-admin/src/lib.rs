@@ -17,6 +17,17 @@
 //! Both build on the shared [`canton_core::Config`] (endpoint, auth, TLS,
 //! retry).
 //!
+//! # Scope
+//!
+//! Party management here is **allocation and discovery**: allocate a party,
+//! list the parties a participant knows, look specific ones up. Updating a
+//! party's details (`UpdatePartyDetails`), the identity-provider fields, and
+//! the participant-permission options of `AllocateParty` are deliberately not
+//! wrapped — Milestone 1 covers the client surface an application needs to act
+//! on the ledger, and party *administration* beyond that belongs to the
+//! operator tooling rather than to an SDK's first release. Anything not
+//! wrapped is still reachable through [`canton_proto`] on the same channel.
+//!
 //! [`PartyManagementService`]: https://docs.daml.com
 //! [`UserManagementService`]: https://docs.daml.com
 //!
@@ -37,7 +48,9 @@ mod client;
 mod external_party;
 mod topology;
 
-pub use canton_core::{Config, Error, Result, RetryConfig, TlsConfig};
+pub use canton_core::{
+    Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,
+};
 pub use canton_proto::com::daml::ledger::api::v2::PackageStatus;
 pub use client::AdminClient;
 pub use external_party::ExternalPartyTopology;

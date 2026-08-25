@@ -144,11 +144,27 @@ fn codegen_and_bindings__pqs_bindings() {
 /// TLS is configured on the connection, not per call.
 #[tokio::test]
 async fn basic_infrastructure__tls() {
+    // An explicit CA rather than `TlsConfig::default()`: the default loads the
+    // platform's native roots, which on macOS walks the keychain and asks
+    // trustd about every certificate — 12–36 seconds on a developer machine,
+    // and under load it trips security-framework's 15s XPC timeout and fails.
+    // The property under test is "TLS is configured on the connection", and an
+    // inline CA states it without depending on the host's trust store.
+    let ca_pem = b"-----BEGIN CERTIFICATE-----\n\
+MIIBejCCASGgAwIBAgIUUM+RQqYAZDaX4LHbWhV0Q3+nTPowCgYIKoZIzj0EAwIw\n\
+FDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI0MDEwMTAwMDAwMFoXDTM0MDEwMTAw\n\
+MDAwMFowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0D\n\
+AQcDQgAE0FQv7L7VUv0M7ZG6ZQnAlP0FohkY6PJH8DhU9V7QsO9cvOK8p9c1J2j0\n\
+Y2JcmDBFqbfnkD5RQ3P5U0GgWfC4iaNTMFEwHQYDVR0OBBYEFJZlLc3F0PBB1CQx\n\
+lPZ+YlNGT7pGMB8GA1UdIwQYMBaAFJZlLc3F0PBB1CQxlPZ+YlNGT7pGMA8GA1Ud\n\
+EwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgW0PLxHNQqvGrGvVzO+wF1FYB\n\
+5cKZ9uNq9K4X1cWJk0YCIBjE0y3O8SXV3G3F1u9XoP5uCw3PMFn7fJ9YlA9Y1uY7\n\
+-----END CERTIFICATE-----\n";
     let config = canton::Config::new("https://participant.example.com:3901")
-        .with_tls(canton::TlsConfig::default());
+        .with_tls(canton::TlsConfig::new().with_ca_certificate(ca_pem.to_vec()));
     // A TLS endpoint connects lazily and without error; the handshake itself is
     // proven against a real certificate in `canton-ledger`'s `tls` suite.
-    assert!(canton::ledger::CantonClient::connect_lazy(config).is_ok());
+    canton::ledger::CantonClient::connect_lazy(config).unwrap();
 }
 
 /// A bearer token, static or fetched, reaches every request.

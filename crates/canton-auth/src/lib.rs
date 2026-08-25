@@ -74,6 +74,28 @@ pub struct OidcConfig {
     // `Debug`), so it cannot leak via `println!`/serialization by accident.
     client_secret: String,
     scope: Option<String>,
+    client_auth: ClientAuth,
+    audience: Option<String>,
+}
+
+/// How the client credentials are presented to the token endpoint.
+///
+/// OAuth 2.0 defines both and RFC 6749 §2.3.1 says a server *must* support the
+/// `Basic` form; providers differ in what they accept, and picking the wrong
+/// one is rejected as `invalid_client` — which reads like a wrong secret. The
+/// provider presets choose for you; this is here for a custom endpoint that
+/// wants the other one. `#[non_exhaustive]`: a provider may need a third form
+/// (a signed assertion, say) without that being a breaking change.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ClientAuth {
+    /// `client_secret_post` — id and secret in the request body. The default,
+    /// and what Keycloak and Auth0 accept.
+    #[default]
+    Post,
+    /// `client_secret_basic` — id and secret in an HTTP `Authorization: Basic`
+    /// header. Okta's default for a confidential client.
+    Basic,
 }
 
 impl OidcConfig {
@@ -89,6 +111,8 @@ impl OidcConfig {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
             scope: None,
+            client_auth: ClientAuth::Post,
+            audience: None,
         }
     }
 
@@ -97,6 +121,40 @@ impl OidcConfig {
     pub fn with_scope(mut self, scope: impl Into<String>) -> Self {
         self.scope = Some(scope.into());
         self
+    }
+
+    /// Choose how the client credentials are presented ([`ClientAuth`]).
+    ///
+    /// The provider presets set this themselves; reach for it when pointing
+    /// [`OidcConfig::new`] at an endpoint that wants the other form.
+    #[must_use]
+    pub fn with_client_auth(mut self, client_auth: ClientAuth) -> Self {
+        self.client_auth = client_auth;
+        self
+    }
+
+    /// Set the `audience` parameter of the token request — the API the token
+    /// is being requested *for*.
+    ///
+    /// Auth0 requires it (without one it issues an opaque token for its own
+    /// userinfo endpoint, which a participant cannot verify). Most other
+    /// providers ignore it.
+    #[must_use]
+    pub fn with_audience(mut self, audience: impl Into<String>) -> Self {
+        self.audience = Some(audience.into());
+        self
+    }
+
+    /// How the client credentials are presented to the token endpoint.
+    #[must_use]
+    pub fn client_auth(&self) -> ClientAuth {
+        self.client_auth
+    }
+
+    /// The `audience` this configuration requests a token for, if any.
+    #[must_use]
+    pub fn audience(&self) -> Option<&str> {
+        self.audience.as_deref()
     }
 
     /// The OAuth2 token endpoint URL.
@@ -131,10 +189,18 @@ impl OidcConfig {
         )
     }
 
-    /// Preset for **Auth0**: builds the `https://{domain}/oauth/token` endpoint.
+    /// Preset for **Auth0**: builds the `https://{domain}/oauth/token`
+    /// endpoint and requests a token for `audience`.
+    ///
+    /// The audience is the identifier of the Auth0 API the participant
+    /// validates against — it cannot be derived from the domain, and Auth0
+    /// answers a client-credentials request without one by issuing a token for
+    /// its own userinfo endpoint, which the participant will reject. Asking
+    /// for it here is what makes this preset produce Auth0's normal request.
     #[must_use]
     pub fn auth0(
         domain: impl AsRef<str>,
+        audience: impl Into<String>,
         client_id: impl Into<String>,
         client_secret: impl Into<String>,
     ) -> Self {
@@ -144,11 +210,17 @@ impl OidcConfig {
             client_id,
             client_secret,
         )
+        .with_audience(audience)
     }
 
     /// Preset for **Okta**: builds the
     /// `https://{domain}/oauth2/{auth_server}/v1/token` endpoint (use
-    /// `"default"` for the default authorization server).
+    /// `"default"` for the default authorization server) and presents the
+    /// credentials as HTTP Basic, which is Okta's default for a confidential
+    /// client.
+    ///
+    /// An Okta app can be configured to accept them in the body instead; say
+    /// so with `.with_client_auth(ClientAuth::Post)`.
     #[must_use]
     pub fn okta(
         domain: impl AsRef<str>,
@@ -162,6 +234,7 @@ impl OidcConfig {
             client_id,
             client_secret,
         )
+        .with_client_auth(ClientAuth::Basic)
     }
 }
 
@@ -175,6 +248,8 @@ impl fmt::Debug for OidcConfig {
             .field("client_id", &self.client_id)
             .field("client_secret", &"<redacted>")
             .field("scope", &self.scope)
+            .field("client_auth", &self.client_auth)
+            .field("audience", &self.audience)
             .finish()
     }
 }
@@ -280,45 +355,47 @@ impl TokenProvider {
 
     async fn fetch(&self) -> Result<TokenResponse> {
         let config = &self.inner.config;
-        let mut params = vec![
-            ("grant_type", "client_credentials"),
-            ("client_id", config.client_id.as_str()),
-            ("client_secret", config.client_secret.as_str()),
-        ];
+        let mut params = vec![("grant_type", "client_credentials")];
+        if config.client_auth == ClientAuth::Post {
+            params.push(("client_id", config.client_id.as_str()));
+            params.push(("client_secret", config.client_secret.as_str()));
+        }
         if let Some(scope) = &config.scope {
             params.push(("scope", scope.as_str()));
+        }
+        if let Some(audience) = &config.audience {
+            params.push(("audience", audience.as_str()));
         }
 
         // A send failure means the IdP was unreachable — retriable transport,
         // not a credential rejection. The per-request timeout bounds the fetch
         // even if the client was built without one.
-        let response = self
+        let mut request = self
             .inner
             .http
             .post(&config.token_url)
             .timeout(FETCH_TIMEOUT)
-            .form(&params)
-            .send()
-            .await
-            .map_err(|e| {
-                let url = canton_core::redact_url(&config.token_url);
-                let detail = canton_core::chain(&e);
-                // The status half of this function is careful — 401/403 is a
-                // definite auth failure, 5xx stays retriable. The transport
-                // half was not: everything became a retriable `Connection`
-                // carrying reqwest's outer sentence. An IdP behind a
-                // certificate this client cannot verify is the ordinary
-                // production misconfiguration, and it is permanent.
-                if e.is_timeout() {
-                    return Error::Timeout;
-                }
-                if e.is_builder() || detail.to_ascii_lowercase().contains("certificate") {
-                    return Error::Auth(format!(
-                        "the token endpoint {url} cannot be reached: {detail}"
-                    ));
-                }
-                Error::Connection(format!("token request to {url} failed: {detail}"))
-            })?;
+            .form(&params);
+        // Union of both branches' improvements: main's credential placement
+        // (Okta's Basic vs the body), and this branch's transport-error
+        // classification — a certificate failure is a permanent Auth error,
+        // not a retriable Connection one.
+        if config.client_auth == ClientAuth::Basic {
+            request = request.basic_auth(&config.client_id, Some(&config.client_secret));
+        }
+        let response = request.send().await.map_err(|e| {
+            let url = canton_core::redact_url(&config.token_url);
+            let detail = canton_core::chain(&e);
+            if e.is_timeout() {
+                return Error::Timeout;
+            }
+            if e.is_builder() || detail.to_ascii_lowercase().contains("certificate") {
+                return Error::Auth(format!(
+                    "the token endpoint {url} cannot be reached: {detail}"
+                ));
+            }
+            Error::Connection(format!("token request to {url} failed: {detail}"))
+        })?;
 
         // A credential rejection (401/403, e.g. `invalid_client`) is a definite
         // auth failure; other non-success statuses keep their code so 5xx/429
@@ -436,7 +513,7 @@ mod tests {
             "http://kc:8082/realms/AppProvider/protocol/openid-connect/token"
         );
         assert_eq!(
-            OidcConfig::auth0("my.eu.auth0.com", "c", "s").token_url,
+            OidcConfig::auth0("my.eu.auth0.com", "https://ledger.example", "c", "s").token_url,
             "https://my.eu.auth0.com/oauth/token"
         );
         assert_eq!(

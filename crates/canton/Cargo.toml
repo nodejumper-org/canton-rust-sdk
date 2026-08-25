@@ -34,7 +34,11 @@ canton-pqs    = { workspace = true }
 default = ["ed25519"]
 ed25519 = ["canton-signer/ed25519", "canton-ledger/ed25519", "canton-admin/ed25519"]
 ws   = ["canton-ledger/ws"]
-otel = ["canton-ledger/otel"]
+# Named on both, not only the ledger: `canton::telemetry::otel` is this crate's
+# own re-export, and forwarding through canton-ledger alone left it correct by
+# accident — one change to that crate's feature list and the facade's OTLP
+# setup would vanish from the API without anything failing to compile.
+otel = ["canton-ledger/otel", "canton-core/otel"]
 # PQS over TLS. Forwarded because this crate's own conformance suite states the
 # rule: "a capability that works only via a member crate is not one
 # `cargo add canton` delivers". Without this, reaching a PQS behind TLS meant
@@ -47,3 +51,7 @@ workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
+# Same cfg every other crate in the family sets. Without it a `doc(cfg)` added
+# here would silently not render — and the sibling crates show that the
+# attribute arrives long after the manifest is written.
+rustdoc-args = ["--cfg", "docsrs"]

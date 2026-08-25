@@ -30,6 +30,9 @@ walkdir             = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+# The vendored schemas are checksummed, so nothing can hand-edit a third-party
+# proto without the test noticing.
+sha2  = { workspace = true }
 
 [[example]]
 name = "smoke_version"

@@ -135,6 +135,36 @@ async fn run_grpc(
         read_back.user
     );
 
+    // Read the transaction back independently — a separate request, over the
+    // update stream rather than the submit's own response — and match its exact
+    // update id. Trusting the response the submit returned proves the call
+    // returned something; this proves the ledger holds it.
+    let committed = client
+        .updates_page_with(
+            &canton_ledger::UpdatesRequest::new(vec![party.to_string()], tx.offset - 1)
+                .until(tx.offset),
+            10,
+            None,
+        )
+        .await?
+        .0;
+    let matched = committed.iter().any(|update| {
+        matches!(
+            &update.update,
+            Some(canton_ledger::proto::get_update_response::Update::Transaction(read))
+                if read.update_id == tx.update_id
+        )
+    });
+    assert!(
+        matched,
+        "the committed transaction {} should be readable at offset {}",
+        tx.update_id, tx.offset
+    );
+    println!(
+        "independent read — update {} found at offset {}",
+        tx.update_id, tx.offset
+    );
+
     // query ACS → confirm the created contract is active.
     let offset = client.ledger_end().await?;
     let stream = client
@@ -230,6 +260,22 @@ async fn run_json(
         .any(|id| updates.iter().any(|update| update.to_string().contains(id)));
     println!("read back — our create present: {found}");
     assert!(found, "the committed transaction should contain our create");
+
+    // And the update read back is the one that was submitted, by id — matching
+    // on the contract id alone would accept a different transaction that
+    // happens to mention it.
+    let update_id = &response.transaction.update_id;
+    let matched = updates.iter().any(|update| {
+        update
+            .pointer("/update/Transaction/value/updateId")
+            .and_then(serde_json::Value::as_str)
+            == Some(update_id.as_str())
+    });
+    assert!(
+        matched,
+        "the update at offset {offset} should be {update_id}, saw {updates:?}"
+    );
+    println!("independent read — update {update_id} found at offset {offset}");
 
     // The typed READ path, which the gRPC lane has and this one did not.
     //

@@ -485,13 +485,139 @@ steps already assert their own markers.
   generated from the DAR committed here, so that one is guarded in CI with no
   checkout at all.
 
-## [0.2.0] — unreleased
+### Fixed (carried from main after 0.2.2)
+
+- **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
+  asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
+  while the assertion was not — so the default-feature build failed to compile.
+  Invisible because CI ran tests only with `--all-features`; a second
+  `cargo test --workspace` job (default features) now guards the whole class.
+  Found by running the suite under every feature combination.
+- **`tokio-stream`'s declared lower bound was `0.1`, but the `net` feature it
+  uses landed in `0.1.1`** — a minimal-versions resolve does not build against
+  `0.1.0`. Corrected to `0.1.1`. Found by `cargo +nightly build
+  -Z direct-minimal-versions`.
+
+## [0.2.2] — 2026-08-24
+
+### Added
+
+- **Conversion and hashing polish from a Rust API Guidelines audit** (16
+  observations, none blocking; the audit's two breaking items are *decided*
+  rather than fixed — [ADR-0010](docs/adr/0010-api-decisions-deferred-to-1.0.md)
+  defers the `*ParseError` renames and the removal of `Party`'s unvalidated
+  `From<&str>`/`From<String>` to 1.0, the latter blocked from gaining a checked
+  `TryFrom` today by std's blanket impl).
+  - `ChangeId` derives `Hash` — it is the key the docs tell applications to
+    track submissions by, and it could not be a `HashMap` key. `Store`,
+    `TransactionShape` and `ClientAuth` follow.
+  - `canton-ledger` and `canton-admin` re-export `Auth`, `ErrorInfo` and
+    `ResourceInfo` (and admin gains `ErrorCategory`): these appear in the
+    signatures of `Error::error_info`/`resource_info` and `Config::auth`, so a
+    user of one client crate could not previously name the types their own
+    functions return without adding a `canton-core` dependency.
+  - `ErrorCategory` implements `TryFrom<i32>` and `From<ErrorCategory> for i32`
+    alongside the inherent methods.
+  - `#[must_use]` on the constructors that lacked it; docs.rs feature badges on
+    all seven remaining `ws`-gated methods (two of nine had them).
+- **A compile-time proof that every public future is `Send`**
+  (`tests/futures_are_spawnable.rs`) — an async API that cannot be
+  `tokio::spawn`ed is unusable in a server, and the property breaks silently.
+- **Hermetic coverage for the paths only live tests exercised**, found by
+  measuring coverage rather than reading it: the three `TopologyClient` list
+  reads (36% file coverage, all three public methods untested without a node —
+  the same shape of gap the M1 review named about live tests), both recovery
+  handles' `recover`, and `Submission::submit_and_wait`. Hand-written code
+  measures 87.7% line coverage; `cargo udeps` reports no unused dependencies.
+
+### Fixed
+
+- The in-process duplicate-submission mocks answer synchronously on the
+  fire-and-forget lane; a live Canton 3.5.7 participant does not — it accepts
+  the RPC and reports the rejection on the completion stream. Established by
+  adversarial probes run with the published 0.2.1 crates against a real node
+  (which also confirmed the JSON duplicate answer is exactly the
+  HTTP 409 + `DUPLICATE_COMMAND` the `is_duplicate_submission` predicate was
+  written against, and that OIDC refresh survives a real token expiry). The
+  mocks stay as pins of the synchronous case; their comments now say where
+  reality differs.
+
+## [0.2.1] — 2026-08-24
+
+### Fixed
+
+- **`canton-ledger` documented as failed on docs.rs.** Two
+  `#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]` attributes went in without the
+  crate declaring `#![cfg_attr(docsrs, feature(doc_cfg))]`, which that attribute
+  requires. `cargo doc` never sets `docsrs`, so the attributes compiled out and
+  every gate stayed green; docs.rs does set it, on nightly, and the published
+  crate's documentation page said the build failed. The crates themselves
+  installed and built correctly throughout — this only ever affected the
+  rendered documentation, and it cannot be fixed for a version already
+  published, hence this patch.
+- A `docsrs` CI job now builds the workspace the way docs.rs will, so the class
+  of error that produced this cannot reach a release again.
+- **The MSRV job never checked the MSRV.** `rust-toolchain.toml` pins the
+  channel for anything run inside the checkout and wins over the toolchain the
+  CI action installs — rustup says so in its own log, then uses stable. So a job
+  that asked for 1.88 ran on stable, and `rust-version = "1.88"` went unverified
+  every time it was claimed. It happens to be true (1.88 checks clean), but
+  nothing was establishing that. Both jobs that want a specific toolchain now
+  set `RUSTUP_TOOLCHAIN`, which is the override that beats the file.
+- The `canton` facade declared `all-features` for docs.rs without the matching
+  `rustdoc-args`, the same inconsistency one step behind.
+- `cargo-semver-checks` covered 5 crates of 11. The M2 crates had no published
+  baseline to compare against until 0.2.0, and the job's own comment said they
+  should join afterwards — this is afterwards. `canton-proto` stays out by
+  ADR-0002 and `canton-codegen-cli` has no library API.
+
+### Changed
+
+- `RELEASING.md` carries the post-publish verification the pre-publish gate
+  cannot do: `cargo package` runs `--no-verify` because verifying needs the
+  siblings to already be on crates.io, so the packaged artefact is first built
+  by whoever installs it. The runbook now says to be that person first.
+- The README compatibility table listed 0.2 as unreleased.
+
+## [0.2.0] — 2026-08-24
+
 
 All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
 the rest. Everything the 0.1.x line gained after the M1 submission — the read
 request builders, the full `Commands` surface, Canton-native error
 classification (see 0.1.2 below) and the documentation fixes of 0.1.3/0.1.4 —
-is included; nothing from it was removed or changed in signature.
+is included.
+
+### Breaking, for code on 0.1.x
+
+Two signatures change, both because the old one could not express a correct
+call. Everything else from 0.1.x compiles unchanged.
+
+- **`OidcConfig::auth0(domain, client_id, secret)` → `auth0(domain, audience,
+  client_id, secret)`.** Auth0 answers a client-credentials request without an
+  `audience` by issuing a token for its own userinfo endpoint, which a
+  participant rejects — so the old preset could not produce a working request.
+  The audience identifies your Auth0 API and cannot be derived from the domain.
+
+  ```diff
+  - OidcConfig::auth0("my.eu.auth0.com", "client-id", "secret")
+  + OidcConfig::auth0("my.eu.auth0.com", "https://ledger.example", "client-id", "secret")
+  ```
+
+- **`CantonClient::await_completion(command_id, parties, offset, timeout)` →
+  `await_completion(&ChangeId, offset, timeout)`.** Canton identifies a command
+  by (user, acting parties, command id), and matching on the command id alone
+  can return another application's completion. The parties move inside the
+  change ID.
+
+  ```diff
+  - client.await_completion(&command_id, vec![party.clone()], offset, timeout)
+  + client.await_completion(&ChangeId::new("", vec![party.clone()], &command_id), offset, timeout)
+  ```
+
+  Better still, take the identity from the submission rather than rebuilding it:
+  `let submission = client.submission(submit);` then
+  `submission.recover(offset, timeout)`.
 
 ### Added — type-safe codegen from DARs
 
@@ -580,6 +706,142 @@ is included; nothing from it was removed or changed in signature.
   decoding a payload as the wrong type put the whole record — parties, amounts,
   free text — into a string that travels into the application's traces and
   metrics. It now names the kind and stops.
+
+- **`canton-core` (bearer token in `Debug`):** `AuthInterceptor` derived `Debug`
+  over the token it injects into every gRPC request. The interceptor lives
+  inside every client that holds a channel, so one `{:?}` on client state — a
+  tracing field, a panic message, an error context — printed a live credential,
+  and `SECURITY.md`'s "Debug output is redacted" was untrue as written. It now
+  reports presence only. Reported privately by Equilibrium during their M1
+  review, alongside the mutual-TLS key above.
+- **`canton-core` (panic on a hostile retry hint):** `Error::retry_delay()`
+  handed a server-supplied number to `Duration::from_secs_f64`, which panics on
+  anything a `Duration` cannot hold — so a JSON error body carrying
+  `"retryInfo": "1e300 seconds"` aborted the caller *inside error
+  classification*, which the retry loop calls on every retriable failure. The
+  conversion is fallible now and an out-of-range hint reads as no
+  recommendation.
+
+### Fixed — from Equilibrium's independent M1 review
+
+An engineering review of the released 0.1.4 client by [Equilibrium](https://equilibrium.co),
+carried out on the Development Fund milestone issue. Every finding is closed
+here; two of them (the `Debug` leak and the retry-hint panic) are in
+**Security** above.
+
+- **Ambiguous submissions are recoverable.** A submission whose response is
+  lost may still have committed, and the change ID is the only way back to the
+  outcome — but the SDK generated the command id *inside* the call that failed
+  and returned it only on success. `CantonClient::submission` and
+  `JsonClient::submission` fix the identity first and hand back a `Submission`
+  carrying its `ChangeId`, with `recover` reading the completion back. The
+  existing client methods are thin wrappers over the same object.
+- **Recovery matches the whole change ID.** `await_completion` compared
+  `command_id` alone; Canton identifies a command by (user, acting parties,
+  command id), and two applications on one participant may each use `daily-run`.
+  It now takes a `&ChangeId`. A user id left to the bearer token is not
+  compared (the participant resolved it and the client cannot know it), and a
+  completion carrying no acting parties is not rejected on that ground.
+- **The resumable update stream honours checkpoints.** `updates_with` dropped
+  `OffsetCheckpoint` frames before the resumable wrapper could see them, so the
+  resume point only advanced when a transaction arrived — on a quiet stream a
+  reconnect went back to where the caller started, which after pruning fails
+  outright. The resumable path now reads the unfiltered stream and filters for
+  itself. Subscribers see no change.
+- **A spent reconnect budget reports the participant's failure**, not
+  `UnexpectedResponse("failed to resume after N reconnects")`, which threw away
+  the status, the details, the correlation id and the retriable classification
+  at the moment they were needed. Same fix in the resumable ACS read.
+- **The JSON lane gained the four operations it was missing**: `submit`
+  (`/v2/commands/async/submit`), `submit_and_wait`, `events_by_contract_id`,
+  and recovery through `JsonClient::submission`. All four exist in Canton
+  3.5.7's JSON API; this was the SDK stopping short.
+- **`JsonClient::ws_active_contracts_resumable`** resubscribes from the last
+  `streamContinuationToken` rather than restarting the snapshot, which the gRPC
+  lane has done since M1.
+- **The typed ACS read is lossless.** Every gRPC ACS method matched
+  `ActiveContract` and dropped the rest, so a reassignment in flight at the
+  snapshot offset — `IncompleteUnassigned` / `IncompleteAssigned` — vanished
+  from a multi-synchronizer application's view. `AcsEntry` and the `acs_page` /
+  `acs_entries` / `acs_entries_resumable` family are the lossless read; the
+  active-only methods keep their names and are now that read with
+  `into_active` applied.
+- **The Auth0 and Okta presets produce their providers' normal requests.**
+  Auth0 needs an `audience` (without one it issues a token for its own userinfo
+  endpoint, which no participant accepts) — `auth0` now takes it, which is a
+  **breaking** signature change. Okta reads the credentials from an
+  `Authorization: Basic` header and rejects them in the body as
+  `invalid_client`; the preset selects that, and `ClientAuth` exposes the
+  choice for custom endpoints.
+- **Telemetry covers a stream's life, not its opening.** `instrument_stream`
+  counts errors that arrive after a subscription opens — previously a stream
+  that failed an hour in had been recorded as a success and never revisited.
+  The WebSocket upgrade carries `traceparent` (the only request a WS stream
+  makes), structured events carry `trace_id`, and `otel::otlp_metrics` is a
+  supported OTLP path for the counters, recorder and all.
+
+- **A retry the participant de-duplicates is a success, not a failure.** This
+  is the other half of the finding, and the half that was still open after the
+  recovery handle was added. When the SDK retries a submission whose response
+  was lost, the participant refuses the second attempt as `DUPLICATE_COMMAND` —
+  because the first one was accepted. `submit` was reporting that rejection to
+  the caller, which says the command did not happen at the exact moment it
+  provably did. It now reports success, over both transports. A duplicate on
+  the *first* attempt is untouched: nothing of ours is at the participant, so
+  the caller reused a change id and needs to hear about it.
+
+  The waiting variants cannot do this — their result is a transaction, and a
+  de-duplicated retry does not carry one — so they surface the rejection and
+  their documentation now says to recover through the handle rather than
+  describing a caveat and leaving it there.
+
+- **`examples/recover_a_submission.rs`** walks the finding's own scenario end
+  to end: submit, submit the same change ID again (what a retry after a lost
+  response looks like to the participant), watch it be rejected as
+  `DUPLICATE_COMMAND`, and recover the original outcome. Verified live — the
+  recovered `update_id` is the one the first submission committed. The README's
+  other examples are backed by compiled example files; this one was not, and
+  the newest API is the worst one to leave uncompiled.
+- **The facade reaches what the documentation promises.** `canton::telemetry`
+  was not re-exported, so `cargo add canton` could not see the metric names, the
+  transport labels, or — now — the OTLP setup those metrics are meant to be
+  exported through. The `otel` feature also reached `canton-core` only by way of
+  `canton-ledger`, which was correct by accident. Both fixed, with tests that
+  name the paths a reader of the README would try.
+
+**From the same review's non-blocking list:**
+
+- Requests the participant would certainly refuse are refused locally: a
+  submission with no commands or no acting party, both minimum-ledger-time
+  forms at once, a negative offset, an inverted range, a subscription filtered
+  to nobody.
+- `read_as` reaches the transaction filter of a submission's response, matching
+  the Ledger API's own default; filtering to `act_as` alone returned a
+  transaction quietly missing events.
+- The idempotent reads — events-by-contract-id, the ACS page, the updates page
+  — take the configured retry policy, which had applied only to `version`, the
+  health check, `ledger_end` and submissions.
+- Jitter never brings a retry back **before** a server-recommended delay; a
+  `RetryInfo` is a minimum, and coming back early spends an attempt on a
+  guaranteed rejection.
+- The WebSocket streams take their reconnect budget and backoff from the
+  client's `RetryConfig` instead of a hardcoded five-at-250ms.
+- `list_known_parties` fails on a repeated page token instead of returning a
+  prefix as if it were the whole list, and a topology response missing a
+  required field fails the read rather than shrinking it.
+- The vendored `.proto` files carry a provenance record and per-file SHA-256s,
+  verified by a test, with `tools/vendor-protos.sh` for the refresh.
+- `CANTON_TEST_REQUIRE_LIVE=1` turns a skipped live test into a failure, so a
+  live run's result is a claim about a participant rather than about an empty
+  environment.
+- CI checks `aarch64-unknown-linux-gnu` and `x86_64-unknown-linux-musl`, and
+  the `cargo-semver-checks` job is enabled now that a baseline exists.
+- ADR-0005 no longer claims mixed installs "fail to resolve"; with caret
+  requirements mixed *patch* versions resolve, which is intended.
+- `canton-admin` documents that party management here is allocation and
+  discovery, and why updates are out of scope for M1.
+- The reference app reads its committed transaction back independently and
+  matches the exact update id, on both transports.
 
 ### Fixed — from an external review of the M1 client
 

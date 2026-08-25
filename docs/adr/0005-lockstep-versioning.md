@@ -16,9 +16,18 @@ One version for the whole family, driven by `workspace.package.version`:
 
 - Every `canton-*` crate is released **in lockstep** with the same version,
   even when a crate has no changes.
-- Internal dependencies require the same minor (`version = "x.y"` via the
-  workspace dependency table), so mixed installs fail to resolve rather than
-  misbehave.
+- Internal dependencies name the release's own version in the workspace
+  dependency table (`version = "x.y.z"`), which Cargo reads as a caret
+  requirement. **This constrains the minor, not the patch:** with `0.2.0`
+  published, a consumer whose lockfile pairs `canton-ledger 0.2.0` with
+  `canton-core 0.2.1` resolves and builds. Crossing a minor does not — that is
+  where the guarantee lies, and it is the boundary this project breaks API at
+  before 1.0.
+- Mixed *patch* versions are therefore possible and are expected to work: the
+  release train publishes them together, and a patch is by definition
+  non-breaking. Pinning `=x.y.z` between our own crates would forbid the
+  resolution rather than the misbehaviour, and would make a security patch to
+  one crate un-installable without re-releasing all of them.
 - A breaking change in any crate bumps the shared version's SemVer-major
   (post-1.0; pre-1.0 the minor plays that role).
 - The `canton-splice-*` generated crates (M2+) additionally encode the DAR

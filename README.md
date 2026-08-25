@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client is **released** on crates.io (0.1.x); the type-safe DAR codegen is **code-complete and not yet published**. Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. External signing is in: interactive submission with a pluggable `Signer`, verified live — an external party is onboarded by signing its own topology, and a command prepared, signed off the participant and committed. Token-standard support covers **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client whose every path and payload is transcribed from the standard's OpenAPI documents and pinned by test; the PQS client is verified live against **Scribe 3.5.4**.
+> **Status:** the Ledger API client and the type-safe DAR codegen are both **released** on crates.io (0.2.x). Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. On this branch (unreleased, ships as 0.3.0): external signing — interactive submission with a pluggable `Signer`, verified live, an external party onboarded by signing its own topology and a command prepared, signed off the participant and committed; token-standard support for **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client whose every path and payload is transcribed from the standard's OpenAPI documents and pinned by test; and a PQS client verified live against **Scribe 3.5.4**.
 
 ## Crates
 
@@ -13,8 +13,8 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml`, `canton::signer`, `canton::token`, `canton::pqs` + the shared `Config`/`Error` at the root) with the `ws`/`otel`/`pqs-tls` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
-| `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets. |
-| `canton-ledger` | The async Ledger API client. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions + recovery, ACS/update streaming (+ paging, reverse-order, event query, offset-resumable), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: command submission, bounded reads, and WebSocket streaming (incl. resumable) behind the `ws` feature. |
+| `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets that each produce their provider's normal token request (Auth0's `audience`, Okta's HTTP Basic credentials). |
+| `canton-ledger` | The async Ledger API client, with the **same operations on both transports**. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions and change-ID recovery, ACS/update streaming (+ paging, reverse-order, event query, checkpoint-resumable), a lossless ACS read (`AcsEntry`, incomplete reassignments included), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: the same submission set including fire-and-forget and recovery, event query, bounded reads, and WebSocket streaming — updates, completions and a resumable ACS — behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
 | `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL on that path, and no interpolation of values or field paths anywhere. `Sql::raw` is the documented escape hatch for PQS functions the crate does not model; it still binds its parameters. |
 | `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. |
@@ -36,8 +36,9 @@ and what CI can and cannot check — is in
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.1.4 (released) | 3.5.7 (pinned protos) | v2 | 1.88 |
 | 0.3.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.2.x (current release) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.1.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
 supported Canton range re-vendors them in a new SDK minor (see the stability
@@ -115,6 +116,30 @@ Runnable examples: [`version_and_health`](crates/canton-ledger/examples/version_
 cargo run -p canton-ledger --example version_and_health
 cargo run -p canton-ledger --example submit_and_read
 ```
+
+**When the outcome must not be lost.** A submission whose response never
+arrives may still have committed, and the way back to it is the command's
+identity — so take the identity *before* sending rather than from a call that
+may fail:
+
+```rust,ignore
+use std::time::Duration;
+
+// An offset from before the submission, to read completions from.
+let offset = client.ledger_end().await?;
+let submission = client.submission(Submit::new(party).add_command(command));
+
+if submission.submit_and_wait().await.is_err() {
+    // Ambiguous — ask the ledger what actually happened. The match is on the
+    // whole change ID (user, acting parties, command id), not the command id
+    // alone, which is not unique across a participant's users.
+    let completion = submission.recover(offset, Duration::from_secs(30)).await?;
+    println!("committed after all: {}", completion.update_id);
+}
+```
+
+`JsonClient::submission` is the same handle on the JSON transport, recovering
+over the WebSocket.
 
 See also the integration tests in [`crates/canton-ledger/tests/`](crates/canton-ledger/tests/) and [`crates/canton-admin/tests/`](crates/canton-admin/tests/).
 
@@ -246,6 +271,12 @@ cargo test --workspace --all-features
 below are set, and skip otherwise (so the command above stays green without a
 node). Every name is prefixed `CANTON_TEST_`:
 
+A skipped test and a passing one are the same line in cargo's output, so set
+**`CANTON_TEST_REQUIRE_LIVE=1`** whenever a run is meant to prove something:
+each test that would step aside for a missing variable fails instead. That is
+what makes "38 live tests passed" a claim about a participant rather than about
+an empty environment.
+
 | Variable | What it gates | Example (LocalNet App Provider) |
 |---|---|---|
 | `CANTON_TEST_ENDPOINT` | all gRPC live tests | `http://localhost:3901` |
@@ -257,6 +288,7 @@ node). Every name is prefixed `CANTON_TEST_`:
 | `CANTON_TEST_ADMIN_ENDPOINT` | `canton-admin` topology reads | `http://localhost:3902` |
 | `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | party-admin RPCs (need the `ParticipantAdmin` right) | `app-provider-validator`, … |
 | `CANTON_TEST_SYNC_ID` | optional: also assert vetted packages in the synchronizer store | |
+| `CANTON_TEST_REQUIRE_LIVE` | turns every skip into a failure — set it on any run whose result is being reported | `1` |
 
 ```sh
 export CANTON_TEST_ENDPOINT=http://localhost:3901
@@ -265,6 +297,7 @@ export CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/p
 export CANTON_TEST_CLIENT_ID=app-provider-backend CANTON_TEST_CLIENT_SECRET=…
 export CANTON_TEST_PARTY='app_provider_quickstart-…::1220…'
 export CANTON_TEST_LICENSING_PKG='#quickstart-licensing'
+export CANTON_TEST_REQUIRE_LIVE=1   # skipping is now a failure, not a pass
 cargo test -p canton-ledger --all-features --test live -- --nocapture
 ```
 
@@ -349,6 +382,12 @@ The local-development path reads the environment
 [canton-devkit](https://github.com/bitdynamics-ab/canton-devkit) exports, and
 reading its DAR container taught us that a per-entry decompression cap bounds
 nothing on its own — an archive is now bounded in total as well.
+
+[Equilibrium](https://equilibrium.co) reviewed the released M1 client from an
+independent engineering perspective and reported a credential leak privately
+before anything else. Their findings are closed in 0.2.0 and listed in the
+[changelog](CHANGELOG.md); several are the kind that only a reader who does not
+already know what the code meant to do would find.
 
 ## License
 

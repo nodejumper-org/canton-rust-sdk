@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use canton_core::auth::{self, Intercepted};
 use canton_core::telemetry::{self, TRANSPORT_GRPC};
-use canton_core::{Config, Result};
+use canton_core::{Config, Error, Result};
 use canton_proto::com::digitalasset::canton::protocol::v30 as protocol;
 use canton_proto::com::digitalasset::canton::topology::admin::v30 as topo;
 use tonic::transport::Channel;
@@ -18,7 +18,7 @@ use topo::topology_manager_read_service_client::TopologyManagerReadServiceClient
 ///
 /// `#[non_exhaustive]` so new store kinds can be added without a breaking
 /// change.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Store {
     /// The node's authorized store (its own local topology state).
@@ -151,9 +151,7 @@ impl TopologyClient {
                         })
                         .await?
                         .into_inner();
-                    Ok(collect_entries(
-                        response.results.into_iter().map(|r| (r.context, r.item)),
-                    ))
+                    collect_entries(response.results.into_iter().map(|r| (r.context, r.item)))
                 }
             })
             .await
@@ -191,9 +189,7 @@ impl TopologyClient {
                         })
                         .await?
                         .into_inner();
-                    Ok(collect_entries(
-                        response.results.into_iter().map(|r| (r.context, r.item)),
-                    ))
+                    collect_entries(response.results.into_iter().map(|r| (r.context, r.item)))
                 }
             })
             .await
@@ -228,9 +224,7 @@ impl TopologyClient {
                         })
                         .await?
                         .into_inner();
-                    Ok(collect_entries(
-                        response.results.into_iter().map(|r| (r.context, r.item)),
-                    ))
+                    collect_entries(response.results.into_iter().map(|r| (r.context, r.item)))
                 }
             })
             .await
@@ -240,20 +234,32 @@ impl TopologyClient {
 }
 
 /// Keep only results that carry both a context and an item, pairing them.
+/// Assemble the entries of a topology response, refusing an incomplete one.
+///
+/// Both halves of an entry are `Required` in the proto, so a row missing
+/// either is a participant that answered something this client cannot read.
+/// Dropping such a row silently is the dangerous shape: topology reads answer
+/// questions like "which participants host this party", and a short answer is
+/// indistinguishable from a true one — the caller acts on a view of the
+/// network that is missing a member it was never told about.
 fn collect_entries<T>(
     results: impl Iterator<Item = (Option<topo::BaseResult>, Option<T>)>,
-) -> Vec<Entry<T>> {
+) -> Result<Vec<Entry<T>>> {
     results
-        .filter_map(|(context, item)| {
-            Some(Entry {
-                context: context?,
-                item: item?,
-            })
+        .map(|(context, item)| match (context, item) {
+            (Some(context), Some(item)) => Ok(Entry { context, item }),
+            (None, _) => Err(Error::UnexpectedResponse(
+                "a topology result carried no context; the response is incomplete".to_string(),
+            )),
+            (_, None) => Err(Error::UnexpectedResponse(
+                "a topology result carried no mapping; the response is incomplete".to_string(),
+            )),
         })
         .collect()
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -292,15 +298,28 @@ mod tests {
     }
 
     #[test]
-    fn collect_entries_drops_partial_results() {
+    fn collect_entries_refuses_partial_results() {
         let ctx = topo::BaseResult::default();
+
+        // A complete response reads normally.
         let rows = vec![
             (Some(ctx.clone()), Some(7u8)),
-            (None, Some(8u8)),         // missing context -> dropped
-            (Some(ctx.clone()), None), // missing item -> dropped
+            (Some(ctx.clone()), Some(8u8)),
         ];
-        let kept = collect_entries(rows.into_iter());
-        assert_eq!(kept.len(), 1);
-        assert_eq!(kept[0].item, 7);
+        let kept = collect_entries(rows.into_iter()).expect("a complete response");
+        assert_eq!(kept.len(), 2);
+
+        // A row missing either half fails the whole read rather than shrinking
+        // it: a topology answer that is quietly short is worse than none.
+        let missing_context = vec![(Some(ctx.clone()), Some(7u8)), (None, Some(8u8))];
+        assert!(matches!(
+            collect_entries(missing_context.into_iter()),
+            Err(Error::UnexpectedResponse(_))
+        ));
+        let missing_item = vec![(Some(ctx.clone()), Some(7u8)), (Some(ctx), None::<u8>)];
+        assert!(matches!(
+            collect_entries(missing_item.into_iter()),
+            Err(Error::UnexpectedResponse(_))
+        ));
     }
 }

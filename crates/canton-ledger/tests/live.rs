@@ -20,9 +20,28 @@
 
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{
-    CantonClient, Config, JsonClient, JsonCommands, RetryConfig, Submit, create, exercise,
-    identifier, record, value,
+    CantonClient, ChangeId, Config, JsonClient, JsonCommands, RetryConfig, Submit, create,
+    exercise, identifier, record, value,
 };
+
+/// Report a live test that could not run.
+///
+/// A skipped test and a passing test are the same line in cargo's output, so a
+/// live suite that reached no participant reads exactly like one that exercised
+/// everything — which is how "28 live tests passed" can be true and mean
+/// nothing. Set **`CANTON_TEST_REQUIRE_LIVE=1`**, as any run that claims to have
+/// exercised a node should, and a missing environment fails here instead of
+/// passing quietly.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
 
 fn endpoint() -> Option<String> {
     std::env::var("CANTON_TEST_ENDPOINT")
@@ -129,7 +148,7 @@ fn app_install(party: &str, pkg: &str) -> canton_ledger::proto::Command {
 #[tokio::test]
 async fn version_returns_from_live_node() {
     let Some(ep) = endpoint() else {
-        eprintln!("skipping version_returns_from_live_node: set CANTON_TEST_ENDPOINT");
+        skip!("version_returns_from_live_node: set CANTON_TEST_ENDPOINT");
         return;
     };
 
@@ -148,7 +167,7 @@ async fn health_check_reports_serving() {
     use canton_ledger::ServingStatus;
 
     let Some(ep) = endpoint() else {
-        eprintln!("skipping health_check_reports_serving: set CANTON_TEST_ENDPOINT");
+        skip!("health_check_reports_serving: set CANTON_TEST_ENDPOINT");
         return;
     };
 
@@ -170,8 +189,8 @@ async fn health_check_reports_serving() {
 #[tokio::test]
 async fn ledger_end_with_oidc_auth() {
     let (Some(ep), Some(oidc_config)) = (endpoint(), oidc()) else {
-        eprintln!(
-            "skipping ledger_end_with_oidc_auth: set CANTON_TEST_ENDPOINT + \
+        skip!(
+            "ledger_end_with_oidc_auth: set CANTON_TEST_ENDPOINT + \
              CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET"
         );
         return;
@@ -192,9 +211,7 @@ async fn ledger_end_with_oidc_auth() {
 #[tokio::test]
 async fn create_contract_and_read_transaction() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!(
-            "skipping create_contract_and_read_transaction: no endpoint, credentials, party or package"
-        );
+        skip!("create_contract_and_read_transaction: no endpoint, credentials, party or package");
         return;
     };
 
@@ -232,9 +249,7 @@ async fn create_contract_and_read_transaction() {
 #[tokio::test]
 async fn duplicate_command_id_is_deduplicated() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!(
-            "skipping duplicate_command_id_is_deduplicated: no endpoint, credentials, party or package"
-        );
+        skip!("duplicate_command_id_is_deduplicated: no endpoint, credentials, party or package");
         return;
     };
 
@@ -269,8 +284,8 @@ async fn duplicate_command_id_is_deduplicated() {
 #[tokio::test]
 async fn await_completion_recovers_a_submitted_command() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!(
-            "skipping await_completion_recovers_a_submitted_command: no endpoint, credentials, party or package"
+        skip!(
+            "await_completion_recovers_a_submitted_command: no endpoint, credentials, party or package"
         );
         return;
     };
@@ -298,14 +313,11 @@ async fn await_completion_recovers_a_submitted_command() {
         .expect("submit should succeed");
 
     // Recover the command's completion from the stream (the method bounds the
-    // wait internally so a missing completion can't hang).
+    // wait internally so a missing completion can't hang). The identity is the
+    // whole change ID, which for a token-derived user is (parties, command id).
+    let change_id = ChangeId::new("", vec![party.clone()], &command_id);
     let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+        .await_completion(&change_id, begin, std::time::Duration::from_secs(15))
         .await
         .expect("completion should be found");
 
@@ -324,7 +336,7 @@ async fn await_completion_recovers_a_submitted_command() {
 async fn active_contract_set_snapshot() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping active_contract_set_snapshot: env not set");
+        skip!("active_contract_set_snapshot: env not set");
         return;
     };
 
@@ -368,7 +380,7 @@ async fn active_contract_set_snapshot() {
 async fn updates_stream_replays_a_created_transaction() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping updates_stream_replays_a_created_transaction: env not set");
+        skip!("updates_stream_replays_a_created_transaction: env not set");
         return;
     };
 
@@ -411,7 +423,7 @@ async fn updates_stream_replays_a_created_transaction() {
 async fn resumable_updates_yield_a_transaction() {
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping resumable_updates_yield_a_transaction: env not set");
+        skip!("resumable_updates_yield_a_transaction: env not set");
         return;
     };
 
@@ -445,7 +457,7 @@ async fn bounded_filtered_updates_via_the_request_builder() {
     use canton_ledger::{TransactionShape, UpdatesRequest};
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping bounded_filtered_updates_via_the_request_builder: env not set");
+        skip!("bounded_filtered_updates_via_the_request_builder: env not set");
         return;
     };
 
@@ -502,7 +514,7 @@ async fn filtered_acs_shape_selection_and_json_builder_reads() {
     use canton_ledger::{ActiveContractsRequest, Submit, TransactionShape, UpdatesRequest};
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping filtered_acs_shape_selection_and_json_builder_reads: env not set");
+        skip!("filtered_acs_shape_selection_and_json_builder_reads: env not set");
         return;
     };
 
@@ -586,7 +598,7 @@ async fn descending_reads_on_both_transports() {
     use canton_ledger::UpdatesRequest;
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping descending_reads_on_both_transports: env not set");
+        skip!("descending_reads_on_both_transports: env not set");
         return;
     };
 
@@ -629,7 +641,7 @@ async fn descending_reads_on_both_transports() {
         // With retry enabled: the happy path is untouched, errors would follow
         // the category-first policy.
         let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
-            eprintln!("skipping the json half: no credentials in the environment");
+            skip!("the json half: no credentials in the environment");
             return;
         };
         let json = json.with_retry(canton_ledger::RetryConfig::default());
@@ -661,7 +673,7 @@ async fn completions_via_the_request_builder() {
     use canton_ledger::CompletionsRequest;
     use tokio_stream::StreamExt as _;
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping completions_via_the_request_builder: env not set");
+        skip!("completions_via_the_request_builder: env not set");
         return;
     };
 
@@ -694,7 +706,7 @@ async fn completions_via_the_request_builder() {
 #[tokio::test]
 async fn json_transport_version_and_ledger_end() {
     let Some(json_url) = json_endpoint() else {
-        eprintln!("skipping json_transport_version_and_ledger_end: no JSON endpoint");
+        skip!("json_transport_version_and_ledger_end: no JSON endpoint");
         return;
     };
 
@@ -707,7 +719,7 @@ async fn json_transport_version_and_ledger_end() {
 
     // ledger end is authenticated
     let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
-        eprintln!("skipping json ledger-end: no credentials in the environment");
+        skip!("json ledger-end: no credentials in the environment");
         return;
     };
     let offset = json
@@ -722,8 +734,8 @@ async fn json_transport_version_and_ledger_end() {
 #[tokio::test]
 async fn retry_enabled_client_works_on_the_happy_path() {
     let Some(config) = endpoint().map(Config::new).and_then(authenticate) else {
-        eprintln!(
-            "skipping retry_enabled_client_works_on_the_happy_path: \
+        skip!(
+            "retry_enabled_client_works_on_the_happy_path: \
              no endpoint or credentials in the environment"
         );
         return;
@@ -743,7 +755,7 @@ async fn retry_enabled_client_works_on_the_happy_path() {
 #[tokio::test]
 async fn rejected_command_surfaces_a_non_retriable_error() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping rejected_command_surfaces_a_non_retriable_error: env not set");
+        skip!("rejected_command_surfaces_a_non_retriable_error: env not set");
         return;
     };
 
@@ -776,7 +788,7 @@ async fn rejected_command_surfaces_a_non_retriable_error() {
 #[tokio::test]
 async fn exercise_choice_on_a_created_contract() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping exercise_choice_on_a_created_contract: env not set");
+        skip!("exercise_choice_on_a_created_contract: env not set");
         return;
     };
 
@@ -818,7 +830,7 @@ async fn exercise_choice_on_a_created_contract() {
 #[tokio::test]
 async fn multiple_commands_submit_atomically() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping multiple_commands_submit_atomically: env not set");
+        skip!("multiple_commands_submit_atomically: env not set");
         return;
     };
 
@@ -853,7 +865,7 @@ async fn multiple_commands_submit_atomically() {
 #[tokio::test]
 async fn json_bad_token_is_an_http_error() {
     let Some(json_url) = json_endpoint() else {
-        eprintln!("skipping json_bad_token_is_an_http_error: no JSON endpoint in the environment");
+        skip!("json_bad_token_is_an_http_error: no JSON endpoint in the environment");
         return;
     };
 
@@ -895,11 +907,11 @@ async fn both_transports_describe_the_same_failure_identically() {
     const PAST_THE_END: i64 = 999_999_999;
 
     let (Some((client, party, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
-        eprintln!("skipping both_transports_describe_the_same_failure_identically: env not set");
+        skip!("both_transports_describe_the_same_failure_identically: env not set");
         return;
     };
     let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
-        eprintln!("skipping: no credentials in the environment");
+        skip!(": no credentials in the environment");
         return;
     };
 
@@ -969,11 +981,11 @@ async fn both_transports_describe_the_same_failure_identically() {
 #[tokio::test]
 async fn grpc_and_json_transports_agree() {
     let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
-        eprintln!("skipping grpc_and_json_transports_agree: no endpoints or credentials");
+        skip!("grpc_and_json_transports_agree: no endpoints or credentials");
         return;
     };
     let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
-        eprintln!("skipping: no credentials in the environment");
+        skip!(": no credentials in the environment");
         return;
     };
 
@@ -998,7 +1010,7 @@ async fn grpc_and_json_transports_agree() {
 #[tokio::test]
 async fn event_query_returns_the_created_event() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping event_query_returns_the_created_event: env not set");
+        skip!("event_query_returns_the_created_event: env not set");
         return;
     };
 
@@ -1022,7 +1034,7 @@ async fn event_query_returns_the_created_event() {
 #[tokio::test]
 async fn acs_paging_walks_pages_via_token() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping acs_paging_walks_pages_via_token: env not set");
+        skip!("acs_paging_walks_pages_via_token: env not set");
         return;
     };
 
@@ -1071,7 +1083,7 @@ async fn acs_paging_walks_pages_via_token() {
 #[tokio::test]
 async fn updates_page_reverse_order_is_newest_first() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping updates_page_reverse_order_is_newest_first: env not set");
+        skip!("updates_page_reverse_order_is_newest_first: env not set");
         return;
     };
 
@@ -1115,15 +1127,15 @@ async fn json_submit_and_read_back() {
         test_party(),
         std::env::var("CANTON_TEST_LICENSING_PKG"),
     ) else {
-        eprintln!(
-            "skipping json_submit_and_read_back: no JSON endpoint, party or package \
+        skip!(
+            "json_submit_and_read_back: no JSON endpoint, party or package \
              in the environment"
         );
         return;
     };
 
     let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
-        eprintln!("skipping: no credentials in the environment");
+        skip!(": no credentials in the environment");
         return;
     };
 
@@ -1187,12 +1199,12 @@ async fn json_submit_and_read_back() {
 #[tokio::test]
 async fn json_updates_too_large_is_a_413() {
     let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
-        eprintln!("skipping json_updates_too_large_is_a_413: no JSON endpoint or party");
+        skip!("json_updates_too_large_is_a_413: no JSON endpoint or party");
         return;
     };
 
     let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
-        eprintln!("skipping: no credentials in the environment");
+        skip!(": no credentials in the environment");
         return;
     };
     let end = json.ledger_end().await.expect("ledger end");
@@ -1220,12 +1232,12 @@ async fn ws_streams_active_contracts_and_updates() {
     use tokio_stream::StreamExt as _;
 
     let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
-        eprintln!("skipping ws_streams_active_contracts_and_updates: no JSON endpoint or party");
+        skip!("ws_streams_active_contracts_and_updates: no JSON endpoint or party");
         return;
     };
 
     let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
-        eprintln!("skipping: no credentials in the environment");
+        skip!(": no credentials in the environment");
         return;
     };
     let end = json.ledger_end().await.expect("ledger end");
@@ -1265,30 +1277,27 @@ async fn ws_streams_active_contracts_and_updates() {
 #[tokio::test]
 async fn submit_fire_and_forget_then_recover() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping submit_fire_and_forget_then_recover: full setup env not set");
+        skip!("submit_fire_and_forget_then_recover: full setup env not set");
         return;
     };
 
     let begin = client.ledger_end().await.expect("ledger_end");
 
-    // Fire-and-forget submit returns the change-ID command_id used.
-    let command_id = client
-        .submit(Submit::new(&party).add_command(app_install(&party, &pkg)))
-        .await
-        .expect("submit should be accepted");
+    // The handle knows the command's identity before anything is sent, which
+    // is what makes the outcome recoverable when the send itself is what fails.
+    let submission = client.submission(Submit::new(&party).add_command(app_install(&party, &pkg)));
+    let command_id = submission.change_id().command_id().to_string();
     assert!(
         command_id.starts_with("sdk-"),
         "expected a generated command id, got {command_id}"
     );
+    submission
+        .submit()
+        .await
+        .expect("submit should be accepted");
 
-    // The outcome is recoverable via the completion stream.
-    let completion = client
-        .await_completion(
-            &command_id,
-            vec![party.clone()],
-            begin,
-            std::time::Duration::from_secs(15),
-        )
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(15))
         .await
         .expect("the submitted command's completion should be found");
     assert_eq!(
@@ -1301,7 +1310,7 @@ async fn submit_fire_and_forget_then_recover() {
 #[tokio::test]
 async fn submit_and_wait_returns_the_update_id() {
     let Some((client, party, pkg)) = full_setup() else {
-        eprintln!("skipping submit_and_wait_returns_the_update_id: full setup env not set");
+        skip!("submit_and_wait_returns_the_update_id: full setup env not set");
         return;
     };
 
@@ -1321,4 +1330,166 @@ async fn submit_and_wait_returns_the_update_id() {
         "submit-and-wait — update_id={} offset={}",
         response.update_id, response.completion_offset
     );
+}
+
+#[cfg(feature = "ws")]
+#[tokio::test]
+async fn json_async_submit_is_recoverable_by_its_change_id() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_async_submit_is_recoverable_by_its_change_id: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    // The offset to scan completions from, taken before anything is sent.
+    let begin = json.ledger_end().await.expect("json ledger_end");
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let submission =
+        json.submission(JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments));
+    let command_id = submission.change_id().command_id().to_string();
+
+    // Fire-and-forget over JSON, which had no such endpoint before.
+    submission
+        .submit()
+        .await
+        .expect("json async submit should be accepted");
+
+    let completion = submission
+        .recover(begin, std::time::Duration::from_secs(30))
+        .await
+        .expect("the completion should be found over the WS lane");
+    assert_eq!(
+        completion.get("commandId").and_then(|v| v.as_str()),
+        Some(command_id.as_str())
+    );
+    println!("json async submit — command_id={command_id} recovered over WS");
+}
+
+#[tokio::test]
+async fn json_submit_and_wait_reports_where_the_command_landed() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_submit_and_wait_reports_where_the_command_landed: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+
+    let response = json
+        .submit_and_wait(&commands)
+        .await
+        .expect("json submit-and-wait should commit");
+    assert!(!response.update_id.is_empty());
+    assert!(response.completion_offset > 0);
+    println!(
+        "json submit-and-wait — update_id={} completion_offset={}",
+        response.update_id, response.completion_offset
+    );
+}
+
+#[tokio::test]
+async fn json_events_by_contract_id_finds_a_contract_we_created() {
+    let (Some(json_url), Some(party), Ok(pkg)) = (
+        json_endpoint(),
+        test_party(),
+        std::env::var("CANTON_TEST_LICENSING_PKG"),
+    ) else {
+        skip!("json_events_by_contract_id_finds_a_contract_we_created: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let template_id = format!("{pkg}:Licensing.AppInstall:AppInstallRequest");
+    let arguments = serde_json::json!({
+        "provider": party,
+        "user": party,
+        "meta": { "values": {} },
+    });
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(template_id, arguments);
+    let response = json
+        .submit_and_wait_for_transaction(&commands)
+        .await
+        .expect("json submit should commit");
+
+    // Dig the contract id out of the created event the submit returned.
+    let contract_id = response
+        .transaction
+        .events
+        .iter()
+        .find_map(|event| {
+            event
+                .get("CreatedEvent")
+                .and_then(|created| created.get("contractId"))
+                .and_then(|id| id.as_str())
+                .map(str::to_string)
+        })
+        .expect("the create should report a contract id");
+
+    let events = json
+        .events_by_contract_id(&contract_id, vec![party.clone()])
+        .await
+        .expect("events-by-contract-id");
+    assert!(
+        events.to_string().contains(&contract_id),
+        "the response should describe the contract we asked about: {events}"
+    );
+    println!("json events-by-contract-id — {contract_id} found");
+}
+
+#[cfg(feature = "ws")]
+#[tokio::test]
+async fn ws_active_contracts_resumable_reads_the_snapshot() {
+    use tokio_stream::StreamExt as _;
+
+    let (Some(json_url), Some(party)) = (json_endpoint(), test_party()) else {
+        skip!("ws_active_contracts_resumable_reads_the_snapshot: no environment");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(json_url)) else {
+        skip!(": no credentials in the environment");
+        return;
+    };
+
+    let offset = json.ledger_end().await.expect("json ledger_end");
+    let stream = json.ws_active_contracts_resumable(vec![party.clone()], offset);
+    tokio::pin!(stream);
+
+    let mut entries = 0usize;
+    while let Some(frame) = stream.next().await {
+        frame.expect("the resumable ACS stream should not fail");
+        entries += 1;
+        if entries >= 5 {
+            break; // enough to prove the subscription delivers
+        }
+    }
+    println!("ws resumable acs — {entries} entries read from the snapshot");
 }

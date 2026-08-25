@@ -8,7 +8,7 @@
 //! node health check, and an opt-in retry pipeline. [`JsonClient`] mirrors the
 //! core surface over the HTTP JSON Ledger API (submit + bounded reads, plus
 //! WebSocket streaming behind the `ws` feature). Both share the
-//! [`canton_core`] connection kernel (endpoint, [`Auth`](canton_core::Auth),
+//! [`canton_core`] connection kernel (endpoint, [`Auth`],
 //! TLS, retry) and error model.
 //!
 //! ```no_run
@@ -20,23 +20,34 @@
 //! # Ok(())
 //! # }
 //! ```
+// `doc(cfg)` marks the `ws`-gated items on docs.rs, and that attribute is
+// nightly-only. docs.rs builds with `--cfg docsrs`, so without this the
+// attributes below are a hard error there and the crate documents as failed —
+// while a plain `cargo doc`, which never sets `docsrs`, stays green.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod client;
 mod command;
 pub mod interactive;
 mod json;
 pub mod request;
+mod submission;
 #[cfg(feature = "ws")]
 mod ws;
 
-pub use canton_core::{Config, Error, ErrorCategory, Result, RetryConfig, TlsConfig};
+pub use canton_core::{
+    Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,
+};
 pub use canton_proto::grpc::health::v1::health_check_response::ServingStatus;
 pub use canton_signer::{Signature, Signer};
-pub use client::CantonClient;
-pub use command::{Submit, create, exercise, identifier, record, value};
+pub use client::{AcsEntry, CantonClient};
+pub use command::{ChangeId, Submit, create, exercise, identifier, record, value};
 pub use interactive::{Executable, Prepare, Prepared};
-pub use json::{JsonClient, JsonCommands, JsonSubmitResponse, JsonTransaction};
+pub use json::{
+    JsonClient, JsonCommands, JsonSubmitAndWaitResponse, JsonSubmitResponse, JsonTransaction,
+};
 pub use request::{ActiveContractsRequest, CompletionsRequest, TransactionShape, UpdatesRequest};
+pub use submission::{JsonSubmission, Submission};
 
 /// The generated Ledger API v2 protobuf types, for the **dynamic** (untyped)
 /// command path. For typed payloads generated from a DAR, see `canton-codegen`

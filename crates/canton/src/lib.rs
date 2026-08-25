@@ -69,12 +69,64 @@ pub use canton_token as token;
 /// Reading a local development network out of the environment — the variables
 /// `canton-devkit localnet env` exports, and the party ids that come with them.
 pub use canton_core::localnet;
-/// What the SDK emits: span and metric names, and the transport labels they
-/// carry. An application building a dashboard needs these, and reaching them
-/// meant depending on `canton-core` directly.
+/// What the SDK emits, and how to export it: the span and metric names, the
+/// transport labels they carry, and — behind `otel` — the OTLP setup for both
+/// signals. An application building a dashboard needs these, and reaching them
+/// meant depending on `canton-core` directly, which `cargo add canton` does not
+/// do.
 pub use canton_core::telemetry;
 
 pub use canton_core::{
     Auth, Config, Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, RetryConfig, TlsConfig,
     TokenSource,
 };
+
+#[cfg(test)]
+mod tests {
+    //! What `cargo add canton` can actually reach.
+    //!
+    //! This crate is a facade, so its failure mode is silent: a type the SDK
+    //! documents is simply not there under `canton::`, nothing fails to
+    //! compile, and the first person to find out is a user following the
+    //! README. These name the paths the documentation promises.
+
+    #[test]
+    fn the_client_surface_is_reachable_through_the_facade() {
+        fn assert_named<T>() {}
+        assert_named::<crate::ledger::CantonClient>();
+        assert_named::<crate::ledger::JsonClient>();
+        // The recovery handles and their identity — the answer to an ambiguous
+        // submission, which is the one thing a caller cannot reconstruct.
+        assert_named::<crate::ledger::Submission>();
+        assert_named::<crate::ledger::JsonSubmission>();
+        assert_named::<crate::ledger::ChangeId>();
+        // The lossless ACS read.
+        assert_named::<crate::ledger::AcsEntry>();
+        assert_named::<crate::admin::AdminClient>();
+        assert_named::<crate::auth::TokenProvider>();
+        assert_named::<crate::auth::ClientAuth>();
+    }
+
+    #[test]
+    fn the_telemetry_names_a_dashboard_is_built_from_are_reachable() {
+        assert_eq!(crate::telemetry::TRANSPORT_GRPC, "grpc");
+        assert_eq!(crate::telemetry::TRANSPORT_JSON, "json");
+        assert!(crate::telemetry::METRIC_REQUESTS.starts_with("canton_client_"));
+        assert!(crate::telemetry::METRIC_ERRORS.starts_with("canton_client_"));
+    }
+
+    /// The OTLP setup the documentation points an application at. Without the
+    /// facade forwarding `canton-core/otel`, this module would not exist here
+    /// even with `canton = { features = ["otel"] }`.
+    #[cfg(feature = "otel")]
+    #[test]
+    fn the_otlp_setup_is_reachable_through_the_facade() {
+        // Naming them is the assertion — calling them would need a collector.
+        // An unreachable body type-checks the paths without opening a socket.
+        fn _paths(endpoint: String) {
+            let _ = crate::telemetry::otel::otlp_metrics("svc", endpoint.clone());
+            let _ = crate::telemetry::otel::otlp_tracer_provider("svc", endpoint.clone());
+            let _ = crate::telemetry::otel::otlp_tracer("svc", endpoint);
+        }
+    }
+}

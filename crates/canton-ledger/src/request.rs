@@ -41,7 +41,7 @@ use canton_proto::com::daml::ledger::api::v2 as pb;
 
 /// The shape of transactions in an update stream — which events are returned
 /// and who has to see them (see the Ledger API's `TransactionShape`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum TransactionShape {
     /// Created and archived events describing the net change to the active
@@ -92,6 +92,42 @@ pub struct UpdatesRequest {
 }
 
 impl UpdatesRequest {
+    /// Refuse a request the participant is certain to refuse.
+    ///
+    /// An offset is a position on the ledger, so a negative one is not a range
+    /// the participant can answer — it comes back as `INVALID_ARGUMENT` after a
+    /// round trip, reading like a server-side problem. So does an inverted
+    /// range, and a request naming no parties returns nothing at all while
+    /// looking like a working subscription.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        use canton_core::Error;
+        if self.parties.is_empty() && !self.any_party {
+            return Err(Error::InvalidRequest(
+                "a read needs at least one party (or filters_for_any_party)".to_string(),
+            ));
+        }
+        if self.begin_exclusive < 0 {
+            return Err(Error::InvalidRequest(format!(
+                "begin offset must not be negative, got {}",
+                self.begin_exclusive
+            )));
+        }
+        if let Some(end) = self.end_inclusive {
+            if end < 0 {
+                return Err(Error::InvalidRequest(format!(
+                    "end offset must not be negative, got {end}"
+                )));
+            }
+            if !self.descending && end < self.begin_exclusive {
+                return Err(Error::InvalidRequest(format!(
+                    "end offset {end} is before the begin offset {}",
+                    self.begin_exclusive
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// Updates visible to `parties`, starting after `begin_exclusive`. The
     /// defaults beyond that are the plain [`updates`] ones: unbounded,
     /// ledger-effects shape, all templates, reassignments included, verbose
@@ -339,6 +375,24 @@ pub struct ActiveContractsRequest {
 }
 
 impl ActiveContractsRequest {
+    /// Refuse a snapshot request the participant is certain to refuse: an
+    /// offset it cannot have reached, or a filter naming nobody.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        use canton_core::Error;
+        if self.parties.is_empty() && !self.any_party {
+            return Err(Error::InvalidRequest(
+                "an ACS read needs at least one party (or filters_for_any_party)".to_string(),
+            ));
+        }
+        if self.active_at_offset < 0 {
+            return Err(Error::InvalidRequest(format!(
+                "active_at_offset must not be negative, got {}",
+                self.active_at_offset
+            )));
+        }
+        Ok(())
+    }
+
     /// The ACS visible to `parties` as of `active_at_offset` (typically the
     /// current ledger end). The defaults beyond that are the plain
     /// [`active_contracts`] ones: all templates, verbose (labelled) records.
@@ -461,6 +515,23 @@ pub struct CompletionsRequest {
 }
 
 impl CompletionsRequest {
+    /// Refuse a completion subscription the participant is certain to refuse.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        use canton_core::Error;
+        if self.parties.is_empty() {
+            return Err(Error::InvalidRequest(
+                "a completion subscription needs at least one party".to_string(),
+            ));
+        }
+        if self.begin_exclusive < 0 {
+            return Err(Error::InvalidRequest(format!(
+                "begin offset must not be negative, got {}",
+                self.begin_exclusive
+            )));
+        }
+        Ok(())
+    }
+
     /// Completions of commands acted on by `parties`, starting after
     /// `begin_exclusive`.
     pub fn new(parties: Vec<String>, begin_exclusive: i64) -> Self {

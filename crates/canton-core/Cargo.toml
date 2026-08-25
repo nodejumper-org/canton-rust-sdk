@@ -23,12 +23,17 @@ metrics    = { workspace = true }
 # Connection kernel: `retry` uses `tokio::time::sleep`; the channel builder and
 # auth interceptor use tonic's transport + TLS.
 tokio      = { workspace = true, features = ["time"] }
+# Streaming instrumentation: a stream's outcome is not known when it opens, so
+# `telemetry::instrument_stream` has to live with it for its whole life.
+futures-core = { workspace = true }
+tokio-stream = { workspace = true }
+async-stream = { workspace = true }
 
 # `otel` feature: bridge the emitted `tracing` spans to an OTLP collector and
 # propagate W3C trace context. Off by default — the base build only emits.
 opentelemetry         = { version = "0.27", optional = true }
-opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"], optional = true }
-opentelemetry-otlp    = { version = "0.27", features = ["grpc-tonic"], optional = true }
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio", "metrics"], optional = true }
+opentelemetry-otlp    = { version = "0.27", features = ["grpc-tonic", "metrics"], optional = true }
 tracing-opentelemetry = { version = "0.28", optional = true }
 http                  = { version = "1", optional = true }
 
@@ -43,9 +48,21 @@ otel = [
 
 [dev-dependencies]
 # `test-util` powers the paused-clock retry-delay test.
-tokio              = { workspace = true, features = ["rt", "macros", "test-util"] }
+tokio              = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "test-util"] }
 tracing-subscriber = "0.3"
 metrics-util       = "0.19"
+# The OTLP export test is its own collector: it stands up the two OTLP services
+# and asserts what actually arrives, which is the half of the observability path
+# an emit-side assertion cannot reach.
+opentelemetry-proto   = { version = "0.27", features = ["gen-tonic", "trace", "metrics"] }
+opentelemetry         = "0.27"
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.28"
+# opentelemetry-proto 0.27's generated servers are built against tonic 0.12,
+# not the workspace's 0.14, so the collector in that test speaks the version its
+# own stubs were generated for.
+otlp-tonic            = { package = "tonic", version = "0.12", features = ["transport", "codegen"] }
+tokio-stream          = { workspace = true, features = ["net"] }
 
 [lints]
 workspace = true

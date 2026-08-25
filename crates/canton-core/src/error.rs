@@ -396,7 +396,13 @@ fn parse_spelled_duration(text: &str) -> Option<std::time::Duration> {
         "nanosecond" => amount / 1e9,
         _ => return None,
     };
-    (seconds.is_finite() && seconds >= 0.0).then(|| std::time::Duration::from_secs_f64(seconds))
+    // `from_secs_f64` panics on a value a `Duration` cannot hold, and this
+    // number arrives from the server: a `retryInfo` of `"1e300 seconds"` — or
+    // an ordinary-looking `"1e15 days"` — would abort the caller's process
+    // inside error classification, the one place that must stay infallible.
+    // `try_from_secs_f64` rejects those the same way it rejects the NaN and
+    // negative values this guarded against before.
+    std::time::Duration::try_from_secs_f64(seconds).ok()
 }
 
 /// Canton's error categories — the coarse classification every Ledger API
@@ -451,6 +457,23 @@ pub enum ErrorCategory {
     /// 14 — the operation is not implemented / not enabled on this node. Not
     /// retriable.
     InternalUnsupportedOperation,
+}
+
+/// The std spelling of [`ErrorCategory::from_i32`], so the category can be
+/// used with generic conversion bounds. The inherent method stays: it is the
+/// documented name and the `Option` shape matches "unknown id" better than an
+/// error type would.
+impl TryFrom<i32> for ErrorCategory {
+    type Error = i32;
+    fn try_from(id: i32) -> std::result::Result<Self, i32> {
+        Self::from_i32(id).ok_or(id)
+    }
+}
+
+impl From<ErrorCategory> for i32 {
+    fn from(category: ErrorCategory) -> i32 {
+        category.as_i32()
+    }
 }
 
 impl ErrorCategory {
@@ -562,30 +585,6 @@ impl From<serde_json::Error> for Error {
 
 /// SDK-wide result alias. Re-exported by the facade as `canton::Result`.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-/// An error and every cause under it, joined with `": "`.
-///
-/// Most transport errors keep the sentence that matters in their source chain
-/// and print only a generic outer line: `reqwest` says `error sending request
-/// for url (…)` while `invalid peer certificate: UnknownIssuer` sits one level
-/// down, and `tokio_postgres` says `db error` over `FATAL: password
-/// authentication failed`. Reporting only the outer message hides the one
-/// thing an operator needs.
-///
-/// Lives here because four crates were each losing it separately, and three of
-/// them had grown their own private copy of this function before anyone noticed
-/// the fourth still had none.
-#[must_use]
-pub fn chain(error: &dyn std::error::Error) -> String {
-    let mut message = error.to_string();
-    let mut source = error.source();
-    while let Some(cause) = source {
-        message.push_str(": ");
-        message.push_str(&cause.to_string());
-        source = cause.source();
-    }
-    message
-}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
@@ -806,7 +805,21 @@ mod tests {
         ] {
             assert_eq!(parse_spelled_duration(text), Some(expected), "{text}");
         }
-        for bad in ["", "soon", "1", "1 fortnight", "-1 second", "1 second ago"] {
+        // A server-supplied number too large for a `Duration` is refused, not
+        // panicked on: this runs while an error is being classified, and the
+        // value is whatever the participant put in the body.
+        for bad in [
+            "",
+            "soon",
+            "1",
+            "1 fortnight",
+            "-1 second",
+            "1 second ago",
+            "1e300 seconds",
+            "1e300 days",
+            "NaN seconds",
+            "inf seconds",
+        ] {
             assert_eq!(parse_spelled_duration(bad), None, "{bad}");
         }
     }

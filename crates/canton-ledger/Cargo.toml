@@ -43,6 +43,10 @@ rustls              = { workspace = true, optional = true }
 rustls-pki-types    = { workspace = true, optional = true }
 rustls-native-certs = { workspace = true, optional = true }
 
+# `otel` feature: the WebSocket handshake carries W3C trace context, which needs
+# a header map to inject into.
+http = { version = "1", optional = true }
+
 [features]
 # The in-memory Ed25519 key, for callers who want one. An HSM/KMS caller
 # turns this off and implements `Signer` themselves.
@@ -57,7 +61,7 @@ ws = [
 ]
 # OpenTelemetry: OTLP span export + W3C trace-context propagation on outgoing
 # requests (forwards to canton-core's `otel`).
-otel = ["canton-core/otel"]
+otel = ["canton-core/otel", "dep:http"]
 
 [dev-dependencies]
 # The interactive tests sign with the in-memory key; dependants do not have to.
@@ -71,6 +75,13 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 canton-proto = { workspace = true, features = ["server"] }
 tokio-stream = { workspace = true, features = ["net"] }
 rcgen = "0.13"
+# The trace-propagation test needs a real OpenTelemetry context to propagate:
+# without a tracer installed there is no trace id, and the test would pass on a
+# client that injects nothing.
+tracing-subscriber    = "0.3"
+tracing-opentelemetry = "0.28"
+opentelemetry         = "0.27"
+opentelemetry_sdk     = { version = "0.27", features = ["rt-tokio"] }
 
 [lints]
 workspace = true

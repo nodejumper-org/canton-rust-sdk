@@ -24,3 +24,10 @@ network access.
   compatibility table); moving it is a deliberate re-vendor commit.
 - We carry ~a dozen third-party proto files in-tree and must refresh them per
   supported Canton release (M3's compatibility matrix automates the check).
+- Vendoring makes the tree editable, which a schema copied from elsewhere must
+  not be. `proto/PROVENANCE.md` records what each subtree tracks and which
+  release it is pinned to, `proto/SHA256SUMS` records a hash per file, and
+  `canton-proto`'s test suite fails if any of them changes — so a local edit to
+  a third-party schema cannot pass unnoticed. `tools/vendor-protos.sh` re-hashes
+  after a deliberate re-vendor and can diff the tree against the copies inside a
+  running Canton container.

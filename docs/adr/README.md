@@ -15,3 +15,4 @@ reversal is a new ADR that supersedes the old one.
 | [0007](0007-thin-facade-crate.md) | A thin `canton` facade crate is the documented entry point | Accepted |
 | [0008](0008-native-lf-decoder.md) | A native Rust Daml-LF decoder (not the JVM `daml-lf-archive`) | Accepted |
 | [0009](0009-lf-version-support.md) | Daml-LF version-support policy for codegen | Accepted |
+| [0010](0010-api-decisions-deferred-to-1.0.md) | API changes deliberately deferred to 1.0 | Accepted |
