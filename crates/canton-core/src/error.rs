@@ -827,6 +827,13 @@ mod tests {
             ("2 minutes", Duration::from_secs(120)),
             ("1 hour", Duration::from_secs(3600)),
             ("0.5 seconds", Duration::from_millis(500)),
+            // The rarer units and the day arm: mutation testing showed these
+            // conversion factors were never exercised, so a wrong multiplier
+            // in day/microsecond/nanosecond would have passed unnoticed.
+            ("2 days", Duration::from_secs(2 * 86_400)),
+            ("1 day", Duration::from_secs(86_400)),
+            ("500 microseconds", Duration::from_micros(500)),
+            ("250 nanoseconds", Duration::from_nanos(250)),
         ] {
             assert_eq!(parse_spelled_duration(text), Some(expected), "{text}");
         }
