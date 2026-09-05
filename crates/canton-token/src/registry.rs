@@ -2,8 +2,10 @@
 //!
 //! Every path and payload here comes from the token standard's OpenAPI
 //! documents — `token-metadata-v1`, `transfer-instruction-v1`,
-//! `allocation-v1`, `allocation-instruction-v1` — and the method names follow
-//! their `operationId`s, so a reader can match one to the other.
+//! `allocation-v1`, `allocation-instruction-v1`, `transfer-instruction-v2`,
+//! `allocation-v2`, `allocation-instruction-v2` (vendored under
+//! `testdata/openapi/`) — and the method names follow their `operationId`s,
+//! so a reader can match one to the other.
 //!
 //! # What the registry is for
 //!

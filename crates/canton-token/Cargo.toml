@@ -9,7 +9,7 @@ authors      = { workspace = true }
 repository   = { workspace = true }
 homepage     = { workspace = true }
 categories   = ["api-bindings", "asynchronous"]
-keywords     = ["canton", "daml", "token-standard", "cip-56", "splice"]
+keywords     = ["canton", "daml", "token-standard", "cip-56", "cip-0112"]
 description  = "Canton Network token-standard workflows (CIP-56 and CIP-0112): registry client, choice contexts, transfers and allocations."
 include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 

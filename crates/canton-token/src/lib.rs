@@ -1,4 +1,4 @@
-//! Canton Network token-standard workflows (CIP-56).
+//! Canton Network token-standard workflows (CIP-56 and CIP-0112).
 //!
 //! The token-standard **types** are generated from the Splice DARs and live in
 //! the `canton-splice-api-token-*` crates. This crate is the *workflow* over

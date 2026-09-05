@@ -38,6 +38,10 @@
 //!
 //! * `ws` — WebSocket streaming for the JSON transport (`canton-ledger/ws`).
 //! * `otel` — OTLP export + W3C trace-context propagation (`canton-ledger/otel`).
+//! * `ed25519` (default) — the in-memory Ed25519 key in `canton-signer`. Turn it
+//!   off (`default-features = false`) when every signature comes from an HSM or
+//!   KMS behind your own [`Signer`](signer::Signer) implementation.
+//! * `pqs-tls` — TLS for the Participant Query Store connection (`canton-pqs/tls`).
 //!
 //! # Quickstart
 //!

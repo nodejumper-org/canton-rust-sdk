@@ -34,7 +34,10 @@ crate does.
 
 The registry API is off-ledger HTTP, specified by the token standard's OpenAPI
 documents — `token-metadata-v1`, `transfer-instruction-v1`, `allocation-v1`,
-`allocation-instruction-v1`. Every path and payload here comes from them, and
+`allocation-instruction-v1`, and their V2 counterparts `transfer-instruction-v2`,
+`allocation-v2`, `allocation-instruction-v2`. Every path and payload
+here comes from them (vendored under `testdata/openapi/` at the Splice release the
+tests pin), and
 the method names follow their `operationId`s so the two can be read side by
 side.
 

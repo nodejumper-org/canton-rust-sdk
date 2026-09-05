@@ -18,18 +18,32 @@ memory:
 3. `canton-proto`
 4. `canton-auth`
 5. `canton-codegen`
-6. `canton-admin`  ← dev-depends on `canton-auth`, which is why it is not third
-7. `canton-codegen-cli`
-8. `canton-daml`
-9. `canton-ledger`
-10. `canton`
-11. `canton-splice-amulet`
-12. `canton-splice-wallet`
-13. `canton-splice-wallet-payments`
-
-`canton-quickstart-licensing` and `canton-sample` are `publish = false`: the
-first is generated from a DAR built from source, the second is the reference
-app.
+6. `canton-signer`
+7. `canton-admin`
+8. `canton-codegen-cli`
+9. `canton-daml`
+10. `canton-daml-stdlib`
+11. `canton-ledger`
+12. `canton-pqs`
+13. `canton-splice-api-featured-app-v1`
+14. `canton-splice-api-token-metadata-v1`
+15. `canton-splice-api-token-holding-v1`
+16. `canton-splice-api-token-holding-v2`
+17. `canton-splice-api-token-allocation-v1`
+18. `canton-splice-api-token-allocation-v2`
+19. `canton-splice-api-token-burn-mint-v1`
+20. `canton-splice-api-token-transfer-events-v2`
+21. `canton-splice-api-token-transfer-instruction-v1`
+22. `canton-splice-api-token-transfer-instruction-v2`
+23. `canton-splice-api-token-allocation-instruction-v1`
+24. `canton-splice-api-token-allocation-instruction-v2`
+25. `canton-splice-api-token-allocation-request-v1`
+26. `canton-splice-api-token-allocation-request-v2`
+27. `canton-splice-amulet`
+28. `canton-token`
+29. `canton`
+30. `canton-splice-wallet-payments`
+31. `canton-splice-wallet`
 
 Re-derive the order after adding a crate:
 
@@ -50,7 +64,11 @@ with "no matching package" if it is not there yet).
 - `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features`
 - `cargo deny check all`
 - `cargo hack clippy --workspace --feature-powerset --no-dev-deps -- -D warnings`
-- `cargo semver-checks -p canton-core -p canton-auth -p canton-ledger -p canton-admin -p canton --all-features`
+- `cargo semver-checks` over every crate with a published baseline — the list CI's
+  `semver` job carries in `.github/workflows/ci.yml` (eleven at 0.2.x). A crate
+  joins that list in the release *after* it first publishes; the M3 crates
+  (`canton-signer`, `canton-pqs`, `canton-token`, `canton-daml-stdlib`, the
+  `canton-splice-api-*` set) join at the release after 0.3.0.
   (only crates with a published baseline; add each new one after its first release)
 - The live suites against a participant, with skips made fatal:
   `CANTON_TEST_REQUIRE_LIVE=1 cargo test -p canton-ledger --features ws --test live`
@@ -74,8 +92,8 @@ workspace** so nothing resolves by path:
 
 ```sh
 cargo new /tmp/consumer && cd /tmp/consumer
-cargo add canton --features ws,otel
-cargo add canton-daml canton-splice-amulet
+cargo add canton --features ws,otel,pqs-tls
+cargo add canton-daml canton-splice-amulet canton-token canton-pqs canton-signer
 cargo build            # the family, as a user gets it
 
 cargo install canton-codegen-cli --root /tmp/tools
