@@ -165,6 +165,69 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn the_backoff_doubles_each_attempt_up_to_the_cap() {
+        // A schedule with room to grow: 10ms initial, 80ms cap, 5 attempts.
+        // Expected sleeps between attempts, before jitter: 10, 20, 40, 80, 80
+        // (doubling, then clamped). Jitter scales 0.5-1.5, so assert each
+        // observed gap lands in that band around the expected pre-jitter value
+        // - which pins the doubling and the cap, the two things a `* -> /` or a
+        // missing `.min()` would break.
+        let cfg = RetryConfig::default()
+            .with_max_attempts(6)
+            .with_initial_backoff(Duration::from_millis(10))
+            .with_max_backoff(Duration::from_millis(80));
+
+        let starts = std::cell::RefCell::new(Vec::new());
+        let calls = Cell::new(0u32);
+        let _: Result<u32> = run_with_retry(Some(&cfg), || {
+            starts.borrow_mut().push(tokio::time::Instant::now());
+            calls.set(calls.get() + 1);
+            async move { Err::<u32, _>(Error::Timeout) }
+        })
+        .await;
+
+        let t = starts.borrow();
+        let gaps: Vec<u64> = t
+            .windows(2)
+            .map(|w| u64::try_from((w[1] - w[0]).as_millis()).unwrap_or(u64::MAX))
+            .collect();
+        let expected = [10u64, 20, 40, 80, 80];
+        assert_eq!(gaps.len(), expected.len(), "one gap per retry: {gaps:?}");
+        for (g, e) in gaps.iter().zip(expected) {
+            // Jitter scales 0.5-1.5; keep the check in integer arithmetic to
+            // pin the doubling and the cap without a float cast.
+            assert!(
+                *g * 2 >= e && *g * 2 <= e * 3,
+                "gap {g}ms outside jitter band of expected {e}ms; gaps={gaps:?}"
+            );
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn it_stops_after_max_attempts_rather_than_looping() {
+        // The mutation pass flagged loop-termination mutants as *hangs*, not
+        // clean failures - nothing bounded the attempt count in time. This
+        // asserts the exact number of calls, so a broken stop fails loudly
+        // instead of spinning until the harness kills it.
+        let cfg = RetryConfig::default()
+            .with_max_attempts(4)
+            .with_initial_backoff(Duration::from_millis(1))
+            .with_max_backoff(Duration::from_millis(1));
+        let calls = Cell::new(0u32);
+        let result: Result<u32> = run_with_retry(Some(&cfg), || {
+            calls.set(calls.get() + 1);
+            async move { Err::<u32, _>(Error::Timeout) }
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(
+            calls.get(),
+            4,
+            "exactly max_attempts calls, no more, no fewer"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn a_server_recommended_delay_stretches_the_backoff() {
         // The op fails once with a Canton-style status carrying
         // `RetryInfo { retry_delay: 3s }`, far above the local 1ms schedule.

@@ -108,9 +108,11 @@ pub trait Template: Contract + ToValue + FromValue {
     /// as the other succeeds and is wrong.
     ///
     /// Accepts the created event either bare or wrapped, because the API hands
-    /// it out both ways: a transaction's `events` are
-    /// `{"CreatedEvent": {…}}`, an ACS entry nests `createdEvent`. There is no
-    /// ambiguity — a created event does not itself have those keys.
+    /// it out several ways: a transaction's `events` are
+    /// `{"CreatedEvent": {…}}`, an ACS entry nests `createdEvent`, and the
+    /// `events/events-by-contract-id` response nests it under
+    /// `{"created": {"createdEvent": {…}}}`. There is no ambiguity — a created
+    /// event does not itself have those keys.
     ///
     /// The module and entity of `templateId` are checked, and the package id is
     /// deliberately not, for the reason given on
@@ -124,10 +126,14 @@ pub trait Template: Contract + ToValue + FromValue {
     where
         Self: serde::de::DeserializeOwned,
     {
+        // Unwrap one or two layers: `events-by-contract-id` wraps the created
+        // event as `{"created": {"createdEvent": …}}`, so peel `created` first
+        // and then the created-event key inside it.
+        let inner = event.get("created").unwrap_or(event);
         let created = ["CreatedEvent", "createdEvent"]
             .iter()
-            .find_map(|key| event.get(key))
-            .unwrap_or(event);
+            .find_map(|key| inner.get(key))
+            .unwrap_or(inner);
 
         if let Some(id) = created
             .get("templateId")
@@ -175,4 +181,72 @@ pub trait Interface: Contract {
 pub trait WithKey: Template {
     /// The contract key's type (a serializable Daml type).
     type Key: ToValue;
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
+mod json_envelope_tests {
+    use super::*;
+    use canton_proto::com::daml::ledger::api::v2 as pb;
+    use serde::Deserialize;
+
+    // A minimal Template whose JSON payload is one field, enough to drive
+    // `from_json_created_event` through each envelope shape the API uses.
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Widget {
+        owner: String,
+    }
+    impl Contract for Widget {
+        const PACKAGE_ID: &'static str = "pkg";
+        const PACKAGE_NAME: &'static str = "app";
+        const MODULE_NAME: &'static str = "M";
+        const ENTITY_NAME: &'static str = "Widget";
+    }
+    impl ToValue for Widget {
+        fn to_value(&self) -> pb::Value {
+            crate::Unit.to_value()
+        }
+    }
+    impl FromValue for Widget {
+        fn from_value(_: &pb::Value) -> Result<Self, ValueError> {
+            Err(ValueError::new("unused"))
+        }
+    }
+    impl Template for Widget {
+        fn to_record(&self) -> pb::Record {
+            pb::Record::default()
+        }
+    }
+
+    fn created() -> serde_json::Value {
+        serde_json::json!({
+            "templateId": "whatever-package:M:Widget",
+            "createArgument": { "owner": "alice" }
+        })
+    }
+
+    #[test]
+    fn every_envelope_shape_the_json_api_uses_decodes() {
+        let want = Widget {
+            owner: "alice".to_string(),
+        };
+
+        // Bare, transaction-event `{"CreatedEvent": …}`, ACS-entry
+        // `{"createdEvent": …}`, and the `events-by-contract-id` double wrap
+        // `{"created": {"createdEvent": …}}` — the last one used to error with
+        // "carries no createArgument" because only the inner key was peeled.
+        let shapes = [
+            created(),
+            serde_json::json!({ "CreatedEvent": created() }),
+            serde_json::json!({ "createdEvent": created() }),
+            serde_json::json!({ "created": { "createdEvent": created() } }),
+        ];
+        for (i, shape) in shapes.iter().enumerate() {
+            assert_eq!(
+                Widget::from_json_created_event(shape).expect("shape decodes"),
+                want,
+                "envelope shape {i} did not decode"
+            );
+        }
+    }
 }

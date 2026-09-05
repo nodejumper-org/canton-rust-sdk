@@ -9,6 +9,9 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [0.3.0] — unreleased
 
+## [0.2.3] — 2026-08-25
+
+
 ### Changed — one crate per Daml package (**breaking**)
 
 - The eight token-standard and featured-app packages are now crates of their
@@ -484,19 +487,6 @@ steps already assert their own markers.
   regeneration example uses so the two cannot disagree. `canton-daml-stdlib` is
   generated from the DAR committed here, so that one is guarded in CI with no
   checkout at all.
-
-### Fixed (carried from main after 0.2.2)
-
-- **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
-  asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
-  while the assertion was not — so the default-feature build failed to compile.
-  Invisible because CI ran tests only with `--all-features`; a second
-  `cargo test --workspace` job (default features) now guards the whole class.
-  Found by running the suite under every feature combination.
-- **`tokio-stream`'s declared lower bound was `0.1`, but the `net` feature it
-  uses landed in `0.1.1`** — a minimal-versions resolve does not build against
-  `0.1.0`. Corrected to `0.1.1`. Found by `cargo +nightly build
-  -Z direct-minimal-versions`.
 
 ## [0.2.2] — 2026-08-24
 
