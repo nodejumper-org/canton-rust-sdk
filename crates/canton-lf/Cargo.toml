@@ -31,5 +31,8 @@ serde_json = { workspace = true }
 prost-build         = { workspace = true }
 protoc-bin-vendored = { workspace = true }
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 [lints]
 workspace = true

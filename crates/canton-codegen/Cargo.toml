@@ -30,5 +30,8 @@ sha2 = { workspace = true }
 # The drift guard compares regenerated vs committed bindings at the AST level.
 canton-lf    = { workspace = true }
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 [lints]
 workspace = true

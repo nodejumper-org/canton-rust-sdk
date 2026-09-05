@@ -38,6 +38,7 @@
 //! nothing on drop and offers no protection against a process that can read its
 //! own memory. Production keys belong in an HSM or KMS behind [`Signer`].
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
 #[cfg(feature = "ed25519")]
@@ -51,6 +52,7 @@ use std::pin::Pin;
 use canton_core::Result;
 
 #[cfg(feature = "ed25519")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ed25519")))]
 pub use ed25519::{Ed25519Key, Ed25519Signer};
 pub use signature::{KeyFormat, KeySpec, PublicKey, Signature, SignatureFormat, SigningAlgorithm};
 

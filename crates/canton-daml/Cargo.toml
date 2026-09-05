@@ -32,5 +32,8 @@ time         = { workspace = true }
 canton-codegen = { workspace = true }
 canton-lf      = { workspace = true }
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 [lints]
 workspace = true

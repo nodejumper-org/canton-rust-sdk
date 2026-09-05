@@ -21,6 +21,7 @@
 //! type as one read from a transaction stream. That is the point of the crate:
 //! two ways in, one set of types.
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
 mod client;

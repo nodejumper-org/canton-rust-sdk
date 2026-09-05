@@ -46,6 +46,7 @@ impl PqsClient {
     /// certificate cannot be verified, or if the store refuses the connection
     /// for a reason waiting will not change.
     #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub async fn connect_tls(config: &str) -> Result<Self> {
         let mut roots = rustls::RootCertStore::empty();
         let native = rustls_native_certs::load_native_certs();

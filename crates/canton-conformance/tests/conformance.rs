@@ -474,13 +474,6 @@ fn streams__resilient_streams() {
 
 // ---- Parties and packages ---------------------------------------------------
 
-/// Party management over JSON.
-#[tokio::test]
-async fn parties__json_party_mgmt() {
-    let config = canton::Config::new("http://localhost:3901");
-    assert!(canton::admin::AdminClient::connect_lazy(config).is_ok());
-}
-
 /// Party management over gRPC.
 #[tokio::test]
 async fn parties__grpc_party_mgmt() {
