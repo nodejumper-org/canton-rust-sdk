@@ -9,9 +9,6 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [0.3.0] — unreleased
 
-## [0.2.3] — 2026-08-25
-
-
 ### Changed — one crate per Daml package (**breaking**)
 
 - The eight token-standard and featured-app packages are now crates of their
@@ -250,8 +247,10 @@ Against it, with the Amulet instrument declaring both standards
 - **A V1 transfer settles end to end** — factory resolved against the registry,
   submitted with the four contracts it named for disclosure, committed at offset
   39643.
-- **A V2 `Account`-based transfer against the V2 reference token** — committed
-  at offset 39646. That is the proposal's verification clause for V2, and the
+- **A V2 `Account`-based transfer against Amulet on a LocalNet, exercised as a
+  V2 implementation** — committed at offset 39646. The proposal's verification
+  clause names the V2 *reference token*; that network is retired (see the
+  compatibility matrix), so this is the closest available target, and the
   first time the `/v2/` paths, the `Account` model and the `actors` field have
   met a real registry rather than a transcription of its specification.
 - **V2 event parsing on a committed transaction** — `events::holdings_changes`
@@ -487,6 +486,41 @@ steps already assert their own markers.
   regeneration example uses so the two cannot disagree. `canton-daml-stdlib` is
   generated from the DAR committed here, so that one is guarded in CI with no
   checkout at all.
+
+## [0.2.3] — 2026-08-25
+
+### Fixed
+
+- **A gRPC stream or submit did not retry a connection that died in flight.**
+  tonic surfaces a dropped connection mid-call as a `Status` with code
+  `Unknown` (message "transport error" / "h2 protocol error"), not as a
+  `transport::Error` — that variant is only for connection *establishment*. So
+  `Error::is_retriable()` treated the most ordinary failure there is as
+  terminal: `updates_resumable` gave up on the first blip and `run_with_retry`
+  never fired. Data integrity was never at risk (no loss, no duplicate — the
+  failure surfaced as an error), but the resilience did not engage. A
+  category-less `Unknown`/`Internal` status whose source chain is populated is
+  now retriable; a bare server `Unknown` (decoded from trailers, no source)
+  stays terminal. Found by killing a real TCP connection under load through a
+  chaos proxy — in-process mocks had emitted `Status::unavailable`, which is
+  why it never showed. The WebSocket resumable lane was already correct (it
+  treats a socket close as a reconnect trigger, not via this predicate).
+- **`Template::from_json_created_event` rejected the `events-by-contract-id`
+  response shape.** That endpoint wraps the created event as
+  `{"created": {"createdEvent": …}}`; the helper peeled only the inner key and
+  errored with "carries no createArgument". It now unwraps both layers, so all
+  four JSON shapes the API uses decode.
+
+- **A test broke `cargo test` without `--all-features`.** `futures_are_spawnable`
+  asserted `JsonSubmission::recover` is `Send`, but that method is `ws`-gated
+  while the assertion was not — so the default-feature build failed to compile.
+  Invisible because CI ran tests only with `--all-features`; a second
+  `cargo test --workspace` job (default features) now guards the whole class.
+  Found by running the suite under every feature combination.
+- **`tokio-stream`'s declared lower bound was `0.1`, but the `net` feature it
+  uses landed in `0.1.1`** — a minimal-versions resolve does not build against
+  `0.1.0`. Corrected to `0.1.1`. Found by `cargo +nightly build
+  -Z direct-minimal-versions`.
 
 ## [0.2.2] — 2026-08-24
 
