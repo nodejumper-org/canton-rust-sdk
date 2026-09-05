@@ -82,6 +82,18 @@ struct LedgerEndResponse {
     offset: i64,
 }
 
+#[derive(Deserialize)]
+struct PackagesResponse {
+    #[serde(rename = "packageIds", default)]
+    package_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct PackageStatusResponse {
+    #[serde(rename = "packageStatus")]
+    package_status: String,
+}
+
 /// A set of commands to submit over the JSON transport (dynamic path).
 ///
 /// Build with [`JsonCommands::new`] then add commands ([`JsonCommands::add_create`]
@@ -671,6 +683,72 @@ impl JsonClient {
                 .get::<LedgerEndResponse>("/v2/state/ledger-end")
                 .await?
                 .offset)
+        })
+        .await
+    }
+
+    /// The ids of every package the participant knows (`GET /v2/packages`).
+    ///
+    /// The JSON twin of [`AdminClient::list_packages`](canton_admin::AdminClient::list_packages),
+    /// for a deployment that exposes only the JSON Ledger API. What a package
+    /// *is* to the ledger — uploaded, vetted, both — is answered by
+    /// [`package_status`](Self::package_status), not by presence in this list.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn list_packages(&self) -> Result<Vec<String>> {
+        telemetry::instrument("list_packages", TRANSPORT_JSON, async {
+            Ok(self
+                .get::<PackagesResponse>("/v2/packages")
+                .await?
+                .package_ids)
+        })
+        .await
+    }
+
+    /// Whether the participant has a package registered
+    /// (`GET /v2/packages/{package-id}/status`).
+    ///
+    /// Answers with the same [`PackageStatus`](canton_proto::com::daml::ledger::api::v2::PackageStatus)
+    /// the gRPC path returns, so a caller can switch transports without
+    /// re-learning the vocabulary. A status this build does not know is an
+    /// [`Error::UnexpectedResponse`] rather than a silent
+    /// `PACKAGE_STATUS_UNSPECIFIED`: the participant said something definite,
+    /// and guessing would hide it.
+    ///
+    /// # Errors
+    /// Returns [`Error::InvalidRequest`] if `package_id` is empty or could not
+    /// form a path segment, and an [`Error`] if authentication or the request
+    /// fails or the status is not one this build knows.
+    pub async fn package_status(
+        &self,
+        package_id: &str,
+    ) -> Result<canton_proto::com::daml::ledger::api::v2::PackageStatus> {
+        use canton_proto::com::daml::ledger::api::v2::PackageStatus;
+
+        // The id becomes a path segment. A package id is a hex hash, so
+        // anything that would change the path's shape is a caller mistake,
+        // not something to escape and send.
+        if package_id.is_empty()
+            || package_id
+                .chars()
+                .any(|c| matches!(c, '/' | '?' | '#' | '%') || c.is_whitespace())
+        {
+            return Err(Error::InvalidRequest(format!(
+                "package id {package_id:?} cannot form a path segment"
+            )));
+        }
+        let path = format!("/v2/packages/{package_id}/status");
+        telemetry::instrument("package_status", TRANSPORT_JSON, async {
+            let status = self
+                .get::<PackageStatusResponse>(&path)
+                .await?
+                .package_status;
+            PackageStatus::from_str_name(&status).ok_or_else(|| {
+                Error::UnexpectedResponse(format!(
+                    "package status {status:?} is not one this build knows"
+                ))
+            })
         })
         .await
     }

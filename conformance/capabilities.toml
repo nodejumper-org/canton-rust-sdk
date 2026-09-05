@@ -363,9 +363,9 @@ note      = "`canton-admin` via `UserManagementService`"
 # for every in-scope row of the standard.
 # ---------------------------------------------------------------------------
 
-[[gap]]
+[[capability]]
 id        = "packages__json_package_mgmt"
 name      = "JSON package mgmt"
 section   = "Packages"
 milestone = "M1"
-reason    = "Package reads are implemented over gRPC only (`canton-admin`). The JSON Ledger API client covers version, ledger end, commands, ACS and updates; it has no package endpoint. Reaching packages over JSON is an M1 row this SDK does not deliver."
+note      = "`JsonClient::list_packages` / `package_status` — the reads, as `canton-admin` has them over gRPC. Upload stays out: `POST /v2/dars` is an operator write with its own authorization story (issue #2)."

@@ -410,6 +410,16 @@ steps already assert their own markers.
 
 ### Added — reading packages from a participant
 
+- **The same reads over JSON.** `JsonClient::list_packages` (`GET
+  /v2/packages`) and `JsonClient::package_status` (`GET
+  /v2/packages/{package-id}/status`), returning the gRPC path's
+  `PackageStatus` so a caller switches transports without re-learning the
+  vocabulary. Asked for in [issue #2](https://github.com/nodejumper-org/canton-rust-sdk/issues/2)
+  by a JSON-only deployment; the conformance registry's one declared gap
+  (`packages__json_package_mgmt`) becomes a capability with it. DAR upload
+  (`POST /v2/dars`) is deliberately not included — an operator write with its
+  own authorization story, tracked separately.
+
 - **`canton-admin`** — `get_package` downloads a package's `ArchivePayload`
   bytes and checks the hash the participant returns against the id that was
   asked for. With `list_packages`, that is enough to generate bindings from

@@ -669,6 +669,14 @@ fn packages__grpc_package_mgmt() {
     let _ = canton::admin::AdminClient::get_package_status;
 }
 
+/// The same reads over the JSON Ledger API, for a deployment that exposes
+/// nothing else. Asked for in issue #2 by exactly such a deployment.
+#[test]
+fn packages__json_package_mgmt() {
+    let _ = canton::ledger::JsonClient::list_packages;
+    let _ = canton::ledger::JsonClient::package_status;
+}
+
 /// Which packages a participant has *vetted* — a topology read, and a
 /// different question from which it has uploaded.
 #[test]

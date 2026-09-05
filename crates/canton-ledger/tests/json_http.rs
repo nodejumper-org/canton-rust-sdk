@@ -297,3 +297,79 @@ async fn a_duplicate_on_the_first_attempt_is_still_an_error() {
         .expect_err("a change id the caller reused is a rejection they must see");
     assert!(format!("{error}").contains("DUPLICATE_COMMAND"), "{error}");
 }
+
+// ---- Packages (issue #2) ----------------------------------------------------
+
+#[tokio::test]
+async fn list_packages_asks_the_packages_path_and_returns_every_id() {
+    let (url, seen) =
+        scripted_server(vec![(200, r#"{"packageIds":["aa11","bb22"]}"#.to_string())]).await;
+    let client = JsonClient::new(url);
+
+    let ids = client.list_packages().await.expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(request.method, "GET");
+    assert_eq!(request.path, "/v2/packages");
+    assert_eq!(ids, vec!["aa11".to_string(), "bb22".to_string()]);
+}
+
+#[tokio::test]
+async fn package_status_names_the_package_in_the_path_and_speaks_the_grpc_vocabulary() {
+    use canton_ledger::proto::PackageStatus;
+
+    let (url, seen) = scripted_server(vec![(
+        200,
+        r#"{"packageStatus":"PACKAGE_STATUS_REGISTERED"}"#.to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let status = client.package_status("deadbeef").await.expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(request.method, "GET");
+    assert_eq!(request.path, "/v2/packages/deadbeef/status");
+    assert_eq!(status, PackageStatus::Registered);
+}
+
+#[tokio::test]
+async fn a_package_status_this_build_does_not_know_is_an_error_not_unspecified() {
+    let (url, _seen) = scripted_server(vec![(
+        200,
+        r#"{"packageStatus":"PACKAGE_STATUS_FROM_THE_FUTURE"}"#.to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let error = client
+        .package_status("deadbeef")
+        .await
+        .expect_err("an unknown status is not silently unspecified");
+
+    assert!(
+        matches!(error, canton_ledger::Error::UnexpectedResponse(_)),
+        "{error:?}"
+    );
+    assert!(format!("{error}").contains("FROM_THE_FUTURE"), "{error}");
+}
+
+#[tokio::test]
+async fn a_package_id_that_cannot_be_a_path_segment_never_reaches_the_wire() {
+    // No scripted responses: a request reaching the server would hang the
+    // test, which is the assertion.
+    let (url, seen) = scripted_server(vec![]).await;
+    let client = JsonClient::new(url);
+
+    for bad in ["", "a/b", "id?x", "id#1", "with space", "%2e%2e"] {
+        let error = client
+            .package_status(bad)
+            .await
+            .expect_err("refused before sending");
+        assert!(
+            matches!(error, canton_ledger::Error::InvalidRequest(_)),
+            "{bad:?} -> {error:?}"
+        );
+    }
+    assert!(seen.lock().unwrap().is_empty(), "nothing was sent");
+}
