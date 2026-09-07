@@ -212,12 +212,12 @@ section   = "Streams"
 milestone = "M1"
 note      = "`canton-ledger`"
 
-[[gap]]
+[[capability]]
 id        = "parties__json_party_mgmt"
 name      = "JSON party mgmt"
 section   = "Parties"
 milestone = "M1"
-reason    = "Party management is implemented over gRPC only (`canton-admin`). The JSON Ledger API client has no `/v2/parties` endpoint, so listing, allocating and updating parties over JSON is a row this SDK does not deliver. The suite's earlier test for this row constructed a gRPC client and proved nothing."
+note      = "`JsonClient::list_known_parties_page` / `list_known_parties` / `get_parties` / `allocate_party` / `allocate_party_with` / `update_party_details` / `participant_id` — `/v2/parties` in full, answering in the gRPC path's `PartyDetails`. Recorded as a gap until 0.3.0: the suite's earlier test for this row constructed a gRPC client and proved nothing."
 
 [[capability]]
 id        = "parties__grpc_party_mgmt"

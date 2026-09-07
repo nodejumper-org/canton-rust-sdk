@@ -373,3 +373,534 @@ async fn a_package_id_that_cannot_be_a_path_segment_never_reaches_the_wire() {
     }
     assert!(seen.lock().unwrap().is_empty(), "nothing was sent");
 }
+
+// ---- Parties ----------------------------------------------------------------
+
+/// The party details the JSON API sends, in its own spelling.
+fn party_json(party: &str, annotations: &str) -> String {
+    format!(
+        r#"{{"party":"{party}","isLocal":true,"localMetadata":{{"resourceVersion":"3","annotations":{annotations}}},"identityProviderId":""}}"#
+    )
+}
+
+#[tokio::test]
+async fn participant_id_asks_its_own_path() {
+    let (url, seen) = scripted_server(vec![(
+        200,
+        r#"{"participantId":"participant::1220ab"}"#.to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let id = client.participant_id().await.expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(
+        (request.method.as_str(), request.path.as_str()),
+        ("GET", "/v2/parties/participant-id")
+    );
+    assert_eq!(id, "participant::1220ab");
+}
+
+#[tokio::test]
+async fn a_party_page_is_asked_with_an_encoded_token_and_answered_in_the_grpc_type() {
+    let body = format!(
+        r#"{{"partyDetails":[{}],"nextPageToken":"page/2+x="}}"#,
+        party_json("alice::1220aa", r#"{"team":"blue"}"#)
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    let (parties, next) = client
+        .list_known_parties_page(2, Some("a&pageSize=9".to_string()))
+        .await
+        .expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(request.method, "GET");
+    // One encoded value: a token that carried `&pageSize=` must not become a
+    // second query parameter.
+    assert_eq!(
+        request.path,
+        "/v2/parties?pageSize=2&pageToken=a%26pageSize%3D9"
+    );
+    assert_eq!(next.as_deref(), Some("page/2+x="));
+    assert_eq!(parties.len(), 1);
+    let alice = &parties[0];
+    assert_eq!(alice.party, "alice::1220aa");
+    assert!(alice.is_local);
+    let meta = alice.local_metadata.as_ref().expect("metadata");
+    assert_eq!(meta.resource_version, "3");
+    assert_eq!(
+        meta.annotations.get("team").map(String::as_str),
+        Some("blue")
+    );
+}
+
+#[tokio::test]
+async fn a_page_with_the_server_default_size_and_no_token_sends_no_query_at_all() {
+    let (url, seen) = scripted_server(vec![(200, r#"{"partyDetails":[]}"#.to_string())]).await;
+    let client = JsonClient::new(url);
+
+    let (parties, next) = client
+        .list_known_parties_page(0, None)
+        .await
+        .expect("success");
+
+    assert_eq!(seen.lock().unwrap()[0].path, "/v2/parties");
+    assert!(parties.is_empty());
+    assert_eq!(next, None);
+}
+
+#[tokio::test]
+async fn listing_every_party_follows_the_token_until_there_is_none() {
+    let page = |party: &str, next: &str| {
+        format!(
+            r#"{{"partyDetails":[{}],"nextPageToken":"{next}"}}"#,
+            party_json(party, "{}")
+        )
+    };
+    let (url, seen) = scripted_server(vec![
+        (200, page("a::1220aa", "t1")),
+        (200, page("b::1220bb", "t2")),
+        (200, page("c::1220cc", "")),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+
+    let parties = client.list_known_parties().await.expect("success");
+
+    let paths: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|r| r.path.clone())
+        .collect();
+    assert_eq!(
+        paths,
+        vec![
+            "/v2/parties",
+            "/v2/parties?pageToken=t1",
+            "/v2/parties?pageToken=t2"
+        ]
+    );
+    let names: Vec<&str> = parties.iter().map(|p| p.party.as_str()).collect();
+    assert_eq!(names, vec!["a::1220aa", "b::1220bb", "c::1220cc"]);
+}
+
+#[tokio::test]
+async fn a_participant_that_repeats_a_page_token_is_an_error_not_a_prefix() {
+    let page = |party: &str| {
+        format!(
+            r#"{{"partyDetails":[{}],"nextPageToken":"same"}}"#,
+            party_json(party, "{}")
+        )
+    };
+    let (url, seen) =
+        scripted_server(vec![(200, page("a::1220aa")), (200, page("b::1220bb"))]).await;
+    let client = JsonClient::new(url);
+
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a token that does not advance cannot be followed");
+
+    assert!(
+        matches!(error, canton_ledger::Error::UnexpectedResponse(_)),
+        "{error:?}"
+    );
+    assert!(format!("{error}").contains("after 2 parties"), "{error}");
+    assert_eq!(seen.lock().unwrap().len(), 2, "it stopped at the repeat");
+}
+
+#[tokio::test]
+async fn get_parties_puts_the_first_in_the_path_and_the_rest_in_the_query() {
+    let body = format!(
+        r#"{{"partyDetails":[{}]}}"#,
+        party_json("alice::1220aa", "{}")
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    let parties = client
+        .get_parties(vec![
+            "alice::1220aa".to_string(),
+            "bob::1220bb".to_string(),
+            "carol::1220cc".to_string(),
+        ])
+        .await
+        .expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(request.method, "GET");
+    assert_eq!(
+        request.path,
+        "/v2/parties/alice%3A%3A1220aa?parties=bob%3A%3A1220bb&parties=carol%3A%3A1220cc"
+    );
+    // The participant answers only for the parties it knows; two unknown ones
+    // are simply absent.
+    assert_eq!(parties.len(), 1);
+    assert_eq!(parties[0].party, "alice::1220aa");
+}
+
+#[tokio::test]
+async fn get_parties_with_nothing_to_ask_about_never_reaches_the_wire() {
+    let (url, seen) = scripted_server(vec![]).await;
+    let client = JsonClient::new(url);
+
+    let error = client.get_parties(vec![]).await.expect_err("refused");
+    assert!(
+        matches!(error, canton_ledger::Error::InvalidRequest(_)),
+        "{error:?}"
+    );
+
+    let error = client
+        .get_parties(vec!["alice::1220aa".to_string(), "not a party".to_string()])
+        .await
+        .expect_err("refused");
+    assert!(
+        matches!(error, canton_ledger::Error::InvalidRequest(_)),
+        "{error:?}"
+    );
+    assert!(seen.lock().unwrap().is_empty(), "nothing was sent");
+}
+
+#[tokio::test]
+async fn allocating_with_a_hint_posts_only_the_hint() {
+    let body = format!(
+        r#"{{"partyDetails":{}}}"#,
+        party_json("alice::1220aa", "{}")
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    let details = client.allocate_party(Some("alice")).await.expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(
+        (request.method.as_str(), request.path.as_str()),
+        ("POST", "/v2/parties")
+    );
+    assert_eq!(request.body, serde_json::json!({ "partyIdHint": "alice" }));
+    assert_eq!(details.party, "alice::1220aa");
+}
+
+#[tokio::test]
+async fn allocating_with_no_hint_posts_an_empty_object() {
+    let body = format!(
+        r#"{{"partyDetails":{}}}"#,
+        party_json("party-1220aa::1220aa", "{}")
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    client.allocate_party(None).await.expect("success");
+
+    assert_eq!(seen.lock().unwrap()[0].body, serde_json::json!({}));
+}
+
+#[tokio::test]
+async fn the_full_allocation_request_is_spelled_the_way_the_api_spells_it() {
+    use canton_ledger::AllocateParty;
+
+    let body = format!(
+        r#"{{"partyDetails":{}}}"#,
+        party_json("alice::1220aa", r#"{"team":"blue"}"#)
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    let request = AllocateParty::new()
+        .with_hint("alice")
+        .with_annotation("team", "blue")
+        .with_identity_provider_id("idp-1")
+        .with_synchronizer_id("global::1220ff")
+        .with_user_id("wallet-user");
+    let details = client.allocate_party_with(&request).await.expect("success");
+
+    assert_eq!(
+        seen.lock().unwrap()[0].body,
+        serde_json::json!({
+            "partyIdHint": "alice",
+            "localMetadata": { "annotations": { "team": "blue" } },
+            "identityProviderId": "idp-1",
+            "synchronizerId": "global::1220ff",
+            "userId": "wallet-user",
+        })
+    );
+    let meta = details.local_metadata.expect("metadata");
+    assert_eq!(
+        meta.annotations.get("team").map(String::as_str),
+        Some("blue")
+    );
+}
+
+#[tokio::test]
+async fn updating_a_party_patches_its_path_with_the_details_and_the_mask() {
+    use canton_ledger::proto::admin::{ObjectMeta, PartyDetails};
+
+    let body = format!(
+        r#"{{"partyDetails":{}}}"#,
+        party_json("alice::1220aa", r#"{"team":"red"}"#)
+    );
+    let (url, seen) = scripted_server(vec![(200, body)]).await;
+    let client = JsonClient::new(url);
+
+    let details = PartyDetails {
+        party: "alice::1220aa".to_string(),
+        is_local: true,
+        local_metadata: Some(ObjectMeta {
+            resource_version: "3".to_string(),
+            annotations: [("team".to_string(), "red".to_string())]
+                .into_iter()
+                .collect(),
+        }),
+        identity_provider_id: String::new(),
+    };
+    let updated = client
+        .update_party_details(&details, &["local_metadata.annotations"])
+        .await
+        .expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(
+        (request.method.as_str(), request.path.as_str()),
+        ("PATCH", "/v2/parties/alice%3A%3A1220aa")
+    );
+    assert_eq!(
+        request.body,
+        serde_json::json!({
+            "partyDetails": {
+                "party": "alice::1220aa",
+                "isLocal": true,
+                "localMetadata": { "resourceVersion": "3", "annotations": { "team": "red" } },
+            },
+            "updateMask": { "paths": ["local_metadata.annotations"] },
+        })
+    );
+    let meta = updated.local_metadata.expect("metadata");
+    assert_eq!(
+        meta.annotations.get("team").map(String::as_str),
+        Some("red")
+    );
+}
+
+#[tokio::test]
+async fn an_empty_update_mask_is_refused_before_the_trip() {
+    use canton_ledger::proto::admin::PartyDetails;
+
+    let (url, seen) = scripted_server(vec![]).await;
+    let client = JsonClient::new(url);
+    let details = PartyDetails {
+        party: "alice::1220aa".to_string(),
+        ..Default::default()
+    };
+
+    let error = client
+        .update_party_details(&details, &[])
+        .await
+        .expect_err("the participant would refuse it; this says so first");
+
+    assert!(
+        matches!(error, canton_ledger::Error::InvalidRequest(_)),
+        "{error:?}"
+    );
+    assert!(seen.lock().unwrap().is_empty(), "nothing was sent");
+}
+
+#[tokio::test]
+async fn a_refused_party_read_keeps_the_participants_status_and_body() {
+    // What a plain user gets for a party it may not read: the participant's
+    // security-sensitive 403, whose body is deliberately uninformative. The
+    // status and the body both reach the caller unchanged.
+    let (url, _seen) = scripted_server(vec![(
+        403,
+        r#"{"code":"NA","cause":"A security-sensitive error has been received"}"#.to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let error = client
+        .get_parties(vec!["stranger::1220ff".to_string()])
+        .await
+        .expect_err("refused");
+
+    match error {
+        canton_ledger::Error::Http { status, body, .. } => {
+            assert_eq!(status, 403);
+            assert!(body.contains("security-sensitive"), "{body}");
+        }
+        other => panic!("expected Http, got {other:?}"),
+    }
+}
+
+// ---- The reads and the wrapped submission ------------------------------------
+
+#[tokio::test]
+async fn submit_and_wait_for_transaction_wraps_the_commands_and_reads_the_transaction() {
+    let (url, seen) = scripted_server(vec![(
+        200,
+        r#"{"transaction":{"updateId":"u-1","commandId":"c-1","offset":77,"events":[{"created":{}}]}}"#
+            .to_string(),
+    )])
+    .await;
+    let client = JsonClient::new(url);
+
+    let response = client
+        .submit_and_wait_for_transaction(
+            &commands().with_min_ledger_time_rel(serde_json::json!("10s")),
+        )
+        .await
+        .expect("success");
+
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(
+        (request.method.as_str(), request.path.as_str()),
+        ("POST", "/v2/commands/submit-and-wait-for-transaction")
+    );
+    // This endpoint takes a request object *wrapping* the command set — the
+    // other two take the set itself — and the relative ledger time rides along.
+    assert_eq!(
+        request.body["commands"]["actAs"],
+        serde_json::json!(["alice"])
+    );
+    assert_eq!(request.body["commands"]["minLedgerTimeRel"], "10s");
+    assert_eq!(response.transaction.update_id, "u-1");
+    assert_eq!(response.transaction.offset, 77);
+    assert_eq!(response.transaction.events.len(), 1);
+}
+
+#[tokio::test]
+async fn the_bounded_reads_post_their_request_and_carry_the_limit_in_the_query() {
+    let (url, seen) = scripted_server(vec![
+        (200, r#"[{"contractEntry":{"id":"00a"}}]"#.to_string()),
+        (
+            200,
+            r#"[{"contractEntry":{"id":"00b"}},{"contractEntry":{"id":"00c"}}]"#.to_string(),
+        ),
+        (
+            200,
+            r#"[{"update":{"offset":7}},{"update":{"offset":8}}]"#.to_string(),
+        ),
+        (200, r#"[{"update":{"offset":9}}]"#.to_string()),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+
+    // Each read returns what the participant sent — the whole array, as sent.
+    let acs = client
+        .active_contracts(vec!["alice::1220ab".to_string()], 40, Some(10))
+        .await
+        .expect("success");
+    assert_eq!(acs, vec![serde_json::json!({"contractEntry":{"id":"00a"}})]);
+
+    let request = canton_ledger::ActiveContractsRequest::new(vec!["alice::1220ab".to_string()], 41);
+    let acs_with = client
+        .active_contracts_with(&request, None)
+        .await
+        .expect("success");
+    assert_eq!(acs_with.len(), 2);
+    assert_eq!(acs_with[1]["contractEntry"]["id"], "00c");
+
+    let updates = client
+        .updates(vec!["alice::1220ab".to_string()], 5, Some(9), Some(2))
+        .await
+        .expect("success");
+    assert_eq!(updates.len(), 2);
+    assert_eq!(updates[0]["update"]["offset"], 7);
+
+    let request = canton_ledger::UpdatesRequest::new(vec!["alice::1220ab".to_string()], 6);
+    let updates_with = client.updates_with(&request, None).await.expect("success");
+    assert_eq!(
+        updates_with,
+        vec![serde_json::json!({"update":{"offset":9}})]
+    );
+
+    let requests = seen.lock().unwrap().clone();
+    let paths: Vec<&str> = requests.iter().map(|r| r.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        [
+            "/v2/state/active-contracts?limit=10",
+            "/v2/state/active-contracts",
+            "/v2/updates?limit=2",
+            "/v2/updates",
+        ]
+    );
+    assert!(requests.iter().all(|r| r.method == "POST"));
+    assert_eq!(requests[0].body["activeAtOffset"], 40);
+    assert_eq!(requests[1].body["activeAtOffset"], 41);
+    assert_eq!(requests[2].body["beginExclusive"], 5);
+    assert_eq!(requests[2].body["endInclusive"], 9);
+    assert_eq!(requests[3].body["beginExclusive"], 6);
+    assert!(
+        requests[3].body.get("endInclusive").is_none(),
+        "no end means an unbounded read, not `null`: {}",
+        requests[3].body
+    );
+}
+
+#[tokio::test]
+async fn ledger_end_is_the_offset_the_participant_reports() {
+    let (url, seen) = scripted_server(vec![(200, r#"{"offset":4242}"#.to_string())]).await;
+    let client = JsonClient::new(url);
+
+    let end = client.ledger_end().await.expect("success");
+
+    assert_eq!(end, 4242);
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(
+        (request.method.as_str(), request.path.as_str()),
+        ("GET", "/v2/state/ledger-end")
+    );
+}
+
+/// The participant names a duplicate two ways — the 409 status, and
+/// `DUPLICATE_COMMAND` in the body — and either alone is enough, because
+/// proxies rewrite one and older nodes omit the other. Anything else on a
+/// retry is the failure it says it is.
+#[tokio::test]
+async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
+    for (status, body) in [
+        (409, r#"{"cause":"conflict"}"#),
+        (
+            400,
+            r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists"}"#,
+        ),
+    ] {
+        let (url, seen) = scripted_server(vec![
+            (503, r#"{"cause":"lost"}"#.to_string()),
+            (status, body.to_string()),
+        ])
+        .await;
+        let client = JsonClient::new(url).with_retry(
+            canton_ledger::RetryConfig::default()
+                .with_max_attempts(3)
+                .with_initial_backoff(Duration::from_millis(1)),
+        );
+        client
+            .submit(&commands())
+            .await
+            .unwrap_or_else(|e| panic!("{status} {body}: {e}"));
+        assert_eq!(seen.lock().unwrap().len(), 2, "{status} {body}");
+    }
+
+    let (url, _seen) = scripted_server(vec![
+        (503, r#"{"cause":"lost"}"#.to_string()),
+        (500, r#"{"cause":"the participant fell over"}"#.to_string()),
+    ])
+    .await;
+    let client = JsonClient::new(url).with_retry(
+        canton_ledger::RetryConfig::default()
+            .with_max_attempts(2)
+            .with_initial_backoff(Duration::from_millis(1)),
+    );
+    let error = client
+        .submit(&commands())
+        .await
+        .expect_err("a retry that failed for another reason is a failure");
+    assert!(
+        matches!(error, canton_ledger::Error::Http { status: 500, .. }),
+        "{error:?}"
+    );
+}

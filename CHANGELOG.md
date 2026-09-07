@@ -507,6 +507,18 @@ steps already assert their own markers.
   (`POST /v2/dars`) is deliberately not included — an operator write with its
   own authorization story, tracked separately.
 
+- **Party management over JSON.** `JsonClient::list_known_parties_page` /
+  `list_known_parties` (`GET /v2/parties`, paged), `get_parties`
+  (`GET /v2/parties/{party}`), `allocate_party` / `allocate_party_with`
+  (`POST /v2/parties`, the latter with synchronizer, user, identity provider
+  and annotations through `AllocateParty`), `update_party_details`
+  (`PATCH /v2/parties/{party}` with a field mask) and `participant_id`. All
+  answer in the gRPC path's `admin::PartyDetails`, so a caller switches
+  transports without re-learning the type. Allocation and update are not
+  retried, for the reason `canton-admin` gives. With this the conformance
+  registry's last declared gap (`parties__json_party_mgmt`) is a capability:
+  49 rows, 49 tests, no gaps.
+
 - **`canton-admin`** — `get_package` downloads a package's `ArchivePayload`
   bytes and checks the hash the participant returns against the id that was
   asked for. With `list_packages`, that is enough to generate bindings from

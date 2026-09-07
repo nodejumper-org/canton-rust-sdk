@@ -44,7 +44,8 @@ pub use client::{AcsEntry, CantonClient};
 pub use command::{ChangeId, Submit, create, exercise, identifier, record, value};
 pub use interactive::{Executable, Prepare, Prepared};
 pub use json::{
-    JsonClient, JsonCommands, JsonSubmitAndWaitResponse, JsonSubmitResponse, JsonTransaction,
+    AllocateParty, JsonClient, JsonCommands, JsonSubmitAndWaitResponse, JsonSubmitResponse,
+    JsonTransaction,
 };
 pub use request::{ActiveContractsRequest, CompletionsRequest, TransactionShape, UpdatesRequest};
 pub use submission::{JsonSubmission, Submission};

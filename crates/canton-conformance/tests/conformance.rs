@@ -494,6 +494,18 @@ fn parties__local_parties_creation() {
     let _ = canton::admin::AdminClient::allocate_external_party;
 }
 
+/// Party management over the JSON Ledger API, for a deployment that exposes
+/// nothing else: list with paging, read, allocate, update — answering in the
+/// same `PartyDetails` the gRPC path returns.
+#[test]
+fn parties__json_party_mgmt() {
+    let _ = canton::ledger::JsonClient::list_known_parties_page;
+    let _ = canton::ledger::JsonClient::get_parties;
+    let _ = canton::ledger::JsonClient::allocate_party;
+    let _ = canton::ledger::JsonClient::update_party_details;
+    let _ = canton::ledger::JsonClient::participant_id;
+}
+
 /// The packages a participant knows can be listed — and downloaded, which is
 /// how bindings are generated for a package that ships as no DAR.
 #[test]

@@ -1,9 +1,11 @@
 //! JSON Ledger API client (HTTP).
 //!
 //! The JSON transport mirrors the gRPC client over Canton's HTTP JSON Ledger
-//! API v2: read the version/offset, **submit commands**, and read the **active
-//! contract set** and **updates** as bounded JSON arrays. It shares the SDK
-//! error model and the same [`Auth`] as the gRPC client.
+//! API v2: read the version/offset, **submit commands**, read the **active
+//! contract set** and **updates** as bounded JSON arrays, and — for a
+//! deployment that exposes nothing else — the **package** and **party**
+//! reads and writes `canton-admin` offers over gRPC. It shares the SDK error
+//! model and the same [`Auth`] as the gRPC client.
 //!
 //! Values use the Daml-LF JSON encoding: a record is a JSON object keyed by
 //! field name, a party is a string, a `TextMap` is a JSON object. Reads return
@@ -19,6 +21,7 @@ use std::sync::Arc;
 use canton_auth::TokenProvider;
 use canton_core::telemetry::{self, TRANSPORT_JSON};
 use canton_core::{Auth, Error, Result};
+use canton_proto::com::daml::ledger::api::v2::admin;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -92,6 +95,199 @@ struct PackagesResponse {
 struct PackageStatusResponse {
     #[serde(rename = "packageStatus")]
     package_status: String,
+}
+
+#[derive(Deserialize)]
+struct ParticipantIdResponse {
+    #[serde(rename = "participantId")]
+    participant_id: String,
+}
+
+/// `PartyDetails` as the JSON Ledger API spells it. Private: what leaves this
+/// module is the gRPC message, so a caller switching transports keeps the
+/// type as well as the vocabulary.
+#[derive(Deserialize, Serialize)]
+struct PartyDetailsWire {
+    party: String,
+    #[serde(
+        rename = "isLocal",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    is_local: bool,
+    #[serde(
+        rename = "localMetadata",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    local_metadata: Option<ObjectMetaWire>,
+    #[serde(
+        rename = "identityProviderId",
+        default,
+        skip_serializing_if = "String::is_empty"
+    )]
+    identity_provider_id: String,
+}
+
+#[derive(Deserialize, Serialize, Default)]
+struct ObjectMetaWire {
+    #[serde(
+        rename = "resourceVersion",
+        default,
+        skip_serializing_if = "String::is_empty"
+    )]
+    resource_version: String,
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    annotations: std::collections::HashMap<String, String>,
+}
+
+impl From<PartyDetailsWire> for admin::PartyDetails {
+    fn from(wire: PartyDetailsWire) -> Self {
+        admin::PartyDetails {
+            party: wire.party,
+            is_local: wire.is_local,
+            local_metadata: wire.local_metadata.map(|meta| admin::ObjectMeta {
+                resource_version: meta.resource_version,
+                annotations: meta.annotations,
+            }),
+            identity_provider_id: wire.identity_provider_id,
+        }
+    }
+}
+
+impl From<&admin::PartyDetails> for PartyDetailsWire {
+    fn from(details: &admin::PartyDetails) -> Self {
+        PartyDetailsWire {
+            party: details.party.clone(),
+            is_local: details.is_local,
+            local_metadata: details.local_metadata.as_ref().map(|meta| ObjectMetaWire {
+                resource_version: meta.resource_version.clone(),
+                annotations: meta.annotations.clone(),
+            }),
+            identity_provider_id: details.identity_provider_id.clone(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct ListKnownPartiesResponse {
+    #[serde(rename = "partyDetails", default)]
+    party_details: Vec<PartyDetailsWire>,
+    #[serde(rename = "nextPageToken", default)]
+    next_page_token: String,
+}
+
+#[derive(Deserialize)]
+struct PartiesResponse {
+    #[serde(rename = "partyDetails", default)]
+    party_details: Vec<PartyDetailsWire>,
+}
+
+#[derive(Deserialize)]
+struct PartyDetailsResponse {
+    #[serde(rename = "partyDetails")]
+    party_details: PartyDetailsWire,
+}
+
+#[derive(Serialize)]
+struct AllocatePartyWire<'a> {
+    #[serde(rename = "partyIdHint", skip_serializing_if = "str::is_empty")]
+    party_id_hint: &'a str,
+    #[serde(rename = "localMetadata", skip_serializing_if = "Option::is_none")]
+    local_metadata: Option<ObjectMetaWire>,
+    #[serde(rename = "identityProviderId", skip_serializing_if = "str::is_empty")]
+    identity_provider_id: &'a str,
+    #[serde(rename = "synchronizerId", skip_serializing_if = "str::is_empty")]
+    synchronizer_id: &'a str,
+    #[serde(rename = "userId", skip_serializing_if = "str::is_empty")]
+    user_id: &'a str,
+}
+
+#[derive(Serialize)]
+struct UpdatePartyDetailsWire {
+    #[serde(rename = "partyDetails")]
+    party_details: PartyDetailsWire,
+    #[serde(rename = "updateMask")]
+    update_mask: FieldMaskWire,
+}
+
+#[derive(Serialize)]
+struct FieldMaskWire {
+    paths: Vec<String>,
+}
+
+/// What to allocate, for [`JsonClient::allocate_party_with`].
+///
+/// [`JsonClient::allocate_party`] covers the common case — a hint and nothing
+/// else. This is the rest of `POST /v2/parties`: the synchronizer to allocate
+/// on (required once the participant is connected to more than one), the user
+/// that should be able to act as the new party, an identity provider, and
+/// participant-local annotations.
+#[derive(Clone, Debug, Default)]
+#[non_exhaustive]
+pub struct AllocateParty {
+    party_id_hint: String,
+    annotations: std::collections::HashMap<String, String>,
+    identity_provider_id: String,
+    synchronizer_id: String,
+    user_id: String,
+}
+
+impl AllocateParty {
+    /// An allocation with nothing chosen: the participant picks the id.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Suggest the local part of the party id (`<hint>::<fingerprint>`).
+    #[must_use]
+    pub fn with_hint(mut self, party_id_hint: impl Into<String>) -> Self {
+        self.party_id_hint = party_id_hint.into();
+        self
+    }
+
+    /// Store one participant-local annotation with the party.
+    #[must_use]
+    pub fn with_annotation(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.annotations.insert(key.into(), value.into());
+        self
+    }
+
+    /// Manage the party under this identity provider.
+    #[must_use]
+    pub fn with_identity_provider_id(mut self, identity_provider_id: impl Into<String>) -> Self {
+        self.identity_provider_id = identity_provider_id.into();
+        self
+    }
+
+    /// Allocate on this synchronizer. Optional while the participant is
+    /// connected to one; required once it is connected to several.
+    #[must_use]
+    pub fn with_synchronizer_id(mut self, synchronizer_id: impl Into<String>) -> Self {
+        self.synchronizer_id = synchronizer_id.into();
+        self
+    }
+
+    /// Grant this user the right to act as the new party.
+    #[must_use]
+    pub fn with_user_id(mut self, user_id: impl Into<String>) -> Self {
+        self.user_id = user_id.into();
+        self
+    }
+
+    fn wire(&self) -> AllocatePartyWire<'_> {
+        AllocatePartyWire {
+            party_id_hint: &self.party_id_hint,
+            local_metadata: (!self.annotations.is_empty()).then(|| ObjectMetaWire {
+                resource_version: String::new(),
+                annotations: self.annotations.clone(),
+            }),
+            identity_provider_id: &self.identity_provider_id,
+            synchronizer_id: &self.synchronizer_id,
+            user_id: &self.user_id,
+        }
+    }
 }
 
 /// A set of commands to submit over the JSON transport (dynamic path).
@@ -362,6 +558,39 @@ fn is_duplicate_submission(error: &Error) -> bool {
 
 /// Add W3C trace-context headers to an outgoing request (a no-op without the
 /// `otel` feature, or when no OpenTelemetry context is active).
+/// Percent-encode `value` as one path segment or one query value: everything
+/// outside RFC 3986's unreserved set is encoded, so a page token carrying `&`
+/// or a party id carrying `::` arrives as one value rather than as syntax.
+fn encode(value: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                out.push(char::from(byte));
+            }
+            _ => {
+                // Writing to a String cannot fail.
+                let _ = write!(out, "%{byte:02X}");
+            }
+        }
+    }
+    out
+}
+
+/// A caller-supplied identifier as a path segment. Empty, or carrying
+/// whitespace, is a caller mistake rather than something to encode and send:
+/// the participant would answer about a party that does not exist, and the
+/// caller would learn only that.
+fn segment(kind: &str, value: &str) -> Result<String> {
+    if value.is_empty() || value.chars().any(char::is_whitespace) {
+        return Err(Error::InvalidRequest(format!(
+            "{kind} {value:?} cannot form a path segment"
+        )));
+    }
+    Ok(encode(value))
+}
+
 fn with_trace_context(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
     #[cfg(feature = "otel")]
     {
@@ -662,6 +891,29 @@ impl JsonClient {
         read_json(response, path).await
     }
 
+    /// One PATCH, no retry: the callers are mutations whose lost response the
+    /// caller resolves by reading back, not by sending again.
+    async fn patch_once<B: Serialize, T: for<'de> Deserialize<'de>>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T> {
+        let mut request = self
+            .http
+            .patch(format!("{}{path}", self.base_url))
+            .timeout(self.timeout)
+            .json(body);
+        if let Some(token) = self.auth.bearer().await? {
+            request = request.bearer_auth(token);
+        }
+        request = with_trace_context(request);
+        let response = request
+            .send()
+            .await
+            .map_err(|e| transport_error(path, &e))?;
+        read_json(response, path).await
+    }
+
     /// The participant's Ledger API version (`GET /v2/version`, unauthenticated).
     ///
     /// # Errors
@@ -749,6 +1001,211 @@ impl JsonClient {
                     "package status {status:?} is not one this build knows"
                 ))
             })
+        })
+        .await
+    }
+
+    /// The participant's own identifier (`GET /v2/parties/participant-id`).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn participant_id(&self) -> Result<String> {
+        telemetry::instrument("participant_id", TRANSPORT_JSON, async {
+            Ok(self
+                .get::<ParticipantIdResponse>("/v2/parties/participant-id")
+                .await?
+                .participant_id)
+        })
+        .await
+    }
+
+    /// One page of the parties the participant knows (`GET /v2/parties`).
+    /// Pass the returned token to fetch the next page; `page_size` `0` uses
+    /// the server default.
+    ///
+    /// Answers with the same [`PartyDetails`](admin::PartyDetails) the gRPC
+    /// path returns. Requires `ParticipantAdmin` or an identity-provider
+    /// admin, as the gRPC call does; a plain user is refused.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn list_known_parties_page(
+        &self,
+        page_size: i32,
+        page_token: Option<String>,
+    ) -> Result<(Vec<admin::PartyDetails>, Option<String>)> {
+        use std::fmt::Write as _;
+        let mut path = String::from("/v2/parties");
+        let mut separator = '?';
+        if page_size > 0 {
+            // Writing to a String cannot fail.
+            let _ = write!(path, "{separator}pageSize={page_size}");
+            separator = '&';
+        }
+        if let Some(token) = page_token.as_deref().filter(|t| !t.is_empty()) {
+            let _ = write!(path, "{separator}pageToken={}", encode(token));
+        }
+        telemetry::instrument("list_known_parties_page", TRANSPORT_JSON, async {
+            let response = self.get::<ListKnownPartiesResponse>(&path).await?;
+            let next = (!response.next_page_token.is_empty()).then_some(response.next_page_token);
+            Ok((
+                response.party_details.into_iter().map(Into::into).collect(),
+                next,
+            ))
+        })
+        .await
+    }
+
+    /// Every party the participant knows, following pagination internally
+    /// (`GET /v2/parties`).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or any page request fails, and
+    /// [`Error::UnexpectedResponse`] if the participant repeats a page token —
+    /// the list would be a prefix that looks complete, so it fails instead.
+    pub async fn list_known_parties(&self) -> Result<Vec<admin::PartyDetails>> {
+        telemetry::instrument("list_known_parties", TRANSPORT_JSON, async {
+            let mut all = Vec::new();
+            let mut page_token: Option<String> = None;
+            loop {
+                let (parties, next) = self.list_known_parties_page(0, page_token.clone()).await?;
+                all.extend(parties);
+                let Some(next) = next else {
+                    break;
+                };
+                if page_token.as_deref() == Some(next.as_str()) {
+                    return Err(Error::UnexpectedResponse(format!(
+                        "the participant repeated the same page token after {} parties; \
+                         the list is incomplete and cannot be continued",
+                        all.len()
+                    )));
+                }
+                page_token = Some(next);
+            }
+            Ok(all)
+        })
+        .await
+    }
+
+    /// Details for specific parties (`GET /v2/parties/{party}`, the rest as
+    /// `?parties=`). Unknown parties are omitted from the result rather than
+    /// erroring, as over gRPC. A plain user may only ask about parties it can
+    /// act or read as; anything else is refused by the participant.
+    ///
+    /// # Errors
+    /// Returns [`Error::InvalidRequest`] if `parties` is empty or one of them
+    /// cannot form a path segment, and an [`Error`] if authentication or the
+    /// request fails.
+    pub async fn get_parties(&self, parties: Vec<String>) -> Result<Vec<admin::PartyDetails>> {
+        use std::fmt::Write as _;
+        let Some((first, rest)) = parties.split_first() else {
+            return Err(Error::InvalidRequest(
+                "get_parties needs at least one party".to_string(),
+            ));
+        };
+        let mut path = format!("/v2/parties/{}", segment("party", first)?);
+        for (i, party) in rest.iter().enumerate() {
+            let separator = if i == 0 { '?' } else { '&' };
+            // Writing to a String cannot fail.
+            let _ = write!(path, "{separator}parties={}", segment("party", party)?);
+        }
+        telemetry::instrument("get_parties", TRANSPORT_JSON, async {
+            Ok(self
+                .get::<PartiesResponse>(&path)
+                .await?
+                .party_details
+                .into_iter()
+                .map(Into::into)
+                .collect())
+        })
+        .await
+    }
+
+    /// Allocate a party (`POST /v2/parties`). `party_id_hint` suggests the
+    /// local part of the id; the participant returns the actual
+    /// [`PartyDetails`](admin::PartyDetails) (`party = "<hint>::<fingerprint>"`).
+    ///
+    /// The same call as `canton-admin`'s `allocate_party`, over JSON. For the
+    /// rest of the request — synchronizer, user, annotations — see
+    /// [`allocate_party_with`](Self::allocate_party_with).
+    ///
+    /// Requires the `ParticipantAdmin` right. Not retried: allocation is a
+    /// non-idempotent topology mutation, so a transient failure surfaces to
+    /// the caller rather than risking two parties.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or authorization fails, or the
+    /// request fails.
+    pub async fn allocate_party(&self, party_id_hint: Option<&str>) -> Result<admin::PartyDetails> {
+        let mut request = AllocateParty::new();
+        if let Some(hint) = party_id_hint {
+            request = request.with_hint(hint);
+        }
+        self.allocate_party_with(&request).await
+    }
+
+    /// Allocate a party with the full request (`POST /v2/parties`).
+    ///
+    /// # Errors
+    /// As [`allocate_party`](Self::allocate_party).
+    pub async fn allocate_party_with(
+        &self,
+        request: &AllocateParty,
+    ) -> Result<admin::PartyDetails> {
+        telemetry::instrument("allocate_party", TRANSPORT_JSON, async {
+            Ok(self
+                .post_once::<_, PartyDetailsResponse>("/v2/parties", &request.wire())
+                .await?
+                .party_details
+                .into())
+        })
+        .await
+    }
+
+    /// Update the participant-local details of a party
+    /// (`PATCH /v2/parties/{party}`).
+    ///
+    /// `update_paths` is the field mask — which of `details` to apply, in the
+    /// gRPC message's spelling: `local_metadata.annotations`, or
+    /// `local_metadata` for all of it. To remove an annotation, send its key
+    /// with an empty value. Carrying `resource_version` from a read makes the
+    /// update conditional on nobody having changed the party since: a stale
+    /// version is refused with a 409 (`CONCURRENT_PARTY_DETAILS_UPDATE_DETECTED`)
+    /// the participant classifies as contention, so [`Error::is_retriable`]
+    /// is true and the right move is to read again and update again.
+    ///
+    /// Not retried, for the reason [`allocate_party`](Self::allocate_party)
+    /// gives: a lost response is resolved by reading the party back.
+    ///
+    /// # Errors
+    /// Returns [`Error::InvalidRequest`] if `update_paths` is empty — the
+    /// participant refuses an empty mask, and this says so before the trip —
+    /// or the party cannot form a path segment; an [`Error`] if authentication
+    /// or authorization fails, the request fails, or the participant reports a
+    /// concurrent change.
+    pub async fn update_party_details(
+        &self,
+        details: &admin::PartyDetails,
+        update_paths: &[&str],
+    ) -> Result<admin::PartyDetails> {
+        if update_paths.is_empty() {
+            return Err(Error::InvalidRequest(
+                "update_party_details needs at least one update path".to_string(),
+            ));
+        }
+        let path = format!("/v2/parties/{}", segment("party", &details.party)?);
+        let body = UpdatePartyDetailsWire {
+            party_details: details.into(),
+            update_mask: FieldMaskWire {
+                paths: update_paths.iter().map(|p| (*p).to_string()).collect(),
+            },
+        };
+        telemetry::instrument("update_party_details", TRANSPORT_JSON, async {
+            Ok(self
+                .patch_once::<_, PartyDetailsResponse>(&path, &body)
+                .await?
+                .party_details
+                .into())
         })
         .await
     }

@@ -1493,3 +1493,191 @@ async fn ws_active_contracts_resumable_reads_the_snapshot() {
     }
     println!("ws resumable acs — {entries} entries read from the snapshot");
 }
+
+// ---- JSON-only deployments: packages and parties ---------------------------
+
+/// A token carrying the `ParticipantAdmin` right, for party allocation. The
+/// same variables the `canton-admin` suite uses.
+fn admin_oidc() -> Option<OidcConfig> {
+    Some(OidcConfig::new(
+        std::env::var("CANTON_TEST_TOKEN_URL").ok()?,
+        std::env::var("CANTON_TEST_ADMIN_CLIENT_ID").ok()?,
+        std::env::var("CANTON_TEST_ADMIN_CLIENT_SECRET").ok()?,
+    ))
+}
+
+/// Issue #2's setup — JSON only, no gRPC and no admin port — checking which
+/// packages the participant has before submitting.
+#[tokio::test]
+async fn json_packages_from_a_json_only_setup() {
+    let Some(json) = json_endpoint()
+        .map(JsonClient::new)
+        .and_then(authenticate_json)
+    else {
+        skip!("json_packages_from_a_json_only_setup: no JSON endpoint or credentials");
+        return;
+    };
+
+    let ids = json.list_packages().await.expect("list_packages");
+    assert!(!ids.is_empty(), "a participant with a DAR has packages");
+    assert!(
+        ids.iter()
+            .all(|id| id.len() == 64 && id.chars().all(|c| c.is_ascii_hexdigit())),
+        "package ids are hex hashes: {ids:?}"
+    );
+
+    let status = json
+        .package_status(&ids[0])
+        .await
+        .expect("package_status of a listed package");
+    assert_eq!(status, canton_ledger::proto::PackageStatus::Registered);
+
+    println!(
+        "JSON packages — {} packages, first {} is {status:?}",
+        ids.len(),
+        &ids[0][..12]
+    );
+}
+
+/// What a plain user (no `ParticipantAdmin`) can ask about parties over JSON:
+/// the participant's id, and the details of a party it may act as.
+#[tokio::test]
+async fn json_party_reads_as_a_plain_user() {
+    let Some(json) = json_endpoint()
+        .map(JsonClient::new)
+        .and_then(authenticate_json)
+    else {
+        skip!("json_party_reads_as_a_plain_user: no JSON endpoint or credentials");
+        return;
+    };
+    let Some(party) = test_party() else {
+        skip!("json_party_reads_as_a_plain_user: no CANTON_TEST_PARTY");
+        return;
+    };
+
+    let participant = json.participant_id().await.expect("participant_id");
+    assert!(participant.starts_with("participant::"), "{participant}");
+
+    let details = json
+        .get_parties(vec![party.clone()])
+        .await
+        .expect("get_parties");
+    assert_eq!(details.len(), 1, "{details:?}");
+    assert_eq!(details[0].party, party);
+    assert!(details[0].is_local, "the test party is hosted here");
+
+    println!("JSON parties — participant {participant}, {party} is local");
+}
+
+/// The whole party-management surface over JSON, with the `ParticipantAdmin`
+/// right: paged listing, allocation with a hint and an annotation, reading the
+/// new party back, and updating its annotations under concurrent-change
+/// control.
+#[tokio::test]
+async fn json_party_management_round_trip() {
+    let Some((json_url, oidc)) = json_endpoint().zip(admin_oidc()) else {
+        skip!(
+            "json_party_management_round_trip: set CANTON_TEST_JSON_ENDPOINT and \
+             CANTON_TEST_ADMIN_CLIENT_ID/CANTON_TEST_ADMIN_CLIENT_SECRET (ParticipantAdmin)"
+        );
+        return;
+    };
+    let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc));
+
+    // Paging: a page of two has a successor on any LocalNet (DSO, app
+    // provider, app user, the participant's own admin party).
+    let (page, next) = json
+        .list_known_parties_page(2, None)
+        .await
+        .expect("list_known_parties_page");
+    assert_eq!(page.len(), 2, "{page:?}");
+    let next = next.expect("more than two parties are known");
+    let (page_two, _) = json
+        .list_known_parties_page(2, Some(next))
+        .await
+        .expect("the second page");
+    assert!(!page_two.is_empty());
+    assert_ne!(page[0].party, page_two[0].party, "the token advanced");
+
+    let all = json.list_known_parties().await.expect("list_known_parties");
+    assert!(all.len() >= 3, "{}", all.len());
+
+    // Allocate, with a hint and an annotation.
+    let hint = format!("rust-sdk-json-{}", uuid::Uuid::new_v4().simple());
+    let request = canton_ledger::AllocateParty::new()
+        .with_hint(&hint)
+        .with_annotation("origin", "canton-rust-sdk live test");
+    let allocated = json
+        .allocate_party_with(&request)
+        .await
+        .expect("allocate_party_with");
+    assert!(
+        allocated.party.starts_with(&format!("{hint}::")),
+        "{}",
+        allocated.party
+    );
+    assert!(allocated.is_local);
+    let meta = allocated.local_metadata.as_ref().expect("metadata");
+    assert_eq!(
+        meta.annotations.get("origin").map(String::as_str),
+        Some("canton-rust-sdk live test")
+    );
+
+    // Read it back, together with one the participant does not know.
+    let read = json
+        .get_parties(vec![allocated.party.clone(), "nobody::1220aa".to_string()])
+        .await
+        .expect("get_parties");
+    assert_eq!(read.len(), 1, "unknown parties are omitted: {read:?}");
+    assert_eq!(read[0], allocated);
+
+    // Update under concurrent-change control: the resource version from the
+    // read goes back with the change.
+    let mut changed = read.into_iter().next().expect("one");
+    changed
+        .local_metadata
+        .as_mut()
+        .expect("metadata")
+        .annotations
+        .insert("origin".to_string(), "updated".to_string());
+    let updated = json
+        .update_party_details(&changed, &["local_metadata.annotations"])
+        .await
+        .expect("update_party_details");
+    let updated_meta = updated.local_metadata.as_ref().expect("metadata");
+    assert_eq!(
+        updated_meta.annotations.get("origin").map(String::as_str),
+        Some("updated")
+    );
+    assert_ne!(
+        updated_meta.resource_version, meta.resource_version,
+        "the version moved"
+    );
+
+    // A stale version is refused rather than applied over the newer one. The
+    // participant reports it as contention (`errorCategory` 2, retriable):
+    // the right move is to read again and update again, not to give up.
+    let stale = json
+        .update_party_details(&changed, &["local_metadata.annotations"])
+        .await
+        .expect_err("the resource version from before the update is stale");
+    match &stale {
+        canton_ledger::Error::Http { status, body, .. } => {
+            assert_eq!(*status, 409, "{stale}");
+            assert!(
+                body.contains("CONCURRENT_PARTY_DETAILS_UPDATE_DETECTED"),
+                "{body}"
+            );
+        }
+        other => panic!("expected the participant's 409, got {other:?}"),
+    }
+    assert!(stale.is_retriable(), "contention is retriable: {stale}");
+
+    println!(
+        "JSON party management — {} known, allocated {}, annotation updated (version {} -> {})",
+        all.len(),
+        allocated.party,
+        meta.resource_version,
+        updated_meta.resource_version
+    );
+}
