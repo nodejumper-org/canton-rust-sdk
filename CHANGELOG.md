@@ -108,6 +108,23 @@ on; the ones that did not survive that check are not here.
   (`ed25519` and `pqs-tls` were undocumented), `canton-token`'s CIP-56-only
   title for a crate that implements both standards, and this file, which the
   merge from 0.2.3 had left with every M3 entry under a published version.
+- **Coverage and mutation passes over the M3 crates**, the two phases the
+  September runner did not reach. Every `canton-token` workflow function — V1
+  allocation, the instruction choices, all of `v2::*` — now has an in-process
+  drive against the registry stub that asserts the request and that the
+  registry's context lands inside the exercise argument (a mutation run showed
+  a workflow could drop the context and no test would notice); the holdings
+  read is driven against an in-process `StateService`; the JSON transport's
+  bounded reads, wrapped submission and party endpoints are covered by the
+  scripted server; the interactive-submission accessors, the registry's
+  transport verdict (refactored to be testable on the strings it reads), the
+  PQS row accessors and path spellings, and the signer's `Debug` and
+  fingerprint are pinned by unit tests.
+- **The live runs are on record.** The three token-standard examples and the
+  JSON-only package read were run again on 2026-09-07 and their output is
+  committed verbatim, with the environment and commands, under
+  [`docs/verification/`](docs/verification/token-standard-live-runs.md); the
+  compatibility matrix's offsets now point at that run.
 - **`canton-ledger`'s tests did not build on their own**: the dev-dependency on
   `canton-signer` inherited `default-features = false` and the tests import
   the in-memory key. Green only through the facade's feature unification.

@@ -268,28 +268,7 @@ impl PqsClient {
     {
         // PQS names an exercise by template qname and choice.
         let qname = format!("{}:{}", Query::<T>::qname(), C::NAME);
-        let mut params = vec![Param::Text(qname)];
-        let mut text = "SELECT * FROM exercises($1".to_string();
-        if from.is_some() || to.is_some() {
-            let from_sql = from.map_or_else(
-                || "COALESCE(pruned_offset(), oldest_offset())".to_string(),
-                |value| {
-                    params.push(Param::Offset(value));
-                    format!("${}", params.len())
-                },
-            );
-            let to_sql = to.map_or_else(
-                || "latest_offset()".to_string(),
-                |value| {
-                    params.push(Param::Offset(value));
-                    format!("${}", params.len())
-                },
-            );
-            let _ = write!(text, ", {from_sql}, {to_sql}");
-        }
-        text.push(')');
-
-        let rows = self.query(&Sql::raw(text, params)).await?;
+        let rows = self.query(&exercises_sql(qname, from, to)).await?;
         rows.iter().map(Exercise::from_row).collect()
     }
 
@@ -520,6 +499,33 @@ fn classify(error: &tokio_postgres::Error) -> Error {
 /// A refused connection carries a SQLSTATE (`28P01` bad password, `3D000` no
 /// such database, `28000` rejected by `pg_hba.conf`), so the same class rule
 /// separates them from a store that is merely down.
+/// The statement behind [`PqsClient::exercises`]: PQS's `exercises(qname)`
+/// function, with the offset window added only when the caller bounded it,
+/// each missing bound spelled the way the function's own defaults are.
+fn exercises_sql(qname: String, from: Option<i64>, to: Option<i64>) -> Sql {
+    let mut params = vec![Param::Text(qname)];
+    let mut text = "SELECT * FROM exercises($1".to_string();
+    if from.is_some() || to.is_some() {
+        let from_sql = from.map_or_else(
+            || "COALESCE(pruned_offset(), oldest_offset())".to_string(),
+            |value| {
+                params.push(Param::Offset(value));
+                format!("${}", params.len())
+            },
+        );
+        let to_sql = to.map_or_else(
+            || "latest_offset()".to_string(),
+            |value| {
+                params.push(Param::Offset(value));
+                format!("${}", params.len())
+            },
+        );
+        let _ = write!(text, ", {from_sql}, {to_sql}");
+    }
+    text.push(')');
+    Sql::raw(text, params)
+}
+
 fn connect_error(what: &str, error: &tokio_postgres::Error) -> Error {
     let detail = detail(error);
     if let Some(code) = error.code()
@@ -707,6 +713,39 @@ mod connection_tests {
         assert!(
             format!("{error}").to_ascii_lowercase().contains("tls"),
             "the reason names TLS: {error}"
+        );
+    }
+
+    /// The exercises statement, in each of its shapes: no window, one bound,
+    /// both. A missing bound is spelled as PQS's own default for that end, so
+    /// `from` alone does not silently become "everything".
+    #[test]
+    fn the_exercises_statement_binds_only_the_bounds_it_was_given() {
+        let q = || "pkg:Mod:T:Choice".to_string();
+
+        let none = exercises_sql(q(), None, None);
+        assert_eq!(none.text, "SELECT * FROM exercises($1)");
+        assert_eq!(none.params, vec![Param::Text(q())]);
+
+        let from = exercises_sql(q(), Some(10), None);
+        assert_eq!(
+            from.text,
+            "SELECT * FROM exercises($1, $2, latest_offset())"
+        );
+        assert_eq!(from.params, vec![Param::Text(q()), Param::Offset(10)]);
+
+        let to = exercises_sql(q(), None, Some(20));
+        assert_eq!(
+            to.text,
+            "SELECT * FROM exercises($1, COALESCE(pruned_offset(), oldest_offset()), $2)"
+        );
+        assert_eq!(to.params, vec![Param::Text(q()), Param::Offset(20)]);
+
+        let both = exercises_sql(q(), Some(10), Some(20));
+        assert_eq!(both.text, "SELECT * FROM exercises($1, $2, $3)");
+        assert_eq!(
+            both.params,
+            vec![Param::Text(q()), Param::Offset(10), Param::Offset(20)]
         );
     }
 }

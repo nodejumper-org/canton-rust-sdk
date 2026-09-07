@@ -103,6 +103,15 @@ contracts it named for disclosure, so the choice-context and
 `createdEventBlob` → `DisclosedContract` path are proven against a real
 registry rather than a stub.
 
+The stub has its place too, and CI runs it: every workflow function in
+`canton-token` — V1 and V2 transfer, the instruction choices, allocation,
+`settle_batch`, the allocation and allocation-instruction choices — is driven
+against an in-process registry that answers what the OpenAPI documents say and
+records what it was asked, and the holdings read is driven against an
+in-process `StateService`. What those pin is the request each workflow sends
+and that the registry's context lands *inside* the exercise argument, which is
+the part a mutation run found nothing else guarding.
+
 The V1 packages come from cn-quickstart at a pinned commit, fetched in CI and
 checked against their SHA-256. The V2 packages ship as no DAR anyone publishes,
 so they were taken from a participant and committed under

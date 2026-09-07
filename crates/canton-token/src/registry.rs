@@ -695,19 +695,49 @@ struct ErrorResponse {
 /// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
 /// [`Error::InvalidRequest`], which is not retriable.
 fn connection(e: &reqwest::Error) -> Error {
-    let detail = canton_core::chain(e);
-    if e.is_timeout() {
+    let kind = if e.is_timeout() {
+        Transport::Timeout
+    } else if e.is_builder() {
+        Transport::Builder
+    } else if e.is_redirect() {
+        Transport::Redirect
+    } else if e.is_decode() {
+        Transport::Decode
+    } else {
+        Transport::Connect
+    };
+    classify_transport(kind, &canton_core::chain(e))
+}
+
+/// What `reqwest` says about a failure, by type, in the order the verdict
+/// reads them. Separated from the error so the verdict below can be tested on
+/// the strings it reads, which are the only place a TLS failure shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Transport {
+    Timeout,
+    Builder,
+    Redirect,
+    Decode,
+    /// Everything else: the connection itself failed, and the chain says how.
+    Connect,
+}
+
+fn classify_transport(kind: Transport, detail: &str) -> Error {
+    match kind {
         // The 30s default this client sets. Retriable, and `Error::Timeout`
         // says why without the caller reading the message.
-        return Error::Timeout;
-    }
-    if e.is_builder() || e.is_redirect() {
-        return Error::InvalidRequest(format!("the registry request could not be made: {detail}"));
-    }
-    if e.is_decode() {
-        return Error::UnexpectedResponse(format!(
-            "the registry's reply could not be read: {detail}"
-        ));
+        Transport::Timeout => return Error::Timeout,
+        Transport::Builder | Transport::Redirect => {
+            return Error::InvalidRequest(format!(
+                "the registry request could not be made: {detail}"
+            ));
+        }
+        Transport::Decode => {
+            return Error::UnexpectedResponse(format!(
+                "the registry's reply could not be read: {detail}"
+            ));
+        }
+        Transport::Connect => {}
     }
     // A TLS failure arrives as a connect error, indistinguishable by type from
     // a refused connection — reqwest exposes no typed TLS error — so the chain
@@ -993,5 +1023,74 @@ mod tests {
         assert_eq!(response.instruments[0].total_supply, None);
         assert_eq!(response.instruments[0].decimals, 10);
         assert_eq!(response.next_page_token, None);
+    }
+
+    /// The transport verdict, on the strings it has to read. A certificate
+    /// failure is permanent whichever of the two phrasings the chain carries;
+    /// a refused connection is not.
+    #[test]
+    fn a_tls_failure_is_permanent_under_either_phrasing() {
+        for detail in [
+            "error sending request: invalid peer certificate: UnknownIssuer",
+            "error sending request: tls handshake eof",
+            "CERTIFICATE verify failed",
+        ] {
+            let error = classify_transport(Transport::Connect, detail);
+            assert!(
+                matches!(error, Error::InvalidRequest(_)),
+                "{detail}: {error:?}"
+            );
+            assert!(!error.is_retriable(), "{detail}");
+            assert!(error.to_string().contains("TLS certificate"), "{error}");
+        }
+        let refused = classify_transport(Transport::Connect, "connection refused (os error 61)");
+        assert!(matches!(refused, Error::Connection(_)), "{refused:?}");
+        assert!(refused.is_retriable());
+        assert!(
+            refused.to_string().contains("connection refused"),
+            "{refused}"
+        );
+    }
+
+    /// Each typed verdict on its own: a timeout is `Timeout`, an unbuildable
+    /// request or a redirect loop is permanent, a body that does not read is
+    /// an unexpected response.
+    #[test]
+    fn the_typed_verdicts_are_read_before_the_strings() {
+        let timeout = classify_transport(
+            Transport::Timeout,
+            "certificate", // would otherwise be read as permanent
+        );
+        assert!(matches!(timeout, Error::Timeout), "{timeout:?}");
+
+        for kind in [Transport::Builder, Transport::Redirect] {
+            let error = classify_transport(kind, "x");
+            assert!(
+                matches!(&error, Error::InvalidRequest(m) if m.contains("could not be made")),
+                "{kind:?}: {error:?}"
+            );
+        }
+
+        let decode = classify_transport(Transport::Decode, "x");
+        assert!(matches!(decode, Error::UnexpectedResponse(_)), "{decode:?}");
+    }
+
+    /// The excerpt boundary: exactly the limit is left alone, one byte over is
+    /// cut and marked, and the cut never splits a character.
+    #[test]
+    fn truncate_cuts_past_the_limit_and_on_a_character_boundary() {
+        let exact = "x".repeat(200);
+        assert_eq!(truncate(&exact), exact);
+
+        let over = "x".repeat(201);
+        let cut = truncate(&over);
+        assert!(cut.ends_with('…'), "{cut}");
+        assert_eq!(cut.trim_end_matches('…').len(), 200);
+
+        // 199 ASCII bytes, then a three-byte character straddling the limit.
+        let straddle = format!("{}€€", "x".repeat(199));
+        let cut = truncate(&straddle);
+        assert!(cut.ends_with('…'), "{cut}");
+        assert!(cut.starts_with(&"x".repeat(199)), "{cut}");
     }
 }

@@ -363,3 +363,76 @@ async fn a_refused_connection_is_not_retried_forever() {
     );
     println!("refused as expected: {error}");
 }
+
+/// The store closing a connection is the ordinary failure a long-lived client
+/// meets — a failover, an idle timeout, a restart — and the client must carry
+/// on rather than answer "retriable" forever from a dead socket. This
+/// terminates the client's own backend from a second connection and expects
+/// the next read to succeed on a fresh one, with nothing done by the caller.
+#[tokio::test]
+async fn a_connection_the_store_closes_is_replaced_on_the_next_read() {
+    let Some(url) = std::env::var("CANTON_PQS_URL").ok() else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    // Named, so the terminating statement below reaches this backend and no
+    // other — Scribe itself connects as the same user.
+    let name = format!("canton-pqs-live-{}", std::process::id());
+    let mut config: tokio_postgres::Config = url.parse().expect("CANTON_PQS_URL parses");
+    config.application_name(&name);
+    let named = {
+        let mut parts = vec![format!("application_name={name}")];
+        for host in config.get_hosts() {
+            if let tokio_postgres::config::Host::Tcp(host) = host {
+                parts.push(format!("host={host}"));
+            }
+        }
+        if let Some(port) = config.get_ports().first() {
+            parts.push(format!("port={port}"));
+        }
+        if let Some(user) = config.get_user() {
+            parts.push(format!("user={user}"));
+        }
+        if let Some(password) = config.get_password() {
+            parts.push(format!("password={}", String::from_utf8_lossy(password)));
+        }
+        if let Some(dbname) = config.get_dbname() {
+            parts.push(format!("dbname={dbname}"));
+        }
+        parts.join(" ")
+    };
+    let client = PqsClient::connect(&named).await.expect("connects");
+    let before = client
+        .latest_offset()
+        .await
+        .expect("a read on the first connection");
+
+    // A second, plain connection does the terminating.
+    let (admin, connection) = tokio_postgres::connect(&url, tokio_postgres::NoTls)
+        .await
+        .expect("a second connection");
+    tokio::spawn(connection);
+    let terminated = admin
+        .query(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+             WHERE application_name = $1 AND pid <> pg_backend_pid()",
+            &[&name],
+        )
+        .await
+        .expect("pg_terminate_backend");
+    assert_eq!(
+        terminated.len(),
+        1,
+        "exactly the client's backend was found by name"
+    );
+    // The termination is asynchronous from the client's point of view; give
+    // the socket a moment to be seen as closed.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    let after = client
+        .latest_offset()
+        .await
+        .expect("the read after the store closed the connection succeeds on a fresh one");
+    assert!(after >= before, "{after} >= {before}");
+    println!("reconnected transparently: offset {before} before, {after} after");
+}

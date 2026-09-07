@@ -776,4 +776,30 @@ mod tests {
         let sql = Query::<AppInstallRequest>::active().compile();
         assert!(!sql.text.contains("ORDER BY"), "{}", sql.text);
     }
+
+    /// Every way of spelling a path lands as the same segments, and none of
+    /// them splits or joins anything: a single string is one segment.
+    #[test]
+    fn every_path_spelling_gives_the_same_segments() {
+        assert_eq!("amount".into_path(), vec!["amount".to_string()]);
+        assert_eq!(
+            "a.b".into_path(),
+            vec!["a.b".to_string()],
+            "a string is one segment"
+        );
+        assert_eq!(String::from("owner").into_path(), vec!["owner".to_string()]);
+        assert_eq!(
+            ["lock", "holders"].into_path(),
+            vec!["lock".to_string(), "holders".to_string()]
+        );
+        let slice: &[&str] = &["lock", "expiresAt"];
+        assert_eq!(
+            slice.into_path(),
+            vec!["lock".to_string(), "expiresAt".to_string()]
+        );
+        assert_eq!(
+            vec!["meta".to_string(), "values".to_string()].into_path(),
+            vec!["meta".to_string(), "values".to_string()]
+        );
+    }
 }

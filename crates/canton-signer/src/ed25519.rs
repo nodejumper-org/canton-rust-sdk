@@ -353,4 +353,22 @@ mod tests {
             "the fingerprint is public and identifies the signer: {rendered}"
         );
     }
+
+    /// The `Debug` form names the type and nothing else. A test that only
+    /// checked the key bytes were absent would also pass an empty string.
+    #[test]
+    fn debug_names_the_type_and_hides_everything_else() {
+        let key = Ed25519Key::from_seed(&[7; 32]).expect("a valid seed");
+        assert_eq!(format!("{key:?}"), "Ed25519Key { .. }");
+    }
+
+    /// The fingerprint the participant computed is the one the signer reports,
+    /// unchanged: it is what a ledger signature is filed under.
+    #[test]
+    fn the_signer_reports_the_fingerprint_it_was_given() {
+        let signer = Ed25519Key::from_seed(&[7; 32])
+            .expect("a valid seed")
+            .into_signer("1220cafe");
+        assert_eq!(signer.fingerprint(), "1220cafe");
+    }
 }

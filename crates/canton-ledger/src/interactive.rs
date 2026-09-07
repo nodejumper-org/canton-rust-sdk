@@ -1169,4 +1169,134 @@ mod tests {
             )
         ));
     }
+
+    /// What a caller can read off each state, and that each reader returns the
+    /// value that was put in — not a default the type happens to have.
+    #[test]
+    fn prepare_reports_what_it_was_given() {
+        let disclosed = pb::DisclosedContract {
+            contract_id: "00d".to_string(),
+            ..Default::default()
+        };
+        let prepare = Prepare::new_multi(vec!["alice".to_string(), "bob".to_string()])
+            .with_read_as(vec!["carol".to_string()])
+            .with_disclosed_contracts(vec![disclosed]);
+        assert_eq!(prepare.act_as(), ["alice".to_string(), "bob".to_string()]);
+        assert_eq!(prepare.read_as(), ["carol".to_string()]);
+        assert_eq!(prepare.disclosed_contracts().len(), 1);
+        assert_eq!(prepare.disclosed_contracts()[0].contract_id, "00d");
+    }
+
+    #[tokio::test]
+    async fn prepared_and_executable_report_what_the_participant_returned() {
+        let prepared = Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(ipb::PreparedTransaction {
+                    transaction: None,
+                    metadata: Some(ipb::Metadata {
+                        submitter_info: Some(ipb::metadata::SubmitterInfo {
+                            act_as: vec!["alice".to_string()],
+                            command_id: "command-7".to_string(),
+                        }),
+                        ..Default::default()
+                    }),
+                }),
+                prepared_transaction_hash: vec![9, 9, 9],
+                hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                hashing_details: Some("hashed thus".to_string()),
+                cost_estimation: Some(ipb::CostEstimation {
+                    confirmation_request_traffic_cost_estimation: 1234,
+                    ..Default::default()
+                }),
+            },
+            vec!["alice".to_string()],
+            vec!["carol".to_string()],
+            "command-7".to_string(),
+            Some("user-1".to_string()),
+        )
+        .expect("a full response");
+
+        assert_eq!(prepared.command_id(), "command-7");
+        assert_eq!(prepared.act_as(), ["alice".to_string()]);
+        assert_eq!(prepared.read_as(), ["carol".to_string()]);
+        assert_eq!(prepared.hashing_details(), Some("hashed thus"));
+        assert_eq!(
+            prepared
+                .cost_estimation()
+                .map(|c| c.confirmation_request_traffic_cost_estimation),
+            Some(1234)
+        );
+        let transaction = prepared.transaction().expect("the transaction is kept");
+        let info = transaction
+            .metadata
+            .as_ref()
+            .and_then(|m| m.submitter_info.as_ref())
+            .expect("its submitter info");
+        assert_eq!(info.command_id, "command-7");
+        assert_eq!(
+            prepared.change_id(),
+            crate::command::ChangeId::new(
+                "user-1".to_string(),
+                vec!["alice".to_string()],
+                "command-7".to_string()
+            )
+        );
+
+        let executable = prepared
+            .sign_with(&signer("1220aa"))
+            .await
+            .expect("one acting party signs without naming itself");
+        assert_eq!(executable.command_id(), "command-7");
+        assert_eq!(
+            executable.change_id(),
+            crate::command::ChangeId::new(
+                "user-1".to_string(),
+                vec!["alice".to_string()],
+                "command-7".to_string()
+            )
+        );
+        assert_eq!(executable.signed_by(), ["alice"]);
+        // Both acting and reading parties witness the returned transaction.
+        let mut witnesses = executable.witnesses();
+        witnesses.sort();
+        assert_eq!(witnesses, ["alice".to_string(), "carol".to_string()]);
+    }
+
+    /// The wait-for-transaction request carries everything the other two do,
+    /// plus the format that decides which events come back — for every party
+    /// that witnesses the transaction, in the shape the caller chose.
+    #[tokio::test]
+    async fn the_wait_for_transaction_request_carries_the_signature_and_the_format() {
+        let executable = prepared(&["alice"])
+            .sign_as("alice", &signer("1220aa"))
+            .await
+            .expect("sign")
+            .with_submission_id("sub-1")
+            .with_transaction_shape(crate::request::TransactionShape::LedgerEffects);
+
+        let wire = executable.into_execute_and_wait_for_transaction_request(pb::EventFormat {
+            verbose: true,
+            ..Default::default()
+        });
+
+        assert!(
+            wire.prepared_transaction.is_some(),
+            "the transaction travels"
+        );
+        let signatures = wire.party_signatures.expect("signatures");
+        assert_eq!(signatures.signatures.len(), 1);
+        assert_eq!(signatures.signatures[0].party, "alice");
+        assert_eq!(wire.submission_id, "sub-1");
+        assert_eq!(wire.user_id, "user-1");
+        assert_eq!(
+            wire.hashing_scheme_version,
+            ipb::HashingSchemeVersion::V2 as i32
+        );
+        let format = wire.transaction_format.expect("a transaction format");
+        assert!(format.event_format.expect("event format").verbose);
+        assert_eq!(
+            format.transaction_shape,
+            pb::TransactionShape::LedgerEffects as i32
+        );
+    }
 }

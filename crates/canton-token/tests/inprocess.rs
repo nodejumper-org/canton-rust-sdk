@@ -650,3 +650,562 @@ fn normalise(path: &str) -> String {
     }
     out
 }
+
+// ---- Every workflow, driven through the stub --------------------------------
+//
+// The tests above pin the registry client's paths and the V1 transfer. The
+// workflow functions built on the client — V1 allocation, the instruction
+// choices, and all of V2 — were exercised only by the live examples, which CI
+// cannot run. Each one is driven here: what it asks the registry, and whether
+// what the registry answered made it into the exercise it built. The second
+// half is the one a mutation test found unguarded: a workflow that drops the
+// context builds a command that fails at interpretation, with a message that
+// names neither the context nor the registry.
+
+use canton_proto::com::daml::ledger::api::v2::command::Command as PbCommand;
+use canton_token::types::v1::allocation as al1;
+use canton_token::types::v2::{
+    allocation as al2, allocation_instruction as ai2, holding as h2, transfer_instruction as ti2,
+};
+
+fn no_meta() -> md::Metadata {
+    md::Metadata {
+        values: rt::TextMap::new(),
+    }
+}
+
+/// A choice context on its own, as the choice-context endpoints answer.
+fn a_context_response() -> serde_json::Value {
+    serde_json::json!({
+        "choiceContextData": {
+            "values": { "amulet-rules": { "tag": "AV_ContractId", "value": "00rules" } }
+        },
+        "disclosedContracts": [{
+            "templateId": "pkgA:Splice.AmuletRules:AmuletRules",
+            "contractId": "00rules",
+            "createdEventBlob": "AQID",
+            "synchronizerId": "sync::1220ab"
+        }]
+    })
+}
+
+/// The exercise a workflow built: the contract, the choice, and the argument
+/// rendered so the context can be looked for inside it.
+fn exercised(command: &canton_token::TokenCommand) -> (String, String, String) {
+    match command.command().command.as_ref().expect("a command") {
+        PbCommand::Exercise(e) => (
+            e.contract_id.clone(),
+            e.choice.clone(),
+            format!("{:?}", e.choice_argument),
+        ),
+        other => panic!("expected an exercise, got {other:?}"),
+    }
+}
+
+/// What every workflow must get right: the exercise names the contract and
+/// choice, the registry's context is *inside* the argument, and the contracts
+/// the registry said to disclose travel with the command.
+fn assert_built(
+    command: &canton_token::TokenCommand,
+    contract_id: &str,
+    choice: &str,
+    disclosed: usize,
+) {
+    let (cid, name, argument) = exercised(command);
+    assert_eq!(cid, contract_id);
+    assert_eq!(name, choice);
+    assert!(
+        argument.contains("amulet-rules") && argument.contains("00rules"),
+        "{choice}: the registry's context must be in the choice argument: {argument}"
+    );
+    assert_eq!(command.disclosed_contracts().len(), disclosed, "{choice}");
+    assert_eq!(command.disclosed_contracts()[0].contract_id, "00rules");
+}
+
+fn v2_account(owner: &str) -> h2::Account {
+    h2::Account {
+        owner: Some(party(owner)),
+        provider: None,
+        id: String::new(),
+    }
+}
+
+fn a_v2_transfer() -> ti2::Transfer {
+    ti2::Transfer {
+        sender: v2_account("alice::1220ab"),
+        receiver: v2_account("bob::1220cd"),
+        amount: "10.5".parse().expect("a numeric"),
+        instrument_id: h2::InstrumentId {
+            admin: party("dso::1220ef"),
+            id: "Amulet".to_string(),
+        },
+        requested_at: rt::Timestamp(1_700_000_000_000_000),
+        execute_before: rt::Timestamp(1_700_000_600_000_000),
+        input_holding_cids: vec![rt::ContractId::new("00holding")],
+        meta: no_meta(),
+    }
+}
+
+fn a_v2_settlement() -> al2::SettlementInfo {
+    al2::SettlementInfo {
+        executors: vec![party("exec::1220ff")],
+        id: "dvp-1".to_string(),
+        cid: None,
+        meta: no_meta(),
+    }
+}
+
+fn a_v2_allocation() -> al2::AllocationSpecification {
+    al2::AllocationSpecification {
+        admin: party("dso::1220ef"),
+        authorizer: v2_account("alice::1220ab"),
+        transfer_leg_sides: vec![al2::TransferLegSide {
+            transfer_leg_id: "leg-1".to_string(),
+            side: al2::TransferSide::SenderSide,
+            otherside: v2_account("bob::1220cd"),
+            amount: "10.5".parse().expect("a numeric"),
+            instrument_id: "Amulet".to_string(),
+            meta: no_meta(),
+        }],
+        settlement_deadline: Some(rt::Timestamp(1_700_003_600_000_000)),
+        next_iteration_funding: None,
+        committed: false,
+        meta: no_meta(),
+    }
+}
+
+fn a_v1_allocation() -> al1::AllocationSpecification {
+    al1::AllocationSpecification {
+        settlement: al1::SettlementInfo {
+            executor: party("exec::1220ff"),
+            settlement_ref: al1::Reference {
+                id: "dvp-1".to_string(),
+                cid: None,
+            },
+            requested_at: rt::Timestamp(1_700_000_000_000_000),
+            allocate_before: rt::Timestamp(1_700_000_600_000_000),
+            settle_before: rt::Timestamp(1_700_003_600_000_000),
+            meta: no_meta(),
+        },
+        transfer_leg_id: "leg-1".to_string(),
+        transfer_leg: al1::TransferLeg {
+            sender: party("alice::1220ab"),
+            receiver: party("bob::1220cd"),
+            amount: "10.5".parse().expect("a numeric"),
+            instrument_id: h::InstrumentId {
+                admin: party("dso::1220ef"),
+                id: "Amulet".to_string(),
+            },
+            meta: no_meta(),
+        },
+    }
+}
+
+#[tokio::test]
+async fn a_v2_transfer_names_its_actors_and_carries_the_context() {
+    let (base, recorded) = registry(a_factory_response()).await;
+    let client = RegistryClient::new(&base).expect("client");
+
+    let command =
+        canton_token::v2::transfer(&client, a_v2_transfer(), vec![party("alice::1220ab")])
+            .await
+            .expect("resolves");
+
+    let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(seen.method, "POST");
+    assert_eq!(
+        seen.path,
+        "/registry/transfer-instruction/v2/transfer-factory"
+    );
+    let arguments = &seen.body["choiceArguments"];
+    assert_eq!(arguments["actors"], serde_json::json!(["alice::1220ab"]));
+    assert_eq!(arguments["transfer"]["sender"]["owner"], "alice::1220ab");
+    assert_eq!(arguments["transfer"]["receiver"]["owner"], "bob::1220cd");
+    assert_eq!(arguments["transfer"]["amount"], "10.5");
+    assert_eq!(
+        arguments["extraArgs"],
+        serde_json::json!({ "context": { "values": {} }, "meta": { "values": {} } })
+    );
+
+    assert_built(&command, "00factory", "TransferFactory_Transfer", 2);
+    assert_eq!(
+        command.transfer_kind(),
+        Some(canton_token::TransferKind::Direct)
+    );
+}
+
+#[tokio::test]
+async fn the_v2_transfer_instruction_choices_each_ask_their_own_context() {
+    let instruction = rt::ContractId::<ti2::TransferInstruction>::new("00ti");
+    let actors = || vec![party("bob::1220cd")];
+    for (name, expected_path, expected_choice) in [
+        ("accept", "accept", "TransferInstruction_Accept"),
+        ("reject", "reject", "TransferInstruction_Reject"),
+        ("withdraw", "withdraw", "TransferInstruction_Withdraw"),
+    ] {
+        let (base, recorded) = registry(a_context_response()).await;
+        let client = RegistryClient::new(&base).expect("client");
+        let command = match name {
+            "accept" => canton_token::v2::accept(&client, &instruction, actors()).await,
+            "reject" => canton_token::v2::reject(&client, &instruction, actors()).await,
+            _ => canton_token::v2::withdraw(&client, &instruction, actors()).await,
+        }
+        .expect(name);
+
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{name}");
+        assert_eq!(
+            seen.path,
+            format!("/registry/transfer-instruction/v2/00ti/choice-contexts/{expected_path}")
+        );
+        assert_eq!(
+            seen.body,
+            serde_json::json!({ "excludeDebugFields": true }),
+            "{name}"
+        );
+        assert_built(&command, "00ti", expected_choice, 1);
+        let (_, _, argument) = exercised(&command);
+        assert!(
+            argument.contains("bob::1220cd"),
+            "{name}: the actors are in the argument"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_v2_allocation_names_its_settlement_when_it_is_created() {
+    let (base, recorded) = registry(a_factory_response()).await;
+    let client = RegistryClient::new(&base).expect("client");
+
+    let command = canton_token::v2::allocate(
+        &client,
+        a_v2_settlement(),
+        a_v2_allocation(),
+        rt::Timestamp(1_700_000_000_000_000),
+        vec![rt::ContractId::new("00holding")],
+        vec![party("alice::1220ab")],
+    )
+    .await
+    .expect("resolves");
+
+    let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(
+        seen.path,
+        "/registry/allocation-instruction/v2/allocation-factory"
+    );
+    let arguments = &seen.body["choiceArguments"];
+    assert_eq!(arguments["settlement"]["id"], "dvp-1");
+    assert_eq!(
+        arguments["settlement"]["executors"],
+        serde_json::json!(["exec::1220ff"])
+    );
+    assert_eq!(
+        arguments["allocation"]["transferLegSides"][0]["transferLegId"],
+        "leg-1"
+    );
+    assert_eq!(
+        arguments["inputHoldingCids"],
+        serde_json::json!(["00holding"])
+    );
+    assert_eq!(arguments["actors"], serde_json::json!(["alice::1220ab"]));
+
+    assert_built(&command, "00factory", "AllocationFactory_Allocate", 2);
+}
+
+#[tokio::test]
+async fn a_v2_settlement_goes_through_the_settlement_factory_as_a_batch() {
+    let (base, recorded) = registry(a_factory_response()).await;
+    let client = RegistryClient::new(&base).expect("client");
+
+    let legs = vec![al2::TransferLeg {
+        transfer_leg_id: "leg-1".to_string(),
+        sender: v2_account("alice::1220ab"),
+        receiver: v2_account("bob::1220cd"),
+        amount: "10.5".parse().expect("a numeric"),
+        instrument_id: "Amulet".to_string(),
+        meta: no_meta(),
+    }];
+    let allocations = vec![al2::FinalizedAllocation {
+        allocation_cid: rt::ContractId::new("00alloc"),
+        extra_transfer_leg_sides: Vec::new(),
+        next_iteration_funding: None,
+    }];
+    let command = canton_token::v2::settle_batch(
+        &client,
+        a_v2_settlement(),
+        legs,
+        allocations,
+        vec![party("exec::1220ff")],
+    )
+    .await
+    .expect("resolves");
+
+    let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(seen.path, "/registry/allocation/v2/settlement-factory");
+    let arguments = &seen.body["choiceArguments"];
+    assert_eq!(arguments["settlement"]["id"], "dvp-1");
+    assert_eq!(arguments["transferLegs"][0]["transferLegId"], "leg-1");
+    assert_eq!(arguments["allocations"][0]["allocationCid"], "00alloc");
+    assert_eq!(arguments["actors"], serde_json::json!(["exec::1220ff"]));
+
+    assert_built(&command, "00factory", "SettlementFactory_SettleBatch", 2);
+}
+
+#[tokio::test]
+async fn the_v2_allocation_and_instruction_choices_each_ask_their_own_context() {
+    let allocation = rt::ContractId::<al2::Allocation>::new("00alloc");
+    let instruction = rt::ContractId::<ai2::AllocationInstruction>::new("00ai");
+    let actors = || vec![party("alice::1220ab")];
+    for (name, expected_path, expected_contract, expected_choice) in [
+        (
+            "withdraw_allocation",
+            "/registry/allocations/v2/00alloc/choice-contexts/withdraw",
+            "00alloc",
+            "Allocation_Withdraw",
+        ),
+        (
+            "cancel",
+            "/registry/allocations/v2/00alloc/choice-contexts/cancel",
+            "00alloc",
+            "Allocation_Cancel",
+        ),
+        (
+            "accept_allocation_instruction",
+            "/registry/allocation-instruction/v2/00ai/choice-contexts/accept",
+            "00ai",
+            "AllocationInstruction_Accept",
+        ),
+        (
+            "withdraw_allocation_instruction",
+            "/registry/allocation-instruction/v2/00ai/choice-contexts/withdraw",
+            "00ai",
+            "AllocationInstruction_Withdraw",
+        ),
+    ] {
+        let (base, recorded) = registry(a_context_response()).await;
+        let client = RegistryClient::new(&base).expect("client");
+        let command = match name {
+            "withdraw_allocation" => {
+                canton_token::v2::withdraw_allocation(&client, &allocation, actors()).await
+            }
+            "cancel" => canton_token::v2::cancel(&client, &allocation, actors()).await,
+            "accept_allocation_instruction" => {
+                canton_token::v2::accept_allocation_instruction(&client, &instruction, actors())
+                    .await
+            }
+            _ => {
+                canton_token::v2::withdraw_allocation_instruction(&client, &instruction, actors())
+                    .await
+            }
+        }
+        .expect(name);
+
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{name}");
+        assert_eq!(seen.path, expected_path, "{name}");
+        assert_eq!(
+            seen.body,
+            serde_json::json!({ "excludeDebugFields": true }),
+            "{name}"
+        );
+        assert_built(&command, expected_contract, expected_choice, 1);
+    }
+}
+
+#[tokio::test]
+async fn a_v1_allocation_names_the_admin_and_carries_the_context() {
+    let (base, recorded) = registry(a_factory_response()).await;
+    let client = RegistryClient::new(&base).expect("client");
+
+    let command = canton_token::allocation::allocate(
+        &client,
+        &party("dso::1220ef"),
+        a_v1_allocation(),
+        rt::Timestamp(1_700_000_000_000_000),
+        vec![rt::ContractId::new("00holding")],
+    )
+    .await
+    .expect("resolves");
+
+    let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(seen.method, "POST");
+    assert_eq!(
+        seen.path,
+        "/registry/allocation-instruction/v1/allocation-factory"
+    );
+    let arguments = &seen.body["choiceArguments"];
+    assert_eq!(arguments["expectedAdmin"], "dso::1220ef");
+    assert_eq!(
+        arguments["allocation"]["settlement"]["executor"],
+        "exec::1220ff"
+    );
+    assert_eq!(arguments["allocation"]["transferLeg"]["amount"], "10.5");
+    assert_eq!(
+        arguments["inputHoldingCids"],
+        serde_json::json!(["00holding"])
+    );
+
+    assert_built(&command, "00factory", "AllocationFactory_Allocate", 2);
+}
+
+#[tokio::test]
+async fn the_v1_allocation_choices_each_ask_their_own_context() {
+    let allocation = rt::ContractId::<al1::Allocation>::new("00alloc");
+    for (name, expected_path, expected_choice) in [
+        (
+            "execute_transfer",
+            "execute-transfer",
+            "Allocation_ExecuteTransfer",
+        ),
+        ("withdraw", "withdraw", "Allocation_Withdraw"),
+        ("cancel", "cancel", "Allocation_Cancel"),
+    ] {
+        let (base, recorded) = registry(a_context_response()).await;
+        let client = RegistryClient::new(&base).expect("client");
+        let command = match name {
+            "execute_transfer" => {
+                canton_token::allocation::execute_transfer(&client, &allocation).await
+            }
+            "withdraw" => canton_token::allocation::withdraw(&client, &allocation).await,
+            _ => canton_token::allocation::cancel(&client, &allocation).await,
+        }
+        .expect(name);
+
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(seen.method, "POST", "{name}");
+        assert_eq!(
+            seen.path,
+            format!("/registry/allocations/v1/00alloc/choice-contexts/{expected_path}")
+        );
+        assert_built(&command, "00alloc", expected_choice, 1);
+    }
+}
+
+#[tokio::test]
+async fn the_v1_transfer_instruction_choices_each_ask_their_own_context() {
+    let instruction = rt::ContractId::<ti::TransferInstruction>::new("00ti");
+    for (name, expected_choice) in [
+        ("accept", "TransferInstruction_Accept"),
+        ("reject", "TransferInstruction_Reject"),
+        ("withdraw", "TransferInstruction_Withdraw"),
+    ] {
+        let (base, recorded) = registry(a_context_response()).await;
+        let client = RegistryClient::new(&base).expect("client");
+        let command = match name {
+            "accept" => canton_token::accept(&client, &instruction).await,
+            "reject" => canton_token::reject(&client, &instruction).await,
+            _ => canton_token::withdraw(&client, &instruction).await,
+        }
+        .expect(name);
+
+        let seen = recorded.lock().expect("lock").clone();
+        assert_eq!(
+            seen.path,
+            format!("/registry/transfer-instruction/v1/00ti/choice-contexts/{name}")
+        );
+        assert_built(&command, "00ti", expected_choice, 1);
+        assert_eq!(
+            command.transfer_kind(),
+            None,
+            "{name}: a choice on an instruction has no kind"
+        );
+    }
+}
+
+/// A context exposes the data the registry returned, before it is decoded
+/// into the generated type: what a caller logs, or inspects for a value the
+/// choice does not carry.
+#[tokio::test]
+async fn a_choice_context_exposes_the_registrys_data() {
+    let (base, _) = registry(a_context_response()).await;
+    let context = RegistryClient::new(&base)
+        .expect("client")
+        .transfer_instruction_context(
+            "00ti",
+            canton_token::TransferInstructionChoice::Accept,
+            &canton_token::ChoiceContextRequest::default(),
+        )
+        .await
+        .expect("resolves");
+
+    assert_eq!(
+        context.data(),
+        &serde_json::json!({
+            "values": { "amulet-rules": { "tag": "AV_ContractId", "value": "00rules" } }
+        })
+    );
+}
+
+/// Serve one response with the status and content type given, recording
+/// nothing: for the answers the standard's happy path never gives.
+async fn serve_once(status: u16, reason: &str, content_type: &str, body: &str) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    let http = format!(
+        "HTTP/1.1 {status} {reason}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n\r\n{body}",
+        body.len()
+    );
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut chunk = [0u8; 4096];
+        let _ = socket.read(&mut chunk).await;
+        socket.write_all(http.as_bytes()).await.expect("write");
+    });
+    format!("http://127.0.0.1:{port}")
+}
+
+/// `instrument()` has three answers and they must stay distinct: issued,
+/// not issued (the registry's own 404), and "this is not a registry" (a 404
+/// from something else, which must not read as "not issued").
+#[tokio::test]
+async fn an_instrument_is_some_none_or_an_error_depending_on_who_answered() {
+    let (base, recorded) = registry(serde_json::json!({
+        "id": "Amulet", "name": "Canton Coin", "symbol": "CC", "decimals": 10,
+        "supportedApis": { "splice-api-token-holding-v1": 1 }
+    }))
+    .await;
+    let issued = RegistryClient::new(&base)
+        .expect("client")
+        .instrument("Amulet")
+        .await
+        .expect("resolves")
+        .expect("issued");
+    assert_eq!(issued.id, "Amulet");
+    assert_eq!(issued.name, "Canton Coin");
+    assert_eq!(issued.decimals, 10);
+    assert_eq!(
+        issued.supported_apis.get("splice-api-token-holding-v1"),
+        Some(&1)
+    );
+    assert!(!issued.paused);
+    let seen = recorded.lock().expect("lock").clone();
+    assert_eq!(seen.method, "GET");
+    assert_eq!(seen.path, "/registry/metadata/v1/instruments/Amulet");
+
+    for body in [r#"{"error":"no such instrument"}"#, ""] {
+        let base = serve_once(404, "Not Found", "application/json", body).await;
+        let none = RegistryClient::new(&base)
+            .expect("client")
+            .instrument("Nope")
+            .await
+            .expect("a registry's own 404 is an answer");
+        assert!(none.is_none(), "{body:?}");
+    }
+
+    let base = serve_once(
+        404,
+        "Not Found",
+        "text/html",
+        "<html><body>nginx</body></html>",
+    )
+    .await;
+    let error = RegistryClient::new(&base)
+        .expect("client")
+        .instrument("Amulet")
+        .await
+        .expect_err("a proxy's 404 is not 'not issued'");
+    assert!(
+        matches!(&error, canton_core::Error::Http { status: 404, body, .. } if body.contains("nginx")),
+        "{error:?}"
+    );
+}

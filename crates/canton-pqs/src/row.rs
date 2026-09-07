@@ -275,3 +275,92 @@ impl<C: serde::de::DeserializeOwned> Exercise<C> {
         })
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    fn contract(created: i64, archived: Option<i64>) -> Contract<()> {
+        Contract {
+            contract_id: ContractId::new("00c"),
+            payload: (),
+            created_at_offset: created,
+            archived_at_offset: archived,
+            created_effective_at: Some(time::OffsetDateTime::UNIX_EPOCH),
+            archived_effective_at: archived.map(|_| time::OffsetDateTime::UNIX_EPOCH),
+            signatories: vec!["alice".to_string()],
+            observers: vec!["bob".to_string()],
+            witnesses: vec!["carol".to_string()],
+            package_name: "quickstart-licensing".to_string(),
+            package_version: "0.1.0".to_string(),
+            package_id: "abc123".to_string(),
+        }
+    }
+
+    /// Active at `o` means created at or before `o` and not archived at or
+    /// before it. Every boundary, both sides.
+    #[test]
+    fn was_active_at_is_inclusive_of_creation_and_exclusive_of_archival() {
+        let live = contract(10, None);
+        assert!(!live.was_active_at(9));
+        assert!(live.was_active_at(10));
+        assert!(live.was_active_at(1_000));
+
+        let archived = contract(10, Some(20));
+        assert!(!archived.was_active_at(9));
+        assert!(archived.was_active_at(10));
+        assert!(archived.was_active_at(19));
+        assert!(
+            !archived.was_active_at(20),
+            "archived *at* 20 is not active at 20"
+        );
+        assert!(!archived.was_active_at(21));
+    }
+
+    /// The accessors return what the row carried, not a default.
+    #[test]
+    fn the_accessors_return_the_row() {
+        let c = contract(10, Some(20));
+        assert_eq!(c.contract_id().as_str(), "00c");
+        assert_eq!(c.created_at_offset(), 10);
+        assert_eq!(c.archived_at_offset(), Some(20));
+        assert!(c.created_effective_at().is_some());
+        assert!(c.archived_effective_at().is_some());
+        assert_eq!(c.signatories(), ["alice".to_string()]);
+        assert_eq!(c.observers(), ["bob".to_string()]);
+        assert_eq!(c.witnesses(), ["carol".to_string()]);
+        assert_eq!(c.package_name(), "quickstart-licensing");
+        assert_eq!(c.package_version(), "0.1.0");
+        assert_eq!(c.package_id(), "abc123");
+        assert_eq!(*c.payload(), ());
+        assert_eq!(contract(1, None).archived_effective_at(), None);
+
+        let e = Exercise {
+            contract_id: "00x".to_string(),
+            choice: "Accept".to_string(),
+            consuming: true,
+            argument: 7_i64,
+            result: serde_json::json!({ "ok": true }),
+            exercised_at_offset: 33,
+            exercised_effective_at: Some(time::OffsetDateTime::UNIX_EPOCH),
+            controllers: vec!["alice".to_string()],
+        };
+        assert_eq!(e.contract_id(), "00x");
+        assert_eq!(e.choice(), "Accept");
+        assert!(e.consuming());
+        assert_eq!(*e.argument(), 7);
+        assert_eq!(e.result(), &serde_json::json!({ "ok": true }));
+        assert_eq!(e.exercised_at_offset(), 33);
+        assert!(e.exercised_effective_at().is_some());
+        assert_eq!(e.controllers(), ["alice".to_string()]);
+
+        let non_consuming = Exercise {
+            consuming: false,
+            exercised_effective_at: None,
+            ..e
+        };
+        assert!(!non_consuming.consuming());
+        assert_eq!(non_consuming.exercised_effective_at(), None);
+    }
+}

@@ -50,6 +50,11 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net"
 # The example authenticates and submits, so it needs the pieces a real
 # application uses; the library itself needs neither.
 canton-auth = { workspace = true }
+# The holdings read is driven against an in-process `StateService`, which
+# needs the server half of the generated protos and a listener stream.
+canton-proto = { workspace = true, features = ["server"] }
+tonic        = { workspace = true, features = ["transport", "codegen"] }
+tokio-stream = { workspace = true, features = ["net"] }
 
 [package.metadata.docs.rs]
 all-features = true
