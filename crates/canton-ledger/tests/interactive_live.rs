@@ -27,6 +27,21 @@
 // has underscores in its description too.
 #![allow(non_snake_case)]
 
+/// A skipped test and a passing test are the same line in cargo's output. Set
+/// `CANTON_TEST_REQUIRE_LIVE=1`, as any run that claims to have exercised a
+/// live environment should, and a missing one fails here instead of passing
+/// quietly. Same contract as `canton-ledger`'s live suite.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
 use canton_admin::AdminClient;
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{CantonClient, Config, Prepare, identifier, record, value};
@@ -163,7 +178,7 @@ async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
 #[tokio::test]
 async fn signing__an_external_party_is_onboarded_by_signing_its_own_topology() {
     let Some((party, signer)) = external_party("rust-sdk-onboard").await else {
-        eprintln!("skipping: set CANTON_TEST_ENDPOINT and the admin credentials");
+        skip!("set CANTON_TEST_ENDPOINT and the admin credentials");
         return;
     };
     println!("allocated external party {party}");
@@ -179,7 +194,7 @@ async fn signing__an_external_party_is_onboarded_by_signing_its_own_topology() {
 #[tokio::test]
 async fn external_commands__prepare_sign_execute_commits_a_transaction() {
     let Some(ledger) = ledger_client() else {
-        eprintln!("skipping: set CANTON_TEST_ENDPOINT");
+        skip!("set CANTON_TEST_ENDPOINT and CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET");
         return;
     };
     let Some((party, signer)) = external_party("rust-sdk-submit").await else {
@@ -250,7 +265,7 @@ async fn external_commands__prepare_sign_execute_commits_a_transaction() {
 #[tokio::test]
 async fn signing__a_signature_from_another_key_is_rejected() {
     let Some(ledger) = ledger_client() else {
-        eprintln!("skipping: set CANTON_TEST_ENDPOINT");
+        skip!("set CANTON_TEST_ENDPOINT and CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET");
         return;
     };
     let Some((party, real)) = external_party("rust-sdk-badsig").await else {

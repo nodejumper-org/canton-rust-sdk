@@ -65,7 +65,7 @@ otel = ["canton-core/otel", "dep:http"]
 
 [dev-dependencies]
 # The interactive tests sign with the in-memory key; dependants do not have to.
-canton-signer = { workspace = true }
+canton-signer = { workspace = true, features = ["ed25519"] }
 # The interactive-submission live test allocates an external party, which is
 # an admin RPC. No cycle: canton-admin does not depend on this crate.
 canton-admin = { workspace = true }

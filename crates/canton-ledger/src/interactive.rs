@@ -425,6 +425,20 @@ impl Prepared {
         &self.command_id
     }
 
+    /// The identity the participant de-duplicates this submission by —
+    /// (`user_id`, `act_as`, `command_id`). Keep it: it is what
+    /// [`CantonClient::await_completion`](crate::CantonClient::await_completion)
+    /// recovers an ambiguous execute by, and `Executable` is consumed on
+    /// execute.
+    #[must_use]
+    pub fn change_id(&self) -> crate::command::ChangeId {
+        crate::command::ChangeId::new(
+            self.user_id.clone().unwrap_or_default(),
+            self.act_as.clone(),
+            self.command_id.clone(),
+        )
+    }
+
     /// The parties that must sign.
     #[must_use]
     pub fn act_as(&self) -> &[String] {
@@ -637,6 +651,13 @@ impl Executable {
 
     /// The command id, carried from preparation.
     ///
+    /// The change id the participant will de-duplicate by; see
+    /// [`Prepared::change_id`].
+    #[must_use]
+    pub fn change_id(&self) -> crate::command::ChangeId {
+        self.prepared.change_id()
+    }
+
     /// One component of the change ID (`user_id`, `act_as`, `command_id`), and
     /// what [`await_completion`](crate::CantonClient::await_completion) matches
     /// on — so a caller using the fire-and-forget

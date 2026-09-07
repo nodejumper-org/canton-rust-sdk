@@ -617,6 +617,17 @@ impl CantonClient {
     /// stream. Use [`execute_submission_and_wait`](Self::execute_submission_and_wait)
     /// to wait for it.
     ///
+    /// # Retry caveat
+    /// With retry enabled, an attempt whose response was lost is retried under
+    /// a fresh submission id and the same change id, and the participant
+    /// answers `ALREADY_EXISTS`: that is the earlier attempt having landed,
+    /// and it is reported as success here, as on
+    /// [`submit_commands`](Self::submit_commands). An `Ok` still means only
+    /// *accepted*; whether it committed is a completion, reachable by
+    /// [`await_completion`](Self::await_completion) with the
+    /// [`Executable::change_id`](crate::interactive::Executable::change_id)
+    /// taken before the call.
+    ///
     /// # Errors
     /// As any gRPC call. A missing or wrong signature is a rejection from the
     /// participant, not a local error.
@@ -626,15 +637,30 @@ impl CantonClient {
     ) -> Result<()> {
         let request = executable.into_execute_request();
         telemetry::instrument("execute_submission", TRANSPORT_GRPC, async move {
+            let attempt = std::sync::atomic::AtomicU32::new(0);
             self.with_retry(|| {
                 let request = fresh_submission_id(request.clone());
+                let retry = attempt.fetch_add(1, std::sync::atomic::Ordering::Relaxed) > 0;
                 async move {
                     let mut client = service!(
                         self,
                         pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
                     );
-                    client.execute_submission(request).await?;
-                    Ok(())
+                    match client.execute_submission(request).await {
+                        Ok(_) => Ok(()),
+                        Err(status) if retry && is_duplicate_of_our_own(&status) => {
+                            // Same reasoning as the ordinary submit: a
+                            // previous attempt of this loop was accepted and
+                            // its answer lost, and reporting the duplicate as
+                            // a failure would say the opposite of what
+                            // happened.
+                            tracing::debug!(
+                                "execute retry was de-duplicated; the earlier attempt is the one that landed"
+                            );
+                            Ok(())
+                        }
+                        Err(status) => Err(Error::from(status)),
+                    }
                 }
             })
             .await
@@ -642,15 +668,25 @@ impl CantonClient {
         .await
     }
 
-    /// Submit a signed prepared transaction and wait for it to commit,
-    /// returning the update id.
+    /// Submit a signed prepared transaction and wait for it to commit.
+    ///
+    /// The response carries the update id **and** the completion offset — the
+    /// offset a follow-up completion or update read starts from, which is why
+    /// it is returned whole rather than as the id alone.
+    ///
+    /// # Retry caveat
+    /// As [`execute_submission`](Self::execute_submission): a retried attempt
+    /// that the participant de-duplicates is reported as the rejection it
+    /// answers with, so on an ambiguous outcome recover through
+    /// [`await_completion`](Self::await_completion) with the change id taken
+    /// before the call.
     ///
     /// # Errors
     /// As any gRPC call, plus a rejection if the transaction fails.
     pub async fn execute_submission_and_wait(
         &self,
         executable: crate::interactive::Executable,
-    ) -> Result<String> {
+    ) -> Result<pb::interactive::ExecuteSubmissionAndWaitResponse> {
         let request = executable.into_execute_and_wait_request();
         telemetry::instrument("execute_submission_and_wait", TRANSPORT_GRPC, async move {
             let response = self
@@ -668,7 +704,7 @@ impl CantonClient {
                     }
                 })
                 .await?;
-            Ok(response.update_id)
+            Ok(response)
         })
         .await
     }
