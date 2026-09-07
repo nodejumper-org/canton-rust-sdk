@@ -20,14 +20,7 @@
 pub mod splice_api_token_allocation_request_v1 {
     pub mod Splice_Api_Token_AllocationRequestV1 {
         use canton_daml as rt;
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequestView {
             #[serde(rename = "settlement")]
@@ -42,43 +35,34 @@ pub mod splice_api_token_allocation_request_v1 {
         }
         impl rt::ToValue for AllocationRequestView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("settlement", rt::ToValue::to_value(& self.settlement)),
-                        ("transferLegs", rt::ToValue::to_value(& self.transfer_legs)),
-                        ("meta", rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("settlement", rt::ToValue::to_value(&self.settlement)),
+                    ("transferLegs", rt::ToValue::to_value(&self.transfer_legs)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for AllocationRequestView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    settlement: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "settlement")?,
-                        )
-                        .map_err(|e| e.at("settlement"))?,
-                    transfer_legs: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "transferLegs")?,
-                        )
-                        .map_err(|e| e.at("transferLegs"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "meta")?,
-                        )
+                    settlement: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "settlement",
+                    )?)
+                    .map_err(|e| e.at("settlement"))?,
+                    transfer_legs: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "transferLegs",
+                    )?)
+                    .map_err(|e| e.at("transferLegs"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequest_Withdraw {
             ///Daml field `extraArgs`.
@@ -87,31 +71,25 @@ pub mod splice_api_token_allocation_request_v1 {
         }
         impl rt::ToValue for AllocationRequest_Withdraw {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![("extraArgs", rt::ToValue::to_value(& self.extra_args)),],
-                )
+                rt::record(::std::vec![(
+                    "extraArgs",
+                    rt::ToValue::to_value(&self.extra_args)
+                ),])
             }
         }
         impl rt::FromValue for AllocationRequest_Withdraw {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationRequest_Reject {
             #[serde(rename = "actor")]
@@ -122,27 +100,23 @@ pub mod splice_api_token_allocation_request_v1 {
         }
         impl rt::ToValue for AllocationRequest_Reject {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("actor", rt::ToValue::to_value(& self.actor)), ("extraArgs",
-                        rt::ToValue::to_value(& self.extra_args)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("actor", rt::ToValue::to_value(&self.actor)),
+                    ("extraArgs", rt::ToValue::to_value(&self.extra_args)),
+                ])
             }
         }
         impl rt::FromValue for AllocationRequest_Reject {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    actor: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "actor")?,
-                        )
+                    actor: rt::FromValue::from_value(rt::required_field(value, 0usize, "actor")?)
                         .map_err(|e| e.at("actor"))?,
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -150,7 +124,8 @@ pub mod splice_api_token_allocation_request_v1 {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct AllocationRequest;
         impl rt::Contract for AllocationRequest {
-            const PACKAGE_ID: &'static str = "6fe848530b2404017c4a12874c956ad7d5c8a419ee9b040f96b5c13172d2e193";
+            const PACKAGE_ID: &'static str =
+                "6fe848530b2404017c4a12874c956ad7d5c8a419ee9b040f96b5c13172d2e193";
             const PACKAGE_NAME: &'static str = "splice-api-token-allocation-request-v1";
             const MODULE_NAME: &'static str = "Splice.Api.Token.AllocationRequestV1";
             const ENTITY_NAME: &'static str = "AllocationRequest";
@@ -160,7 +135,8 @@ pub mod splice_api_token_allocation_request_v1 {
         }
         ///The `Archive` choice on [`AllocationRequest`] (consuming).
         impl rt::Choice<AllocationRequest>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;

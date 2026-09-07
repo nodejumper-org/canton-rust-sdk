@@ -20,14 +20,7 @@
 pub mod splice_api_token_burn_mint_v1 {
     pub mod Splice_Api_Token_BurnMintV1 {
         use canton_daml as rt;
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BurnMintFactoryView {
             #[serde(rename = "admin")]
@@ -37,38 +30,23 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         impl rt::ToValue for BurnMintFactoryView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("admin", rt::ToValue::to_value(& self.admin)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("admin", rt::ToValue::to_value(&self.admin)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for BurnMintFactoryView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "admin")?,
-                        )
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
                         .map_err(|e| e.at("admin"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "meta")?,
-                        )
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BurnMintFactory_BurnMintResult {
             ///Daml field `outputCids`.
@@ -81,33 +59,25 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         impl rt::ToValue for BurnMintFactory_BurnMintResult {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("outputCids", rt::ToValue::to_value(& self.output_cids)),
-                    ],
-                )
+                rt::record(::std::vec![(
+                    "outputCids",
+                    rt::ToValue::to_value(&self.output_cids)
+                ),])
             }
         }
         impl rt::FromValue for BurnMintFactory_BurnMintResult {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    output_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "outputCids")?,
-                        )
-                        .map_err(|e| e.at("outputCids"))?,
+                    output_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "outputCids",
+                    )?)
+                    .map_err(|e| e.at("outputCids"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BurnMintOutput {
             #[serde(rename = "owner")]
@@ -119,43 +89,28 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         impl rt::ToValue for BurnMintOutput {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("owner", rt::ToValue::to_value(& self.owner)), ("amount",
-                        rt::ToValue::to_value(& self.amount)), ("context",
-                        rt::ToValue::to_value(& self.context)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("owner", rt::ToValue::to_value(&self.owner)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("context", rt::ToValue::to_value(&self.context)),
+                ])
             }
         }
         impl rt::FromValue for BurnMintOutput {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "owner")?,
-                        )
+                    owner: rt::FromValue::from_value(rt::required_field(value, 0usize, "owner")?)
                         .map_err(|e| e.at("owner"))?,
-                    amount: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "amount")?,
-                        )
+                    amount: rt::FromValue::from_value(rt::required_field(value, 1usize, "amount")?)
                         .map_err(|e| e.at("amount"))?,
-                    context: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "context")?,
-                        )
-                        .map_err(|e| e.at("context"))?,
+                    context: rt::FromValue::from_value(rt::required_field(
+                        value, 2usize, "context",
+                    )?)
+                    .map_err(|e| e.at("context"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BurnMintFactory_PublicFetch {
             ///Daml field `expectedAdmin`.
@@ -166,38 +121,27 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         impl rt::ToValue for BurnMintFactory_PublicFetch {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("expectedAdmin", rt::ToValue::to_value(& self.expected_admin)),
-                        ("actor", rt::ToValue::to_value(& self.actor)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("expectedAdmin", rt::ToValue::to_value(&self.expected_admin)),
+                    ("actor", rt::ToValue::to_value(&self.actor)),
+                ])
             }
         }
         impl rt::FromValue for BurnMintFactory_PublicFetch {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    expected_admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "expectedAdmin")?,
-                        )
-                        .map_err(|e| e.at("expectedAdmin"))?,
-                    actor: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "actor")?,
-                        )
+                    expected_admin: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "expectedAdmin",
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)
                         .map_err(|e| e.at("actor"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct BurnMintFactory_BurnMint {
             ///Daml field `expectedAdmin`.
@@ -226,48 +170,56 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         impl rt::ToValue for BurnMintFactory_BurnMint {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("expectedAdmin", rt::ToValue::to_value(& self.expected_admin)),
-                        ("instrumentId", rt::ToValue::to_value(& self.instrument_id)),
-                        ("inputHoldingCids", rt::ToValue::to_value(& self
-                        .input_holding_cids)), ("outputs", rt::ToValue::to_value(& self
-                        .outputs)), ("extraActors", rt::ToValue::to_value(& self
-                        .extra_actors)), ("extraArgs", rt::ToValue::to_value(& self
-                        .extra_args)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("expectedAdmin", rt::ToValue::to_value(&self.expected_admin)),
+                    ("instrumentId", rt::ToValue::to_value(&self.instrument_id)),
+                    (
+                        "inputHoldingCids",
+                        rt::ToValue::to_value(&self.input_holding_cids)
+                    ),
+                    ("outputs", rt::ToValue::to_value(&self.outputs)),
+                    ("extraActors", rt::ToValue::to_value(&self.extra_actors)),
+                    ("extraArgs", rt::ToValue::to_value(&self.extra_args)),
+                ])
             }
         }
         impl rt::FromValue for BurnMintFactory_BurnMint {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    expected_admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "expectedAdmin")?,
-                        )
-                        .map_err(|e| e.at("expectedAdmin"))?,
-                    instrument_id: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "instrumentId")?,
-                        )
-                        .map_err(|e| e.at("instrumentId"))?,
-                    input_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "inputHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("inputHoldingCids"))?,
-                    outputs: rt::FromValue::from_value(
-                            rt::required_field(value, 3usize, "outputs")?,
-                        )
-                        .map_err(|e| e.at("outputs"))?,
-                    extra_actors: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "extraActors")?,
-                        )
-                        .map_err(|e| e.at("extraActors"))?,
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 5usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    expected_admin: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "expectedAdmin",
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    instrument_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "instrumentId",
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
+                    input_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "inputHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
+                    outputs: rt::FromValue::from_value(rt::required_field(
+                        value, 3usize, "outputs",
+                    )?)
+                    .map_err(|e| e.at("outputs"))?,
+                    extra_actors: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        4usize,
+                        "extraActors",
+                    )?)
+                    .map_err(|e| e.at("extraActors"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        5usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
@@ -275,7 +227,8 @@ pub mod splice_api_token_burn_mint_v1 {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct BurnMintFactory;
         impl rt::Contract for BurnMintFactory {
-            const PACKAGE_ID: &'static str = "9cc2cbc838ef38dc2c7f34014c9c452bcf71b8e2a4f939235fc0b5d0924b185e";
+            const PACKAGE_ID: &'static str =
+                "9cc2cbc838ef38dc2c7f34014c9c452bcf71b8e2a4f939235fc0b5d0924b185e";
             const PACKAGE_NAME: &'static str = "splice-api-token-burn-mint-v1";
             const MODULE_NAME: &'static str = "Splice.Api.Token.BurnMintV1";
             const ENTITY_NAME: &'static str = "BurnMintFactory";
@@ -285,7 +238,8 @@ pub mod splice_api_token_burn_mint_v1 {
         }
         ///The `Archive` choice on [`BurnMintFactory`] (consuming).
         impl rt::Choice<BurnMintFactory>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;

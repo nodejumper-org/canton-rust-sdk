@@ -20,14 +20,7 @@
 pub mod splice_api_token_holding_v2 {
     pub mod Splice_Api_Token_HoldingV2 {
         use canton_daml as rt;
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct HoldingView {
             #[serde(rename = "account")]
@@ -46,51 +39,37 @@ pub mod splice_api_token_holding_v2 {
         }
         impl rt::ToValue for HoldingView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("account", rt::ToValue::to_value(& self.account)),
-                        ("instrumentId", rt::ToValue::to_value(& self.instrument_id)),
-                        ("amount", rt::ToValue::to_value(& self.amount)), ("lock",
-                        rt::ToValue::to_value(& self.lock)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("account", rt::ToValue::to_value(&self.account)),
+                    ("instrumentId", rt::ToValue::to_value(&self.instrument_id)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("lock", rt::ToValue::to_value(&self.lock)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for HoldingView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    account: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "account")?,
-                        )
-                        .map_err(|e| e.at("account"))?,
-                    instrument_id: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "instrumentId")?,
-                        )
-                        .map_err(|e| e.at("instrumentId"))?,
-                    amount: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "amount")?,
-                        )
+                    account: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "account",
+                    )?)
+                    .map_err(|e| e.at("account"))?,
+                    instrument_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "instrumentId",
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
                         .map_err(|e| e.at("amount"))?,
-                    lock: rt::optional_field(value, 3usize, "lock")
-                        .map_err(|e| e.at("lock"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "meta")?,
-                        )
+                    lock: rt::optional_field(value, 3usize, "lock").map_err(|e| e.at("lock"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Lock {
             #[serde(rename = "holders")]
@@ -108,25 +87,21 @@ pub mod splice_api_token_holding_v2 {
         }
         impl rt::ToValue for Lock {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("holders", rt::ToValue::to_value(& self.holders)), ("expiresAt",
-                        rt::ToValue::to_value(& self.expires_at)), ("expiresAfter",
-                        rt::ToValue::to_value(& self.expires_after)), ("context",
-                        rt::ToValue::to_value(& self.context)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("holders", rt::ToValue::to_value(&self.holders)),
+                    ("expiresAt", rt::ToValue::to_value(&self.expires_at)),
+                    ("expiresAfter", rt::ToValue::to_value(&self.expires_after)),
+                    ("context", rt::ToValue::to_value(&self.context)),
+                ])
             }
         }
         impl rt::FromValue for Lock {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    holders: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "holders")?,
-                        )
-                        .map_err(|e| e.at("holders"))?,
+                    holders: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "holders",
+                    )?)
+                    .map_err(|e| e.at("holders"))?,
                     expires_at: rt::optional_field(value, 1usize, "expiresAt")
                         .map_err(|e| e.at("expiresAt"))?,
                     expires_after: rt::optional_field(value, 2usize, "expiresAfter")
@@ -136,14 +111,7 @@ pub mod splice_api_token_holding_v2 {
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Account {
             #[serde(rename = "owner")]
@@ -155,39 +123,25 @@ pub mod splice_api_token_holding_v2 {
         }
         impl rt::ToValue for Account {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("owner", rt::ToValue::to_value(& self.owner)), ("provider",
-                        rt::ToValue::to_value(& self.provider)), ("id",
-                        rt::ToValue::to_value(& self.id)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("owner", rt::ToValue::to_value(&self.owner)),
+                    ("provider", rt::ToValue::to_value(&self.provider)),
+                    ("id", rt::ToValue::to_value(&self.id)),
+                ])
             }
         }
         impl rt::FromValue for Account {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    owner: rt::optional_field(value, 0usize, "owner")
-                        .map_err(|e| e.at("owner"))?,
+                    owner: rt::optional_field(value, 0usize, "owner").map_err(|e| e.at("owner"))?,
                     provider: rt::optional_field(value, 1usize, "provider")
                         .map_err(|e| e.at("provider"))?,
-                    id: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "id")?,
-                        )
+                    id: rt::FromValue::from_value(rt::required_field(value, 2usize, "id")?)
                         .map_err(|e| e.at("id"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct InstrumentId {
             #[serde(rename = "admin")]
@@ -197,26 +151,18 @@ pub mod splice_api_token_holding_v2 {
         }
         impl rt::ToValue for InstrumentId {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("admin", rt::ToValue::to_value(& self.admin)), ("id",
-                        rt::ToValue::to_value(& self.id)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("admin", rt::ToValue::to_value(&self.admin)),
+                    ("id", rt::ToValue::to_value(&self.id)),
+                ])
             }
         }
         impl rt::FromValue for InstrumentId {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "admin")?,
-                        )
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
                         .map_err(|e| e.at("admin"))?,
-                    id: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "id")?,
-                        )
+                    id: rt::FromValue::from_value(rt::required_field(value, 1usize, "id")?)
                         .map_err(|e| e.at("id"))?,
                 })
             }
@@ -225,7 +171,8 @@ pub mod splice_api_token_holding_v2 {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct Holding;
         impl rt::Contract for Holding {
-            const PACKAGE_ID: &'static str = "4b7ecfc366d79ccc5ed07c80f26fe489cf2dfd43ce2856c06a78e6a048db7032";
+            const PACKAGE_ID: &'static str =
+                "4b7ecfc366d79ccc5ed07c80f26fe489cf2dfd43ce2856c06a78e6a048db7032";
             const PACKAGE_NAME: &'static str = "splice-api-token-holding-v2";
             const MODULE_NAME: &'static str = "Splice.Api.Token.HoldingV2";
             const ENTITY_NAME: &'static str = "Holding";
@@ -235,7 +182,8 @@ pub mod splice_api_token_holding_v2 {
         }
         ///The `Archive` choice on [`Holding`] (consuming).
         impl rt::Choice<Holding>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;

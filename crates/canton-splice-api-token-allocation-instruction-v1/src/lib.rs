@@ -20,14 +20,7 @@
 pub mod splice_api_token_allocation_instruction_v1 {
     pub mod Splice_Api_Token_AllocationInstructionV1 {
         use canton_daml as rt;
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum AllocationInstructionResult_Output {
             #[serde(rename = "AllocationInstructionResult_Pending")]
@@ -46,80 +39,55 @@ pub mod splice_api_token_allocation_instruction_v1 {
                 match self {
                     AllocationInstructionResult_Output::AllocationInstructionResult_Pending(
                         inner,
-                    ) => {
-                        rt::variant_value(
-                            "AllocationInstructionResult_Pending",
-                            rt::ToValue::to_value(inner),
-                        )
-                    }
+                    ) => rt::variant_value(
+                        "AllocationInstructionResult_Pending",
+                        rt::ToValue::to_value(inner),
+                    ),
                     AllocationInstructionResult_Output::AllocationInstructionResult_Completed(
                         inner,
-                    ) => {
-                        rt::variant_value(
-                            "AllocationInstructionResult_Completed",
-                            rt::ToValue::to_value(inner),
-                        )
-                    }
+                    ) => rt::variant_value(
+                        "AllocationInstructionResult_Completed",
+                        rt::ToValue::to_value(inner),
+                    ),
                     AllocationInstructionResult_Output::AllocationInstructionResult_Failed(
                         inner,
-                    ) => {
-                        rt::variant_value(
-                            "AllocationInstructionResult_Failed",
-                            rt::ToValue::to_value(inner),
-                        )
-                    }
+                    ) => rt::variant_value(
+                        "AllocationInstructionResult_Failed",
+                        rt::ToValue::to_value(inner),
+                    ),
                 }
             }
         }
         impl rt::FromValue for AllocationInstructionResult_Output {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "AllocationInstructionResult_Pending" => {
-                        ::core::result::Result::Ok(
-                            AllocationInstructionResult_Output::AllocationInstructionResult_Pending(
-                                rt::FromValue::from_value(payload)
-                                    .map_err(|e| e.at("AllocationInstructionResult_Pending"))?,
-                            ),
-                        )
-                    }
-                    "AllocationInstructionResult_Completed" => {
-                        ::core::result::Result::Ok(
-                            AllocationInstructionResult_Output::AllocationInstructionResult_Completed(
-                                rt::FromValue::from_value(payload)
-                                    .map_err(|e| e.at("AllocationInstructionResult_Completed"))?,
-                            ),
-                        )
-                    }
-                    "AllocationInstructionResult_Failed" => {
-                        ::core::result::Result::Ok(
-                            AllocationInstructionResult_Output::AllocationInstructionResult_Failed(
-                                rt::FromValue::from_value(payload)
-                                    .map_err(|e| e.at("AllocationInstructionResult_Failed"))?,
-                            ),
-                        )
-                    }
-                    other => {
-                        ::core::result::Result::Err(
-                            rt::unexpected_constructor(
-                                "AllocationInstructionResult_Output",
-                                other,
-                            ),
-                        )
-                    }
+                    "AllocationInstructionResult_Pending" => ::core::result::Result::Ok(
+                        AllocationInstructionResult_Output::AllocationInstructionResult_Pending(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Pending"))?,
+                        ),
+                    ),
+                    "AllocationInstructionResult_Completed" => ::core::result::Result::Ok(
+                        AllocationInstructionResult_Output::AllocationInstructionResult_Completed(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Completed"))?,
+                        ),
+                    ),
+                    "AllocationInstructionResult_Failed" => ::core::result::Result::Ok(
+                        AllocationInstructionResult_Output::AllocationInstructionResult_Failed(
+                            rt::FromValue::from_value(payload)
+                                .map_err(|e| e.at("AllocationInstructionResult_Failed"))?,
+                        ),
+                    ),
+                    other => ::core::result::Result::Err(rt::unexpected_constructor(
+                        "AllocationInstructionResult_Output",
+                        other,
+                    )),
                 }
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
             ///Daml field `allocationInstructionCid`.
@@ -128,42 +96,27 @@ pub mod splice_api_token_allocation_instruction_v1 {
                 crate::splice_api_token_allocation_instruction_v1::Splice_Api_Token_AllocationInstructionV1::AllocationInstruction,
             >,
         }
-        impl rt::ToValue
-        for AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
+        impl rt::ToValue for AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("allocationInstructionCid", rt::ToValue::to_value(& self
-                        .allocation_instruction_cid)),
-                    ],
-                )
+                rt::record(::std::vec![(
+                    "allocationInstructionCid",
+                    rt::ToValue::to_value(&self.allocation_instruction_cid)
+                ),])
             }
         }
-        impl rt::FromValue
-        for AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+        impl rt::FromValue for AllocationInstructionResult_Output_AllocationInstructionResult_Pending {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    allocation_instruction_cid: rt::FromValue::from_value(
-                            rt::required_field(
-                                value,
-                                0usize,
-                                "allocationInstructionCid",
-                            )?,
-                        )
-                        .map_err(|e| e.at("allocationInstructionCid"))?,
+                    allocation_instruction_cid: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "allocationInstructionCid",
+                    )?)
+                    .map_err(|e| e.at("allocationInstructionCid"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
             ///Daml field `allocationCid`.
@@ -172,37 +125,27 @@ pub mod splice_api_token_allocation_instruction_v1 {
                 ::canton_splice_api_token_allocation_v1::splice_api_token_allocation_v1::Splice_Api_Token_AllocationV1::Allocation,
             >,
         }
-        impl rt::ToValue
-        for AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
+        impl rt::ToValue for AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("allocationCid", rt::ToValue::to_value(& self.allocation_cid)),
-                    ],
-                )
+                rt::record(::std::vec![(
+                    "allocationCid",
+                    rt::ToValue::to_value(&self.allocation_cid)
+                ),])
             }
         }
-        impl rt::FromValue
-        for AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+        impl rt::FromValue for AllocationInstructionResult_Output_AllocationInstructionResult_Completed {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    allocation_cid: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "allocationCid")?,
-                        )
-                        .map_err(|e| e.at("allocationCid"))?,
+                    allocation_cid: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "allocationCid",
+                    )?)
+                    .map_err(|e| e.at("allocationCid"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionResult {
             #[serde(rename = "output")]
@@ -219,44 +162,33 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationInstructionResult {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("output", rt::ToValue::to_value(& self.output)),
-                        ("senderChangeCids", rt::ToValue::to_value(& self
-                        .sender_change_cids)), ("meta", rt::ToValue::to_value(& self
-                        .meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("output", rt::ToValue::to_value(&self.output)),
+                    (
+                        "senderChangeCids",
+                        rt::ToValue::to_value(&self.sender_change_cids)
+                    ),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for AllocationInstructionResult {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    output: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "output")?,
-                        )
+                    output: rt::FromValue::from_value(rt::required_field(value, 0usize, "output")?)
                         .map_err(|e| e.at("output"))?,
-                    sender_change_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "senderChangeCids")?,
-                        )
-                        .map_err(|e| e.at("senderChangeCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "meta")?,
-                        )
+                    sender_change_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "senderChangeCids",
+                    )?)
+                    .map_err(|e| e.at("senderChangeCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactory_PublicFetch {
             ///Daml field `expectedAdmin`.
@@ -267,38 +199,27 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationFactory_PublicFetch {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("expectedAdmin", rt::ToValue::to_value(& self.expected_admin)),
-                        ("actor", rt::ToValue::to_value(& self.actor)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("expectedAdmin", rt::ToValue::to_value(&self.expected_admin)),
+                    ("actor", rt::ToValue::to_value(&self.actor)),
+                ])
             }
         }
         impl rt::FromValue for AllocationFactory_PublicFetch {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    expected_admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "expectedAdmin")?,
-                        )
-                        .map_err(|e| e.at("expectedAdmin"))?,
-                    actor: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "actor")?,
-                        )
+                    expected_admin: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "expectedAdmin",
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    actor: rt::FromValue::from_value(rt::required_field(value, 1usize, "actor")?)
                         .map_err(|e| e.at("actor"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactory_Allocate {
             ///Daml field `expectedAdmin`.
@@ -322,54 +243,55 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationFactory_Allocate {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("expectedAdmin", rt::ToValue::to_value(& self.expected_admin)),
-                        ("allocation", rt::ToValue::to_value(& self.allocation)),
-                        ("requestedAt", rt::ToValue::to_value(& self.requested_at)),
-                        ("inputHoldingCids", rt::ToValue::to_value(& self
-                        .input_holding_cids)), ("extraArgs", rt::ToValue::to_value(& self
-                        .extra_args)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("expectedAdmin", rt::ToValue::to_value(&self.expected_admin)),
+                    ("allocation", rt::ToValue::to_value(&self.allocation)),
+                    ("requestedAt", rt::ToValue::to_value(&self.requested_at)),
+                    (
+                        "inputHoldingCids",
+                        rt::ToValue::to_value(&self.input_holding_cids)
+                    ),
+                    ("extraArgs", rt::ToValue::to_value(&self.extra_args)),
+                ])
             }
         }
         impl rt::FromValue for AllocationFactory_Allocate {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    expected_admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "expectedAdmin")?,
-                        )
-                        .map_err(|e| e.at("expectedAdmin"))?,
-                    allocation: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "allocation")?,
-                        )
-                        .map_err(|e| e.at("allocation"))?,
-                    requested_at: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "requestedAt")?,
-                        )
-                        .map_err(|e| e.at("requestedAt"))?,
-                    input_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 3usize, "inputHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("inputHoldingCids"))?,
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    expected_admin: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "expectedAdmin",
+                    )?)
+                    .map_err(|e| e.at("expectedAdmin"))?,
+                    allocation: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "allocation",
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
+                    requested_at: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "requestedAt",
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
+                    input_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "inputHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        4usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationFactoryView {
             #[serde(rename = "admin")]
@@ -379,38 +301,23 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationFactoryView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("admin", rt::ToValue::to_value(& self.admin)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("admin", rt::ToValue::to_value(&self.admin)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for AllocationFactoryView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    admin: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "admin")?,
-                        )
+                    admin: rt::FromValue::from_value(rt::required_field(value, 0usize, "admin")?)
                         .map_err(|e| e.at("admin"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "meta")?,
-                        )
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstruction_Update {
             ///Daml field `extraActors`.
@@ -422,38 +329,31 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationInstruction_Update {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("extraActors", rt::ToValue::to_value(& self.extra_actors)),
-                        ("extraArgs", rt::ToValue::to_value(& self.extra_args)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("extraActors", rt::ToValue::to_value(&self.extra_actors)),
+                    ("extraArgs", rt::ToValue::to_value(&self.extra_args)),
+                ])
             }
         }
         impl rt::FromValue for AllocationInstruction_Update {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_actors: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraActors")?,
-                        )
-                        .map_err(|e| e.at("extraActors"))?,
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_actors: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraActors",
+                    )?)
+                    .map_err(|e| e.at("extraActors"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstruction_Withdraw {
             ///Daml field `extraArgs`.
@@ -462,31 +362,25 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationInstruction_Withdraw {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![("extraArgs", rt::ToValue::to_value(& self.extra_args)),],
-                )
+                rt::record(::std::vec![(
+                    "extraArgs",
+                    rt::ToValue::to_value(&self.extra_args)
+                ),])
             }
         }
         impl rt::FromValue for AllocationInstruction_Withdraw {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationInstructionView {
             ///Daml field `originalInstructionCid`.
@@ -516,49 +410,59 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         impl rt::ToValue for AllocationInstructionView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("originalInstructionCid", rt::ToValue::to_value(& self
-                        .original_instruction_cid)), ("allocation",
-                        rt::ToValue::to_value(& self.allocation)), ("pendingActions",
-                        rt::ToValue::to_value(& self.pending_actions)), ("requestedAt",
-                        rt::ToValue::to_value(& self.requested_at)), ("inputHoldingCids",
-                        rt::ToValue::to_value(& self.input_holding_cids)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    (
+                        "originalInstructionCid",
+                        rt::ToValue::to_value(&self.original_instruction_cid)
+                    ),
+                    ("allocation", rt::ToValue::to_value(&self.allocation)),
+                    (
+                        "pendingActions",
+                        rt::ToValue::to_value(&self.pending_actions)
+                    ),
+                    ("requestedAt", rt::ToValue::to_value(&self.requested_at)),
+                    (
+                        "inputHoldingCids",
+                        rt::ToValue::to_value(&self.input_holding_cids)
+                    ),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for AllocationInstructionView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
                     original_instruction_cid: rt::optional_field(
-                            value,
-                            0usize,
-                            "originalInstructionCid",
-                        )
-                        .map_err(|e| e.at("originalInstructionCid"))?,
-                    allocation: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "allocation")?,
-                        )
-                        .map_err(|e| e.at("allocation"))?,
-                    pending_actions: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "pendingActions")?,
-                        )
-                        .map_err(|e| e.at("pendingActions"))?,
-                    requested_at: rt::FromValue::from_value(
-                            rt::required_field(value, 3usize, "requestedAt")?,
-                        )
-                        .map_err(|e| e.at("requestedAt"))?,
-                    input_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "inputHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("inputHoldingCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 5usize, "meta")?,
-                        )
+                        value,
+                        0usize,
+                        "originalInstructionCid",
+                    )
+                    .map_err(|e| e.at("originalInstructionCid"))?,
+                    allocation: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "allocation",
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
+                    pending_actions: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "pendingActions",
+                    )?)
+                    .map_err(|e| e.at("pendingActions"))?,
+                    requested_at: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "requestedAt",
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
+                    input_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        4usize,
+                        "inputHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("inputHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
@@ -570,7 +474,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct AllocationInstruction;
         impl rt::Contract for AllocationFactory {
-            const PACKAGE_ID: &'static str = "275064aacfe99cea72ee0c80563936129563776f67415ef9f13e4297eecbc520";
+            const PACKAGE_ID: &'static str =
+                "275064aacfe99cea72ee0c80563936129563776f67415ef9f13e4297eecbc520";
             const PACKAGE_NAME: &'static str = "splice-api-token-allocation-instruction-v1";
             const MODULE_NAME: &'static str = "Splice.Api.Token.AllocationInstructionV1";
             const ENTITY_NAME: &'static str = "AllocationFactory";
@@ -580,7 +485,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         ///The `Archive` choice on [`AllocationFactory`] (consuming).
         impl rt::Choice<AllocationFactory>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;
@@ -600,7 +506,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
             const CONSUMING: bool = false;
         }
         impl rt::Contract for AllocationInstruction {
-            const PACKAGE_ID: &'static str = "275064aacfe99cea72ee0c80563936129563776f67415ef9f13e4297eecbc520";
+            const PACKAGE_ID: &'static str =
+                "275064aacfe99cea72ee0c80563936129563776f67415ef9f13e4297eecbc520";
             const PACKAGE_NAME: &'static str = "splice-api-token-allocation-instruction-v1";
             const MODULE_NAME: &'static str = "Splice.Api.Token.AllocationInstructionV1";
             const ENTITY_NAME: &'static str = "AllocationInstruction";
@@ -610,7 +517,8 @@ pub mod splice_api_token_allocation_instruction_v1 {
         }
         ///The `Archive` choice on [`AllocationInstruction`] (consuming).
         impl rt::Choice<AllocationInstruction>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;

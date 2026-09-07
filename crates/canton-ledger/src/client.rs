@@ -622,7 +622,7 @@ impl CantonClient {
     /// a fresh submission id and the same change id, and the participant
     /// answers `ALREADY_EXISTS`: that is the earlier attempt having landed,
     /// and it is reported as success here, as on
-    /// [`submit_commands`](Self::submit_commands). An `Ok` still means only
+    /// [`submit`](Self::submit). An `Ok` still means only
     /// *accepted*; whether it committed is a completion, reachable by
     /// [`await_completion`](Self::await_completion) with the
     /// [`Executable::change_id`](crate::interactive::Executable::change_id)

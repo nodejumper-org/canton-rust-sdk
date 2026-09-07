@@ -20,14 +20,7 @@
 pub mod splice_api_token_allocation_v1 {
     pub mod Splice_Api_Token_AllocationV1 {
         use canton_daml as rt;
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_WithdrawResult {
             ///Daml field `senderHoldingCids`.
@@ -42,39 +35,30 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_WithdrawResult {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("senderHoldingCids", rt::ToValue::to_value(& self
-                        .sender_holding_cids)), ("meta", rt::ToValue::to_value(& self
-                        .meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    (
+                        "senderHoldingCids",
+                        rt::ToValue::to_value(&self.sender_holding_cids)
+                    ),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for Allocation_WithdrawResult {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "senderHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("senderHoldingCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "meta")?,
-                        )
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "senderHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_CancelResult {
             ///Daml field `senderHoldingCids`.
@@ -89,39 +73,30 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_CancelResult {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("senderHoldingCids", rt::ToValue::to_value(& self
-                        .sender_holding_cids)), ("meta", rt::ToValue::to_value(& self
-                        .meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    (
+                        "senderHoldingCids",
+                        rt::ToValue::to_value(&self.sender_holding_cids)
+                    ),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for Allocation_CancelResult {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "senderHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("senderHoldingCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "meta")?,
-                        )
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "senderHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 1usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransferResult {
             ///Daml field `senderHoldingCids`.
@@ -143,44 +118,40 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_ExecuteTransferResult {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("senderHoldingCids", rt::ToValue::to_value(& self
-                        .sender_holding_cids)), ("receiverHoldingCids",
-                        rt::ToValue::to_value(& self.receiver_holding_cids)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    (
+                        "senderHoldingCids",
+                        rt::ToValue::to_value(&self.sender_holding_cids)
+                    ),
+                    (
+                        "receiverHoldingCids",
+                        rt::ToValue::to_value(&self.receiver_holding_cids)
+                    ),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for Allocation_ExecuteTransferResult {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "senderHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("senderHoldingCids"))?,
-                    receiver_holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "receiverHoldingCids")?,
-                        )
-                        .map_err(|e| e.at("receiverHoldingCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "meta")?,
-                        )
+                    sender_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "senderHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("senderHoldingCids"))?,
+                    receiver_holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "receiverHoldingCids",
+                    )?)
+                    .map_err(|e| e.at("receiverHoldingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Withdraw {
             ///Daml field `extraArgs`.
@@ -189,31 +160,25 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_Withdraw {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![("extraArgs", rt::ToValue::to_value(& self.extra_args)),],
-                )
+                rt::record(::std::vec![(
+                    "extraArgs",
+                    rt::ToValue::to_value(&self.extra_args)
+                ),])
             }
         }
         impl rt::FromValue for Allocation_Withdraw {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_Cancel {
             ///Daml field `extraArgs`.
@@ -222,31 +187,25 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_Cancel {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![("extraArgs", rt::ToValue::to_value(& self.extra_args)),],
-                )
+                rt::record(::std::vec![(
+                    "extraArgs",
+                    rt::ToValue::to_value(&self.extra_args)
+                ),])
             }
         }
         impl rt::FromValue for Allocation_Cancel {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Allocation_ExecuteTransfer {
             ///Daml field `extraArgs`.
@@ -255,31 +214,25 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Allocation_ExecuteTransfer {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![("extraArgs", rt::ToValue::to_value(& self.extra_args)),],
-                )
+                rt::record(::std::vec![(
+                    "extraArgs",
+                    rt::ToValue::to_value(&self.extra_args)
+                ),])
             }
         }
         impl rt::FromValue for Allocation_ExecuteTransfer {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    extra_args: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "extraArgs")?,
-                        )
-                        .map_err(|e| e.at("extraArgs"))?,
+                    extra_args: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "extraArgs",
+                    )?)
+                    .map_err(|e| e.at("extraArgs"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationView {
             #[serde(rename = "allocation")]
@@ -296,43 +249,34 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for AllocationView {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("allocation", rt::ToValue::to_value(& self.allocation)),
-                        ("holdingCids", rt::ToValue::to_value(& self.holding_cids)),
-                        ("meta", rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("allocation", rt::ToValue::to_value(&self.allocation)),
+                    ("holdingCids", rt::ToValue::to_value(&self.holding_cids)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for AllocationView {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    allocation: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "allocation")?,
-                        )
-                        .map_err(|e| e.at("allocation"))?,
-                    holding_cids: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "holdingCids")?,
-                        )
-                        .map_err(|e| e.at("holdingCids"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "meta")?,
-                        )
+                    allocation: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "allocation",
+                    )?)
+                    .map_err(|e| e.at("allocation"))?,
+                    holding_cids: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "holdingCids",
+                    )?)
+                    .map_err(|e| e.at("holdingCids"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 2usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct AllocationSpecification {
             #[serde(rename = "settlement")]
@@ -346,43 +290,41 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for AllocationSpecification {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("settlement", rt::ToValue::to_value(& self.settlement)),
-                        ("transferLegId", rt::ToValue::to_value(& self.transfer_leg_id)),
-                        ("transferLeg", rt::ToValue::to_value(& self.transfer_leg)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("settlement", rt::ToValue::to_value(&self.settlement)),
+                    (
+                        "transferLegId",
+                        rt::ToValue::to_value(&self.transfer_leg_id)
+                    ),
+                    ("transferLeg", rt::ToValue::to_value(&self.transfer_leg)),
+                ])
             }
         }
         impl rt::FromValue for AllocationSpecification {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    settlement: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "settlement")?,
-                        )
-                        .map_err(|e| e.at("settlement"))?,
-                    transfer_leg_id: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "transferLegId")?,
-                        )
-                        .map_err(|e| e.at("transferLegId"))?,
-                    transfer_leg: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "transferLeg")?,
-                        )
-                        .map_err(|e| e.at("transferLeg"))?,
+                    settlement: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        0usize,
+                        "settlement",
+                    )?)
+                    .map_err(|e| e.at("settlement"))?,
+                    transfer_leg_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "transferLegId",
+                    )?)
+                    .map_err(|e| e.at("transferLegId"))?,
+                    transfer_leg: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "transferLeg",
+                    )?)
+                    .map_err(|e| e.at("transferLeg"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct TransferLeg {
             #[serde(rename = "sender")]
@@ -399,53 +341,38 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for TransferLeg {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("sender", rt::ToValue::to_value(& self.sender)), ("receiver",
-                        rt::ToValue::to_value(& self.receiver)), ("amount",
-                        rt::ToValue::to_value(& self.amount)), ("instrumentId",
-                        rt::ToValue::to_value(& self.instrument_id)), ("meta",
-                        rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("sender", rt::ToValue::to_value(&self.sender)),
+                    ("receiver", rt::ToValue::to_value(&self.receiver)),
+                    ("amount", rt::ToValue::to_value(&self.amount)),
+                    ("instrumentId", rt::ToValue::to_value(&self.instrument_id)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for TransferLeg {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    sender: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "sender")?,
-                        )
+                    sender: rt::FromValue::from_value(rt::required_field(value, 0usize, "sender")?)
                         .map_err(|e| e.at("sender"))?,
-                    receiver: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "receiver")?,
-                        )
-                        .map_err(|e| e.at("receiver"))?,
-                    amount: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "amount")?,
-                        )
+                    receiver: rt::FromValue::from_value(rt::required_field(
+                        value, 1usize, "receiver",
+                    )?)
+                    .map_err(|e| e.at("receiver"))?,
+                    amount: rt::FromValue::from_value(rt::required_field(value, 2usize, "amount")?)
                         .map_err(|e| e.at("amount"))?,
-                    instrument_id: rt::FromValue::from_value(
-                            rt::required_field(value, 3usize, "instrumentId")?,
-                        )
-                        .map_err(|e| e.at("instrumentId"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "meta")?,
-                        )
+                    instrument_id: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "instrumentId",
+                    )?)
+                    .map_err(|e| e.at("instrumentId"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 4usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct SettlementInfo {
             #[serde(rename = "executor")]
@@ -467,58 +394,56 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for SettlementInfo {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("executor", rt::ToValue::to_value(& self.executor)),
-                        ("settlementRef", rt::ToValue::to_value(& self.settlement_ref)),
-                        ("requestedAt", rt::ToValue::to_value(& self.requested_at)),
-                        ("allocateBefore", rt::ToValue::to_value(& self
-                        .allocate_before)), ("settleBefore", rt::ToValue::to_value(& self
-                        .settle_before)), ("meta", rt::ToValue::to_value(& self.meta)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("executor", rt::ToValue::to_value(&self.executor)),
+                    ("settlementRef", rt::ToValue::to_value(&self.settlement_ref)),
+                    ("requestedAt", rt::ToValue::to_value(&self.requested_at)),
+                    (
+                        "allocateBefore",
+                        rt::ToValue::to_value(&self.allocate_before)
+                    ),
+                    ("settleBefore", rt::ToValue::to_value(&self.settle_before)),
+                    ("meta", rt::ToValue::to_value(&self.meta)),
+                ])
             }
         }
         impl rt::FromValue for SettlementInfo {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    executor: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "executor")?,
-                        )
-                        .map_err(|e| e.at("executor"))?,
-                    settlement_ref: rt::FromValue::from_value(
-                            rt::required_field(value, 1usize, "settlementRef")?,
-                        )
-                        .map_err(|e| e.at("settlementRef"))?,
-                    requested_at: rt::FromValue::from_value(
-                            rt::required_field(value, 2usize, "requestedAt")?,
-                        )
-                        .map_err(|e| e.at("requestedAt"))?,
-                    allocate_before: rt::FromValue::from_value(
-                            rt::required_field(value, 3usize, "allocateBefore")?,
-                        )
-                        .map_err(|e| e.at("allocateBefore"))?,
-                    settle_before: rt::FromValue::from_value(
-                            rt::required_field(value, 4usize, "settleBefore")?,
-                        )
-                        .map_err(|e| e.at("settleBefore"))?,
-                    meta: rt::FromValue::from_value(
-                            rt::required_field(value, 5usize, "meta")?,
-                        )
+                    executor: rt::FromValue::from_value(rt::required_field(
+                        value, 0usize, "executor",
+                    )?)
+                    .map_err(|e| e.at("executor"))?,
+                    settlement_ref: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        1usize,
+                        "settlementRef",
+                    )?)
+                    .map_err(|e| e.at("settlementRef"))?,
+                    requested_at: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        2usize,
+                        "requestedAt",
+                    )?)
+                    .map_err(|e| e.at("requestedAt"))?,
+                    allocate_before: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        3usize,
+                        "allocateBefore",
+                    )?)
+                    .map_err(|e| e.at("allocateBefore"))?,
+                    settle_before: rt::FromValue::from_value(rt::required_field(
+                        value,
+                        4usize,
+                        "settleBefore",
+                    )?)
+                    .map_err(|e| e.at("settleBefore"))?,
+                    meta: rt::FromValue::from_value(rt::required_field(value, 5usize, "meta")?)
                         .map_err(|e| e.at("meta"))?,
                 })
             }
         }
-        #[derive(
-            Clone,
-            Debug,
-            PartialEq,
-            Eq,
-            rt::serde::Serialize,
-            rt::serde::Deserialize
-        )]
+        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
         #[serde(crate = "rt::serde")]
         pub struct Reference {
             #[serde(rename = "id")]
@@ -532,25 +457,18 @@ pub mod splice_api_token_allocation_v1 {
         }
         impl rt::ToValue for Reference {
             fn to_value(&self) -> rt::Value {
-                rt::record(
-                    ::std::vec![
-                        ("id", rt::ToValue::to_value(& self.id)), ("cid",
-                        rt::ToValue::to_value(& self.cid)),
-                    ],
-                )
+                rt::record(::std::vec![
+                    ("id", rt::ToValue::to_value(&self.id)),
+                    ("cid", rt::ToValue::to_value(&self.cid)),
+                ])
             }
         }
         impl rt::FromValue for Reference {
-            fn from_value(
-                value: &rt::Value,
-            ) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    id: rt::FromValue::from_value(
-                            rt::required_field(value, 0usize, "id")?,
-                        )
+                    id: rt::FromValue::from_value(rt::required_field(value, 0usize, "id")?)
                         .map_err(|e| e.at("id"))?,
-                    cid: rt::optional_field(value, 1usize, "cid")
-                        .map_err(|e| e.at("cid"))?,
+                    cid: rt::optional_field(value, 1usize, "cid").map_err(|e| e.at("cid"))?,
                 })
             }
         }
@@ -558,7 +476,8 @@ pub mod splice_api_token_allocation_v1 {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct Allocation;
         impl rt::Contract for Allocation {
-            const PACKAGE_ID: &'static str = "93c942ae2b4c2ba674fb152fe38473c507bda4e82b4e4c5da55a552a9d8cce1d";
+            const PACKAGE_ID: &'static str =
+                "93c942ae2b4c2ba674fb152fe38473c507bda4e82b4e4c5da55a552a9d8cce1d";
             const PACKAGE_NAME: &'static str = "splice-api-token-allocation-v1";
             const MODULE_NAME: &'static str = "Splice.Api.Token.AllocationV1";
             const ENTITY_NAME: &'static str = "Allocation";
@@ -568,7 +487,8 @@ pub mod splice_api_token_allocation_v1 {
         }
         ///The `Archive` choice on [`Allocation`] (consuming).
         impl rt::Choice<Allocation>
-        for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive {
+            for ::canton_daml_stdlib::ghc_stdlib_DA_Internal_Template::DA_Internal_Template::Archive
+        {
             type Return = rt::Unit;
             const NAME: &'static str = "Archive";
             const CONSUMING: bool = true;

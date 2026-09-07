@@ -689,7 +689,7 @@ impl JsonClient {
 
     /// The ids of every package the participant knows (`GET /v2/packages`).
     ///
-    /// The JSON twin of [`AdminClient::list_packages`](canton_admin::AdminClient::list_packages),
+    /// The JSON twin of `canton-admin`'s `AdminClient::list_packages`,
     /// for a deployment that exposes only the JSON Ledger API. What a package
     /// *is* to the ledger — uploaded, vetted, both — is answered by
     /// [`package_status`](Self::package_status), not by presence in this list.
