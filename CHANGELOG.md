@@ -40,6 +40,93 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   `canton-splice-api-token-metadata-v1` 134 KB → 12 KB,
   `canton-splice-wallet` 310 KB → 189 KB, `canton-splice-amulet` 556 KB → 435 KB.
 
+### Fixed — the pre-submission review, September 2026
+
+Five agents went over the branch the way M1 and M2 were reviewed — a gap audit
+against the proposal, three adversarial code reviews (token, signing, PQS +
+conformance + release hygiene), and a test runner over every live suite, both
+feature profiles, the CI gates and a semver diff — and this is what they
+turned up. Every finding was re-verified against the code before it was acted
+on; the ones that did not survive that check are not here.
+
+- **`canton-pqs` did not require TLS from `connect_tls`.** The connection
+  string went to the driver unchanged, and tokio-postgres's default is
+  `sslmode=prefer` — so a store with TLS off, or a string carrying
+  `sslmode=disable`, gave a plaintext session from a method named
+  `connect_tls`, with no error. The mode is `Require` now, and a test proves a
+  store that answers the TLS request with "no" is refused.
+- **`canton-pqs` called every error without a SQLSTATE retriable** — a typo in
+  the connection string, a wrong password, a parameter the driver cannot bind,
+  a column it cannot decode. An application looping on `is_retriable()` spun
+  on its own mistake. The driver's permanent kinds are classified
+  `InvalidRequest`; and the client, which held one connection and could only
+  ever say "retriable" once the store had closed it, now reconnects.
+- **`canton-pqs` had no deadlines.** Connect and query are bounded (30s by
+  default; `connect_with_timeout`, `with_timeout`) and surface as
+  `Error::Timeout`.
+- **`Predicate::eq("count", 5)` matched nothing.** LF-JSON stores every number
+  as a string; a jsonb number never equals one. Numbers bind in their string
+  form now. And a `limit` without an order was a random sample — pages could
+  overlap — so a limit orders by ledger offset, then contract id.
+- **The registry's 409 was permanent.** Every token-standard document defines
+  it as "a contract in the reply is mid-reassignment": transient, gone in
+  seconds. Reported as a connection-class error now, which retries.
+- **`Instrument` was a transcription of metadata-v1 1.0.0.** The 1.2.0
+  document adds `paused`, `pauseInfo` and `accountInputFieldsToShow`; a wallet
+  on this crate could not say why a paused instrument refused. Added. The
+  seven OpenAPI documents are vendored under `testdata/openapi/` at the Splice
+  release the LocalNet runs, with provenance, and a test pins every path the
+  crate spells against them.
+- **`canton_token::holdings`.** A transfer or allocation naming no input
+  holdings is refused by Splice's registry, and one naming a *locked* holding
+  fails at the interpreter — both after the registry round-trip succeeded,
+  which is how the V2 examples failed on a machine that had just run the
+  allocation example. The module reads the sender's `Holding` views from the
+  ACS and says which are spendable; the examples use it when
+  `CANTON_TOKEN_HOLDINGS` is unset, and all three commit first try.
+- **`execute_submission` did not recognise its own retry.** A retried attempt
+  the participant de-duplicated came back as `ALREADY_EXISTS` and was
+  reported as failure — the case `submit_commands` already handles. Handled
+  the same way; `Prepared::change_id` / `Executable::change_id` hand out what
+  `await_completion` needs; `execute_submission_and_wait` returns the whole
+  response, completion offset included, rather than the update id alone.
+- **Three live suites skipped silently.** `canton-token`, `canton-pqs` and
+  `interactive_live` neither said so nor looked at `CANTON_TEST_REQUIRE_LIVE`;
+  a run with no registry, no store and no participant was green. They carry
+  the same guard as the ledger and admin suites.
+- **A conformance row claimed party management over JSON with a test that
+  built a gRPC client.** There is no `/v2/parties` in the JSON client; the row
+  is a declared gap with the reason. (`packages__json_package_mgmt` went the
+  other way — see *reading packages*.)
+- **docs.rs metadata was missing on every M3 crate**, so `connect_tls` and the
+  in-memory key would not have been documented, and nothing after publication
+  can fix that. Every hand-written crate carries the block now, with
+  `doc(cfg)` on the gated items. Generated crates forbid `unsafe_code` in the
+  file itself — the workspace lint never reached them.
+- **Docs that had fallen behind**: RELEASING.md's thirteen-crate order (there
+  are thirty-one; derived from the manifests now), the facade's feature list
+  (`ed25519` and `pqs-tls` were undocumented), `canton-token`'s CIP-56-only
+  title for a crate that implements both standards, and this file, which the
+  merge from 0.2.3 had left with every M3 entry under a published version.
+- **`canton-ledger`'s tests did not build on their own**: the dev-dependency on
+  `canton-signer` inherited `default-features = false` and the tests import
+  the in-memory key. Green only through the facade's feature unification.
+
+### Changed — `Error::Http` grew a `url` field (**breaking**)
+
+`canton-core` reads `Error::Http::body` as the response — a category, a retry
+delay, a correlation id — and the registry client had been prefixing the URL
+onto it, which broke every one of those reads on that lane. It was doing so
+for a real reason: a 404 from a mistyped base URL and a 404 from an unknown
+contract read the same otherwise. Both were right, so the variant carries
+both: `body` is the response and nothing else, `url: Option<String>` is where
+the request went, and Display reads `http 404 at <url>: <body>`.
+
+The variant is `#[non_exhaustive]` from here. Construct it with
+`Error::http(status, body)` or `Error::http_at(status, body, url)`; match it
+with `..`. That is the migration for code on 0.2.x that built or matched the
+variant by hand.
+
 ### Added — interactive submission with a pluggable signer
 
 - **`canton-signer`** (new) — `Signer`, an object-safe async trait for signing a
