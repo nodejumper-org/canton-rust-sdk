@@ -82,7 +82,7 @@ impl Predicate {
         Self {
             target: Target::Payload(path.into_path()),
             op: Op::Eq,
-            value: value.into(),
+            value: as_stored(value.into()),
         }
     }
 
@@ -101,7 +101,7 @@ impl Predicate {
         Self {
             target: Target::Payload(path.into_path()),
             op: Op::NotEq,
-            value: value.into(),
+            value: as_stored(value.into()),
         }
     }
 
@@ -425,8 +425,15 @@ impl<T: canton_daml::Contract> Query<T> {
         }
 
         if let Some(rows) = self.limit {
+            // A limit without an order is a random sample: two reads at the
+            // same offset would return overlapping subsets. Ledger order, then
+            // contract id, is total, so pages taken this way are disjoint.
             params.push(Param::Offset(rows));
-            let _ = write!(text, " LIMIT ${}", params.len());
+            let _ = write!(
+                text,
+                " ORDER BY created_at_offset, contract_id LIMIT ${}",
+                params.len()
+            );
         }
 
         Sql { text, params }
@@ -440,6 +447,20 @@ fn default_from(source: Source) -> &'static str {
         // rows before it are gone; `creates` has no such boundary.
         Source::Archives => "COALESCE(pruned_offset(), oldest_offset())",
         _ => "oldest_offset()",
+    }
+}
+
+/// LF-JSON carries every number as a **string** — `Int64` and `Numeric` alike
+/// — and that is what PQS stores. A caller who writes `Predicate::eq("count",
+/// 5)` means the row whose payload holds `"5"`, so a JSON number is bound in
+/// its string form; comparing a `jsonb` number against a `jsonb` string would
+/// match nothing, silently. `Numeric` equality is still better asked with
+/// [`compare`](Predicate::compare) and [`Op::Eq`], which casts both sides and
+/// so treats `1.0` and `1.0000000000` as the same amount.
+fn as_stored(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Number(n) => serde_json::Value::String(n.to_string()),
+        other => other,
     }
 }
 
@@ -718,9 +739,41 @@ mod tests {
         assert_eq!(
             sql.text,
             "SELECT * FROM active($1) WHERE payload #> $2 = $3 AND $4 = ANY(signatories) \
-             AND (payload #>> $5)::numeric < $6::text::numeric LIMIT $7"
+             AND (payload #>> $5)::numeric < $6::text::numeric ORDER BY created_at_offset, contract_id LIMIT $7"
         );
         assert_eq!(sql.params.len(), 7);
         assert_eq!(sql.params[6], Param::Offset(10));
+    }
+
+    #[test]
+    fn a_number_in_eq_is_bound_as_the_string_lf_json_stores() {
+        // `Int64` and `Numeric` payload fields are JSON strings on the wire and
+        // in the store; a jsonb number would match nothing, silently.
+        let sql = Query::<AppInstallRequest>::active()
+            .filter(Predicate::eq("count", 5))
+            .compile();
+        assert!(
+            matches!(&sql.params[2], Param::Json(serde_json::Value::String(s)) if s == "5"),
+            "{:?}",
+            sql.params[2]
+        );
+        let sql = Query::<AppInstallRequest>::active()
+            .filter(Predicate::not_eq("count", 5))
+            .compile();
+        assert!(matches!(&sql.params[2], Param::Json(serde_json::Value::String(s)) if s == "5"));
+    }
+
+    #[test]
+    fn a_limit_orders_the_rows_so_pages_do_not_overlap() {
+        let sql = Query::<AppInstallRequest>::active().limit(10).compile();
+        assert!(
+            sql.text
+                .ends_with("ORDER BY created_at_offset, contract_id LIMIT $2"),
+            "{}",
+            sql.text
+        );
+        // And without a limit there is no order clause to pay for.
+        let sql = Query::<AppInstallRequest>::active().compile();
+        assert!(!sql.text.contains("ORDER BY"), "{}", sql.text);
     }
 }

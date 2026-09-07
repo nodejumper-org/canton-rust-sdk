@@ -12,6 +12,21 @@
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+/// A skipped test and a passing test are the same line in cargo's output. Set
+/// `CANTON_TEST_REQUIRE_LIVE=1`, as any run that claims to have exercised a
+/// live environment should, and a missing one fails here instead of passing
+/// quietly. Same contract as `canton-ledger`'s live suite.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
 use canton_pqs::{PqsClient, Predicate, Query};
 use canton_quickstart_licensing::quickstart_licensing::Licensing_AppInstall::AppInstallRequest;
 
@@ -45,7 +60,7 @@ async fn require_sample(client: &PqsClient) -> canton_pqs::Contract<AppInstallRe
 #[tokio::test]
 async fn pqs_reports_how_far_it_has_ingested() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let offset = client.latest_offset().await.expect("an offset");
@@ -59,7 +74,7 @@ async fn pqs_reports_how_far_it_has_ingested() {
 #[tokio::test]
 async fn a_contract_read_from_postgres_is_the_generated_type() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let contracts = client
@@ -105,7 +120,7 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
 #[tokio::test]
 async fn a_payload_predicate_filters_in_the_database() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let sample = require_sample(&client).await;
@@ -141,7 +156,7 @@ async fn a_payload_predicate_filters_in_the_database() {
 #[tokio::test]
 async fn containment_and_party_columns_work_against_the_real_schema() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let sample = require_sample(&client).await;
@@ -171,7 +186,7 @@ async fn containment_and_party_columns_work_against_the_real_schema() {
 #[tokio::test]
 async fn an_ordered_comparison_is_a_statement_postgres_accepts() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     // Against a real numeric field, on contracts that exist. Pointed at a path
@@ -247,7 +262,7 @@ async fn an_ordered_comparison_is_a_statement_postgres_accepts() {
 #[tokio::test]
 async fn a_contract_is_found_by_id() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let sample = require_sample(&client).await;
@@ -271,7 +286,7 @@ async fn a_contract_is_found_by_id() {
 #[tokio::test]
 async fn the_acs_can_be_read_as_of_an_offset() {
     let Some(client) = client().await else {
-        eprintln!("skipping: set CANTON_PQS_URL");
+        skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
     let offset = client.latest_offset().await.expect("an offset");

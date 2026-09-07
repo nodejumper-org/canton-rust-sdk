@@ -28,6 +28,6 @@ mod client;
 mod query;
 mod row;
 
-pub use client::{PqsClient, active_signed_by};
+pub use client::{DEFAULT_TIMEOUT, PqsClient, active_signed_by};
 pub use query::{IntoPath, Op, Param, Predicate, Query, Source, Sql};
 pub use row::{Contract, Exercise};
