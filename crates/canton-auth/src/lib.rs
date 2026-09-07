@@ -408,7 +408,7 @@ impl TokenProvider {
                     "token endpoint rejected the credentials (http {status}): {body}"
                 )));
             }
-            return Err(Error::Http { status, body });
+            return Err(Error::http(status, body));
         }
 
         let body = response.text().await.map_err(|e| {

@@ -192,16 +192,16 @@ fn basic_infrastructure__error_parsing_and_handling() {
 
     // Canton reports the same verdict on both transports; this is the JSON
     // body, which needs no gRPC status to construct.
-    let err = canton::Error::Http {
-        status: 409,
-        body: serde_json::json!({
+    let err = canton::Error::http(
+        409,
+        serde_json::json!({
             "code": "CONTENTION",
             "errorCategory": 2,
             "cause": "contention on a shared resource",
             "context": { "category": "2" }
         })
         .to_string(),
-    };
+    );
 
     assert_eq!(
         err.category(),
@@ -211,10 +211,7 @@ fn basic_infrastructure__error_parsing_and_handling() {
     assert!(err.is_retriable(), "contention is retriable");
 
     // And a category that is not retriable is not retried, whatever the code.
-    let permanent = canton::Error::Http {
-        status: 400,
-        body: serde_json::json!({ "errorCategory": 8 }).to_string(),
-    };
+    let permanent = canton::Error::http(400, serde_json::json!({ "errorCategory": 8 }).to_string());
     assert_eq!(
         permanent.category(),
         Some(ErrorCategory::InvalidIndependentOfSystemState)

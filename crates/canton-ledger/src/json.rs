@@ -355,7 +355,7 @@ fn completions_request(parties: &[String], begin_exclusive: i64) -> Value {
 /// `DUPLICATE_COMMAND` under some other status still means the same thing.
 fn is_duplicate_submission(error: &Error) -> bool {
     match error {
-        Error::Http { status, body } => *status == 409 || body.contains("DUPLICATE_COMMAND"),
+        Error::Http { status, body, .. } => *status == 409 || body.contains("DUPLICATE_COMMAND"),
         _ => false,
     }
 }
@@ -384,7 +384,7 @@ async fn read_json<T: for<'de> Deserialize<'de>>(
     if !response.status().is_success() {
         let status = response.status().as_u16();
         let body = response.text().await.unwrap_or_default();
-        return Err(Error::Http { status, body });
+        return Err(Error::http_at(status, body, path));
     }
     let body = response
         .text()
