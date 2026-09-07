@@ -34,32 +34,48 @@ fn var(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|_| format!("set {name}"))
 }
 
-/// The holdings to spend, from `CANTON_TOKEN_HOLDINGS` (comma-separated
-/// contract ids).
-///
-/// Read them from the ledger's active contracts filtered to the `Holding`
-/// interface, or from PQS.
+/// The holdings to spend: `CANTON_TOKEN_HOLDINGS` (comma-separated contract
+/// ids) if set, otherwise every *unlocked* holding of the instrument the
+/// sender has, read from the ledger through `canton_token::holdings`.
 ///
 /// The standard permits a registry to select holdings itself, so an empty list
-/// is legal — but Splice's reference registry refuses one, and the refusal
-/// arrives from the Daml interpreter after the whole registry round-trip has
-/// succeeded. So this warns rather than defaulting quietly: against most
-/// registries an unset variable is a run that fails at the last step for a
-/// reason nothing earlier hinted at.
-fn holdings<T>() -> Vec<rt::ContractId<T>> {
+/// is legal — but Splice's reference registry refuses one, and a locked
+/// holding named as an input fails the same late way (`Lock.expiresAt`), after
+/// the whole registry round-trip has succeeded. Reading and filtering here is
+/// what makes a run against a real registry succeed on the first try.
+async fn pick_holdings<T>(
+    client: &CantonClient,
+    sender: &str,
+    instrument_id: &str,
+) -> Result<Vec<rt::ContractId<T>>, Box<dyn std::error::Error>> {
     let raw = std::env::var("CANTON_TOKEN_HOLDINGS").unwrap_or_default();
-    if raw.trim().is_empty() {
-        eprintln!(
-            "warning: CANTON_TOKEN_HOLDINGS is unset, so no holdings are named. This is legal \
-             only against a registry that selects them itself; Splice's refuses with \"At least \
-             one holding must be provided\" once the transfer reaches the interpreter."
-        );
+    if !raw.trim().is_empty() {
+        return Ok(raw
+            .split(',')
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+            .map(|id| rt::ContractId::new(id.to_string()))
+            .collect());
     }
-    raw.split(',')
-        .map(str::trim)
-        .filter(|id| !id.is_empty())
-        .map(|id| rt::ContractId::new(id.to_string()))
-        .collect()
+    let spendable = canton_token::holdings::spendable(client, sender, instrument_id).await?;
+    if spendable.is_empty() {
+        return Err(format!("{sender} has no unlocked holdings of {instrument_id}").into());
+    }
+    println!(
+        "holdings:       {} unlocked holding(s) of {instrument_id} read from the ledger",
+        spendable.len()
+    );
+    Ok(spendable.iter().map(HoldingSummaryExt::typed).collect())
+}
+
+/// Local alias so `pick_holdings` reads the same in every example.
+trait HoldingSummaryExt {
+    fn typed<T>(&self) -> rt::ContractId<T>;
+}
+impl HoldingSummaryExt for canton_token::holdings::HoldingSummary {
+    fn typed<T>(&self) -> rt::ContractId<T> {
+        canton_token::holdings::HoldingSummary::typed(self)
+    }
 }
 
 #[tokio::main]
@@ -87,10 +103,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The transfer is a generated type. Nothing here re-declares it.
     let sender = rt::Party::parse(&var("CANTON_TOKEN_SENDER")?)?;
+    let config = Config::new(var("CANTON_TEST_ENDPOINT")?);
+    let config = match (
+        std::env::var("CANTON_TEST_TOKEN_URL"),
+        std::env::var("CANTON_TEST_CLIENT_ID"),
+        std::env::var("CANTON_TEST_CLIENT_SECRET"),
+    ) {
+        (Ok(url), Ok(id), Ok(secret)) => {
+            config.with_oidc(TokenProvider::new(OidcConfig::new(url, id, secret)))
+        }
+        _ => config,
+    };
+    let client = CantonClient::connect_lazy(config)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_micros();
     let now = i64::try_from(now)?;
+    let inputs = pick_holdings(&client, sender.as_str(), &instrument_id).await?;
     let transfer = ti::Transfer {
         sender: sender.clone(),
         receiver: rt::Party::parse(&var("CANTON_TOKEN_RECEIVER")?)?,
@@ -109,7 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Daml interpreter and fails with "At least one holding must be
         // provided". So this is not optional in practice, and naming them also
         // pins exactly which are spent.
-        input_holding_cids: holdings(),
+        input_holding_cids: inputs,
         meta: md::Metadata {
             values: rt::TextMap::new(),
         },
@@ -140,19 +169,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("dry run: the command is built and not submitted");
         return Ok(());
     }
-
-    let config = Config::new(var("CANTON_TEST_ENDPOINT")?);
-    let config = match (
-        std::env::var("CANTON_TEST_TOKEN_URL"),
-        std::env::var("CANTON_TEST_CLIENT_ID"),
-        std::env::var("CANTON_TEST_CLIENT_SECRET"),
-    ) {
-        (Ok(url), Ok(id), Ok(secret)) => {
-            config.with_oidc(TokenProvider::new(OidcConfig::new(url, id, secret)))
-        }
-        _ => config,
-    };
-    let client = CantonClient::connect_lazy(config)?;
 
     let transaction = client
         .submit_and_wait_for_transaction(command.into_submit(sender.as_str()))

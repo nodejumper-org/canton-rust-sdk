@@ -25,6 +25,7 @@
 
 pub mod allocation;
 mod context;
+pub mod holdings;
 mod registry;
 pub mod transfer;
 pub mod v2;

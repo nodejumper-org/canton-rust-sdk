@@ -17,6 +17,21 @@
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+/// A skipped test and a passing test are the same line in cargo's output. Set
+/// `CANTON_TEST_REQUIRE_LIVE=1`, as any run that claims to have exercised a
+/// live environment should, and a missing one fails here instead of passing
+/// quietly. Same contract as `canton-ledger`'s live suite.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
 use canton_token::RegistryClient;
 
 fn client() -> Option<RegistryClient> {
@@ -32,7 +47,10 @@ fn client() -> Option<RegistryClient> {
 /// downstream — and it is the first thing a client reads.
 #[tokio::test]
 async fn the_registry_says_who_administers_its_instruments() {
-    let Some(client) = client() else { return };
+    let Some(client) = client() else {
+        skip!("set CANTON_TOKEN_REGISTRY_URL to a registry (a LocalNet's scan)");
+        return;
+    };
 
     let info = client
         .info()
@@ -71,7 +89,10 @@ async fn the_registry_says_who_administers_its_instruments() {
 /// whatever it was written to return.
 #[tokio::test]
 async fn the_instruments_decode_as_the_standard_describes_them() {
-    let Some(client) = client() else { return };
+    let Some(client) = client() else {
+        skip!("set CANTON_TOKEN_REGISTRY_URL to a registry (a LocalNet's scan)");
+        return;
+    };
 
     let (instruments, _) = client
         .list_instruments(None, None)
@@ -116,7 +137,10 @@ async fn the_instruments_decode_as_the_standard_describes_them() {
 /// reads as `None` now that a non-JSON 404 is an error.
 #[tokio::test]
 async fn an_instrument_this_registry_does_not_issue_is_none_rather_than_an_error() {
-    let Some(client) = client() else { return };
+    let Some(client) = client() else {
+        skip!("set CANTON_TOKEN_REGISTRY_URL to a registry (a LocalNet's scan)");
+        return;
+    };
 
     let missing = client
         .instrument("NotAnInstrumentThisRegistryIssues")
@@ -135,7 +159,10 @@ async fn an_instrument_this_registry_does_not_issue_is_none_rather_than_an_error
 /// asserted is that the question can be answered at all.
 #[tokio::test]
 async fn the_registry_declares_which_token_standard_versions_it_serves() {
-    let Some(client) = client() else { return };
+    let Some(client) = client() else {
+        skip!("set CANTON_TOKEN_REGISTRY_URL to a registry (a LocalNet's scan)");
+        return;
+    };
 
     let (instruments, _) = client
         .list_instruments(None, None)
@@ -168,7 +195,10 @@ async fn the_registry_declares_which_token_standard_versions_it_serves() {
 /// encoding; this proves the registry accepts what the encoding produces.
 #[tokio::test]
 async fn paging_through_instruments_works_against_a_real_registry() {
-    let Some(client) = client() else { return };
+    let Some(client) = client() else {
+        skip!("set CANTON_TOKEN_REGISTRY_URL to a registry (a LocalNet's scan)");
+        return;
+    };
 
     let (first, next) = client
         .list_instruments(Some(1), None)

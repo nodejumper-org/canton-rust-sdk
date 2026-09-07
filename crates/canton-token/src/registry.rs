@@ -36,6 +36,7 @@ pub struct RegistryClient {
 /// What a registry says about itself.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct RegistryInfo {
     /// The party that administers the instruments — the `expectedAdmin` a
     /// factory choice is exercised against.
@@ -48,6 +49,7 @@ pub struct RegistryInfo {
 /// An instrument the registry issues.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct Instrument {
     /// The instrument id, as it appears in a `Holding`.
     pub id: String,
@@ -72,6 +74,31 @@ pub struct Instrument {
     /// Which token-standard APIs apply to this instrument.
     #[serde(default)]
     pub supported_apis: std::collections::BTreeMap<String, i32>,
+    /// A paused instrument cannot be transferred or allocated (metadata-v1
+    /// 1.2.0). Absent on older registries, which is the same as `false`.
+    #[serde(default)]
+    pub paused: bool,
+    /// Why, and until when, if the registry says.
+    #[serde(default)]
+    pub pause_info: Option<PauseInfo>,
+    /// For V2 wallets: which `Account` input fields this instrument's users
+    /// must fill in — `provider`, `accountId`. Absent means the registry did
+    /// not say, not that there are none.
+    #[serde(default)]
+    pub account_input_fields_to_show: Option<Vec<String>>,
+}
+
+/// Why an instrument is paused, and until when.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct PauseInfo {
+    /// Free text from the registry.
+    #[serde(default)]
+    pub reason: Option<String>,
+    /// RFC 3339, when the pause is scheduled to end.
+    #[serde(default)]
+    pub until: Option<String>,
 }
 
 /// The standard's default for `decimals`.
@@ -118,6 +145,7 @@ pub enum TransferKind {
 
 /// A factory contract together with the context for exercising its choice.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct FactoryWithContext {
     /// The contract id of the contract implementing the factory interface.
     pub factory_id: String,
@@ -275,18 +303,19 @@ impl RegistryClient {
             .await
             .map_err(|e| connection(&e))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            let body = response.text().await.unwrap_or_default();
+            // A failed body read on a 404 is not "the registry does not issue
+            // it": it is a transport failure, and reporting it as `None`
+            // would tell a wallet the instrument does not exist.
+            let body = response.text().await.map_err(|e| connection(&e))?;
             let trimmed = body.trim();
             if trimmed.is_empty() || serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
                 return Ok(None);
             }
-            return Err(Error::Http {
-                status: 404,
-                body: format!(
-                    "{url}: a 404 that is not the registry's own — check the base URL: {}",
-                    truncate(trimmed)
-                ),
-            });
+            // Not the registry's own 404 — a proxy or a wrong base URL. The
+            // body stays the body; the URL goes to the log, where it is
+            // already, rather than into a field the error model reads as JSON.
+            tracing::warn!(%url, "a 404 that is not the registry's own — check the base URL");
+            return Err(Error::http_at(404, truncate(trimmed), url.as_str()));
         }
         Ok(Some(Self::decode(response, url.as_str()).await?))
     }
@@ -609,17 +638,34 @@ impl RegistryClient {
     ) -> Result<T> {
         let status = response.status();
         let body = response.text().await.map_err(|e| connection(&e))?;
-        if !status.is_success() {
-            // The standard's error body is `{"error": "…"}`; anything else is
-            // passed through, since a registry that is failing is exactly when
-            // a truncated-to-nothing message helps least.
+        if status == reqwest::StatusCode::CONFLICT {
+            // Every token-standard document defines 409 the same way: a
+            // contract the reply would name is in the middle of a
+            // reassignment between synchronizers. It resolves by itself in
+            // seconds, so this is the one non-2xx that is transient, and the
+            // shared error model's HTTP rule (408, 429, 5xx) would call it
+            // permanent. Reported as a connection-class error, which retries.
             let message = serde_json::from_str::<ErrorResponse>(&body)
                 .map(|e| e.error)
                 .unwrap_or(body);
-            return Err(Error::Http {
-                status: status.as_u16(),
-                body: format!("{url}: {message}"),
-            });
+            return Err(Error::Connection(format!(
+                "{url}: the registry reports a contract mid-reassignment (409), retry shortly: {}",
+                truncate(&message)
+            )));
+        }
+        if !status.is_success() {
+            // The standard's error body is `{"error": "…"}`; anything else is
+            // passed through, since a registry that is failing is exactly when
+            // a truncated-to-nothing message helps least. The body is the
+            // body — `canton-core` reads `Error::Http::body` as the response
+            // (for a category, a retry delay, a correlation id), and a URL
+            // prefixed onto it made every one of those reads fail. The URL is
+            // in the log line instead.
+            tracing::warn!(%url, status = status.as_u16(), "the registry answered with an error");
+            let message = serde_json::from_str::<ErrorResponse>(&body)
+                .map(|e| e.error)
+                .unwrap_or(body);
+            return Err(Error::http_at(status.as_u16(), truncate(&message), url));
         }
         serde_json::from_str(&body).map_err(|e| {
             Error::UnexpectedResponse(format!(

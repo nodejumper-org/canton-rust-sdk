@@ -35,6 +35,7 @@ use rt::Contract as _;
 /// account touched — and "which leg was this" is answered by the node id, not
 /// by the order a caller happens to iterate in.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct HoldingsChange {
     /// The offset of the transaction this was read from.
     pub offset: i64,

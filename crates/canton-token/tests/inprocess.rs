@@ -252,8 +252,8 @@ async fn the_disclosures_are_attached_to_whichever_submission_is_used() {
     );
 }
 
-/// A registry that fails says why, and the error carries the URL — a 404 from
-/// a mistyped path and a 404 from an unknown contract read the same otherwise.
+/// A registry that fails says why, and the error carries exactly that: the
+/// body is the registry's message, so the shared error model can read it.
 #[tokio::test]
 async fn a_failing_registry_reports_its_own_message() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
@@ -281,6 +281,10 @@ async fn a_failing_registry_reports_its_own_message() {
         "{message}"
     );
     assert!(message.contains("transfer-factory"), "{message}");
+    assert!(
+        matches!(&err, canton_core::Error::Http { status: 404, body, ..  } if body == "no factory for instrument Amulet"),
+        "{err:?}"
+    );
 }
 
 /// The metadata API, read the way the standard publishes it.
@@ -554,4 +558,95 @@ async fn the_ordinary_submission_path_carries_the_disclosures_too() {
 
     let submit = command.into_submit("alice::1220ab");
     assert_eq!(submit.disclosed_contracts().len(), 2);
+}
+
+/// Every path this crate spells exists in the token standard's OpenAPI
+/// documents, at the revision vendored under `testdata/openapi/` (see its
+/// PROVENANCE.md). The shapes below are the ones the stub-based tests above
+/// assert the crate sends, with the instance ids replaced by `{}`; a document
+/// revision that moves a path fails here rather than against a live registry.
+#[test]
+fn every_path_the_crate_spells_is_in_the_vendored_specification() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata/openapi");
+    let mut published = std::collections::BTreeSet::new();
+    for name in [
+        "token-metadata-v1.yaml",
+        "transfer-instruction-v1.yaml",
+        "allocation-v1.yaml",
+        "allocation-instruction-v1.yaml",
+        "transfer-instruction-v2.yaml",
+        "allocation-v2.yaml",
+        "allocation-instruction-v2.yaml",
+    ] {
+        let text = std::fs::read_to_string(dir.join(name)).expect(name);
+        let mut in_paths = false;
+        for line in text.lines() {
+            if line.starts_with("paths:") {
+                in_paths = true;
+                continue;
+            }
+            if in_paths && !line.is_empty() && !line.starts_with(' ') {
+                in_paths = false;
+            }
+            if in_paths && line.starts_with("  /") && line.ends_with(':') {
+                published.insert(normalise(line.trim().trim_end_matches(':')));
+            }
+        }
+    }
+    assert!(
+        published.len() >= 20,
+        "the documents list {} paths",
+        published.len()
+    );
+
+    let spelled = [
+        "/registry/metadata/v1/info",
+        "/registry/metadata/v1/instruments",
+        "/registry/metadata/v1/instruments/{}",
+        "/registry/transfer-instruction/v1/transfer-factory",
+        "/registry/transfer-instruction/v1/{}/choice-contexts/accept",
+        "/registry/transfer-instruction/v1/{}/choice-contexts/reject",
+        "/registry/transfer-instruction/v1/{}/choice-contexts/withdraw",
+        "/registry/allocation-instruction/v1/allocation-factory",
+        "/registry/allocations/v1/{}/choice-contexts/execute-transfer",
+        "/registry/allocations/v1/{}/choice-contexts/withdraw",
+        "/registry/allocations/v1/{}/choice-contexts/cancel",
+        "/registry/transfer-instruction/v2/transfer-factory",
+        "/registry/transfer-instruction/v2/{}/choice-contexts/accept",
+        "/registry/transfer-instruction/v2/{}/choice-contexts/reject",
+        "/registry/transfer-instruction/v2/{}/choice-contexts/withdraw",
+        "/registry/allocation-instruction/v2/allocation-factory",
+        "/registry/allocation-instruction/v2/{}/choice-contexts/accept",
+        "/registry/allocation-instruction/v2/{}/choice-contexts/withdraw",
+        "/registry/allocation/v2/settlement-factory",
+        "/registry/allocations/v2/{}/choice-contexts/withdraw",
+        "/registry/allocations/v2/{}/choice-contexts/cancel",
+    ];
+    let missing: Vec<_> = spelled
+        .iter()
+        .filter(|path| !published.contains(**path))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "paths this crate spells that the vendored documents do not publish: {missing:#?}"
+    );
+}
+
+/// `{instrumentId}`, `{allocationId}`, … all become `{}`: the name of a path
+/// parameter is documentation, its position is the contract.
+fn normalise(path: &str) -> String {
+    let mut out = String::new();
+    let mut in_param = false;
+    for c in path.chars() {
+        match c {
+            '{' => {
+                in_param = true;
+                out.push_str("{}");
+            }
+            '}' => in_param = false,
+            _ if in_param => {}
+            _ => out.push(c),
+        }
+    }
+    out
 }

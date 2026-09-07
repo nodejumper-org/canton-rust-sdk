@@ -21,20 +21,33 @@ use serde::{Deserialize, Serialize};
 ///
 /// `meta` is passed to the choice and folded into the context by the registry;
 /// the standard provides it for extensibility and most callers send none.
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct ChoiceContextRequest {
     /// Left out entirely when empty — the field is optional, and an empty
     /// object is a different thing to say than nothing.
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub meta: std::collections::BTreeMap<String, String>,
-    /// Ask the registry to leave out the debug fields.
+    /// Ask the registry to leave out the debug fields (`debugPayload`,
+    /// `debugPackageName`, `debugCreatedAt` on each disclosed contract).
     ///
-    /// Added by the V2 specifications; V1's request has no such field, and a
-    /// registry serving V1 ignores it. Sent only when set, so a V1 request is
-    /// byte-identical to what it was.
+    /// Every choice-context request in the standard has it — V1's
+    /// `GetChoiceContextRequest` as much as V2's — and this crate reads none
+    /// of the fields it suppresses, so the default is `true`: bytes on the
+    /// wire for no purpose. Set it to `false` to see them while debugging a
+    /// registry.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub exclude_debug_fields: bool,
+}
+
+impl Default for ChoiceContextRequest {
+    fn default() -> Self {
+        Self {
+            meta: std::collections::BTreeMap::new(),
+            exclude_debug_fields: true,
+        }
+    }
 }
 
 /// A contract the participant must be shown for a choice to resolve.
@@ -44,6 +57,7 @@ pub struct ChoiceContextRequest {
 /// they need not match the `createdEventBlob` — and nothing here needs them.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct WireDisclosedContract {
     /// `<package>:<Module>:<Entity>`.
     pub template_id: String,
@@ -58,6 +72,7 @@ pub struct WireDisclosedContract {
 /// What a registry returns for a choice.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct WireChoiceContext {
     /// The data to pass into the choice, as Daml JSON.
     pub choice_context_data: serde_json::Value,
@@ -298,28 +313,32 @@ mod tests {
     /// field is optional, and saying nothing is not the same as saying empty.
     #[test]
     fn an_empty_meta_is_not_sent() {
+        // The default asks the registry to leave the debug fields out — every
+        // choice-context request in the standard, V1 and V2, has the flag —
+        // and says nothing about `meta`, because an empty object is a
+        // different thing to say than nothing.
         let request = ChoiceContextRequest::default();
         assert_eq!(
             serde_json::to_value(&request).unwrap(),
-            serde_json::json!({})
+            serde_json::json!({ "excludeDebugFields": true })
         );
 
         let mut request = ChoiceContextRequest::default();
         request.meta.insert("k".to_string(), "v".to_string());
         assert_eq!(
             serde_json::to_value(&request).unwrap(),
-            serde_json::json!({ "meta": { "k": "v" } })
+            serde_json::json!({ "meta": { "k": "v" }, "excludeDebugFields": true })
         );
 
-        // `excludeDebugFields` is a V2 addition, so a request that does not set
-        // it stays byte-identical to what a V1 registry has always been sent.
+        // Asking for the debug fields back is the absence of the flag, which
+        // is also the request as it was sent before the flag existed.
         let request = ChoiceContextRequest {
-            exclude_debug_fields: true,
+            exclude_debug_fields: false,
             ..ChoiceContextRequest::default()
         };
         assert_eq!(
             serde_json::to_value(&request).unwrap(),
-            serde_json::json!({ "excludeDebugFields": true })
+            serde_json::json!({})
         );
     }
 }

@@ -18,6 +18,8 @@ canton-core   = { workspace = true }
 canton-proto  = { workspace = true }
 canton-ledger = { workspace = true }
 canton-daml   = { workspace = true }
+# For draining the ACS stream in `holdings`.
+futures-util  = { workspace = true }
 
 # The token-standard types are generated, not re-declared here. These crates
 # *are* the standard — one crate per Daml package, so the `Holding` this crate
