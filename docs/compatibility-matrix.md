@@ -86,10 +86,14 @@ network, which is the target that exists.
 
 | What | Result |
 |---|---|
-| V1 transfer, end to end | committed at offset 39643, 5 events |
-| V2 `Account`-based transfer | committed at offset 39646, 5 events |
+| V1 transfer, end to end | committed at offset 67684, 6 events |
+| V2 `Account`-based transfer | committed at offset 67690, 6 events |
 | V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 holding spent, 2 produced, 2 transfer legs |
-| V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 40176, 6 events, 3 contracts created |
+| V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 67693, 6 events, 3 contracts created |
+
+The run these numbers come from is kept verbatim, with its environment and
+commands, in
+[`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md).
 
 The allocation is the half that needs more than two parties: the sender
 reserves holdings for a settlement a third party — the executor — completes
