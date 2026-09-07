@@ -1,8 +1,10 @@
+#![forbid(unsafe_code)]
 #![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]
 //! Typed Rust bindings generated from a Daml archive (DAR).
 //!
 //! **Generated file — do not edit by hand.** Regenerate with
-//! `dpm-codegen-rust --dar <the DAR> --out <this crate>`; edits are lost.
+//! `dpm-codegen-rust` from the source this crate's `Cargo.toml` records
+//! (a DAR, or a participant's package payloads); edits are lost.
 //!
 //! Each Daml package in the DAR's dependency closure is one top-level
 //! module, and each Daml module a submodule under it, so cross-package
@@ -36,7 +38,14 @@
 pub mod daml_prim_DA_Exception_ArithmeticError {
     pub mod DA_Exception_ArithmeticError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct ArithmeticError {
             #[serde(rename = "message")]
@@ -44,19 +53,20 @@ pub mod daml_prim_DA_Exception_ArithmeticError {
         }
         impl rt::ToValue for ArithmeticError {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "message",
-                    rt::ToValue::to_value(&self.message)
-                ),])
+                rt::record(
+                    ::std::vec![("message", rt::ToValue::to_value(& self.message)),],
+                )
             }
         }
         impl rt::FromValue for ArithmeticError {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "message",
-                    )?)
-                    .map_err(|e| e.at("message"))?,
+                    message: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "message")?,
+                        )
+                        .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -65,7 +75,14 @@ pub mod daml_prim_DA_Exception_ArithmeticError {
 pub mod daml_prim_DA_Exception_AssertionFailed {
     pub mod DA_Exception_AssertionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct AssertionFailed {
             #[serde(rename = "message")]
@@ -73,19 +90,20 @@ pub mod daml_prim_DA_Exception_AssertionFailed {
         }
         impl rt::ToValue for AssertionFailed {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "message",
-                    rt::ToValue::to_value(&self.message)
-                ),])
+                rt::record(
+                    ::std::vec![("message", rt::ToValue::to_value(& self.message)),],
+                )
             }
         }
         impl rt::FromValue for AssertionFailed {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "message",
-                    )?)
-                    .map_err(|e| e.at("message"))?,
+                    message: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "message")?,
+                        )
+                        .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -94,7 +112,14 @@ pub mod daml_prim_DA_Exception_AssertionFailed {
 pub mod daml_prim_DA_Exception_GeneralError {
     pub mod DA_Exception_GeneralError {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct GeneralError {
             #[serde(rename = "message")]
@@ -102,19 +127,20 @@ pub mod daml_prim_DA_Exception_GeneralError {
         }
         impl rt::ToValue for GeneralError {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "message",
-                    rt::ToValue::to_value(&self.message)
-                ),])
+                rt::record(
+                    ::std::vec![("message", rt::ToValue::to_value(& self.message)),],
+                )
             }
         }
         impl rt::FromValue for GeneralError {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "message",
-                    )?)
-                    .map_err(|e| e.at("message"))?,
+                    message: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "message")?,
+                        )
+                        .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -123,7 +149,14 @@ pub mod daml_prim_DA_Exception_GeneralError {
 pub mod daml_prim_DA_Exception_PreconditionFailed {
     pub mod DA_Exception_PreconditionFailed {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct PreconditionFailed {
             #[serde(rename = "message")]
@@ -131,19 +164,20 @@ pub mod daml_prim_DA_Exception_PreconditionFailed {
         }
         impl rt::ToValue for PreconditionFailed {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "message",
-                    rt::ToValue::to_value(&self.message)
-                ),])
+                rt::record(
+                    ::std::vec![("message", rt::ToValue::to_value(& self.message)),],
+                )
             }
         }
         impl rt::FromValue for PreconditionFailed {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    message: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "message",
-                    )?)
-                    .map_err(|e| e.at("message"))?,
+                    message: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "message")?,
+                        )
+                        .map_err(|e| e.at("message"))?,
                 })
             }
         }
@@ -152,7 +186,14 @@ pub mod daml_prim_DA_Exception_PreconditionFailed {
 pub mod daml_prim_DA_Types {
     pub mod DA_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Either<A, B> {
             #[serde(rename = "Left")]
@@ -167,7 +208,9 @@ pub mod daml_prim_DA_Types {
         {
             fn to_value(&self) -> rt::Value {
                 match self {
-                    Either::Left(inner) => rt::variant_value("Left", rt::ToValue::to_value(inner)),
+                    Either::Left(inner) => {
+                        rt::variant_value("Left", rt::ToValue::to_value(inner))
+                    }
                     Either::Right(inner) => {
                         rt::variant_value("Right", rt::ToValue::to_value(inner))
                     }
@@ -179,22 +222,43 @@ pub mod daml_prim_DA_Types {
             A: rt::FromValue,
             B: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "Left" => ::core::result::Result::Ok(Either::Left(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Left"))?,
-                    )),
-                    "Right" => ::core::result::Result::Ok(Either::Right(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Right"))?,
-                    )),
+                    "Left" => {
+                        ::core::result::Result::Ok(
+                            Either::Left(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Left"))?,
+                            ),
+                        )
+                    }
+                    "Right" => {
+                        ::core::result::Result::Ok(
+                            Either::Right(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Right"))?,
+                            ),
+                        )
+                    }
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Either", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Either", other),
+                        )
                     }
                 }
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple2<T1, T2> {
             #[serde(rename = "_1")]
@@ -208,10 +272,12 @@ pub mod daml_prim_DA_Types {
             T2: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)),
+                    ],
+                )
             }
         }
         impl<T1, T2> rt::FromValue for Tuple2<T1, T2>
@@ -219,16 +285,29 @@ pub mod daml_prim_DA_Types {
             T1: rt::FromValue,
             T2: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple3<T1, T2, T3> {
             #[serde(rename = "_1")]
@@ -245,11 +324,13 @@ pub mod daml_prim_DA_Types {
             T3: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3> rt::FromValue for Tuple3<T1, T2, T3>
@@ -258,18 +339,33 @@ pub mod daml_prim_DA_Types {
             T2: rt::FromValue,
             T3: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple4<T1, T2, T3, T4> {
             #[serde(rename = "_1")]
@@ -289,12 +385,13 @@ pub mod daml_prim_DA_Types {
             T4: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4> rt::FromValue for Tuple4<T1, T2, T3, T4>
@@ -304,20 +401,37 @@ pub mod daml_prim_DA_Types {
             T3: rt::FromValue,
             T4: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple5<T1, T2, T3, T4, T5> {
             #[serde(rename = "_1")]
@@ -340,13 +454,14 @@ pub mod daml_prim_DA_Types {
             T5: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5> rt::FromValue for Tuple5<T1, T2, T3, T4, T5>
@@ -357,22 +472,41 @@ pub mod daml_prim_DA_Types {
             T4: rt::FromValue,
             T5: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple6<T1, T2, T3, T4, T5, T6> {
             #[serde(rename = "_1")]
@@ -398,14 +532,15 @@ pub mod daml_prim_DA_Types {
             T6: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6> rt::FromValue for Tuple6<T1, T2, T3, T4, T5, T6>
@@ -417,24 +552,45 @@ pub mod daml_prim_DA_Types {
             T5: rt::FromValue,
             T6: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple7<T1, T2, T3, T4, T5, T6, T7> {
             #[serde(rename = "_1")]
@@ -452,7 +608,8 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_7")]
             pub _7: T7,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7> rt::ToValue for Tuple7<T1, T2, T3, T4, T5, T6, T7>
+        impl<T1, T2, T3, T4, T5, T6, T7> rt::ToValue
+        for Tuple7<T1, T2, T3, T4, T5, T6, T7>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -463,18 +620,19 @@ pub mod daml_prim_DA_Types {
             T7: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7> rt::FromValue for Tuple7<T1, T2, T3, T4, T5, T6, T7>
+        impl<T1, T2, T3, T4, T5, T6, T7> rt::FromValue
+        for Tuple7<T1, T2, T3, T4, T5, T6, T7>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -484,26 +642,49 @@ pub mod daml_prim_DA_Types {
             T6: rt::FromValue,
             T7: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> {
             #[serde(rename = "_1")]
@@ -523,7 +704,8 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_8")]
             pub _8: T8,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8> rt::ToValue for Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>
+        impl<T1, T2, T3, T4, T5, T6, T7, T8> rt::ToValue
+        for Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -535,19 +717,20 @@ pub mod daml_prim_DA_Types {
             T8: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8> rt::FromValue for Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>
+        impl<T1, T2, T3, T4, T5, T6, T7, T8> rt::FromValue
+        for Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -558,28 +741,53 @@ pub mod daml_prim_DA_Types {
             T7: rt::FromValue,
             T8: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9> {
             #[serde(rename = "_1")]
@@ -601,7 +809,8 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_9")]
             pub _9: T9,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9> rt::ToValue for Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9>
+        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9> rt::ToValue
+        for Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -614,21 +823,21 @@ pub mod daml_prim_DA_Types {
             T9: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9> rt::FromValue
-            for Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9>
+        for Tuple9<T1, T2, T3, T4, T5, T6, T7, T8, T9>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -640,30 +849,57 @@ pub mod daml_prim_DA_Types {
             T8: rt::FromValue,
             T9: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> {
             #[serde(rename = "_1")]
@@ -688,7 +924,7 @@ pub mod daml_prim_DA_Types {
             pub _10: T10,
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> rt::ToValue
-            for Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>
+        for Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -702,22 +938,21 @@ pub mod daml_prim_DA_Types {
             T10: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> rt::FromValue
-            for Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>
+        for Tuple10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -730,32 +965,61 @@ pub mod daml_prim_DA_Types {
             T9: rt::FromValue,
             T10: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> {
             #[serde(rename = "_1")]
@@ -782,7 +1046,7 @@ pub mod daml_prim_DA_Types {
             pub _11: T11,
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> rt::ToValue
-            for Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>
+        for Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -797,23 +1061,22 @@ pub mod daml_prim_DA_Types {
             T11: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> rt::FromValue
-            for Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>
+        for Tuple11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -827,34 +1090,65 @@ pub mod daml_prim_DA_Types {
             T10: rt::FromValue,
             T11: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
             #[serde(rename = "_1")]
@@ -883,7 +1177,7 @@ pub mod daml_prim_DA_Types {
             pub _12: T12,
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> rt::ToValue
-            for Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
+        for Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -899,24 +1193,23 @@ pub mod daml_prim_DA_Types {
             T12: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> rt::FromValue
-            for Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
+        for Tuple12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -931,36 +1224,69 @@ pub mod daml_prim_DA_Types {
             T11: rt::FromValue,
             T12: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> {
             #[serde(rename = "_1")]
@@ -991,7 +1317,7 @@ pub mod daml_prim_DA_Types {
             pub _13: T13,
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> rt::ToValue
-            for Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>
+        for Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1008,25 +1334,24 @@ pub mod daml_prim_DA_Types {
             T13: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> rt::FromValue
-            for Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>
+        for Tuple13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1042,38 +1367,73 @@ pub mod daml_prim_DA_Types {
             T12: rt::FromValue,
             T13: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> {
             #[serde(rename = "_1")]
@@ -1106,7 +1466,7 @@ pub mod daml_prim_DA_Types {
             pub _14: T14,
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> rt::ToValue
-            for Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
+        for Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1124,26 +1484,25 @@ pub mod daml_prim_DA_Types {
             T14: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)),
+                    ],
+                )
             }
         }
         impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> rt::FromValue
-            for Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
+        for Tuple14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1160,42 +1519,95 @@ pub mod daml_prim_DA_Types {
             T13: rt::FromValue,
             T14: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
-        pub struct Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> {
+        pub struct Tuple15<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+        > {
             #[serde(rename = "_1")]
             pub _1: T1,
             #[serde(rename = "_2")]
@@ -1227,8 +1639,24 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_15")]
             pub _15: T15,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> rt::ToValue
-            for Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+        > rt::ToValue
+        for Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1247,27 +1675,42 @@ pub mod daml_prim_DA_Types {
             T15: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> rt::FromValue
-            for Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+        > rt::FromValue
+        for Tuple15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1285,44 +1728,100 @@ pub mod daml_prim_DA_Types {
             T14: rt::FromValue,
             T15: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
-        pub struct Tuple16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> {
+        pub struct Tuple16<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+        > {
             #[serde(rename = "_1")]
             pub _1: T1,
             #[serde(rename = "_2")]
@@ -1356,8 +1855,42 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_16")]
             pub _16: T16,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> rt::ToValue
-            for Tuple16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+        > rt::ToValue
+        for Tuple16<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+        >
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1377,28 +1910,61 @@ pub mod daml_prim_DA_Types {
             T16: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                    ("_16", rt::ToValue::to_value(&self._16)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)), ("_16",
+                        rt::ToValue::to_value(& self._16)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> rt::FromValue
-            for Tuple16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+        > rt::FromValue
+        for Tuple16<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+        >
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1417,44 +1983,85 @@ pub mod daml_prim_DA_Types {
             T15: rt::FromValue,
             T16: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                    _16: rt::FromValue::from_value(
+                            rt::required_field(value, 15usize, "_16")?,
+                        )
                         .map_err(|e| e.at("_16"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple17<
             T1,
@@ -1510,8 +2117,44 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_17")]
             pub _17: T17,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17> rt::ToValue
-            for Tuple17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+        > rt::ToValue
+        for Tuple17<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+        >
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1532,30 +2175,64 @@ pub mod daml_prim_DA_Types {
             T17: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                    ("_16", rt::ToValue::to_value(&self._16)),
-                    ("_17", rt::ToValue::to_value(&self._17)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)), ("_16",
+                        rt::ToValue::to_value(& self._16)), ("_17",
+                        rt::ToValue::to_value(& self._17)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>
-            rt::FromValue
-            for Tuple17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+        > rt::FromValue
+        for Tuple17<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+        >
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1575,46 +2252,89 @@ pub mod daml_prim_DA_Types {
             T16: rt::FromValue,
             T17: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                    _16: rt::FromValue::from_value(
+                            rt::required_field(value, 15usize, "_16")?,
+                        )
                         .map_err(|e| e.at("_16"))?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                    _17: rt::FromValue::from_value(
+                            rt::required_field(value, 16usize, "_17")?,
+                        )
                         .map_err(|e| e.at("_17"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple18<
             T1,
@@ -1673,28 +2393,46 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_18")]
             pub _18: T18,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>
-            rt::ToValue
-            for Tuple18<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-            >
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+        > rt::ToValue
+        for Tuple18<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+        >
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1716,50 +2454,67 @@ pub mod daml_prim_DA_Types {
             T18: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                    ("_16", rt::ToValue::to_value(&self._16)),
-                    ("_17", rt::ToValue::to_value(&self._17)),
-                    ("_18", rt::ToValue::to_value(&self._18)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)), ("_16",
+                        rt::ToValue::to_value(& self._16)), ("_17",
+                        rt::ToValue::to_value(& self._17)), ("_18",
+                        rt::ToValue::to_value(& self._18)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>
-            rt::FromValue
-            for Tuple18<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-            >
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+        > rt::FromValue
+        for Tuple18<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+        >
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1780,48 +2535,93 @@ pub mod daml_prim_DA_Types {
             T17: rt::FromValue,
             T18: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                    _16: rt::FromValue::from_value(
+                            rt::required_field(value, 15usize, "_16")?,
+                        )
                         .map_err(|e| e.at("_16"))?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                    _17: rt::FromValue::from_value(
+                            rt::required_field(value, 16usize, "_17")?,
+                        )
                         .map_err(|e| e.at("_17"))?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                    _18: rt::FromValue::from_value(
+                            rt::required_field(value, 17usize, "_18")?,
+                        )
                         .map_err(|e| e.at("_18"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple19<
             T1,
@@ -1883,29 +2683,48 @@ pub mod daml_prim_DA_Types {
             #[serde(rename = "_19")]
             pub _19: T19,
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>
-            rt::ToValue
-            for Tuple19<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-                T19,
-            >
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+        > rt::ToValue
+        for Tuple19<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+        >
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -1928,52 +2747,70 @@ pub mod daml_prim_DA_Types {
             T19: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                    ("_16", rt::ToValue::to_value(&self._16)),
-                    ("_17", rt::ToValue::to_value(&self._17)),
-                    ("_18", rt::ToValue::to_value(&self._18)),
-                    ("_19", rt::ToValue::to_value(&self._19)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)), ("_16",
+                        rt::ToValue::to_value(& self._16)), ("_17",
+                        rt::ToValue::to_value(& self._17)), ("_18",
+                        rt::ToValue::to_value(& self._18)), ("_19",
+                        rt::ToValue::to_value(& self._19)),
+                    ],
+                )
             }
         }
-        impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>
-            rt::FromValue
-            for Tuple19<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-                T19,
-            >
+        impl<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+        > rt::FromValue
+        for Tuple19<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+        >
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -1995,50 +2832,97 @@ pub mod daml_prim_DA_Types {
             T18: rt::FromValue,
             T19: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                    _16: rt::FromValue::from_value(
+                            rt::required_field(value, 15usize, "_16")?,
+                        )
                         .map_err(|e| e.at("_16"))?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                    _17: rt::FromValue::from_value(
+                            rt::required_field(value, 16usize, "_17")?,
+                        )
                         .map_err(|e| e.at("_17"))?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                    _18: rt::FromValue::from_value(
+                            rt::required_field(value, 17usize, "_18")?,
+                        )
                         .map_err(|e| e.at("_18"))?,
-                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)
+                    _19: rt::FromValue::from_value(
+                            rt::required_field(value, 18usize, "_19")?,
+                        )
                         .map_err(|e| e.at("_19"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Tuple20<
             T1,
@@ -2125,28 +3009,28 @@ pub mod daml_prim_DA_Types {
             T19,
             T20,
         > rt::ToValue
-            for Tuple20<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-                T19,
-                T20,
-            >
+        for Tuple20<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+            T20,
+        >
         where
             T1: rt::ToValue,
             T2: rt::ToValue,
@@ -2170,28 +3054,27 @@ pub mod daml_prim_DA_Types {
             T20: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("_1", rt::ToValue::to_value(&self._1)),
-                    ("_2", rt::ToValue::to_value(&self._2)),
-                    ("_3", rt::ToValue::to_value(&self._3)),
-                    ("_4", rt::ToValue::to_value(&self._4)),
-                    ("_5", rt::ToValue::to_value(&self._5)),
-                    ("_6", rt::ToValue::to_value(&self._6)),
-                    ("_7", rt::ToValue::to_value(&self._7)),
-                    ("_8", rt::ToValue::to_value(&self._8)),
-                    ("_9", rt::ToValue::to_value(&self._9)),
-                    ("_10", rt::ToValue::to_value(&self._10)),
-                    ("_11", rt::ToValue::to_value(&self._11)),
-                    ("_12", rt::ToValue::to_value(&self._12)),
-                    ("_13", rt::ToValue::to_value(&self._13)),
-                    ("_14", rt::ToValue::to_value(&self._14)),
-                    ("_15", rt::ToValue::to_value(&self._15)),
-                    ("_16", rt::ToValue::to_value(&self._16)),
-                    ("_17", rt::ToValue::to_value(&self._17)),
-                    ("_18", rt::ToValue::to_value(&self._18)),
-                    ("_19", rt::ToValue::to_value(&self._19)),
-                    ("_20", rt::ToValue::to_value(&self._20)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("_1", rt::ToValue::to_value(& self._1)), ("_2",
+                        rt::ToValue::to_value(& self._2)), ("_3", rt::ToValue::to_value(&
+                        self._3)), ("_4", rt::ToValue::to_value(& self._4)), ("_5",
+                        rt::ToValue::to_value(& self._5)), ("_6", rt::ToValue::to_value(&
+                        self._6)), ("_7", rt::ToValue::to_value(& self._7)), ("_8",
+                        rt::ToValue::to_value(& self._8)), ("_9", rt::ToValue::to_value(&
+                        self._9)), ("_10", rt::ToValue::to_value(& self._10)), ("_11",
+                        rt::ToValue::to_value(& self._11)), ("_12",
+                        rt::ToValue::to_value(& self._12)), ("_13",
+                        rt::ToValue::to_value(& self._13)), ("_14",
+                        rt::ToValue::to_value(& self._14)), ("_15",
+                        rt::ToValue::to_value(& self._15)), ("_16",
+                        rt::ToValue::to_value(& self._16)), ("_17",
+                        rt::ToValue::to_value(& self._17)), ("_18",
+                        rt::ToValue::to_value(& self._18)), ("_19",
+                        rt::ToValue::to_value(& self._19)), ("_20",
+                        rt::ToValue::to_value(& self._20)),
+                    ],
+                )
             }
         }
         impl<
@@ -2216,28 +3099,28 @@ pub mod daml_prim_DA_Types {
             T19,
             T20,
         > rt::FromValue
-            for Tuple20<
-                T1,
-                T2,
-                T3,
-                T4,
-                T5,
-                T6,
-                T7,
-                T8,
-                T9,
-                T10,
-                T11,
-                T12,
-                T13,
-                T14,
-                T15,
-                T16,
-                T17,
-                T18,
-                T19,
-                T20,
-            >
+        for Tuple20<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+            T20,
+        >
         where
             T1: rt::FromValue,
             T2: rt::FromValue,
@@ -2260,47 +3143,89 @@ pub mod daml_prim_DA_Types {
             T19: rt::FromValue,
             T20: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
-                    _2: rt::FromValue::from_value(rt::required_field(value, 1usize, "_2")?)
+                    _2: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "_2")?,
+                        )
                         .map_err(|e| e.at("_2"))?,
-                    _3: rt::FromValue::from_value(rt::required_field(value, 2usize, "_3")?)
+                    _3: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "_3")?,
+                        )
                         .map_err(|e| e.at("_3"))?,
-                    _4: rt::FromValue::from_value(rt::required_field(value, 3usize, "_4")?)
+                    _4: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "_4")?,
+                        )
                         .map_err(|e| e.at("_4"))?,
-                    _5: rt::FromValue::from_value(rt::required_field(value, 4usize, "_5")?)
+                    _5: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "_5")?,
+                        )
                         .map_err(|e| e.at("_5"))?,
-                    _6: rt::FromValue::from_value(rt::required_field(value, 5usize, "_6")?)
+                    _6: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "_6")?,
+                        )
                         .map_err(|e| e.at("_6"))?,
-                    _7: rt::FromValue::from_value(rt::required_field(value, 6usize, "_7")?)
+                    _7: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "_7")?,
+                        )
                         .map_err(|e| e.at("_7"))?,
-                    _8: rt::FromValue::from_value(rt::required_field(value, 7usize, "_8")?)
+                    _8: rt::FromValue::from_value(
+                            rt::required_field(value, 7usize, "_8")?,
+                        )
                         .map_err(|e| e.at("_8"))?,
-                    _9: rt::FromValue::from_value(rt::required_field(value, 8usize, "_9")?)
+                    _9: rt::FromValue::from_value(
+                            rt::required_field(value, 8usize, "_9")?,
+                        )
                         .map_err(|e| e.at("_9"))?,
-                    _10: rt::FromValue::from_value(rt::required_field(value, 9usize, "_10")?)
+                    _10: rt::FromValue::from_value(
+                            rt::required_field(value, 9usize, "_10")?,
+                        )
                         .map_err(|e| e.at("_10"))?,
-                    _11: rt::FromValue::from_value(rt::required_field(value, 10usize, "_11")?)
+                    _11: rt::FromValue::from_value(
+                            rt::required_field(value, 10usize, "_11")?,
+                        )
                         .map_err(|e| e.at("_11"))?,
-                    _12: rt::FromValue::from_value(rt::required_field(value, 11usize, "_12")?)
+                    _12: rt::FromValue::from_value(
+                            rt::required_field(value, 11usize, "_12")?,
+                        )
                         .map_err(|e| e.at("_12"))?,
-                    _13: rt::FromValue::from_value(rt::required_field(value, 12usize, "_13")?)
+                    _13: rt::FromValue::from_value(
+                            rt::required_field(value, 12usize, "_13")?,
+                        )
                         .map_err(|e| e.at("_13"))?,
-                    _14: rt::FromValue::from_value(rt::required_field(value, 13usize, "_14")?)
+                    _14: rt::FromValue::from_value(
+                            rt::required_field(value, 13usize, "_14")?,
+                        )
                         .map_err(|e| e.at("_14"))?,
-                    _15: rt::FromValue::from_value(rt::required_field(value, 14usize, "_15")?)
+                    _15: rt::FromValue::from_value(
+                            rt::required_field(value, 14usize, "_15")?,
+                        )
                         .map_err(|e| e.at("_15"))?,
-                    _16: rt::FromValue::from_value(rt::required_field(value, 15usize, "_16")?)
+                    _16: rt::FromValue::from_value(
+                            rt::required_field(value, 15usize, "_16")?,
+                        )
                         .map_err(|e| e.at("_16"))?,
-                    _17: rt::FromValue::from_value(rt::required_field(value, 16usize, "_17")?)
+                    _17: rt::FromValue::from_value(
+                            rt::required_field(value, 16usize, "_17")?,
+                        )
                         .map_err(|e| e.at("_17"))?,
-                    _18: rt::FromValue::from_value(rt::required_field(value, 17usize, "_18")?)
+                    _18: rt::FromValue::from_value(
+                            rt::required_field(value, 17usize, "_18")?,
+                        )
                         .map_err(|e| e.at("_18"))?,
-                    _19: rt::FromValue::from_value(rt::required_field(value, 18usize, "_19")?)
+                    _19: rt::FromValue::from_value(
+                            rt::required_field(value, 18usize, "_19")?,
+                        )
                         .map_err(|e| e.at("_19"))?,
-                    _20: rt::FromValue::from_value(rt::required_field(value, 19usize, "_20")?)
+                    _20: rt::FromValue::from_value(
+                            rt::required_field(value, 19usize, "_20")?,
+                        )
                         .map_err(|e| e.at("_20"))?,
                 })
             }
@@ -2310,7 +3235,14 @@ pub mod daml_prim_DA_Types {
 pub mod daml_prim_GHC_Tuple {
     pub mod GHC_Tuple {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Unit<A> {
             #[serde(rename = "_1")]
@@ -2321,16 +3253,20 @@ pub mod daml_prim_GHC_Tuple {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("_1", rt::ToValue::to_value(&self._1)),])
+                rt::record(::std::vec![("_1", rt::ToValue::to_value(& self._1)),])
             }
         }
         impl<A> rt::FromValue for Unit<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    _1: rt::FromValue::from_value(rt::required_field(value, 0usize, "_1")?)
+                    _1: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "_1")?,
+                        )
                         .map_err(|e| e.at("_1"))?,
                 })
             }
@@ -2341,7 +3277,13 @@ pub mod daml_prim_GHC_Types {
     pub mod GHC_Types {
         use canton_daml as rt;
         #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize,
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize,
         )]
         #[serde(crate = "rt::serde")]
         pub enum Ordering {
@@ -2354,21 +3296,27 @@ pub mod daml_prim_GHC_Types {
         }
         impl rt::ToValue for Ordering {
             fn to_value(&self) -> rt::Value {
-                rt::enum_value(match self {
-                    Ordering::LT => "LT",
-                    Ordering::EQ => "EQ",
-                    Ordering::GT => "GT",
-                })
+                rt::enum_value(
+                    match self {
+                        Ordering::LT => "LT",
+                        Ordering::EQ => "EQ",
+                        Ordering::GT => "GT",
+                    },
+                )
             }
         }
         impl rt::FromValue for Ordering {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 match rt::enum_constructor(value)? {
                     "LT" => ::core::result::Result::Ok(Ordering::LT),
                     "EQ" => ::core::result::Result::Ok(Ordering::EQ),
                     "GT" => ::core::result::Result::Ok(Ordering::GT),
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Ordering", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Ordering", other),
+                        )
                     }
                 }
             }
@@ -2379,7 +3327,13 @@ pub mod daml_stdlib_DA_Date_Types {
     pub mod DA_Date_Types {
         use canton_daml as rt;
         #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize,
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize,
         )]
         #[serde(crate = "rt::serde")]
         pub enum DayOfWeek {
@@ -2400,19 +3354,23 @@ pub mod daml_stdlib_DA_Date_Types {
         }
         impl rt::ToValue for DayOfWeek {
             fn to_value(&self) -> rt::Value {
-                rt::enum_value(match self {
-                    DayOfWeek::Monday => "Monday",
-                    DayOfWeek::Tuesday => "Tuesday",
-                    DayOfWeek::Wednesday => "Wednesday",
-                    DayOfWeek::Thursday => "Thursday",
-                    DayOfWeek::Friday => "Friday",
-                    DayOfWeek::Saturday => "Saturday",
-                    DayOfWeek::Sunday => "Sunday",
-                })
+                rt::enum_value(
+                    match self {
+                        DayOfWeek::Monday => "Monday",
+                        DayOfWeek::Tuesday => "Tuesday",
+                        DayOfWeek::Wednesday => "Wednesday",
+                        DayOfWeek::Thursday => "Thursday",
+                        DayOfWeek::Friday => "Friday",
+                        DayOfWeek::Saturday => "Saturday",
+                        DayOfWeek::Sunday => "Sunday",
+                    },
+                )
             }
         }
         impl rt::FromValue for DayOfWeek {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 match rt::enum_constructor(value)? {
                     "Monday" => ::core::result::Result::Ok(DayOfWeek::Monday),
                     "Tuesday" => ::core::result::Result::Ok(DayOfWeek::Tuesday),
@@ -2422,13 +3380,21 @@ pub mod daml_stdlib_DA_Date_Types {
                     "Saturday" => ::core::result::Result::Ok(DayOfWeek::Saturday),
                     "Sunday" => ::core::result::Result::Ok(DayOfWeek::Sunday),
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("DayOfWeek", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("DayOfWeek", other),
+                        )
                     }
                 }
             }
         }
         #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize,
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize,
         )]
         #[serde(crate = "rt::serde")]
         pub enum Month {
@@ -2459,24 +3425,28 @@ pub mod daml_stdlib_DA_Date_Types {
         }
         impl rt::ToValue for Month {
             fn to_value(&self) -> rt::Value {
-                rt::enum_value(match self {
-                    Month::Jan => "Jan",
-                    Month::Feb => "Feb",
-                    Month::Mar => "Mar",
-                    Month::Apr => "Apr",
-                    Month::May => "May",
-                    Month::Jun => "Jun",
-                    Month::Jul => "Jul",
-                    Month::Aug => "Aug",
-                    Month::Sep => "Sep",
-                    Month::Oct => "Oct",
-                    Month::Nov => "Nov",
-                    Month::Dec => "Dec",
-                })
+                rt::enum_value(
+                    match self {
+                        Month::Jan => "Jan",
+                        Month::Feb => "Feb",
+                        Month::Mar => "Mar",
+                        Month::Apr => "Apr",
+                        Month::May => "May",
+                        Month::Jun => "Jun",
+                        Month::Jul => "Jul",
+                        Month::Aug => "Aug",
+                        Month::Sep => "Sep",
+                        Month::Oct => "Oct",
+                        Month::Nov => "Nov",
+                        Month::Dec => "Dec",
+                    },
+                )
             }
         }
         impl rt::FromValue for Month {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 match rt::enum_constructor(value)? {
                     "Jan" => ::core::result::Result::Ok(Month::Jan),
                     "Feb" => ::core::result::Result::Ok(Month::Feb),
@@ -2491,7 +3461,9 @@ pub mod daml_stdlib_DA_Date_Types {
                     "Nov" => ::core::result::Result::Ok(Month::Nov),
                     "Dec" => ::core::result::Result::Ok(Month::Dec),
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Month", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Month", other),
+                        )
                     }
                 }
             }
@@ -2501,7 +3473,14 @@ pub mod daml_stdlib_DA_Date_Types {
 pub mod daml_stdlib_DA_Internal_Down {
     pub mod DA_Internal_Down {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Down<A> {
             #[serde(rename = "unpack")]
@@ -2512,16 +3491,22 @@ pub mod daml_stdlib_DA_Internal_Down {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("unpack", rt::ToValue::to_value(&self.unpack)),])
+                rt::record(
+                    ::std::vec![("unpack", rt::ToValue::to_value(& self.unpack)),],
+                )
             }
         }
         impl<A> rt::FromValue for Down<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                    unpack: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "unpack")?,
+                        )
                         .map_err(|e| e.at("unpack"))?,
                 })
             }
@@ -2531,7 +3516,14 @@ pub mod daml_stdlib_DA_Internal_Down {
 pub mod ghc_stdlib_DA_Internal_Template {
     pub mod DA_Internal_Template {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Archive {}
         impl rt::ToValue for Archive {
@@ -2540,7 +3532,9 @@ pub mod ghc_stdlib_DA_Internal_Template {
             }
         }
         impl rt::FromValue for Archive {
-            fn from_value(_value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                _value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {})
             }
         }
@@ -2549,22 +3543,35 @@ pub mod ghc_stdlib_DA_Internal_Template {
 pub mod daml_stdlib_DA_Logic_Types {
     pub mod DA_Logic_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Formula<A> {
             #[serde(rename = "Proposition")]
             Proposition(A),
             #[serde(rename = "Negation")]
             Negation(
-                ::std::boxed::Box<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
+                ::std::boxed::Box<
+                    crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>,
+                >,
             ),
             #[serde(rename = "Conjunction")]
             Conjunction(
-                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>,
+                >,
             ),
             #[serde(rename = "Disjunction")]
             Disjunction(
-                ::std::vec::Vec<crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>>,
+                ::std::vec::Vec<
+                    crate::daml_stdlib_DA_Logic_Types::DA_Logic_Types::Formula<A>,
+                >,
             ),
         }
         impl<A> rt::ToValue for Formula<A>
@@ -2592,23 +3599,47 @@ pub mod daml_stdlib_DA_Logic_Types {
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "Proposition" => ::core::result::Result::Ok(Formula::Proposition(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Proposition"))?,
-                    )),
-                    "Negation" => ::core::result::Result::Ok(Formula::Negation(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Negation"))?,
-                    )),
-                    "Conjunction" => ::core::result::Result::Ok(Formula::Conjunction(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Conjunction"))?,
-                    )),
-                    "Disjunction" => ::core::result::Result::Ok(Formula::Disjunction(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Disjunction"))?,
-                    )),
+                    "Proposition" => {
+                        ::core::result::Result::Ok(
+                            Formula::Proposition(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Proposition"))?,
+                            ),
+                        )
+                    }
+                    "Negation" => {
+                        ::core::result::Result::Ok(
+                            Formula::Negation(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Negation"))?,
+                            ),
+                        )
+                    }
+                    "Conjunction" => {
+                        ::core::result::Result::Ok(
+                            Formula::Conjunction(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Conjunction"))?,
+                            ),
+                        )
+                    }
+                    "Disjunction" => {
+                        ::core::result::Result::Ok(
+                            Formula::Disjunction(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Disjunction"))?,
+                            ),
+                        )
+                    }
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Formula", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Formula", other),
+                        )
                     }
                 }
             }
@@ -2618,7 +3649,14 @@ pub mod daml_stdlib_DA_Logic_Types {
 pub mod daml_stdlib_DA_Monoid_Types {
     pub mod DA_Monoid_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct All {
             ///Daml field `getAll`.
@@ -2627,23 +3665,31 @@ pub mod daml_stdlib_DA_Monoid_Types {
         }
         impl rt::ToValue for All {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "getAll",
-                    rt::ToValue::to_value(&self.get_all)
-                ),])
+                rt::record(
+                    ::std::vec![("getAll", rt::ToValue::to_value(& self.get_all)),],
+                )
             }
         }
         impl rt::FromValue for All {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    get_all: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "getAll",
-                    )?)
-                    .map_err(|e| e.at("getAll"))?,
+                    get_all: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "getAll")?,
+                        )
+                        .map_err(|e| e.at("getAll"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Any {
             ///Daml field `getAny`.
@@ -2652,23 +3698,31 @@ pub mod daml_stdlib_DA_Monoid_Types {
         }
         impl rt::ToValue for Any {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "getAny",
-                    rt::ToValue::to_value(&self.get_any)
-                ),])
+                rt::record(
+                    ::std::vec![("getAny", rt::ToValue::to_value(& self.get_any)),],
+                )
             }
         }
         impl rt::FromValue for Any {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    get_any: rt::FromValue::from_value(rt::required_field(
-                        value, 0usize, "getAny",
-                    )?)
-                    .map_err(|e| e.at("getAny"))?,
+                    get_any: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "getAny")?,
+                        )
+                        .map_err(|e| e.at("getAny"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Sum<A> {
             #[serde(rename = "unpack")]
@@ -2679,21 +3733,34 @@ pub mod daml_stdlib_DA_Monoid_Types {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("unpack", rt::ToValue::to_value(&self.unpack)),])
+                rt::record(
+                    ::std::vec![("unpack", rt::ToValue::to_value(& self.unpack)),],
+                )
             }
         }
         impl<A> rt::FromValue for Sum<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                    unpack: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "unpack")?,
+                        )
                         .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Product<A> {
             #[serde(rename = "unpack")]
@@ -2704,16 +3771,22 @@ pub mod daml_stdlib_DA_Monoid_Types {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("unpack", rt::ToValue::to_value(&self.unpack)),])
+                rt::record(
+                    ::std::vec![("unpack", rt::ToValue::to_value(& self.unpack)),],
+                )
             }
         }
         impl<A> rt::FromValue for Product<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                    unpack: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "unpack")?,
+                        )
                         .map_err(|e| e.at("unpack"))?,
                 })
             }
@@ -2723,7 +3796,14 @@ pub mod daml_stdlib_DA_Monoid_Types {
 pub mod daml_stdlib_DA_NonEmpty_Types {
     pub mod DA_NonEmpty_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct NonEmpty<A> {
             #[serde(rename = "hd")]
@@ -2736,21 +3816,29 @@ pub mod daml_stdlib_DA_NonEmpty_Types {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    ("hd", rt::ToValue::to_value(&self.hd)),
-                    ("tl", rt::ToValue::to_value(&self.tl)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("hd", rt::ToValue::to_value(& self.hd)), ("tl",
+                        rt::ToValue::to_value(& self.tl)),
+                    ],
+                )
             }
         }
         impl<A> rt::FromValue for NonEmpty<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    hd: rt::FromValue::from_value(rt::required_field(value, 0usize, "hd")?)
+                    hd: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "hd")?,
+                        )
                         .map_err(|e| e.at("hd"))?,
-                    tl: rt::FromValue::from_value(rt::required_field(value, 1usize, "tl")?)
+                    tl: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "tl")?,
+                        )
                         .map_err(|e| e.at("tl"))?,
                 })
             }
@@ -2760,7 +3848,14 @@ pub mod daml_stdlib_DA_NonEmpty_Types {
 pub mod daml_stdlib_DA_Random_Types {
     pub mod DA_Random_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Minstd {
             #[serde(rename = "Minstd")]
@@ -2776,14 +3871,23 @@ pub mod daml_stdlib_DA_Random_Types {
             }
         }
         impl rt::FromValue for Minstd {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "Minstd" => ::core::result::Result::Ok(Minstd::Minstd(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Minstd"))?,
-                    )),
+                    "Minstd" => {
+                        ::core::result::Result::Ok(
+                            Minstd::Minstd(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Minstd"))?,
+                            ),
+                        )
+                    }
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Minstd", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Minstd", other),
+                        )
                     }
                 }
             }
@@ -2793,7 +3897,14 @@ pub mod daml_stdlib_DA_Random_Types {
 pub mod daml_stdlib_DA_Semigroup_Types {
     pub mod DA_Semigroup_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Min<A> {
             #[serde(rename = "unpack")]
@@ -2804,21 +3915,34 @@ pub mod daml_stdlib_DA_Semigroup_Types {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("unpack", rt::ToValue::to_value(&self.unpack)),])
+                rt::record(
+                    ::std::vec![("unpack", rt::ToValue::to_value(& self.unpack)),],
+                )
             }
         }
         impl<A> rt::FromValue for Min<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                    unpack: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "unpack")?,
+                        )
                         .map_err(|e| e.at("unpack"))?,
                 })
             }
         }
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Max<A> {
             #[serde(rename = "unpack")]
@@ -2829,16 +3953,22 @@ pub mod daml_stdlib_DA_Semigroup_Types {
             A: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("unpack", rt::ToValue::to_value(&self.unpack)),])
+                rt::record(
+                    ::std::vec![("unpack", rt::ToValue::to_value(& self.unpack)),],
+                )
             }
         }
         impl<A> rt::FromValue for Max<A>
         where
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    unpack: rt::FromValue::from_value(rt::required_field(value, 0usize, "unpack")?)
+                    unpack: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "unpack")?,
+                        )
                         .map_err(|e| e.at("unpack"))?,
                 })
             }
@@ -2848,7 +3978,14 @@ pub mod daml_stdlib_DA_Semigroup_Types {
 pub mod daml_stdlib_DA_Set_Types {
     pub mod DA_Set_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct Set<K> {
             #[serde(rename = "map")]
@@ -2859,16 +3996,20 @@ pub mod daml_stdlib_DA_Set_Types {
             K: rt::ToValue,
         {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![("map", rt::ToValue::to_value(&self.map)),])
+                rt::record(::std::vec![("map", rt::ToValue::to_value(& self.map)),])
             }
         }
         impl<K> rt::FromValue for Set<K>
         where
             K: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    map: rt::FromValue::from_value(rt::required_field(value, 0usize, "map")?)
+                    map: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "map")?,
+                        )
                         .map_err(|e| e.at("map"))?,
                 })
             }
@@ -2878,7 +4019,14 @@ pub mod daml_stdlib_DA_Set_Types {
 pub mod daml_stdlib_DA_Stack_Types {
     pub mod DA_Stack_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct SrcLoc {
             ///Daml field `srcLocPackage`.
@@ -2905,74 +4053,53 @@ pub mod daml_stdlib_DA_Stack_Types {
         }
         impl rt::ToValue for SrcLoc {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![
-                    (
-                        "srcLocPackage",
-                        rt::ToValue::to_value(&self.src_loc_package)
-                    ),
-                    ("srcLocModule", rt::ToValue::to_value(&self.src_loc_module)),
-                    ("srcLocFile", rt::ToValue::to_value(&self.src_loc_file)),
-                    (
-                        "srcLocStartLine",
-                        rt::ToValue::to_value(&self.src_loc_start_line)
-                    ),
-                    (
-                        "srcLocStartCol",
-                        rt::ToValue::to_value(&self.src_loc_start_col)
-                    ),
-                    (
-                        "srcLocEndLine",
-                        rt::ToValue::to_value(&self.src_loc_end_line)
-                    ),
-                    ("srcLocEndCol", rt::ToValue::to_value(&self.src_loc_end_col)),
-                ])
+                rt::record(
+                    ::std::vec![
+                        ("srcLocPackage", rt::ToValue::to_value(& self.src_loc_package)),
+                        ("srcLocModule", rt::ToValue::to_value(& self.src_loc_module)),
+                        ("srcLocFile", rt::ToValue::to_value(& self.src_loc_file)),
+                        ("srcLocStartLine", rt::ToValue::to_value(& self
+                        .src_loc_start_line)), ("srcLocStartCol", rt::ToValue::to_value(&
+                        self.src_loc_start_col)), ("srcLocEndLine",
+                        rt::ToValue::to_value(& self.src_loc_end_line)), ("srcLocEndCol",
+                        rt::ToValue::to_value(& self.src_loc_end_col)),
+                    ],
+                )
             }
         }
         impl rt::FromValue for SrcLoc {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    src_loc_package: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        0usize,
-                        "srcLocPackage",
-                    )?)
-                    .map_err(|e| e.at("srcLocPackage"))?,
-                    src_loc_module: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        1usize,
-                        "srcLocModule",
-                    )?)
-                    .map_err(|e| e.at("srcLocModule"))?,
-                    src_loc_file: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        2usize,
-                        "srcLocFile",
-                    )?)
-                    .map_err(|e| e.at("srcLocFile"))?,
-                    src_loc_start_line: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        3usize,
-                        "srcLocStartLine",
-                    )?)
-                    .map_err(|e| e.at("srcLocStartLine"))?,
-                    src_loc_start_col: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        4usize,
-                        "srcLocStartCol",
-                    )?)
-                    .map_err(|e| e.at("srcLocStartCol"))?,
-                    src_loc_end_line: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        5usize,
-                        "srcLocEndLine",
-                    )?)
-                    .map_err(|e| e.at("srcLocEndLine"))?,
-                    src_loc_end_col: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        6usize,
-                        "srcLocEndCol",
-                    )?)
-                    .map_err(|e| e.at("srcLocEndCol"))?,
+                    src_loc_package: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "srcLocPackage")?,
+                        )
+                        .map_err(|e| e.at("srcLocPackage"))?,
+                    src_loc_module: rt::FromValue::from_value(
+                            rt::required_field(value, 1usize, "srcLocModule")?,
+                        )
+                        .map_err(|e| e.at("srcLocModule"))?,
+                    src_loc_file: rt::FromValue::from_value(
+                            rt::required_field(value, 2usize, "srcLocFile")?,
+                        )
+                        .map_err(|e| e.at("srcLocFile"))?,
+                    src_loc_start_line: rt::FromValue::from_value(
+                            rt::required_field(value, 3usize, "srcLocStartLine")?,
+                        )
+                        .map_err(|e| e.at("srcLocStartLine"))?,
+                    src_loc_start_col: rt::FromValue::from_value(
+                            rt::required_field(value, 4usize, "srcLocStartCol")?,
+                        )
+                        .map_err(|e| e.at("srcLocStartCol"))?,
+                    src_loc_end_line: rt::FromValue::from_value(
+                            rt::required_field(value, 5usize, "srcLocEndLine")?,
+                        )
+                        .map_err(|e| e.at("srcLocEndLine"))?,
+                    src_loc_end_col: rt::FromValue::from_value(
+                            rt::required_field(value, 6usize, "srcLocEndCol")?,
+                        )
+                        .map_err(|e| e.at("srcLocEndCol"))?,
                 })
             }
         }
@@ -2981,7 +4108,14 @@ pub mod daml_stdlib_DA_Stack_Types {
 pub mod daml_stdlib_DA_Time_Types {
     pub mod DA_Time_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde")]
         pub struct RelTime {
             #[serde(rename = "microseconds")]
@@ -2989,21 +4123,22 @@ pub mod daml_stdlib_DA_Time_Types {
         }
         impl rt::ToValue for RelTime {
             fn to_value(&self) -> rt::Value {
-                rt::record(::std::vec![(
-                    "microseconds",
-                    rt::ToValue::to_value(&self.microseconds)
-                ),])
+                rt::record(
+                    ::std::vec![
+                        ("microseconds", rt::ToValue::to_value(& self.microseconds)),
+                    ],
+                )
             }
         }
         impl rt::FromValue for RelTime {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 ::core::result::Result::Ok(Self {
-                    microseconds: rt::FromValue::from_value(rt::required_field(
-                        value,
-                        0usize,
-                        "microseconds",
-                    )?)
-                    .map_err(|e| e.at("microseconds"))?,
+                    microseconds: rt::FromValue::from_value(
+                            rt::required_field(value, 0usize, "microseconds")?,
+                        )
+                        .map_err(|e| e.at("microseconds"))?,
                 })
             }
         }
@@ -3012,11 +4147,20 @@ pub mod daml_stdlib_DA_Time_Types {
 pub mod daml_stdlib_DA_Validation_Types {
     pub mod DA_Validation_Types {
         use canton_daml as rt;
-        #[derive(Clone, Debug, PartialEq, Eq, rt::serde::Serialize, rt::serde::Deserialize)]
+        #[derive(
+            Clone,
+            Debug,
+            PartialEq,
+            Eq,
+            rt::serde::Serialize,
+            rt::serde::Deserialize
+        )]
         #[serde(crate = "rt::serde", tag = "tag", content = "value")]
         pub enum Validation<Errs, A> {
             #[serde(rename = "Errors")]
-            Errors(crate::daml_stdlib_DA_NonEmpty_Types::DA_NonEmpty_Types::NonEmpty<Errs>),
+            Errors(
+                crate::daml_stdlib_DA_NonEmpty_Types::DA_NonEmpty_Types::NonEmpty<Errs>,
+            ),
             #[serde(rename = "Success")]
             Success(A),
         }
@@ -3041,17 +4185,31 @@ pub mod daml_stdlib_DA_Validation_Types {
             Errs: rt::FromValue,
             A: rt::FromValue,
         {
-            fn from_value(value: &rt::Value) -> ::core::result::Result<Self, rt::ValueError> {
+            fn from_value(
+                value: &rt::Value,
+            ) -> ::core::result::Result<Self, rt::ValueError> {
                 let (constructor, payload) = rt::variant_parts(value)?;
                 match constructor {
-                    "Errors" => ::core::result::Result::Ok(Validation::Errors(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Errors"))?,
-                    )),
-                    "Success" => ::core::result::Result::Ok(Validation::Success(
-                        rt::FromValue::from_value(payload).map_err(|e| e.at("Success"))?,
-                    )),
+                    "Errors" => {
+                        ::core::result::Result::Ok(
+                            Validation::Errors(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Errors"))?,
+                            ),
+                        )
+                    }
+                    "Success" => {
+                        ::core::result::Result::Ok(
+                            Validation::Success(
+                                rt::FromValue::from_value(payload)
+                                    .map_err(|e| e.at("Success"))?,
+                            ),
+                        )
+                    }
                     other => {
-                        ::core::result::Result::Err(rt::unexpected_constructor("Validation", other))
+                        ::core::result::Result::Err(
+                            rt::unexpected_constructor("Validation", other),
+                        )
                     }
                 }
             }

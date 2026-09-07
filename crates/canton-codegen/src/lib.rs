@@ -96,9 +96,12 @@ const MODULE_PREAMBLE: &str = concat!(
 /// The lint header for a whole generated crate. Daml names are not Rust
 /// casing and the emitter deliberately emits some unused glue, so those two
 /// lints are silenced; `clippy::all` is off because generated code is not
-/// hand-maintained and its style is not the reader's business.
-const CRATE_LINTS: &str =
-    "#![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]\n";
+/// hand-maintained and its style is not the reader's business. `unsafe_code`
+/// is forbidden outright: the emitter never writes any, and a generated crate
+/// outside this workspace does not inherit the workspace's `forbid`, so the
+/// guarantee has to travel in the file.
+const CRATE_LINTS: &str = "#![forbid(unsafe_code)]\n\
+     #![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]\n";
 
 /// The crate-level docs for a generated crate: what it is, how it is used, and
 /// an index of the Daml packages inside it — otherwise a reader landing on
@@ -110,7 +113,8 @@ fn crate_docs(krate: &Crate) -> String {
     docs.push_str("//! Typed Rust bindings generated from a Daml archive (DAR).\n//!\n");
     docs.push_str(
         "//! **Generated file — do not edit by hand.** Regenerate with\n\
-         //! `dpm-codegen-rust --dar <the DAR> --out <this crate>`; edits are lost.\n//!\n\
+         //! `dpm-codegen-rust` from the source this crate's `Cargo.toml` records\n\
+         //! (a DAR, or a participant's package payloads); edits are lost.\n//!\n\
          //! Each Daml package in the DAR's dependency closure is one top-level\n\
          //! module, and each Daml module a submodule under it, so cross-package\n\
          //! references resolve and names never collide. Templates carry typed\n\
