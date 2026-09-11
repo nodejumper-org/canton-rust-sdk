@@ -66,6 +66,27 @@ The decoder is held to the official JVM reader by a conformance oracle — the
 
 V2 reuses `splice-api-token-metadata-v1`; there is no `metadata-v2`.
 
+Which standard each crate targets, crate by crate:
+
+| Crate | Standard | What it holds |
+|---|---|---|
+| `canton-splice-api-token-metadata-v1` | V1 and V2 (shared) | `ChoiceContext`, `ExtraArgs`, `Metadata`, `AnyValue` |
+| `canton-splice-api-token-holding-v1` | CIP-56 V1 | `Holding`, `InstrumentId`, `Lock` |
+| `canton-splice-api-token-transfer-instruction-v1` | CIP-56 V1 | `TransferFactory`, `TransferInstruction` |
+| `canton-splice-api-token-allocation-v1` | CIP-56 V1 | `Allocation`, `SettlementInfo`, `TransferLeg` |
+| `canton-splice-api-token-allocation-instruction-v1` | CIP-56 V1 | `AllocationFactory`, `AllocationInstruction` |
+| `canton-splice-api-token-allocation-request-v1` | CIP-56 V1 | `AllocationRequest` |
+| `canton-splice-api-token-burn-mint-v1` | CIP-56 V1 | `BurnMintFactory` |
+| `canton-splice-api-featured-app-v1` | V1 (featured-app API) | `FeaturedAppRight`, activity markers |
+| `canton-splice-api-token-holding-v2` | CIP-0112 V2 | `Holding`, `Account`, `InstrumentId`, `Lock` |
+| `canton-splice-api-token-transfer-instruction-v2` | CIP-0112 V2 | `TransferFactory`, `TransferInstruction` over accounts |
+| `canton-splice-api-token-transfer-events-v2` | CIP-0112 V2 | `EventLog`, the transfer events `events::holdings_changes` reads |
+| `canton-splice-api-token-allocation-v2` | CIP-0112 V2 | `Allocation`, `SettlementFactory`, `SettlementInfo`, `TransferLegSide` |
+| `canton-splice-api-token-allocation-instruction-v2` | CIP-0112 V2 | `AllocationFactory`, `AllocationInstruction` |
+| `canton-splice-api-token-allocation-request-v2` | CIP-0112 V2 | `AllocationRequest` |
+| `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | V1 and V2 — Amulet implements both | the Splice application packages, referencing the crates above rather than copying them |
+| `canton-token` | V1 (`canton_token::*`) and V2 (`canton_token::v2`) | the workflows |
+
 **Verified against a live registry** — the Splice scan of a cn-quickstart
 LocalNet. The instrument is **Amulet (Canton Coin)**, which declares both
 standards (`splice-api-token-transfer-instruction-v1` and `-v2`). That is a V2
@@ -134,6 +155,7 @@ each file name ends with the package id that hashes its bytes.
 | Suite | CI | Needs |
 |---|---|---|
 | unit, in-process, TLS, WebSocket | yes | nothing |
+| submit → observe → query, on gRPC and on JSON, as one flow | yes, against an in-process participant (`submit_observe_query_*` in `canton-ledger`'s tests) | nothing; the same flow runs against a real participant in the live suites (`create_contract_and_read_transaction`, `json_submit_and_read_back`) |
 | conformance (`canton-conformance`) | yes | nothing |
 | bindings drift, eighteen of the nineteen generated crates | yes | the pinned DARs, fetched and checksummed; the V2 and stdlib crates need nothing. `canton-quickstart-licensing` is the exception — its DAR is built from source, so it is guarded locally and not in CI |
 | Daml-LF conformance oracle | yes | a JVM |

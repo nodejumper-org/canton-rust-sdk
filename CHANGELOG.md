@@ -119,7 +119,11 @@ on; the ones that did not survive that check are not here.
   scripted server; the interactive-submission accessors, the registry's
   transport verdict (refactored to be testable on the strings it reads), the
   PQS row accessors and path spellings, and the signer's `Debug` and
-  fingerprint are pinned by unit tests.
+  fingerprint are pinned by unit tests. The proposal's "submit → observe →
+  query on both transports" runs in CI as one flow per transport against an
+  in-process participant (`submit_observe_query_over_grpc` / `_over_json`),
+  with the contract id threaded through all three steps; the live suites run
+  the same flow against a real node.
 - **The live runs are on record.** The three token-standard examples and the
   JSON-only package read were run again on 2026-09-07 and their output is
   committed verbatim, with the environment and commands, under

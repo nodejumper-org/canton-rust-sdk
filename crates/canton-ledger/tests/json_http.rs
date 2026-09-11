@@ -904,3 +904,87 @@ async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
         "{error:?}"
     );
 }
+
+// ---- JSON: submit → observe → query, as one flow ------------------------------
+
+/// The same three operations the gRPC flow test threads together, over the
+/// JSON transport: the contract id the submission returned is what the
+/// bounded updates read reports for that offset and what the active contract
+/// set at that offset holds — and each request asks about the offset the
+/// previous answer gave, rather than a number the test knew in advance.
+#[tokio::test]
+async fn submit_observe_query_over_json() {
+    let created_event = r#"{"contractId":"00flow-1","templateId":"pkg:Licensing.AppInstall:AppInstallRequest","offset":5}"#;
+    let transaction = format!(
+        r#"{{"updateId":"u-1","commandId":"c-1","offset":5,"events":[{{"created":{created_event}}}]}}"#
+    );
+    let (url, seen) = scripted_server(vec![
+        (200, format!(r#"{{"transaction":{transaction}}}"#)),
+        (
+            200,
+            format!(r#"[{{"update":{{"Transaction":{{"value":{transaction}}}}}}}]"#),
+        ),
+        (
+            200,
+            format!(
+                r#"[{{"contractEntry":{{"JsActiveContract":{{"createdEvent":{created_event}}}}}}}]"#
+            ),
+        ),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+    let party = "alice::1220ab".to_string();
+
+    // Submit.
+    let commands = JsonCommands::new(vec![party.clone()]).add_create(
+        "#quickstart-licensing:Licensing.AppInstall:AppInstallRequest",
+        serde_json::json!({ "user": party }),
+    );
+    let response = client
+        .submit_and_wait_for_transaction(&commands)
+        .await
+        .expect("submitted");
+    let offset = response.transaction.offset;
+    let contract_id = response.transaction.events[0]["created"]["contractId"]
+        .as_str()
+        .expect("a created event with an id")
+        .to_string();
+    assert_eq!(contract_id, "00flow-1");
+
+    // Observe: the updates in (offset - 1, offset].
+    let updates = client
+        .updates(vec![party.clone()], offset - 1, Some(offset), None)
+        .await
+        .expect("updates");
+    assert_eq!(updates.len(), 1);
+    assert_eq!(
+        updates[0]["update"]["Transaction"]["value"]["events"][0]["created"]["contractId"],
+        contract_id
+    );
+
+    // Query: the active contract set at that offset.
+    let acs = client
+        .active_contracts(vec![party], offset, None)
+        .await
+        .expect("acs");
+    assert_eq!(acs.len(), 1);
+    assert_eq!(
+        acs[0]["contractEntry"]["JsActiveContract"]["createdEvent"]["contractId"],
+        contract_id
+    );
+
+    // And every request asked about the offset the previous answer gave.
+    let requests = seen.lock().unwrap().clone();
+    let paths: Vec<&str> = requests.iter().map(|r| r.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        [
+            "/v2/commands/submit-and-wait-for-transaction",
+            "/v2/updates",
+            "/v2/state/active-contracts"
+        ]
+    );
+    assert_eq!(requests[1].body["beginExclusive"], offset - 1);
+    assert_eq!(requests[1].body["endInclusive"], offset);
+    assert_eq!(requests[2].body["activeAtOffset"], offset);
+}

@@ -1464,3 +1464,269 @@ async fn the_waiting_handle_returns_what_the_participant_answered() {
     assert_eq!(response.update_id, "u-wait");
     assert_eq!(response.completion_offset, 41);
 }
+
+// ---- gRPC: submit → observe → query, as one flow ----------------------------
+//
+// The proposal's phrase for what the suite exercises in CI. Each of the three
+// operations had an in-process test of its own; this is the three against one
+// participant, so what came back from the submission is what the update
+// stream reports and what the active contract set holds — the contract id
+// threaded through all three rather than asserted in isolation.
+
+/// A participant with one synchronizer's worth of state: creates are
+/// appended at the next offset, the update stream replays them after
+/// `begin_exclusive`, and the active contract set is the creates at or before
+/// the offset asked for.
+#[derive(Clone, Default)]
+struct Participant {
+    created: Arc<Mutex<Vec<(i64, pb::CreatedEvent)>>>,
+}
+
+impl Participant {
+    fn transaction(offset: i64, event: &pb::CreatedEvent) -> pb::Transaction {
+        pb::Transaction {
+            update_id: format!("u-{offset}"),
+            offset,
+            events: vec![pb::Event {
+                event: Some(pb::event::Event::Created(event.clone())),
+            }],
+            ..Default::default()
+        }
+    }
+}
+
+#[tonic::async_trait]
+impl pb::command_service_server::CommandService for Participant {
+    async fn submit_and_wait_for_transaction(
+        &self,
+        request: Request<pb::SubmitAndWaitForTransactionRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForTransactionResponse>, Status> {
+        let commands = request.into_inner().commands.unwrap_or_default();
+        let Some(pb::command::Command::Create(create)) =
+            commands.commands.first().and_then(|c| c.command.clone())
+        else {
+            return Err(Status::invalid_argument("this participant only creates"));
+        };
+        let mut created = self.created.lock().unwrap();
+        let offset = i64::try_from(created.len()).unwrap() + 1;
+        let event = pb::CreatedEvent {
+            contract_id: format!("00flow-{offset}"),
+            template_id: create.template_id,
+            create_arguments: create.create_arguments,
+            offset,
+            ..Default::default()
+        };
+        created.push((offset, event.clone()));
+        Ok(Response::new(pb::SubmitAndWaitForTransactionResponse {
+            transaction: Some(Self::transaction(offset, &event)),
+        }))
+    }
+    async fn submit_and_wait(
+        &self,
+        _r: Request<pb::SubmitAndWaitRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn submit_and_wait_for_reassignment(
+        &self,
+        _r: Request<pb::SubmitAndWaitForReassignmentRequest>,
+    ) -> Result<Response<pb::SubmitAndWaitForReassignmentResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tonic::async_trait]
+impl UpdateService for Participant {
+    type GetUpdatesStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::GetUpdatesResponse, Status>> + Send>>;
+
+    async fn get_updates(
+        &self,
+        request: Request<pb::GetUpdatesRequest>,
+    ) -> Result<Response<Self::GetUpdatesStream>, Status> {
+        let request = request.into_inner();
+        let items: Vec<Result<pb::GetUpdatesResponse, Status>> = self
+            .created
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(offset, _)| *offset > request.begin_exclusive)
+            .filter(|(offset, _)| request.end_inclusive.is_none_or(|end| *offset <= end))
+            .map(|(offset, event)| {
+                Ok(pb::GetUpdatesResponse {
+                    update: Some(pb::get_updates_response::Update::Transaction(
+                        Self::transaction(*offset, event),
+                    )),
+                })
+            })
+            .collect();
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+    async fn get_update_by_offset(
+        &self,
+        _r: Request<pb::GetUpdateByOffsetRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_id(
+        &self,
+        _r: Request<pb::GetUpdateByIdRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_update_by_hash(
+        &self,
+        _r: Request<pb::GetUpdateByHashRequest>,
+    ) -> Result<Response<pb::GetUpdateResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_updates_page(
+        &self,
+        _r: Request<pb::GetUpdatesPageRequest>,
+    ) -> Result<Response<pb::GetUpdatesPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tonic::async_trait]
+impl StateService for Participant {
+    async fn get_active_contracts_page(
+        &self,
+        _r: Request<pb::GetActiveContractsPageRequest>,
+    ) -> Result<Response<pb::GetActiveContractsPageResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    type GetActiveContractsStream = Pin<
+        Box<dyn tokio_stream::Stream<Item = Result<pb::GetActiveContractsResponse, Status>> + Send>,
+    >;
+    async fn get_active_contracts(
+        &self,
+        request: Request<pb::GetActiveContractsRequest>,
+    ) -> Result<Response<Self::GetActiveContractsStream>, Status> {
+        let at = request.into_inner().active_at_offset;
+        let items: Vec<Result<pb::GetActiveContractsResponse, Status>> = self
+            .created
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(offset, _)| *offset <= at)
+            .map(|(_, event)| {
+                Ok(pb::GetActiveContractsResponse {
+                    contract_entry: Some(
+                        pb::get_active_contracts_response::ContractEntry::ActiveContract(
+                            pb::ActiveContract {
+                                created_event: Some(event.clone()),
+                                ..Default::default()
+                            },
+                        ),
+                    ),
+                    ..Default::default()
+                })
+            })
+            .collect();
+        Ok(Response::new(Box::pin(tokio_stream::iter(items))))
+    }
+    async fn get_connected_synchronizers(
+        &self,
+        _r: Request<pb::GetConnectedSynchronizersRequest>,
+    ) -> Result<Response<pb::GetConnectedSynchronizersResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_ledger_end(
+        &self,
+        _r: Request<pb::GetLedgerEndRequest>,
+    ) -> Result<Response<pb::GetLedgerEndResponse>, Status> {
+        let offset = i64::try_from(self.created.lock().unwrap().len()).unwrap();
+        Ok(Response::new(pb::GetLedgerEndResponse {
+            offset,
+            ..Default::default()
+        }))
+    }
+    async fn get_latest_pruned_offsets(
+        &self,
+        _r: Request<pb::GetLatestPrunedOffsetsRequest>,
+    ) -> Result<Response<pb::GetLatestPrunedOffsetsResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
+
+#[tokio::test]
+async fn submit_observe_query_over_grpc() {
+    use canton_ledger::{Submit, create, identifier, record, value};
+    use pb::command_service_server::CommandServiceServer;
+
+    let participant = Participant::default();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let incoming = TcpListenerStream::new(listener);
+    let serving = participant.clone();
+    tokio::spawn(async move {
+        Server::builder()
+            .add_service(CommandServiceServer::new(serving.clone()))
+            .add_service(UpdateServiceServer::new(serving.clone()))
+            .add_service(StateServiceServer::new(serving))
+            .serve_with_incoming(incoming)
+            .await
+            .unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+    let party = "alice::1220ab".to_string();
+
+    // Submit: one create, and read the transaction it produced.
+    let template = identifier(
+        "#quickstart-licensing",
+        "Licensing.AppInstall",
+        "AppInstallRequest",
+    );
+    let command = create(
+        template.clone(),
+        record(vec![("user", value::party(&party))]),
+    );
+    let transaction = client
+        .submit_and_wait_for_transaction(Submit::new(party.clone()).add_command(command))
+        .await
+        .expect("submitted");
+    assert_eq!(transaction.offset, 1);
+    let created = match transaction.events[0].event.as_ref().expect("an event") {
+        pb::event::Event::Created(created) => created.clone(),
+        other => panic!("expected a create, got {other:?}"),
+    };
+    assert_eq!(created.template_id, Some(template));
+    let contract_id = created.contract_id.clone();
+
+    // Observe: the update stream from before the submission reports it.
+    let updates = client
+        .updates(vec![party.clone()], 0)
+        .await
+        .expect("stream");
+    tokio::pin!(updates);
+    let observed = updates.next().await.expect("one update").expect("ok");
+    let pb::get_updates_response::Update::Transaction(seen) = observed else {
+        panic!("expected a transaction, got {observed:?}");
+    };
+    assert_eq!(seen.update_id, transaction.update_id);
+    let seen_id = match seen.events[0].event.as_ref().expect("an event") {
+        pb::event::Event::Created(c) => c.contract_id.clone(),
+        other => panic!("expected a create, got {other:?}"),
+    };
+    assert_eq!(
+        seen_id, contract_id,
+        "the stream reports the contract the submission created"
+    );
+
+    // Query: the active contract set at the transaction's offset holds it.
+    let acs = client
+        .active_contracts(vec![party], transaction.offset)
+        .await
+        .expect("acs");
+    tokio::pin!(acs);
+    let active = acs.next().await.expect("one contract").expect("ok");
+    assert_eq!(
+        active.created_event.expect("a created event").contract_id,
+        contract_id,
+        "the ACS holds the contract the submission created"
+    );
+    assert!(acs.next().await.is_none(), "and nothing else");
+}

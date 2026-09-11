@@ -73,6 +73,9 @@ canton-admin = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 # Server stubs (dev-only) so in-process gRPC test servers can be built.
 canton-proto = { workspace = true, features = ["server"] }
+# `router` lets one in-process participant serve several gRPC services on one
+# port, which is what the submit → observe → query flow test needs.
+tonic        = { workspace = true, features = ["transport", "codegen", "router"] }
 tokio-stream = { workspace = true, features = ["net"] }
 rcgen = "0.13"
 # The trace-propagation test needs a real OpenTelemetry context to propagate:
