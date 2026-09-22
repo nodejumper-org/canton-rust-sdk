@@ -351,7 +351,7 @@ each gated on one more variable:
 |---|---|---|
 | `CANTON_TOKEN_REGISTRY_URL` | `canton-token`'s live suite and the five examples: the token-standard registry (a Splice **Scan**) | `http://scan.localhost:4000` on a Splice LocalNet or Canton Builder Tool; `http://localhost:5012` on cn-quickstart — see below |
 | `CANTON_TOKEN_SENDER`, `CANTON_TOKEN_RECEIVER`, `CANTON_TOKEN_EXECUTOR`, `CANTON_TOKEN_INSTRUMENT`, `CANTON_TOKEN_AMOUNT` | the examples: who transfers what to whom | `app_provider_…::1220…`, `app_user_…::1220…`, `sv::1220…`, `Amulet`, `1.0` |
-| `CANTON_TOKEN` | a ready-made bearer token, instead of the OIDC variables | |
+| `CANTON_TOKEN` | a ready-made bearer token, instead of the OIDC variables | on Canton Builder Tool: `$(canton builder token --validator app-provider)`, whose user carries `ParticipantAdmin` as well |
 | `CANTON_TEST_AUDIENCE` | the OIDC `audience`, where the issuer wants one (Auth0, some Keycloak realms) | |
 | `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | `canton-ledger`'s `interactive_live` suite: onboarding an external party needs `ParticipantAdmin` | `app-provider-validator`, … |
 | `CANTON_PQS_URL` | `canton-pqs`'s live suite: a Scribe store following the party's participant | `postgres://pqs:pqs@localhost:5433/pqs` from [`tools/pqs/compose.yaml`](tools/pqs/compose.yaml); cn-quickstart's own is `postgres://cnadmin:…@localhost:5432/pqs-app-provider` |
@@ -385,7 +385,8 @@ cargo run -p canton-token --example v2_withdraw_allocation # or the sender takes
 
 A **party with Canton Coin** is the other prerequisite: on a Splice LocalNet
 open the App Provider wallet (`http://wallet.localhost:3000`, log in as
-`app-provider`), tap, and copy the party id from the header. With a single
+`app-provider`), tap, and copy the party id from the header (Canton Builder
+Tool also prints it under `canton builder env`). With a single
 party set `CANTON_TOKEN_RECEIVER` and `CANTON_TOKEN_EXECUTOR` to the sender:
 the registry answers `kind: self`, which needs neither a pre-approval nor an
 `accept`, and the settlement can be executed by the same token. With the App
@@ -412,6 +413,7 @@ export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIE
 cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 3 tests, one of them a refusal
 
 # PQS: a Scribe store following the participant — this compose runs one
+# (add SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=… where the participant wants a token)
 docker compose -f tools/pqs/compose.yaml up -d
 export CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs'
 cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests; the store must hold Amulet, so tap first

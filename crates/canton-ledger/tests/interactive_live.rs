@@ -94,14 +94,37 @@ fn unauthenticated() -> bool {
         && canton_core::localnet::token(None).is_none()
 }
 
-fn admin_client() -> Option<AdminClient> {
+/// The admin client: a second OIDC client where there is an issuer; the
+/// exported token where a LocalNet exports one (Canton Builder Tool's
+/// `ledger-api-user` carries `ParticipantAdmin`), checked for the right before
+/// it is relied on so a token without it skips rather than fails half-way;
+/// nothing at all on an unauthenticated participant.
+async fn admin_client() -> Option<AdminClient> {
     let config = canton_admin::Config::new(endpoint()?);
     let config = match admin_oidc() {
         Some(oidc) => config.with_oidc(TokenProvider::new(oidc)),
         None if unauthenticated() => config,
-        None => return None,
+        None => config.with_token(canton_core::localnet::token(None)?),
     };
-    AdminClient::connect_lazy(config).ok()
+    let admin = AdminClient::connect_lazy(config).ok()?;
+    if admin_oidc().is_none() && !unauthenticated() {
+        let rights = admin
+            .current_user_rights()
+            .await
+            .expect("the token authenticates as some ledger user");
+        let is_admin = rights.iter().any(|r| {
+            matches!(
+                r.kind,
+                Some(canton_ledger::proto::admin::right::Kind::ParticipantAdmin(
+                    _
+                ))
+            )
+        });
+        if !is_admin {
+            return None;
+        }
+    }
+    Some(admin)
 }
 
 fn ledger_client() -> Option<CantonClient> {
@@ -136,7 +159,7 @@ async fn ledger_user_id(ledger_admin: &AdminClient) -> String {
 /// participant computes in step one is what makes the key a `Signer` — it
 /// cannot be known before asking.
 async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
-    let admin = admin_client()?;
+    let admin = admin_client().await?;
     let ledger = ledger_client()?;
     // Self-inspect under the *ledger* token: the rights are granted to the user
     // that will submit, not to the admin that allocates.
