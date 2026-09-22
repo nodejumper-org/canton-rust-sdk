@@ -124,6 +124,16 @@ on; the ones that did not survive that check are not here.
   in-process participant (`submit_observe_query_over_grpc` / `_over_json`),
   with the contract id threaded through all three steps; the live suites run
   the same flow against a real node.
+- **The live suites run on any LocalNet, not only cn-quickstart.** The
+  interactive-submission suite runs against an unauthenticated participant
+  (Canton Builder Tool, Splice LocalNet's default) with nothing beyond the
+  endpoint, where before it skipped for want of an admin client; the PQS suite
+  reads `Amulet` — which any Splice LocalNet holds once its party has tapped —
+  instead of the reference app's `AppInstallRequest`, and
+  [`tools/pqs/compose.yaml`](tools/pqs/compose.yaml) runs a Scribe store
+  against any participant on the host in one command. The README's testing
+  section says where a LocalNet's registry is (`scan.localhost:4000`) and how
+  a single party runs every token example, `settle_batch` included.
 - **The live runs are on record.** The three token-standard examples and the
   JSON-only package read were run again on 2026-09-07 and their output is
   committed verbatim, with the environment and commands, under

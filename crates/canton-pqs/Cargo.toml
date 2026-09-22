@@ -42,6 +42,7 @@ tls     = ["dep:tokio-postgres-rustls", "dep:rustls", "dep:rustls-native-certs"]
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 serde_json = { workspace = true }
 canton-quickstart-licensing = { path = "../canton-quickstart-licensing" }
+canton-splice-amulet = { path = "../canton-splice-amulet" }
 
 [package.metadata.docs.rs]
 all-features = true

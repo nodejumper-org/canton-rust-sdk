@@ -6,8 +6,17 @@
 //! creates, and whether a payload read out of it deserializes into the same
 //! generated type the Ledger API path yields. Both are the point of the crate.
 //!
+//! The contracts read are `Amulet` (Canton Coin), which the party the store
+//! follows holds on any Splice LocalNet once it has tapped in its wallet — so
+//! the suite needs no application package on the participant.
+//!
 //! ```sh
+//! # cn-quickstart's store
 //! CANTON_PQS_URL='host=localhost port=5432 user=cnadmin password=… dbname=pqs-app-provider' \
+//!   cargo test -p canton-pqs --test live -- --nocapture
+//! # or a store of your own against any LocalNet: tools/pqs/compose.yaml
+//! docker compose -f tools/pqs/compose.yaml up -d
+//! CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs' \
 //!   cargo test -p canton-pqs --test live -- --nocapture
 //! ```
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -28,7 +37,7 @@ macro_rules! skip {
 }
 
 use canton_pqs::{PqsClient, Predicate, Query};
-use canton_quickstart_licensing::quickstart_licensing::Licensing_AppInstall::AppInstallRequest;
+use canton_splice_amulet::splice_amulet::Splice_Amulet::Amulet;
 
 async fn client() -> Option<PqsClient> {
     let url = std::env::var("CANTON_PQS_URL").ok()?;
@@ -45,14 +54,11 @@ async fn client() -> Option<PqsClient> {
 ///
 /// Returned rather than skipped: "no rows" and "nothing was checked" look
 /// identical in a passing run, and five of these tests used to end that way.
-async fn require_sample(client: &PqsClient) -> canton_pqs::Contract<AppInstallRequest> {
-    let contracts = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
+async fn require_sample(client: &PqsClient) -> canton_pqs::Contract<Amulet> {
+    let contracts = client.active::<Amulet>().await.expect("the query runs");
     contracts.into_iter().next().expect(
-        "this store holds no AppInstallRequest, so these tests would assert nothing — \
-         point CANTON_PQS_URL at a store with the reference app's contracts",
+        "this store holds no Amulet, so these tests would assert nothing — tap some Canton Coin \
+         in the wallet of the party the store follows, or point CANTON_PQS_URL at a store that has",
     )
 }
 
@@ -77,23 +83,20 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
         skip!("set CANTON_PQS_URL to a Scribe store");
         return;
     };
-    let contracts = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
+    let contracts = client.active::<Amulet>().await.expect("the query runs");
 
-    println!("active AppInstallRequest: {}", contracts.len());
-    let contract = contracts
-        .first()
-        .expect("this store holds no AppInstallRequest, so nothing would be asserted");
+    println!("active Amulet: {}", contracts.len());
+    let contract = contracts.first().expect(
+        "this store holds no Amulet, so nothing would be asserted — tap some Canton Coin first",
+    );
 
     // The payload is typed, not a JSON blob.
-    let payload: &AppInstallRequest = contract.payload();
+    let payload: &Amulet = contract.payload();
     println!(
-        "  {} provider={} user={}",
+        "  {} dso={} owner={}",
         contract.contract_id().as_str(),
-        payload.provider.as_str(),
-        payload.user.as_str()
+        payload.dso.as_str(),
+        payload.owner.as_str()
     );
 
     assert!(!contract.contract_id().as_str().is_empty());
@@ -107,10 +110,10 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
         contract.created_effective_at().is_some(),
         "a created contract has a ledger effective time"
     );
-    assert_eq!(contract.package_name(), "quickstart-licensing");
+    assert_eq!(contract.package_name(), "splice-amulet");
     assert!(
-        contract.signatories().contains(&payload.user.to_string()),
-        "the user signs an AppInstallRequest: {:?}",
+        contract.signatories().contains(&payload.owner.to_string()),
+        "the owner signs an Amulet: {:?}",
         contract.signatories()
     );
 }
@@ -124,10 +127,10 @@ async fn a_payload_predicate_filters_in_the_database() {
         return;
     };
     let sample = require_sample(&client).await;
-    let user = sample.payload().user.to_string();
+    let owner = sample.payload().owner.to_string();
 
     let matching = client
-        .run(&Query::<AppInstallRequest>::active().filter(Predicate::eq("user", user.clone())))
+        .run(&Query::<Amulet>::active().filter(Predicate::eq("owner", owner.clone())))
         .await
         .expect("the filtered query runs");
     assert!(
@@ -137,15 +140,12 @@ async fn a_payload_predicate_filters_in_the_database() {
     assert!(
         matching
             .iter()
-            .all(|c| c.payload().user.to_string() == user)
+            .all(|c| c.payload().owner.to_string() == owner)
     );
 
     // And a value nothing has returns nothing, rather than everything.
     let none = client
-        .run(
-            &Query::<AppInstallRequest>::active()
-                .filter(Predicate::eq("user", "nobody::1220deadbeef")),
-        )
+        .run(&Query::<Amulet>::active().filter(Predicate::eq("owner", "nobody::1220deadbeef")))
         .await
         .expect("the query runs");
     assert!(none.is_empty(), "an unmatched filter must match nothing");
@@ -160,24 +160,24 @@ async fn containment_and_party_columns_work_against_the_real_schema() {
         return;
     };
     let sample = require_sample(&client).await;
-    let user = sample.payload().user.to_string();
+    let owner = sample.payload().owner.to_string();
 
     let by_containment = client
         .run(
-            &Query::<AppInstallRequest>::active()
-                .filter(Predicate::contains(serde_json::json!({ "user": user }))),
+            &Query::<Amulet>::active()
+                .filter(Predicate::contains(serde_json::json!({ "owner": owner }))),
         )
         .await
         .expect("containment runs");
     assert!(!by_containment.is_empty());
 
     let by_signatory = client
-        .run(&canton_pqs::active_signed_by::<AppInstallRequest>(&user))
+        .run(&canton_pqs::active_signed_by::<Amulet>(&owner))
         .await
         .expect("the signatory query runs");
     assert!(
         !by_signatory.is_empty(),
-        "the user signs, so a signatory filter must find it"
+        "the owner signs, so a signatory filter must find it"
     );
 }
 
@@ -268,14 +268,14 @@ async fn a_contract_is_found_by_id() {
     let sample = require_sample(&client).await;
 
     let found = client
-        .lookup::<AppInstallRequest>(sample.contract_id().as_str())
+        .lookup::<Amulet>(sample.contract_id().as_str())
         .await
         .expect("the lookup runs")
         .expect("the contract is there");
     assert_eq!(found.contract_id().as_str(), sample.contract_id().as_str());
 
     let missing = client
-        .lookup::<AppInstallRequest>("00deadbeef")
+        .lookup::<Amulet>("00deadbeef")
         .await
         .expect("the lookup runs");
     assert!(missing.is_none(), "an unknown id is None, not an error");
@@ -290,12 +290,9 @@ async fn the_acs_can_be_read_as_of_an_offset() {
         return;
     };
     let offset = client.latest_offset().await.expect("an offset");
-    let now = client
-        .active::<AppInstallRequest>()
-        .await
-        .expect("the query runs");
+    let now = client.active::<Amulet>().await.expect("the query runs");
     let pinned = client
-        .run(&Query::<AppInstallRequest>::active_at(offset))
+        .run(&Query::<Amulet>::active_at(offset))
         .await
         .expect("the pinned query runs");
 
@@ -310,7 +307,7 @@ async fn the_acs_can_be_read_as_of_an_offset() {
     // and "I cannot tell you what was active then" are different facts, and a
     // caller paging backwards needs to know which it got.
     let err = client
-        .run(&Query::<AppInstallRequest>::active_at(1))
+        .run(&Query::<Amulet>::active_at(1))
         .await
         .expect_err("an offset before the oldest is refused");
     let message = err.to_string();

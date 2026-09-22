@@ -167,8 +167,8 @@ each file name ends with the package id that hashes its bytes.
 | bindings drift, eighteen of the nineteen generated crates | yes | the pinned DARs, fetched and checksummed; the V2 and stdlib crates need nothing. `canton-quickstart-licensing` is the exception — its DAR is built from source, so it is guarded locally and not in CI |
 | Daml-LF conformance oracle | yes | a JVM |
 | live Ledger API, interactive submission | no | a Canton participant |
-| live PQS | no | a Scribe store |
-| token-standard registry | no | a Splice scan — the **super-validator** runs one, so a LocalNet with `SV_PROFILE=on` has it (cn-quickstart serves it on `:5012` and does not publish that port to the host) |
+| live PQS | no | a Scribe store following the participant — [`tools/pqs/compose.yaml`](../tools/pqs/compose.yaml) runs one against any LocalNet on the host |
+| token-standard registry | no | a Splice Scan — the **super-validator** runs one: a Splice LocalNet or Canton Builder Tool publishes it at `scan.localhost:4000`; cn-quickstart with `SV_PROFILE=on` serves it on `:5012` without publishing the port. The public DevNet Scan serves the same paths unauthenticated |
 
 A suite CI cannot run is gated on an environment variable and **fails rather
 than skips** when that variable is set — a connection failure and an

@@ -349,15 +349,17 @@ each gated on one more variable:
 
 | Variable | What it gates | Example (cn-quickstart) |
 |---|---|---|
-| `CANTON_TOKEN_REGISTRY_URL` | `canton-token`'s live suite and the five examples: the token-standard registry (a Splice **Scan**) | `http://localhost:5012` — see below |
+| `CANTON_TOKEN_REGISTRY_URL` | `canton-token`'s live suite and the five examples: the token-standard registry (a Splice **Scan**) | `http://scan.localhost:4000` on a Splice LocalNet or Canton Builder Tool; `http://localhost:5012` on cn-quickstart — see below |
 | `CANTON_TOKEN_SENDER`, `CANTON_TOKEN_RECEIVER`, `CANTON_TOKEN_EXECUTOR`, `CANTON_TOKEN_INSTRUMENT`, `CANTON_TOKEN_AMOUNT` | the examples: who transfers what to whom | `app_provider_…::1220…`, `app_user_…::1220…`, `sv::1220…`, `Amulet`, `1.0` |
 | `CANTON_TOKEN` | a ready-made bearer token, instead of the OIDC variables | |
 | `CANTON_TEST_AUDIENCE` | the OIDC `audience`, where the issuer wants one (Auth0, some Keycloak realms) | |
 | `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | `canton-ledger`'s `interactive_live` suite: onboarding an external party needs `ParticipantAdmin` | `app-provider-validator`, … |
-| `CANTON_PQS_URL` | `canton-pqs`'s live suite: a Scribe store | `postgres://cnadmin:…@localhost:5432/pqs-app-provider` |
+| `CANTON_PQS_URL` | `canton-pqs`'s live suite: a Scribe store following the party's participant | `postgres://pqs:pqs@localhost:5433/pqs` from [`tools/pqs/compose.yaml`](tools/pqs/compose.yaml); cn-quickstart's own is `postgres://cnadmin:…@localhost:5432/pqs-app-provider` |
 
-The **registry** is the piece a LocalNet does not hand you: the standard's
-off-ledger API is served by the super-validator's Scan. cn-quickstart runs one
+The **registry** is the super-validator's Scan, which serves the standard's
+off-ledger API. A Splice LocalNet (and Canton Builder Tool, which runs one)
+publishes it at `http://scan.localhost:4000`, the `/registry/…` paths
+included, so nothing needs forwarding there. cn-quickstart runs the same Scan
 when started with `SV_PROFILE=on`, on port `5012` of its `splice` container,
 unpublished to the host. Forward it:
 
@@ -381,12 +383,21 @@ cargo run -p canton-token --example v2_settle              # the executor settle
 cargo run -p canton-token --example v2_withdraw_allocation # or the sender takes it back
 ```
 
-Each prints the registry's answer (`kind: direct` or `offer`, the contracts it
-named for disclosure) and the committed update id and offset;
+A **party with Canton Coin** is the other prerequisite: on a Splice LocalNet
+open the App Provider wallet (`http://wallet.localhost:3000`, log in as
+`app-provider`), tap, and copy the party id from the header. With a single
+party set `CANTON_TOKEN_RECEIVER` and `CANTON_TOKEN_EXECUTOR` to the sender:
+the registry answers `kind: self`, which needs neither a pre-approval nor an
+`accept`, and the settlement can be executed by the same token. With the App
+User party as receiver the transfer is an `offer` to accept in that wallet
+(`http://wallet.localhost:2000`).
+
+Each example prints the registry's answer (`kind: self`, `direct` or `offer`,
+the contracts it named for disclosure) and the committed update id and offset;
 `CANTON_TOKEN_DRY_RUN=1` builds the command against the registry and stops
 before submitting. Settling needs both sides of a leg authorised — the
-receiver's own `ReceiverSide` allocation — so with one token `v2_settle` is
-run with the sender as receiver and executor.
+receiver's own `ReceiverSide` allocation — which is why `v2_settle` is run
+with the sender as receiver and executor when only one party is at hand.
 
 On the **Canton Network DevNet** the same examples run against any validator
 you hold a token for, with the public Scan of a super-validator as the
@@ -395,11 +406,18 @@ unauthenticated). The run on record, update ids included, is in
 [`docs/verification/token-standard-live-runs.md`](docs/verification/token-standard-live-runs.md).
 
 ```sh
+# external signing: on an unauthenticated LocalNet nothing beyond the endpoint;
+# cn-quickstart also wants the ParticipantAdmin client
 export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=…
 cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 3 tests, one of them a refusal
-export CANTON_PQS_URL='postgres://cnadmin:…@localhost:5432/pqs-app-provider'
-cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests against Scribe
-export CANTON_TOKEN_REGISTRY_URL=http://localhost:5012
+
+# PQS: a Scribe store following the participant — this compose runs one
+docker compose -f tools/pqs/compose.yaml up -d
+export CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs'
+cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests; the store must hold Amulet, so tap first
+
+# the registry, on its own
+export CANTON_TOKEN_REGISTRY_URL=http://scan.localhost:4000
 cargo test -p canton-token --test live -- --nocapture                                 # 5 tests against the registry
 ```
 

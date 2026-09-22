@@ -403,6 +403,7 @@ dependencies = [
  "canton-core",
  "canton-daml",
  "canton-quickstart-licensing",
+ "canton-splice-amulet",
  "rustls",
  "rustls-native-certs",
  "serde",
