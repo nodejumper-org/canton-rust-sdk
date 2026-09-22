@@ -6,11 +6,19 @@
 //! is handed actually authorizes the transaction. That is what these do.
 //!
 //! Gated on env vars, so `cargo test` stays green without a node. Allocating an
-//! external party needs a token with the `ParticipantAdmin` right (LocalNet's
-//! `app-provider-validator`); everything after that acts as the external party
+//! external party needs the `ParticipantAdmin` right: on a LocalNet with an
+//! issuer that is a second OIDC client (cn-quickstart's
+//! `app-provider-validator`); on a LocalNet started without authentication
+//! (Canton Builder Tool, Splice LocalNet's default) nothing is needed beyond
+//! the endpoint. Everything after the onboarding acts as the external party
 //! itself.
 //!
 //! ```sh
+//! # unauthenticated LocalNet
+//! CANTON_TEST_ENDPOINT=http://localhost:3901 \
+//!   cargo test -p canton-ledger --test interactive_live -- --nocapture
+//!
+//! # cn-quickstart (Keycloak)
 //! CANTON_TEST_ENDPOINT=http://localhost:3901 \
 //! CANTON_TEST_TOKEN_URL=http://keycloak.localhost:8082/realms/AppProvider/protocol/openid-connect/token \
 //! CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=… \
@@ -75,17 +83,32 @@ fn ledger_oidc() -> Option<OidcConfig> {
     ))
 }
 
+/// Whether the participant authenticates at all. A LocalNet started without
+/// authentication (Canton Builder Tool, Splice LocalNet in its default
+/// profile) exports no issuer and no token; every right is granted to
+/// everyone, so the suite can run against it with no credentials, admin
+/// included. A LocalNet that *does* export a token gets no such assumption.
+fn unauthenticated() -> bool {
+    std::env::var("CANTON_TEST_TOKEN_URL").is_err()
+        && std::env::var("CANTON_TOKEN").is_err()
+        && canton_core::localnet::token(None).is_none()
+}
+
 fn admin_client() -> Option<AdminClient> {
-    AdminClient::connect_lazy(
-        canton_admin::Config::new(endpoint()?).with_oidc(TokenProvider::new(admin_oidc()?)),
-    )
-    .ok()
+    let config = canton_admin::Config::new(endpoint()?);
+    let config = match admin_oidc() {
+        Some(oidc) => config.with_oidc(TokenProvider::new(oidc)),
+        None if unauthenticated() => config,
+        None => return None,
+    };
+    AdminClient::connect_lazy(config).ok()
 }
 
 fn ledger_client() -> Option<CantonClient> {
     let config = Config::new(endpoint()?);
     let config = match ledger_oidc() {
         Some(oidc) => config.with_oidc(TokenProvider::new(oidc)),
+        None if unauthenticated() => config,
         None => config.with_token(canton_core::localnet::token(None)?),
     };
     CantonClient::connect_lazy(config).ok()
@@ -119,6 +142,7 @@ async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
     // that will submit, not to the admin that allocates.
     let as_ledger_user = AdminClient::connect_lazy(match ledger_oidc() {
         Some(oidc) => canton_admin::Config::new(endpoint()?).with_oidc(TokenProvider::new(oidc)),
+        None if unauthenticated() => canton_admin::Config::new(endpoint()?),
         None => {
             canton_admin::Config::new(endpoint()?).with_token(canton_core::localnet::token(None)?)
         }
@@ -178,7 +202,9 @@ async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
 #[tokio::test]
 async fn signing__an_external_party_is_onboarded_by_signing_its_own_topology() {
     let Some((party, signer)) = external_party("rust-sdk-onboard").await else {
-        skip!("set CANTON_TEST_ENDPOINT and the admin credentials");
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, the admin credentials)"
+        );
         return;
     };
     println!("allocated external party {party}");
@@ -194,7 +220,9 @@ async fn signing__an_external_party_is_onboarded_by_signing_its_own_topology() {
 #[tokio::test]
 async fn external_commands__prepare_sign_execute_commits_a_transaction() {
     let Some(ledger) = ledger_client() else {
-        skip!("set CANTON_TEST_ENDPOINT and CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET");
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET)"
+        );
         return;
     };
     let Some((party, signer)) = external_party("rust-sdk-submit").await else {
@@ -265,7 +293,9 @@ async fn external_commands__prepare_sign_execute_commits_a_transaction() {
 #[tokio::test]
 async fn signing__a_signature_from_another_key_is_rejected() {
     let Some(ledger) = ledger_client() else {
-        skip!("set CANTON_TEST_ENDPOINT and CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET");
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET)"
+        );
         return;
     };
     let Some((party, real)) = external_party("rust-sdk-badsig").await else {
