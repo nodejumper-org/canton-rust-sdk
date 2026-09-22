@@ -1,7 +1,8 @@
 # Token-standard examples: live runs
 
-Two runs are on record: a cn-quickstart LocalNet (below) and the Canton
-Network DevNet (further down, dated 2026-09-22).
+Three runs are on record: a cn-quickstart LocalNet (below), the Canton
+Network DevNet (further down, dated 2026-09-22), and the reviewer's path on a
+Canton Builder Tool LocalNet (at the end, same day).
 
 The verification clause of the milestone-3 proposal asks for a V1 transfer and
 a V2 `Account`-based transfer/allocation exercised end to end. The three
@@ -373,3 +374,114 @@ separate V2 DevNet that once hosted it is retired. Closing that half means
 either standing the reference token up ourselves — its DAR on a participant,
 with a registry for it — or the subcommittee agreeing that the deployed V2
 implementation stands in for a reference token that is not deployed anywhere.
+
+
+---
+
+# The reviewer's path: Canton Builder Tool, 2026-09-22
+
+The "How to verify" steps of the milestone comment, run verbatim from a fresh
+clone of the branch (`git clone`, then the commands as written) against a
+[Canton Builder Tool](https://canton-network-devs.github.io/Canton-Builder-Tool/#part-builder)
+LocalNet — the environment the Foundation's reviewer used for the earlier
+milestones. Nothing beyond `canton builder start`, one tap in the App Provider
+wallet, and the commands.
+
+| | |
+|---|---|
+| LocalNet | Canton Builder Tool, Splice 0.6.11 images, Canton 3.5.7; auth `self-signed` (HS256 tokens from `canton builder token`) |
+| Registry | the LocalNet's own Scan, `http://scan.localhost:4000` |
+| Party | `app_provider_builder-localnet-1::122050a3…`, sender, receiver and executor at once (`kind: self`) |
+| PQS | Scribe 3.5.4 from [`tools/pqs/compose.yaml`](../../tools/pqs/compose.yaml), reading as the same token |
+
+```text
+### step 2: cargo test --workspace --all-features
+test lower::tests::a_daml_name_rust_cannot_spell_is_skipped_not_panicked_on ... ok
+passed: 598 failed: 0
+### step 3: conformance
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 5 tests
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 49 tests
+test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+capabilities: 49  gaps: 0
+### step 4: external signing
+test signing__a_signature_from_another_key_is_rejected ... ok
+test signing__an_external_party_is_onboarded_by_signing_its_own_topology ... ok
+test external_commands__prepare_sign_execute_commits_a_transaction ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s
+### step 5: json_packages
+participant:    http://localhost:3975 (JSON Ledger API 3.5.7)
+packages known: 60
+de2cc2f90eb523414ff54e899951dadd8789a4c07e0f71f6d6c9eaf57d412a54: Registered
+### step 6: token standard
+test the_registry_says_who_administers_its_instruments ... ok
+test the_registry_declares_which_token_standard_versions_it_serves ... ok
+test an_instrument_this_registry_does_not_issue_is_none_rather_than_an_error ... ok
+test paging_through_instruments_works_against_a_real_registry ... ok
+test the_instruments_decode_as_the_standard_describes_them ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+--- v1_transfer
+registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+instrument:     Amulet (AMT), 10 decimals
+holdings:       1 unlocked holding(s) of Amulet read from the ledger
+kind:           self — sender and receiver match
+disclosing:     4 contract(s) the registry named
+committed 12207bd81846154612513df6121e0486c491c8d7fceb5d604cfd0334255f093069b1 at offset 96 with 5 event(s)
+exit=0
+--- v2_transfer
+registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+instrument:     Amulet (AMT), 10 decimals
+from account:   "" / to account: ""
+holdings:       2 unlocked holding(s) of Amulet read from the ledger
+kind:           self — sender and receiver match
+disclosing:     4 contract(s) the registry named
+committed 1220f25d93cec24b452c11889cf1ac97f749adeac218ad626bf946f64e68fe9e30f5 at offset 99 with 6 event(s)
+  holdings change on 00bb34aac538c58ba3ca4a08d848d709d17dec3a0f3cf2ec32c124d01db1c2d357ca121220423f5b875fe0a0747bf01aaef96096929245507ad6b089128fd66028710e9af6 (node 12): 2 spent, 2 produced, 2 leg(s)
+exit=0
+--- v2_allocate
+registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+sender:         app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+receiver:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+executor:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+receiver = sender: authorising both sides of the leg in this allocation
+holdings:       2 unlocked holding(s) of Amulet read from the ledger
+disclosing:     2 contract(s) the registry named
+allocated:      1220fb700cc839fc5ab121697ef3889f4adb829c00e474da23a905ca5a4a5f9b78e8 at offset 102 with 2 event(s)
+
+the executor settles this batch with:
+  settlement id: dvp-1790071378675796
+  executor:      app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+  v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+  created:       00db2f20b6a330482ab7f6f0f32241cc143794d3819778327f261275849cf6634eca121220deb21041d87eb00634da73e3fac53b05e537279898c79b7f852d3c93dc4e3c09
+exit=0
+--- v2_settle
+executor:    app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+allocations: 1 naming it as executor
+settlement dvp-1790071378675796: 1 allocation(s), 1 leg(s)
+  leg leg-1: app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e -> app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e : 1.0000000000 Amulet
+  disclosing 2 contract(s) the registry named
+  settled: 1220e34efb4ea0f3b05e069aef64425b8a81e7130769bdf92a9b1dd67eb10a727461 at offset 105 with 4 event(s)
+exit=0
+### step 7: pqs
+ Container pqs-scribe-1 Started 
+test a_refused_connection_is_not_retried_forever ... ok
+test an_ordered_comparison_is_a_statement_postgres_accepts ... ok
+active Amulet: 2
+test a_contract_read_from_postgres_is_the_generated_type ... ok
+test pqs_reports_how_far_it_has_ingested ... ok
+test containment_and_party_columns_work_against_the_real_schema ... ok
+test a_contract_is_found_by_id ... ok
+test a_payload_predicate_filters_in_the_database ... ok
+test the_acs_can_be_read_as_of_an_offset ... ok
+test a_connection_the_store_closes_is_replaced_on_the_next_read ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+ Network pqs_default Removed
+```
+
+Every step passed as written; `v2_settle` settled the allocation `v2_allocate`
+had just created, and the PQS suite read the Amulet the transfers produced.
