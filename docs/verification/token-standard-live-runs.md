@@ -268,6 +268,76 @@ a browser. The sender's holdings afterwards: 837.2655239056 CC and the 1 CC the
 withdrawal released, both unlocked — 840 minus the two transfers, nothing left
 reserved.
 
+
+## Executor settlement, the same day
+
+The allocation above was withdrawn, not settled: the executor is the
+validator's party and this run holds no token for it. `settle_batch` — the
+executor's move, and the proposal's "allocation/executor settlement" — was
+then exercised with the sender as executor, in two attempts that together say
+what a V2 settlement requires.
+
+**First attempt, refused by the settlement factory.** An allocation naming the
+sender as executor, one leg from the sender to the validator's party.
+Amulet's `SettlementFactory_SettleBatch` refused it at interpretation:
+
+```text
+executor:    8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+allocations: 1 naming it as executor
+settlement dvp-1790063359274031: 1 allocation(s), 1 leg(s)
+  leg leg-1: 8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd -> nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd : 1.0000000000 Amulet
+  disclosing 3 contract(s) the registry named
+Error: Status(Status { code: FailedPrecondition, message: "DAML_FAILURE(9,5085fbf8): Interpretation error: Error: User failure: UNHANDLED_EXCEPTION/DA.Exception.GeneralError:GeneralError (error category 9): 'missing authorizations' is not equal to 'empty set'.\nmissing authorizations: Set [(Account {owner = Some 'nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd', provider = None, id = \"\"},TransferLegSide {transferLegId = \"leg-1\", side = ReceiverSide, otherside = Account {owner = Some '8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd...", details: … }
+```
+
+That is the standard, not a bug: a V2 leg needs *both* sides authorised — the
+receiver consents with a `ReceiverSide` allocation of its own — and a
+transfer pre-approval does not stand in for it. This allocation was withdrawn
+(update `1220f4a7…`, offset 3317173).
+
+**Second attempt, settled.** A leg whose sender, receiver and executor are the
+same party, so one allocation carries both sides and one token can execute.
+Degenerate as a delivery-versus-payment, but it drives the whole path: the
+allocation factory, the settlement factory's context and disclosures, and
+`settle_batch` committing on the DevNet synchronizer.
+
+### `v2_allocate` — both sides of the leg in one allocation
+
+`2026-09-22T07:50:32Z`, exit 0
+
+```text
+receiver:       8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+receiver = sender: authorising both sides of the leg in this allocation
+allocated:      1220a959f224d586e432b0e7684cd04b6d204356b33f6ecf3d334d0ecbbb8e59ea5b at offset 3317197 with 2 event(s)
+  settlement id: dvp-1790063434475117
+```
+
+### `v2_settle` — the executor settles the batch
+
+`2026-09-22T07:50:54Z`, exit 0
+
+```text
+executor:    8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+allocations: 1 naming it as executor
+settlement dvp-1790063434475117: 1 allocation(s), 1 leg(s)
+  leg leg-1: 8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd -> 8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd : 1.0000000000 Amulet
+  disclosing 2 contract(s) the registry named
+  settled: 1220b829f7b412aedd5215d77f006b4d6fdd54696cfaf21fe1093c18754327299d69 at offset 3317221 with 4 event(s)
+```
+
+Read back by update id:
+
+| Update id | Offset | Record time | Events visible to the sender |
+|---|---|---|---|
+| `1220424177cbc89173b0…` | 3317129 | 2026-09-22T07:49:20.440389Z | 4 |
+| `1220f4a77863cb1ad1ea…` | 3317173 | 2026-09-22T07:50:15.185034Z | 3 |
+| `1220a959f224d586e432…` | 3317197 | 2026-09-22T07:50:35.177075Z | 1 |
+| `1220b829f7b412aedd52…` | 3317221 | 2026-09-22T07:50:57.874686Z | 1 |
+
+The sender's holdings afterwards: one unlocked holding of 838.2655239056 CC —
+840 minus the two transfers to the validator, the settled coin back with its
+owner, nothing reserved.
+
 ## Live suites against the same node
 
 With `CANTON_TEST_REQUIRE_LIVE=1`, so a suite that could not reach the node
@@ -290,7 +360,8 @@ they run against the LocalNet above.
 | Clause | Evidence |
 |---|---|
 | A V1 transfer settles end to end **on DevNet** | committed at offset 3316298, kind `direct`, read back with record time 07:32:29 UTC |
-| A V2 `Account`-based transfer/allocation exercised against **Canton Coin's V2 path on DevNet** | transfer at 3316304 with the holdings change parsed from the committed transaction; allocation at 3316319 naming the validator as executor; the allocation withdrawn at 3316364 |
+| A V2 `Account`-based transfer/allocation exercised against **Canton Coin's V2 path on DevNet** | transfer at 3316304 with the holdings change parsed from the committed transaction; allocation at 3316319 naming the validator as executor, withdrawn at 3316364; allocation at 3317197 **settled by its executor** at 3317221 |
+| Allocation/**executor settlement** | `settle_batch` committed through Amulet's settlement factory at 3317221, after the factory had refused a one-sided leg — the refusal is on record above |
 | Choice context and disclosure, against a production registry | six disclosed contracts per transfer, two per allocation, four per withdrawal, all named by the DevNet Scan |
 
 The clause's other target, the *V2 reference token*, has no DevNet

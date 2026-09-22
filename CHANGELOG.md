@@ -133,9 +133,14 @@ on; the ones that did not survive that check are not here.
   (Canton 3.5.17, Splice 0.8.1, the public SV Scan as the registry): both
   transfers settled as `direct`, the allocation was created and then
   withdrawn by the sender — `v2_withdraw_allocation` is the new example that
-  does so — and every update id was read back from the node. The three token
-  examples take a `CANTON_TOKEN` bearer token as well as OIDC credentials,
-  and an OIDC `CANTON_TEST_AUDIENCE`.
+  does so — a second allocation was **settled by its executor** through
+  Amulet's settlement factory (`v2_settle`, the other new example, which
+  finds the allocations naming the caller as executor and settles each
+  settlement as one batch), and every update id was read back from the node.
+  The factory first refused a one-sided leg: a V2 leg needs both sides
+  authorised, so `v2_allocate` now authorises both when the sender is also
+  the receiver. The token examples take a `CANTON_TOKEN` bearer token as
+  well as OIDC credentials, and an OIDC `CANTON_TEST_AUDIENCE`.
 - **`canton-ledger`'s tests did not build on their own**: the dev-dependency on
   `canton-signer` inherited `default-features = false` and the tests import
   the in-memory key. Green only through the facade's feature unification.

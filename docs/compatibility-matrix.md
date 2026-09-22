@@ -115,6 +115,7 @@ network, which is the target that exists.
 | V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 spent, 2 produced, 2 legs | two holdings changes: 1 spent / 1 produced, 0 spent / 1 produced |
 | V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 67693, 6 events, 3 contracts created | allocated at offset 3316319, executor the validator's party |
 | V2 allocation **withdrawn** by the sender | — | withdrawn at offset 3316364; the reserved coin released |
+| V2 allocation **settled** by its executor (`settle_batch`) | — | settled at offset 3317221 through Amulet's settlement factory; a one-sided leg was refused first, as the standard requires |
 
 Both runs are kept verbatim, with their environment and commands, in
 [`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md);

@@ -163,20 +163,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The sender's side of one leg: this much of this instrument, to that
     // account. `TransferSide::SenderSide` is what says these are *our* holdings
     // being reserved rather than someone else's being expected.
+    let amount: rt::Numeric = var("CANTON_TOKEN_AMOUNT")?.parse()?;
     let leg = al::TransferLegSide {
         transfer_leg_id: "leg-1".to_string(),
         side: al::TransferSide::SenderSide,
-        otherside: account(receiver),
-        amount: var("CANTON_TOKEN_AMOUNT")?.parse()?,
+        otherside: account(receiver.clone()),
+        amount: amount.clone(),
         instrument_id: instrument_id.clone(),
         meta: no_meta(),
     };
+    // Settling needs *both* sides of a leg authorised — the receiver consents
+    // with a `ReceiverSide` allocation of its own, and a transfer pre-approval
+    // does not stand in for it. When the sender is also the receiver, one
+    // allocation can carry both sides.
+    let mut transfer_leg_sides = vec![leg];
+    if receiver == sender {
+        transfer_leg_sides.push(al::TransferLegSide {
+            transfer_leg_id: "leg-1".to_string(),
+            side: al::TransferSide::ReceiverSide,
+            otherside: account(sender.clone()),
+            amount,
+            instrument_id: instrument_id.clone(),
+            meta: no_meta(),
+        });
+        println!("receiver = sender: authorising both sides of the leg in this allocation");
+    }
 
     let allocation = al::AllocationSpecification {
         admin: admin.clone(),
         // Whose holdings back this. The sender authorizes, so it is theirs.
         authorizer: account(sender.clone()),
-        transfer_leg_sides: vec![leg],
+        transfer_leg_sides,
         // After this the executor can no longer settle and the sender's
         // holdings are theirs again. Absent means no deadline, which is a
         // reservation with no way out — so it is set here on purpose.
