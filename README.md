@@ -344,6 +344,65 @@ setup first:
 More LocalNet tooling is catalogued on the
 [Canton Dev Hub](https://dev-hub.canton.foundation/).
 
+**Token standard, external signing and PQS** have live suites of their own,
+each gated on one more variable:
+
+| Variable | What it gates | Example (cn-quickstart) |
+|---|---|---|
+| `CANTON_TOKEN_REGISTRY_URL` | `canton-token`'s live suite and the five examples: the token-standard registry (a Splice **Scan**) | `http://localhost:5012` — see below |
+| `CANTON_TOKEN_SENDER`, `CANTON_TOKEN_RECEIVER`, `CANTON_TOKEN_EXECUTOR`, `CANTON_TOKEN_INSTRUMENT`, `CANTON_TOKEN_AMOUNT` | the examples: who transfers what to whom | `app_provider_…::1220…`, `app_user_…::1220…`, `sv::1220…`, `Amulet`, `1.0` |
+| `CANTON_TOKEN` | a ready-made bearer token, instead of the OIDC variables | |
+| `CANTON_TEST_AUDIENCE` | the OIDC `audience`, where the issuer wants one (Auth0, some Keycloak realms) | |
+| `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | `canton-ledger`'s `interactive_live` suite: onboarding an external party needs `ParticipantAdmin` | `app-provider-validator`, … |
+| `CANTON_PQS_URL` | `canton-pqs`'s live suite: a Scribe store | `postgres://cnadmin:…@localhost:5432/pqs-app-provider` |
+
+The **registry** is the piece a LocalNet does not hand you: the standard's
+off-ledger API is served by the super-validator's Scan. cn-quickstart runs one
+when started with `SV_PROFILE=on`, on port `5012` of its `splice` container,
+unpublished to the host. Forward it:
+
+```sh
+docker run -d --name canton-rs-scan-forward \
+  --network "$(docker network ls --filter name=quickstart --format '{{.Name}}' | head -1)" \
+  -p 5012:5012 alpine/socat TCP-LISTEN:5012,fork,reuseaddr TCP:splice:5012
+curl -s http://localhost:5012/registry/metadata/v1/info   # {"adminId":"DSO::…","supportedApis":…}
+```
+
+Then the examples, in the order a wallet would run them:
+
+```sh
+export CANTON_TOKEN_REGISTRY_URL=http://localhost:5012
+export CANTON_TOKEN_SENDER='app_provider_…::1220…' CANTON_TOKEN_RECEIVER='app_user_…::1220…'
+export CANTON_TOKEN_EXECUTOR='sv::1220…' CANTON_TOKEN_INSTRUMENT=Amulet CANTON_TOKEN_AMOUNT=1.0
+cargo run -p canton-token --example v1_transfer            # CIP-56
+cargo run -p canton-token --example v2_transfer            # CIP-0112, over accounts
+cargo run -p canton-token --example v2_allocate            # reserve for a settlement
+cargo run -p canton-token --example v2_settle              # the executor settles the batch
+cargo run -p canton-token --example v2_withdraw_allocation # or the sender takes it back
+```
+
+Each prints the registry's answer (`kind: direct` or `offer`, the contracts it
+named for disclosure) and the committed update id and offset;
+`CANTON_TOKEN_DRY_RUN=1` builds the command against the registry and stops
+before submitting. Settling needs both sides of a leg authorised — the
+receiver's own `ReceiverSide` allocation — so with one token `v2_settle` is
+run with the sender as receiver and executor.
+
+On the **Canton Network DevNet** the same examples run against any validator
+you hold a token for, with the public Scan of a super-validator as the
+registry (`https://scan.sv-1.dev.global.canton.network.sync.global`,
+unauthenticated). The run on record, update ids included, is in
+[`docs/verification/token-standard-live-runs.md`](docs/verification/token-standard-live-runs.md).
+
+```sh
+export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=…
+cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 3 tests, one of them a refusal
+export CANTON_PQS_URL='postgres://cnadmin:…@localhost:5432/pqs-app-provider'
+cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests against Scribe
+export CANTON_TOKEN_REGISTRY_URL=http://localhost:5012
+cargo test -p canton-token --test live -- --nocapture                                 # 5 tests against the registry
+```
+
 CI enforces `rustfmt`, `clippy -D warnings` (all features), the full test suite on Linux/macOS/Windows, rustdoc `-D warnings`, `cargo-deny`, and the MSRV build.
 
 ## MSRV
