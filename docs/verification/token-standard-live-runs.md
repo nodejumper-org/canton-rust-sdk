@@ -364,8 +364,12 @@ they run against the LocalNet above.
 | Allocation/**executor settlement** | `settle_batch` committed through Amulet's settlement factory at 3317221, after the factory had refused a one-sided leg — the refusal is on record above |
 | Choice context and disclosure, against a production registry | six disclosed contracts per transfer, two per allocation, four per withdrawal, all named by the DevNet Scan |
 
-The clause's other target, the *V2 reference token*, has no DevNet
-deployment: it is `TestTokenV2` from Splice's test package, exercised in
-Splice by Daml script with a simulated registry, and the separate V2 DevNet
-that once hosted it is retired. Canton Coin's V2 path — the alternative the
-clause itself names — is what this run exercises.
+The clause names two V2 targets, joined by "and": the *V2 reference token*,
+and Canton Coin's V2 path on DevNet. This run covers the second. The first is
+**not covered here**: the reference token is `TestTokenV2` from Splice's
+`splice-token-standard-v2-test` package, which Splice exercises by Daml script
+against a simulated registry; it has no deployment on DevNet, and the
+separate V2 DevNet that once hosted it is retired. Closing that half means
+either standing the reference token up ourselves — its DAR on a participant,
+with a registry for it — or the subcommittee agreeing that the deployed V2
+implementation stands in for a reference token that is not deployed anywhere.
