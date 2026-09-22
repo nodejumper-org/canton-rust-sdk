@@ -125,10 +125,11 @@ the DevNet update ids were read back from the participant by id after the run.
 
 The allocation is the half that needs more than two parties: the sender
 reserves holdings for a settlement a third party — the executor — completes
-later, which is what delivery-versus-payment is built from. Settling is not
-run here, and deliberately: it belongs to the executor, from their own
-participant with their own credentials, and one process holding both sides
-would demonstrate nothing.
+later, which is what delivery-versus-payment is built from. On the LocalNet
+the three roles are three parties and settling was left to the executor's own
+process; on DevNet, where one token was held, the settlement was run with the
+sender as executor and both sides of the leg in one allocation, after the
+settlement factory had refused a one-sided leg. Both are on record.
 
 Each run resolved the factory against the registry and submitted with the
 contracts it named for disclosure, so the choice-context and

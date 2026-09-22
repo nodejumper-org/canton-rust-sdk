@@ -15,7 +15,7 @@
 //! CANTON_PQS_URL='host=localhost port=5432 user=cnadmin password=… dbname=pqs-app-provider' \
 //!   cargo test -p canton-pqs --test live -- --nocapture
 //! # or a store of your own against any LocalNet: tools/pqs/compose.yaml
-//! docker compose -f tools/pqs/compose.yaml up -d
+//! docker compose -f tools/pqs/compose.yaml up -d && tools/pqs/wait-ready.sh
 //! CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs' \
 //!   cargo test -p canton-pqs --test live -- --nocapture
 //! ```

@@ -9,6 +9,7 @@
 #   SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=$(canton builder token --validator app-provider) \
 #     docker compose -f tools/pqs/compose.yaml up -d
 #
+#   tools/pqs/wait-ready.sh          # Scribe applies its schema first; a query before that fails
 #   CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs' \
 #   CANTON_TEST_REQUIRE_LIVE=1 cargo test -p canton-pqs --all-features --test live -- --nocapture
 #   docker compose -f tools/pqs/compose.yaml down -v

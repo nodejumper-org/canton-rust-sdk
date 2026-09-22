@@ -415,6 +415,7 @@ cargo test -p canton-ledger --all-features --test interactive_live -- --nocaptur
 # PQS: a Scribe store following the participant — this compose runs one
 # (add SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=… where the participant wants a token)
 docker compose -f tools/pqs/compose.yaml up -d
+tools/pqs/wait-ready.sh      # Scribe applies its schema before the store answers
 export CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs'
 cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests; the store must hold Amulet, so tap first
 

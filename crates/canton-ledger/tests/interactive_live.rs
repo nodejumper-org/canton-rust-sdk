@@ -218,6 +218,43 @@ async fn external_party(hint: &str) -> Option<(String, Ed25519Signer)> {
     Some((party, signer))
 }
 
+/// A create the freshly onboarded party can commit on its own authority — a
+/// template with that party as sole signatory. Every Canton participant ships
+/// the admin-workflow `Ping` (initiator signs, responder observes), so a
+/// LocalNet needs no application package for this; where the cn-quickstart
+/// licensing package is present (`CANTON_TEST_LICENSING_PKG`), its
+/// `AppInstallRequest` is used instead, as the rest of the live suite does.
+fn a_command_only_the_party_signs(party: &str) -> canton_ledger::proto::Command {
+    match std::env::var("CANTON_TEST_LICENSING_PKG") {
+        Ok(pkg) => canton_ledger::create(
+            identifier(&pkg, "Licensing.AppInstall", "AppInstallRequest"),
+            record(vec![
+                ("provider", value::party(party)),
+                ("user", value::party(party)),
+                (
+                    "meta",
+                    value::record(record(vec![("values", value::empty_text_map())])),
+                ),
+            ]),
+        ),
+        Err(_) => canton_ledger::create(
+            identifier(
+                "#canton-builtin-admin-workflow-ping",
+                "Canton.Internal.Ping",
+                "Ping",
+            ),
+            record(vec![
+                (
+                    "id",
+                    value::text(format!("rust-sdk-{}", uuid::Uuid::new_v4())),
+                ),
+                ("initiator", value::party(party)),
+                ("responder", value::party(party)),
+            ]),
+        ),
+    }
+}
+
 /// The participant computes a fingerprint the caller cannot, and a signature
 /// over the multi-hash is what proves the party controls the key. If either
 /// half were wrong the allocation would be refused — so getting a party id back
@@ -249,27 +286,10 @@ async fn external_commands__prepare_sign_execute_commits_a_transaction() {
         return;
     };
     let Some((party, signer)) = external_party("rust-sdk-submit").await else {
-        eprintln!("skipping: set the admin credentials");
+        skip!("the participant refused or lacks the admin right to onboard an external party");
         return;
     };
-    let Some(package_id) = std::env::var("CANTON_TEST_LICENSING_PACKAGE_ID").ok() else {
-        eprintln!("skipping: set CANTON_TEST_LICENSING_PACKAGE_ID");
-        return;
-    };
-
-    // `AppInstallRequest` has a single signatory — the user — so the external
-    // party can create it on its own authority.
-    let command = canton_ledger::create(
-        identifier(&package_id, "Licensing.AppInstall", "AppInstallRequest"),
-        record(vec![
-            ("provider", value::party(&party)),
-            ("user", value::party(&party)),
-            (
-                "meta",
-                value::record(record(vec![("values", value::empty_text_map())])),
-            ),
-        ]),
-    );
+    let command = a_command_only_the_party_signs(&party);
 
     let prepared = ledger
         .prepare_submission(Prepare::new(&party).add_command(command))
@@ -322,25 +342,10 @@ async fn signing__a_signature_from_another_key_is_rejected() {
         return;
     };
     let Some((party, real)) = external_party("rust-sdk-badsig").await else {
-        eprintln!("skipping: set the admin credentials");
+        skip!("the participant refused or lacks the admin right to onboard an external party");
         return;
     };
-    let Some(package_id) = std::env::var("CANTON_TEST_LICENSING_PACKAGE_ID").ok() else {
-        eprintln!("skipping: set CANTON_TEST_LICENSING_PACKAGE_ID");
-        return;
-    };
-
-    let command = canton_ledger::create(
-        identifier(&package_id, "Licensing.AppInstall", "AppInstallRequest"),
-        record(vec![
-            ("provider", value::party(&party)),
-            ("user", value::party(&party)),
-            (
-                "meta",
-                value::record(record(vec![("values", value::empty_text_map())])),
-            ),
-        ]),
-    );
+    let command = a_command_only_the_party_signs(&party);
     let prepared = ledger
         .prepare_submission(Prepare::new(&party).add_command(command))
         .await
