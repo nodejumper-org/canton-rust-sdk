@@ -25,6 +25,8 @@ bump, not a patch.
 | Linux (`ubuntu-latest`) | supported | the `test` job's matrix |
 | macOS (`macos-latest`) | supported | the `test` job's matrix |
 | Windows (`windows-latest`) | supported | the `test` job's matrix |
+| `aarch64-unknown-linux-gnu` | compiles | the `cross-targets` job (`cargo check --workspace --all-features`); no test run |
+| `x86_64-unknown-linux-musl` | compiles | the `cross-targets` job; no test run |
 
 The whole test suite runs on all three. The live suites need a Canton
 participant and are run by a developer, not by CI — see below.
