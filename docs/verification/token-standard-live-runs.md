@@ -1,5 +1,8 @@
 # Token-standard examples: live runs
 
+Two runs are on record: a cn-quickstart LocalNet (below) and the Canton
+Network DevNet (further down, dated 2026-09-22).
+
 The verification clause of the milestone-3 proposal asks for a V1 transfer and
 a V2 `Account`-based transfer/allocation exercised end to end. The three
 examples under [`crates/canton-token/examples`](../../crates/canton-token/examples)
@@ -125,3 +128,173 @@ de2cc2f90eb523414ff54e899951dadd8789a4c07e0f71f6d6c9eaf57d412a54: Registered
 Amulet is a V2 implementation exercised as one. Whether that satisfies the
 clause's words "V2 reference token" is recorded as an open question for the
 subcommittee in the compatibility matrix, not decided here.
+
+
+---
+
+# DevNet, 2026-09-22
+
+The same three examples, plus the withdrawal that releases the allocation,
+against a validator on the **Canton Network DevNet** — the network the
+proposal's verification clause names. Every submission was direct: the
+receiving party holds a transfer pre-approval, so both transfers settled on
+submission with no `accept` step, which is the clause's "settles end to end"
+taken literally.
+
+## Environment
+
+| | |
+|---|---|
+| Date | 2026-09-22, 07:32–07:34 UTC |
+| Network | Canton Network **DevNet**, synchronizer `global-domain::1220be58…` |
+| Participant | `nodejumper-dev-1`, Canton **3.5.17**, Splice validator **0.8.1** (Nodejumper's node) |
+| Ledger API | gRPC over TLS on `:443`; JSON Ledger API over HTTPS |
+| Authentication | Keycloak, realm `canton-devnet`: a user token with `actAs` on the sender party and nothing else |
+| Registry | the public DevNet Scan of SV-1, `https://scan.sv-1.dev.global.canton.network.sync.global`, unauthenticated |
+| Instrument | **Amulet** (Canton Coin); the DevNet registry declares all ten V1 and V2 APIs |
+| Sender | `8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd…`, a wallet user on that node, funded by a tap |
+| Receiver and executor | `nodejumper-dev-1::1220a5cd…`, the validator's own party |
+| Amount | 1 CC per operation |
+
+The registry's OpenAPI documents at Splice 0.8.1 were diffed against the
+vendored 0.6.11 copies before the run: six of seven are byte-identical and
+`token-metadata-v1` differs only by the additive `accountInputFieldsToShow`
+field, which `Instrument` already carries.
+
+## Commands
+
+```sh
+export CANTON_TEST_ENDPOINT=https://ledger-grpc.validator.devnet.canton.nodejumper.io
+export CANTON_TEST_JSON_ENDPOINT=https://ledger-api.validator.devnet.canton.nodejumper.io
+export CANTON_TOKEN_REGISTRY_URL=https://scan.sv-1.dev.global.canton.network.sync.global
+export CANTON_TOKEN=…                # a bearer token for the sender's user
+export CANTON_TOKEN_SENDER='8f2bb33b-…::1220a5cd…'
+export CANTON_TOKEN_RECEIVER='nodejumper-dev-1::1220a5cd…'
+export CANTON_TOKEN_EXECUTOR='nodejumper-dev-1::1220a5cd…'
+export CANTON_TOKEN_INSTRUMENT=Amulet CANTON_TOKEN_AMOUNT=1.0
+
+cargo run -p canton-token --example v1_transfer
+cargo run -p canton-token --example v2_transfer
+cargo run -p canton-token --example v2_allocate
+cargo run -p canton-token --example v2_withdraw_allocation
+```
+
+Each was run first with `CANTON_TOKEN_DRY_RUN=1` — the command built against
+the real registry, with its context and disclosures, and not submitted — and
+then for real.
+
+## Output
+
+### `v1_transfer` — V1 transfer (CIP-56), direct
+
+`2026-09-22T07:32:26Z`, exit 0
+
+```text
+registry admin: DSO::1220be58c29e65de40bf273be1dc2b266d43a9a002ea5b18955aeef7aac881bb471a
+instrument:     Canton Coin (CC), 10 decimals
+holdings:       1 unlocked holding(s) of Amulet read from the ledger
+kind:           direct — completes on submission
+disclosing:     6 contract(s) the registry named
+committed 12203d9608d50269325b406975fc6445c1956acd845dc30185bab22db21b3979fb3d at offset 3316298 with 7 event(s)
+```
+
+### `v2_transfer` — V2 transfer over accounts (CIP-0112), direct
+
+`2026-09-22T07:32:33Z`, exit 0
+
+```text
+registry admin: DSO::1220be58c29e65de40bf273be1dc2b266d43a9a002ea5b18955aeef7aac881bb471a
+instrument:     Canton Coin (CC), 10 decimals
+from account:   "" / to account: ""
+holdings:       1 unlocked holding(s) of Amulet read from the ledger
+kind:           direct — completes on submission
+disclosing:     6 contract(s) the registry named
+committed 12202e8ddcd542ff100bd16850a6d2b97f4cced6cf25246ea1c55fb77baf2fe5579e at offset 3316304 with 7 event(s)
+  holdings change on 00435bc9becd27689198d8123677d28c1b23061da6b0716fc3c24e02deb657c3cbca1212206d0cde3b136ecb322fc15ff0c110882c11910cdd31009451eacdb5cb72434ecb (node 11): 1 spent, 1 produced, 1 leg(s)
+  holdings change on 00435bc9becd27689198d8123677d28c1b23061da6b0716fc3c24e02deb657c3cbca1212206d0cde3b136ecb322fc15ff0c110882c11910cdd31009451eacdb5cb72434ecb (node 12): 0 spent, 1 produced, 1 leg(s)
+```
+
+### `v2_allocate` — V2 allocation (CIP-0112)
+
+`2026-09-22T07:32:44Z`, exit 0
+
+```text
+registry admin: DSO::1220be58c29e65de40bf273be1dc2b266d43a9a002ea5b18955aeef7aac881bb471a
+sender:         8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+receiver:       nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+executor:       nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+holdings:       1 unlocked holding(s) of Amulet read from the ledger
+disclosing:     2 contract(s) the registry named
+allocated:      12201e70b86ba0ef478fc6738c62d85d13a38e2df1318671db6b0ae560e751afe3fd at offset 3316319 with 6 event(s)
+
+the executor settles this batch with:
+  settlement id: dvp-1790062365710383
+  executor:      nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+  v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+  created:       00f536ec3917d4ab54acefc4aad06ad72cfd9690fda1c157468475041016c63b72ca121220776cab3d3e2c5bea1d1fe570310fb30ec1483b00a1d50b1825c5716d2eb49af9
+  created:       009badac1d7fc8a59777ae65c71d9d319a16598b20ec4321c9b148cd7c2cfc57a8ca12122086e787c4fc08e546ebe24d6d88f9879382ede8fa443a8d44ebe8b8fe7897f925
+  created:       00594cb3a8b1a5d3ecdbfca3c40a20c37eb5e3bf748d4ebd75235a0ffbdb0ae555ca121220ca0f4d05081cc81706f2df0879af716cc2db3460e358f70dcacc8c7887334b7e
+```
+
+### `v2_withdraw_allocation` — V2 allocation withdrawn by the sender
+
+`2026-09-22T07:33:39Z`, exit 0
+
+```text
+sender:      8f2bb33b-699f-440e-a861-508ee6a0472d::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd
+allocations: 1 active
+  00594cb3a8b1a5d3ecdbfca3c40a20c37eb5e3bf748d4ebd75235a0ffbdb0ae555ca121220ca0f4d05081cc81706f2df0879af716cc2db3460e358f70dcacc8c7887334b7e
+    settlement dvp-1790062365710383 by nodejumper-dev-1::1220a5cd222348403b3db750ba80ddbd0c3f18a5692b425273d150c1efff5ceb63bd, 1 holding(s) reserved
+withdrawing 00594cb3a8b1a5d3 (settlement dvp-1790062365710383): disclosing 4 contract(s) the registry named
+withdrawn:   12209b5d69f163eca284c4f2c04cfcbb030de8792012a5e37c3c8b64294f3a7a51a3 at offset 3316364 with 7 event(s)
+```
+
+## Read back from the participant by update id
+
+Every update id above was read back from the node over the JSON Ledger API
+(`POST /v2/updates/update-by-id`) after the run. The record times are the
+synchronizer's.
+
+| Update id | Offset | Record time | Events visible to the sender |
+|---|---|---|---|
+| `12203d9608d50269325b…` | 3316298 | 2026-09-22T07:32:29.748296Z | 2 |
+| `12202e8ddcd542ff100b…` | 3316304 | 2026-09-22T07:32:34.873070Z | 2 |
+| `12201e70b86ba0ef478f…` | 3316319 | 2026-09-22T07:32:47.179492Z | 4 |
+| `12209b5d69f163eca284…` | 3316364 | 2026-09-22T07:33:42.266115Z | 3 |
+
+The public Scan's transaction API answers 403 to unauthenticated callers on
+DevNet, so the ids are verifiable from any DevNet participant rather than from
+a browser. The sender's holdings afterwards: 837.2655239056 CC and the 1 CC the
+withdrawal released, both unlocked — 840 minus the two transfers, nothing left
+reserved.
+
+## Live suites against the same node
+
+With `CANTON_TEST_REQUIRE_LIVE=1`, so a suite that could not reach the node
+fails rather than skips:
+
+- `canton-token` live suite against the DevNet registry: 5 passed — the
+  registry describes itself and its instruments as the standard says, and
+  paging works against a real Scan.
+- `canton-ledger` live suite, the subset a node without the test DAR can run:
+  6 passed — version and health over gRPC, version and ledger end over JSON,
+  the JSON-only package read (288 packages), the JSON party reads (the
+  participant id, the sender's own party), a bad token is an HTTP error.
+
+The submission-based ledger and interactive-submission suites need the
+`quickstart-licensing` package on the participant and were not run here;
+they run against the LocalNet above.
+
+## What the run shows against the clause
+
+| Clause | Evidence |
+|---|---|
+| A V1 transfer settles end to end **on DevNet** | committed at offset 3316298, kind `direct`, read back with record time 07:32:29 UTC |
+| A V2 `Account`-based transfer/allocation exercised against **Canton Coin's V2 path on DevNet** | transfer at 3316304 with the holdings change parsed from the committed transaction; allocation at 3316319 naming the validator as executor; the allocation withdrawn at 3316364 |
+| Choice context and disclosure, against a production registry | six disclosed contracts per transfer, two per allocation, four per withdrawal, all named by the DevNet Scan |
+
+The clause's other target, the *V2 reference token*, has no DevNet
+deployment: it is `TestTokenV2` from Splice's test package, exercised in
+Splice by Daml script with a simulated registry, and the separate V2 DevNet
+that once hosted it is retired. Canton Coin's V2 path — the alternative the
+clause itself names — is what this run exercises.

@@ -24,8 +24,10 @@
 //!
 //! `CANTON_TOKEN_SENDER_ACCOUNT` and `CANTON_TOKEN_RECEIVER_ACCOUNT` default to
 //! the empty id, which is what a registry with one account per party expects.
-//! Add `CANTON_TEST_TOKEN_URL` / `CANTON_TEST_CLIENT_ID` /
-//! `CANTON_TEST_CLIENT_SECRET` where the participant wants OIDC, and set
+//! Add `CANTON_TOKEN` (a bearer token as issued) or `CANTON_TEST_TOKEN_URL` /
+//! `CANTON_TEST_CLIENT_ID` / `CANTON_TEST_CLIENT_SECRET` (plus
+//! `CANTON_TEST_AUDIENCE` where the issuer wants one) where the participant
+//! wants authentication, and set
 //! `CANTON_TOKEN_DRY_RUN=1` to stop after building the command rather than
 //! submitting it — a transfer moves real assets, so that is the default worth
 //! reaching for first.
@@ -40,6 +42,29 @@ use canton_token::{RegistryClient, TransferKind};
 
 fn var(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|_| format!("set {name}"))
+}
+
+/// Attach whatever credentials the environment offers: a bearer token as
+/// issued (`CANTON_TOKEN`), or OIDC client credentials to obtain one, with
+/// `CANTON_TEST_AUDIENCE` where the issuer wants it. An unauthenticated
+/// LocalNet needs neither.
+fn authenticate(config: Config) -> Config {
+    match (
+        std::env::var("CANTON_TOKEN"),
+        std::env::var("CANTON_TEST_TOKEN_URL"),
+        std::env::var("CANTON_TEST_CLIENT_ID"),
+        std::env::var("CANTON_TEST_CLIENT_SECRET"),
+    ) {
+        (Ok(token), ..) => config.with_token(token),
+        (_, Ok(url), Ok(id), Ok(secret)) => {
+            let mut oidc = OidcConfig::new(url, id, secret);
+            if let Ok(audience) = std::env::var("CANTON_TEST_AUDIENCE") {
+                oidc = oidc.with_audience(audience);
+            }
+            config.with_oidc(TokenProvider::new(oidc))
+        }
+        _ => config,
+    }
 }
 
 /// A V2 account: the owning party, and which of that party's accounts. The
@@ -119,18 +144,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let sender = rt::Party::parse(&var("CANTON_TOKEN_SENDER")?)?;
-    let config = Config::new(var("CANTON_TEST_ENDPOINT")?);
-    let config = match (
-        std::env::var("CANTON_TEST_TOKEN_URL"),
-        std::env::var("CANTON_TEST_CLIENT_ID"),
-        std::env::var("CANTON_TEST_CLIENT_SECRET"),
-    ) {
-        (Ok(url), Ok(id), Ok(secret)) => {
-            config.with_oidc(TokenProvider::new(OidcConfig::new(url, id, secret)))
-        }
-        _ => config,
-    };
-    let client = CantonClient::connect_lazy(config)?;
+    let client =
+        CantonClient::connect_lazy(authenticate(Config::new(var("CANTON_TEST_ENDPOINT")?)))?;
     let receiver = rt::Party::parse(&var("CANTON_TOKEN_RECEIVER")?)?;
     let sender_account = account(
         sender.clone(),

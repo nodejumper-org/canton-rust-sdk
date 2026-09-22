@@ -35,7 +35,7 @@ participant and are run by a developer, not by CI — see below.
 |---|---|
 | Ledger API | **v2** |
 | Canton | **3.5.7** — the release the `.proto` files are vendored from |
-| Verified against | a Canton 3.5.7 participant: submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party |
+| Verified against | a Canton 3.5.7 participant (LocalNet): submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party. A Canton **3.5.17** participant on the Canton Network **DevNet** (Splice validator 0.8.1): the token-standard workflows, JSON package and party reads, gRPC over TLS with a Keycloak token |
 
 Moving the supported Canton range re-vendors the protos in a new SDK minor. See
 the stability policy in [`canton-proto`](../crates/canton-proto/src/lib.rs) and
@@ -87,10 +87,13 @@ Which standard each crate targets, crate by crate:
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | V1 and V2 — Amulet implements both | the Splice application packages, referencing the crates above rather than copying them |
 | `canton-token` | V1 (`canton_token::*`) and V2 (`canton_token::v2`) | the workflows |
 
-**Verified against a live registry** — the Splice scan of a cn-quickstart
-LocalNet. The instrument is **Amulet (Canton Coin)**, which declares both
-standards (`splice-api-token-transfer-instruction-v1` and `-v2`). That is a V2
-implementation, exercised as one.
+**Verified against two live registries** — the Splice scan of a cn-quickstart
+LocalNet (Splice 0.6.11), and the public Scan of the Canton Network **DevNet**
+(Splice 0.8.1). The instrument on both is **Amulet (Canton Coin)**, which
+declares both standards (`splice-api-token-transfer-instruction-v1` and
+`-v2`). That is a V2 implementation, exercised as one. The registry's OpenAPI
+documents at 0.8.1 differ from the vendored 0.6.11 copies by one additive
+field, which the client already reads.
 
 **On the "V2 reference token".** Splice documented a separate *Token Standard
 V2 DevNet* — a temporary, single-SV network run by Digital Asset for
@@ -105,16 +108,17 @@ landed in the ordinary stack, which is why a plain LocalNet's Amulet declares
 every V2 API. So the runs below are against a V2 implementation on a normal
 network, which is the target that exists.
 
-| What | Result |
-|---|---|
-| V1 transfer, end to end | committed at offset 67684, 6 events |
-| V2 `Account`-based transfer | committed at offset 67690, 6 events |
-| V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 holding spent, 2 produced, 2 transfer legs |
-| V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 67693, 6 events, 3 contracts created |
+| What | LocalNet (Canton 3.5.7) | DevNet (Canton 3.5.17) |
+|---|---|---|
+| V1 transfer, end to end | committed at offset 67684, 6 events, kind `offer` | committed at offset 3316298, kind **`direct`** — settled on submission |
+| V2 `Account`-based transfer | committed at offset 67690, 6 events | committed at offset 3316304, `direct` |
+| V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 spent, 2 produced, 2 legs | two holdings changes: 1 spent / 1 produced, 0 spent / 1 produced |
+| V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 67693, 6 events, 3 contracts created | allocated at offset 3316319, executor the validator's party |
+| V2 allocation **withdrawn** by the sender | — | withdrawn at offset 3316364; the reserved coin released |
 
-The run these numbers come from is kept verbatim, with its environment and
-commands, in
-[`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md).
+Both runs are kept verbatim, with their environment and commands, in
+[`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md);
+the DevNet update ids were read back from the participant by id after the run.
 
 The allocation is the half that needs more than two parties: the sender
 reserves holdings for a settlement a third party — the executor — completes

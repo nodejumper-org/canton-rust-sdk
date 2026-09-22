@@ -1555,8 +1555,16 @@ async fn json_party_reads_as_a_plain_user() {
         return;
     };
 
+    // A participant id is `<name>::<fingerprint>`; the name is the operator's
+    // (`participant` on a LocalNet, `nodejumper-dev-1` on their DevNet node).
     let participant = json.participant_id().await.expect("participant_id");
-    assert!(participant.starts_with("participant::"), "{participant}");
+    let (name, fingerprint) = participant
+        .split_once("::")
+        .expect("a participant id has a name and a fingerprint");
+    assert!(
+        !name.is_empty() && fingerprint.starts_with("1220"),
+        "{participant}"
+    );
 
     let details = json
         .get_parties(vec![party.clone()])

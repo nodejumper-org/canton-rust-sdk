@@ -128,7 +128,14 @@ on; the ones that did not survive that check are not here.
   JSON-only package read were run again on 2026-09-07 and their output is
   committed verbatim, with the environment and commands, under
   [`docs/verification/`](docs/verification/token-standard-live-runs.md); the
-  compatibility matrix's offsets now point at that run.
+  compatibility matrix's offsets now point at that run. On 2026-09-22 the
+  same examples ran against a validator on the Canton Network **DevNet**
+  (Canton 3.5.17, Splice 0.8.1, the public SV Scan as the registry): both
+  transfers settled as `direct`, the allocation was created and then
+  withdrawn by the sender — `v2_withdraw_allocation` is the new example that
+  does so — and every update id was read back from the node. The three token
+  examples take a `CANTON_TOKEN` bearer token as well as OIDC credentials,
+  and an OIDC `CANTON_TEST_AUDIENCE`.
 - **`canton-ledger`'s tests did not build on their own**: the dev-dependency on
   `canton-signer` inherited `default-features = false` and the tests import
   the in-memory key. Green only through the facade's feature unification.
