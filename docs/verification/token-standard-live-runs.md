@@ -397,7 +397,7 @@ wallet, and the commands.
 ```text
 ### step 2: cargo test --workspace --all-features
 test lower::tests::a_daml_name_rust_cannot_spell_is_skipped_not_panicked_on ... ok
-passed: 598 failed: 0
+passed: 598 failed: 0   (600 after the two conformance rows added the same day)
 ### step 3: conformance
 running 0 tests
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

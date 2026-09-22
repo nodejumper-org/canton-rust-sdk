@@ -179,7 +179,10 @@ same thing.
 
 [`conformance/capabilities.toml`](../conformance/capabilities.toml) lists every
 capability of the standard this SDK claims, and `canton-conformance` has one
-test named for each. A completeness guard asserts the two agree in both
+test named for each;
+[`conformance/ledger-client-standard-mapping.md`](../conformance/ledger-client-standard-mapping.md)
+is the same map for reading, row by row, with the rows the grant does not
+claim. A completeness guard asserts the two agree in both
 directions: no capability without a test, and no test claiming a capability the
 registry does not list.
 

@@ -494,6 +494,23 @@ fn parties__local_parties_creation() {
     let _ = canton::admin::AdminClient::allocate_external_party;
 }
 
+/// An *external* party, whose key the participant never holds: the participant
+/// describes the onboarding for a public key, the key signs it, the signed
+/// topology is submitted. Planned for later; interactive submission needed it.
+#[test]
+fn parties__external_parties_creation() {
+    let _ = canton::admin::AdminClient::generate_external_party_topology;
+    let _ = canton::admin::AdminClient::allocate_external_party;
+}
+
+/// Which synchronizers the participant is connected to, asked rather than
+/// configured — where an external party is onboarded and a submission
+/// prepared.
+#[test]
+fn multi_synchronizer__listing_connected_synchronizers() {
+    let _ = canton::ledger::CantonClient::connected_synchronizers;
+}
+
 /// Party management over the JSON Ledger API, for a deployment that exposes
 /// nothing else: list with paging, read, allocate, update — answering in the
 /// same `PartyDetails` the gRPC path returns.

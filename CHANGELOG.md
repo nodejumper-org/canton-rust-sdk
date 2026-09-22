@@ -560,7 +560,7 @@ steps already assert their own markers.
   transports without re-learning the type. Allocation and update are not
   retried, for the reason `canton-admin` gives. With this the conformance
   registry's last declared gap (`parties__json_party_mgmt`) is a capability:
-  49 rows, 49 tests, no gaps.
+  51 rows, 51 tests, no gaps (two rows the plan had filed under post-v1 turned out delivered by the signing work — external-party creation and listing connected synchronizers — and are claimed).
 
 - **`canton-admin`** — `get_package` downloads a package's `ArchivePayload`
   bytes and checks the hash the participant returns against the id that was

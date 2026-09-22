@@ -1,7 +1,8 @@
 # The Ledger Client Standard capabilities this SDK claims.
 #
-# Generated from planning/ledger-client-standard-mapping.md, which maps the
-# capability matrix DA published to a milestone and a crate. This file is the
+# The human-readable half is ledger-client-standard-mapping.md next to this
+# file, which maps the capability matrix DA published to a milestone and a
+# crate, and lists the rows the grant does not claim. This file is the
 # machine-readable half: `canton-conformance` asserts there is a test named
 # for every row here, so a capability cannot be claimed without one.
 #
@@ -239,6 +240,20 @@ name      = "Local parties creation"
 section   = "Parties"
 milestone = "M1"
 note      = "self-administration mode"
+
+[[capability]]
+id        = "parties__external_parties_creation"
+name      = "External parties creation"
+section   = "Parties"
+milestone = "M3"
+note      = "`AdminClient::generate_external_party_topology` + `allocate_external_party`: the participant describes the onboarding for a public key, the key signs the multi-hash, the signed topology is submitted. Exercised live in `interactive_live.rs`. Planned post-v1; landed in M3 because interactive submission needs a party whose key the participant never holds."
+
+[[capability]]
+id        = "multi_synchronizer__listing_connected_synchronizers"
+name      = "Listing connected synchronizers"
+section   = "Multi-synchronizer"
+milestone = "M3"
+note      = "`CantonClient::connected_synchronizers` (`GetConnectedSynchronizers`), so a party's synchronizer is asked of the participant rather than configured. The other multi-synchronizer rows stay post-v1."
 
 [[capability]]
 id        = "packages__listing"

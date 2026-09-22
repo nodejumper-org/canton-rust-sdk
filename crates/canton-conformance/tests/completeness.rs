@@ -23,7 +23,7 @@ const SUITE: &str = include_str!("conformance.rs");
 /// they compared the registry to the suite, so a row missing from *both* was
 /// invisible to them. Ten were, including an M3 row. Now dropping a row makes
 /// the sum short and this fails.
-const IN_SCOPE_ROWS: usize = 49;
+const IN_SCOPE_ROWS: usize = 51;
 
 /// The `id = "…"` values under `[[capability]]` — what the SDK claims.
 fn capabilities() -> Vec<String> {
