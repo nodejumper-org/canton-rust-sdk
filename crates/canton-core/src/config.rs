@@ -353,7 +353,9 @@ impl Config {
         if want_tls {
             endpoint = endpoint
                 .tls_config(build_tls(self.tls.as_ref()))
-                .map_err(|e| Error::InvalidRequest(format!("invalid TLS config: {e}")))?;
+                .map_err(|e| {
+                    Error::InvalidRequest(format!("invalid TLS config: {}", crate::chain(&e)))
+                })?;
         }
 
         Ok(endpoint.connect_lazy())

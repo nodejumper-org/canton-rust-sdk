@@ -25,7 +25,7 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
 | `TextMap t` | `rt::TextMap<T>` (`BTreeMap<String, T>`) | object | `TextMap` |
 | `GenMap k v` | `rt::GenMap<K, V>` | array of `[k, v]` pairs | `GenMap` |
 | type variable `a` | type parameter `A` (upper-camel) | — | — |
-| reference to a named type | `crate::<package>::<module>::<Type>` | per that type | per that type |
+| reference to a named type | `crate::<package>::<module>::<Type>`, or `::<other_crate>::<package>::<module>::<Type>` when the package is generated into a crate of its own | per that type | per that type |
 | directly-recursive reference | `Box<…>` | transparent | transparent |
 
 ### Notes on the subtle ones
@@ -45,7 +45,20 @@ depends on the `canton-daml` runtime, referenced below as `rt`.
 - **`Numeric`** travels as a decimal string on both wires to avoid binary-float
   rounding; on JSON input `rt::Numeric` also accepts a number (high-precision
   values should still use the string form).
-- **References** are always fully qualified (`crate::<package>::<module>::<Type>`),
+- **References** are always fully qualified. Within one crate that is
+`crate::<package>::<module>::<Type>`; where a package is generated into a crate
+of its own — which is how every `canton-splice-*` crate in this repository is
+built, so that a `Holding` is one Rust type rather than one per crate — the
+reference is absolute and names that crate instead:
+
+```rust
+pub meta: ::canton_splice_api_token_metadata_v1::splice_api_token_metadata_v1::Splice_Api_Token_MetadataV1::Metadata,
+pub expires_at: ::canton_daml_stdlib::daml_stdlib_DA_Time_Types::DA_Time_Types::RelTime,
+```
+
+Which packages are external is the caller's choice, passed as an
+`ExternalPackages` map; anything not in it is emitted into the crate being
+generated,
   so cross-package/cross-module references resolve and names from different
   modules never collide. The package segment is the package **name**; the
   version is appended only to separate two packages that would otherwise share a

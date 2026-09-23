@@ -22,14 +22,25 @@ pub enum Error {
     #[error("grpc status {}: {}", .0.code(), .0.message())]
     Status(#[source] Box<tonic::Status>),
 
-    /// A non-success HTTP response from the JSON API or a token endpoint.
-    /// Retriable for transient status codes (see [`Error::is_retriable`]).
-    #[error("http {status}: {body}")]
+    /// A non-success HTTP response from the JSON API, a token endpoint or a
+    /// token-standard registry. Retriable for transient status codes (see
+    /// [`Error::is_retriable`]).
+    ///
+    /// `body` is the response body and nothing else — this variant's readers
+    /// (`code`, `category`, `retry_delay`, `error_info`) parse it as the
+    /// participant's JSON. Where the request went is `url`, so a 404 from a
+    /// mistyped base URL and a 404 from an unknown contract can be told apart
+    /// without corrupting the body. `#[non_exhaustive]`: construct it with
+    /// [`Error::http`](Self::http), match it with `..`.
+    #[error("http {status}{}: {body}", url.as_deref().map(|u| format!(" at {u}")).unwrap_or_default())]
+    #[non_exhaustive]
     Http {
         /// The HTTP status code.
         status: u16,
         /// The response body (truncated by the caller if large).
         body: String,
+        /// The URL the request went to, when the caller kept it.
+        url: Option<String>,
     },
 
     /// JSON (de)serialization error.
@@ -81,6 +92,26 @@ pub enum Error {
 }
 
 impl Error {
+    /// A non-success HTTP response, with the body left as the body.
+    #[must_use]
+    pub fn http(status: u16, body: impl Into<String>) -> Self {
+        Error::Http {
+            status,
+            body: body.into(),
+            url: None,
+        }
+    }
+
+    /// [`http`](Self::http), remembering where the request went.
+    #[must_use]
+    pub fn http_at(status: u16, body: impl Into<String>, url: impl Into<String>) -> Self {
+        Error::Http {
+            status,
+            body: body.into(),
+            url: Some(url.into()),
+        }
+    }
+
     /// The gRPC status code the participant answered with, on **either**
     /// transport.
     ///
@@ -137,7 +168,7 @@ impl Error {
             // The JSON Ledger API carries the same verdict in the error body
             // (`errorCategory`, `retryInfo`); parse it before falling back to
             // the transient HTTP status codes.
-            Error::Http { status, body } => match http_category(body) {
+            Error::Http { status, body, .. } => match http_category(body) {
                 Some(category) => category.is_retriable(),
                 None => http_retry_delay(body).is_some() || matches!(status, 408 | 429 | 500..=599),
             },
@@ -590,6 +621,28 @@ pub struct ResourceInfo {
     pub description: String,
 }
 
+/// Most transport errors keep the sentence that matters in their source chain
+/// and print only a generic outer line: `reqwest` says `error sending request
+/// for url (…)` while `invalid peer certificate: UnknownIssuer` sits one level
+/// down, and `tokio_postgres` says `db error` over `FATAL: password
+/// authentication failed`. Reporting only the outer message hides the one
+/// thing an operator needs.
+///
+/// Lives here because four crates were each losing it separately, and three of
+/// them had grown their own private copy of this function before anyone noticed
+/// the fourth still had none.
+#[must_use]
+pub fn chain(error: &dyn std::error::Error) -> String {
+    let mut message = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        message.push_str(": ");
+        message.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    message
+}
+
 impl From<tonic::Status> for Error {
     fn from(status: tonic::Status) -> Self {
         Error::Status(Box::new(status))
@@ -756,6 +809,7 @@ mod tests {
         let err = Error::Http {
             status: 400,
             body: body.to_string(),
+            url: None,
         };
         assert_eq!(
             err.category(),
@@ -791,6 +845,7 @@ mod tests {
         let err = Error::Http {
             status: 503,
             body: r#"{"errorCategory": 8}"#.to_string(),
+            url: None,
         };
         assert_eq!(
             err.category(),
@@ -804,6 +859,7 @@ mod tests {
         let retriable = Error::Http {
             status: 503,
             body: "<html>Service Unavailable</html>".to_string(),
+            url: None,
         };
         assert!(retriable.is_retriable());
         assert_eq!(retriable.category(), None);
@@ -812,6 +868,7 @@ mod tests {
         let terminal = Error::Http {
             status: 404,
             body: String::new(),
+            url: None,
         };
         assert!(!terminal.is_retriable());
         assert_eq!(terminal.correlation_id(), None);
@@ -915,6 +972,7 @@ mod tests {
         let err = Error::Http {
             status: 401,
             body: body.to_string(),
+            url: None,
         };
 
         assert_eq!(err.category(), None, "-1 is not a category");
@@ -961,6 +1019,7 @@ mod tests {
         let err = Error::Http {
             status: 404,
             body: body.to_string(),
+            url: None,
         };
         let found = err.resource_info();
         assert_eq!(found.len(), 1);
@@ -974,6 +1033,7 @@ mod tests {
         let many = Error::Http {
             status: 409,
             body: r#"{"resources":[["A","1"],["B","2"]]}"#.to_string(),
+            url: None,
         };
         assert_eq!(many.resource_info().len(), 2);
 
@@ -982,12 +1042,14 @@ mod tests {
         let ragged = Error::Http {
             status: 500,
             body: r#"{"resources":[["A"],["B","2"],42,null]}"#.to_string(),
+            url: None,
         };
         assert_eq!(ragged.resource_info().len(), 1);
         for body in [r#"{"resources":[]}"#, "{}", "not json at all", ""] {
             let err = Error::Http {
                 status: 500,
                 body: body.to_string(),
+                url: None,
             };
             assert!(err.resource_info().is_empty(), "{body}");
         }
@@ -1050,7 +1112,8 @@ mod tests {
             assert!(
                 Error::Http {
                     status,
-                    body: String::new()
+                    body: String::new(),
+                    url: None,
                 }
                 .is_retriable(),
                 "http {status} should be retriable"
@@ -1061,7 +1124,8 @@ mod tests {
             assert!(
                 !Error::Http {
                     status,
-                    body: String::new()
+                    body: String::new(),
+                    url: None,
                 }
                 .is_retriable(),
                 "http {status} should not be retriable"
@@ -1097,7 +1161,8 @@ mod tests {
         assert_eq!(
             Error::Http {
                 status: 503,
-                body: String::new()
+                body: String::new(),
+                url: None,
             }
             .code(),
             None
@@ -1118,7 +1183,8 @@ mod tests {
         assert_eq!(
             Error::Http {
                 status: 503,
-                body: "down".to_string()
+                body: "down".to_string(),
+                url: None,
             }
             .to_string(),
             "http 503: down"

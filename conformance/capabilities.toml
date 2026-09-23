@@ -1,0 +1,387 @@
+# The Ledger Client Standard capabilities this SDK claims.
+#
+# The human-readable half is ledger-client-standard-mapping.md next to this
+# file, which maps the capability matrix DA published to a milestone and a
+# crate, and lists the rows the grant does not claim. This file is the
+# machine-readable half: `canton-conformance` asserts there is a test named
+# for every row here, so a capability cannot be claimed without one.
+#
+# `evidence` names where the behaviour is actually proven. A conformance test
+# exercises the capability through the public API; it does not restate what a
+# unit test next to the implementation already covers.
+
+[[capability]]
+id        = "codegen_and_bindings__daml_representation_codegen"
+name      = "Daml representation (codegen)"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-codegen`"
+
+[[capability]]
+id        = "codegen_and_bindings__json_codec"
+name      = "JSON Codec"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "generated + `canton-daml`"
+
+[[capability]]
+id        = "codegen_and_bindings__grpc_codec"
+name      = "gRPC Codec"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "generated + `canton-daml`"
+
+[[capability]]
+id        = "codegen_and_bindings__json_bindings"
+name      = "JSON Bindings"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-ledger` (JSON)"
+
+[[capability]]
+id        = "codegen_and_bindings__grpc_bindings"
+name      = "gRPC Bindings"
+section   = "Codegen and bindings"
+milestone = "M2"
+note      = "`canton-ledger` (gRPC)"
+
+[[capability]]
+id        = "codegen_and_bindings__pqs_bindings"
+name      = "PQS bindings"
+section   = "Codegen and bindings"
+milestone = "M3"
+note      = "`canton-pqs`"
+
+[[capability]]
+id        = "basic_infrastructure__tls"
+name      = "TLS"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core` / `canton-ledger`"
+
+[[capability]]
+id        = "basic_infrastructure__authorization"
+name      = "Authorization"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core` (`TokenProvider`)"
+
+[[capability]]
+id        = "basic_infrastructure__error_parsing_and_handling"
+name      = "Error parsing & handling"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core` (`Error`, error parser)"
+
+[[capability]]
+id        = "basic_infrastructure__tracing"
+name      = "Tracing"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core`"
+
+[[capability]]
+id        = "basic_infrastructure__retry_logic"
+name      = "Retry logic"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core` (tower layer)"
+
+[[capability]]
+id        = "basic_infrastructure__logging"
+name      = "Logging"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core`"
+
+[[capability]]
+id        = "basic_infrastructure__metrics"
+name      = "Metrics"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core`"
+
+[[capability]]
+id        = "basic_infrastructure__signing"
+name      = "Signing"
+section   = "Basic infrastructure"
+milestone = "M3"
+note      = "`canton-signer` (trait)"
+
+[[capability]]
+id        = "commands__json"
+name      = "JSON"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__grpc"
+name      = "gRPC"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__internal_commands"
+name      = "Internal commands"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__external_commands"
+name      = "External commands"
+section   = "Commands"
+milestone = "M3"
+note      = "`canton-ledger` + `canton-signer`"
+
+[[capability]]
+id        = "commands__deduplication"
+name      = "Deduplication"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger` + `canton-core`"
+
+[[capability]]
+id        = "commands__command_recovery"
+name      = "Command recovery"
+section   = "Commands"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "commands__contract_keys"
+name      = "Contract keys"
+section   = "Commands"
+milestone = "M2"
+note      = "`canton-codegen` + `canton-ledger`"
+
+[[capability]]
+id        = "streams__json"
+name      = "JSON"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__grpc"
+name      = "gRPC"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__acs_streaming"
+name      = "ACS streaming"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__acs_paging"
+name      = "ACS paging"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__updates_streaming"
+name      = "Updates streaming"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__updates_paging"
+name      = "Updates paging"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__reverse_order"
+name      = "Reverse order"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "streams__resilient_streams"
+name      = "Resilient streams"
+section   = "Streams"
+milestone = "M1"
+note      = "`canton-ledger`"
+
+[[capability]]
+id        = "parties__json_party_mgmt"
+name      = "JSON party mgmt"
+section   = "Parties"
+milestone = "M1"
+note      = "`JsonClient::list_known_parties_page` / `list_known_parties` / `get_parties` / `allocate_party` / `allocate_party_with` / `update_party_details` / `participant_id` — `/v2/parties` in full, answering in the gRPC path's `PartyDetails`. Recorded as a gap until 0.3.0: the suite's earlier test for this row constructed a gRPC client and proved nothing."
+
+[[capability]]
+id        = "parties__grpc_party_mgmt"
+name      = "gRPC party mgmt"
+section   = "Parties"
+milestone = "M1"
+note      = "`PartyManagementService`"
+
+[[capability]]
+id        = "parties__list_parties"
+name      = "List parties"
+section   = "Parties"
+milestone = "M1"
+note      = "with filtering"
+
+[[capability]]
+id        = "parties__local_parties_creation"
+name      = "Local parties creation"
+section   = "Parties"
+milestone = "M1"
+note      = "self-administration mode"
+
+[[capability]]
+id        = "parties__external_parties_creation"
+name      = "External parties creation"
+section   = "Parties"
+milestone = "M3"
+note      = "`AdminClient::generate_external_party_topology` + `allocate_external_party`: the participant describes the onboarding for a public key, the key signs the multi-hash, the signed topology is submitted. Exercised live in `interactive_live.rs`. Planned post-v1; landed in M3 because interactive submission needs a party whose key the participant never holds."
+
+[[capability]]
+id        = "multi_synchronizer__listing_connected_synchronizers"
+name      = "Listing connected synchronizers"
+section   = "Multi-synchronizer"
+milestone = "M3"
+note      = "`CantonClient::connected_synchronizers` (`GetConnectedSynchronizers`), so a party's synchronizer is asked of the participant rather than configured. The other multi-synchronizer rows stay post-v1."
+
+[[capability]]
+id        = "packages__listing"
+name      = "Listing"
+section   = "Packages"
+milestone = "M1"
+note      = "list package ids"
+
+[[capability]]
+id        = "token_standard__one_step_transfers"
+name      = "One-step transfers"
+section   = "Token Standard"
+milestone = "M3"
+note      = "sender-initiated, receiver pre-approved"
+
+[[capability]]
+id        = "token_standard__pre_approvals"
+name      = "Pre-approvals"
+section   = "Token Standard"
+milestone = "M3"
+note      = "`TransferPreapproval`"
+
+[[capability]]
+id        = "token_standard__allocate"
+name      = "Allocate"
+section   = "Token Standard"
+milestone = "M3"
+note      = "two-step allocate path"
+
+[[capability]]
+id        = "token_standard__transfer"
+name      = "Transfer"
+section   = "Token Standard"
+milestone = "M3"
+note      = "`TransferFactory_Transfer`"
+
+[[capability]]
+id        = "token_standard__instrument_inspection"
+name      = "Instrument inspection"
+section   = "Token Standard"
+milestone = "M3"
+note      = "registry/instrument metadata"
+
+# --- Rows the first registry omitted. Every one was already implemented; what
+# --- was missing was the claim of coverage, which is the half a vote reviewer
+# --- reads. `commands__explicit_disclosure` is the sharpest of them: it is an
+# --- M3 row and a named sub-item of the token-standard deliverable.
+
+[[capability]]
+id        = "commands__explicit_disclosure"
+name      = "Explicit disclosure"
+section   = "Commands"
+milestone = "M3"
+note      = "`canton-ledger` / `canton-token`"
+
+[[capability]]
+id        = "streams__interfaces"
+name      = "Interfaces"
+section   = "Streams"
+milestone = "M2"
+note      = "`canton-codegen` + `canton-ledger`"
+
+[[capability]]
+id        = "basic_infrastructure__node_health"
+name      = "Node Health"
+section   = "Basic infrastructure"
+milestone = "M1"
+note      = "`canton-core`/`canton-admin` health check"
+
+[[capability]]
+id        = "packages__grpc_package_mgmt"
+name      = "gRPC package mgmt"
+section   = "Packages"
+milestone = "M1"
+note      = "`canton-admin` (read)"
+
+[[capability]]
+id        = "packages__vetting"
+name      = "Vetting"
+section   = "Packages"
+milestone = "M1"
+note      = "list vetted packages (topology read)"
+
+[[capability]]
+id        = "topology__list_mappings"
+name      = "List mappings"
+section   = "Topology"
+milestone = "M1"
+note      = "party→participant mappings (`TopologyManagerReadService`)"
+
+[[capability]]
+id        = "topology__generic_mappings"
+name      = "Generic mappings"
+section   = "Topology"
+milestone = "M1"
+note      = "`canton-admin` (read)"
+
+[[capability]]
+id        = "topology__namespace_delegations"
+name      = "Namespace delegations"
+section   = "Topology"
+milestone = "M1"
+note      = "read only"
+
+[[capability]]
+id        = "user__self_inspect"
+name      = "Self-inspect (pull own record/permissions)"
+section   = "User"
+milestone = "M1"
+note      = "`canton-admin` via `UserManagementService`"
+
+# ---------------------------------------------------------------------------
+# Gaps: in-scope rows of the standard this SDK does **not** implement.
+#
+# Listed rather than omitted, and that is the point. A row that is simply
+# absent looks identical to a row nobody thought of, which is how ten of them
+# went missing from the first version of this file — including an M3 row. A
+# capability named here is one a reviewer can weigh; a capability missing from
+# here is one they cannot.
+#
+# `canton-conformance` asserts that no test is named for a gap, so a gap cannot
+# be quietly promoted to a claim, and that gaps + capabilities together account
+# for every in-scope row of the standard.
+# ---------------------------------------------------------------------------
+
+[[capability]]
+id        = "packages__json_package_mgmt"
+name      = "JSON package mgmt"
+section   = "Packages"
+milestone = "M1"
+note      = "`JsonClient::list_packages` / `package_status` — the reads, as `canton-admin` has them over gRPC. Upload stays out: `POST /v2/dars` is an operator write with its own authorization story (issue #2)."

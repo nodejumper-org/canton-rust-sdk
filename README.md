@@ -4,29 +4,40 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client and the type-safe DAR codegen are both **released** on crates.io (0.2.x). Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. Token-standard support (CIP-56 / CIP-0112), a PQS client, and external signing are next.
+> **Status:** the Ledger API client and the type-safe DAR codegen are both **released** on crates.io (0.2.x). Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. On this branch (unreleased, ships as 0.3.0): external signing — interactive submission with a pluggable `Signer`, verified live, an external party onboarded by signing its own topology and a command prepared, signed off the participant and committed; token-standard support for **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client whose every path and payload is transcribed from the standard's OpenAPI documents and pinned by test; and a PQS client verified live against **Scribe 3.5.4**.
 
 ## Crates
 
 | Crate | What it is |
 |---|---|
-| `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml` + the shared `Config`/`Error` at the root) with the `ws`/`otel` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
+| `canton` | The SDK entry point: a thin facade re-exporting the whole family (`canton::ledger`, `canton::auth`, `canton::admin`, `canton::daml`, `canton::signer`, `canton::token`, `canton::pqs` + the shared `Config`/`Error` at the root) with the `ws`/`otel`/`pqs-tls` features forwarded. `cargo add canton` gets everything below as one version-locked set. |
 | `canton-core` | Shared foundation: the `Error`/`Result` model (retriable classification, structured `ErrorInfo` details), the connection kernel (`Config`, `Auth`/`TokenSource`, `TlsConfig`, jittered retry with per-attempt timeouts), and telemetry (`tracing` spans + `metrics`, optional OTLP via `otel`). |
 | `canton-proto` | Generated gRPC types + client stubs from vendored protos (Ledger API v2, Canton admin API topology read, gRPC health), pinned to a Canton release. Internal. |
 | `canton-auth` | JWT/OIDC authentication: client-credentials `TokenProvider` with caching + refresh + bounded fetch, and Keycloak/Auth0/Okta presets that each produce their provider's normal token request (Auth0's `audience`, Okta's HTTP Basic credentials). |
-| `canton-ledger` | The async Ledger API client, with the **same operations on both transports**. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions and change-ID recovery, ACS/update streaming (+ paging, reverse-order, event query, checkpoint-resumable), a lossless ACS read (`AcsEntry`, incomplete reassignments included), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: the same submission set including fire-and-forget and recovery, event query, bounded reads, and WebSocket streaming — updates, completions and a resumable ACS — behind the `ws` feature. |
+| `canton-ledger` | The async Ledger API client, with the **same operations on both transports**. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions and change-ID recovery, ACS/update streaming (+ paging, reverse-order, event query, checkpoint-resumable), a lossless ACS read (`AcsEntry`, incomplete reassignments included), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: the same submission set including fire-and-forget and recovery, event query, bounded reads, package and party management (`/v2/packages`, `/v2/parties`) for JSON-only deployments, and WebSocket streaming — updates, completions and a resumable ACS — behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
+| `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL on that path, and no interpolation of values or field paths anywhere. `Sql::raw` is the documented escape hatch for PQS functions the crate does not model; it still binds its parameters. |
+| `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. |
+| `canton-signer` | Pluggable transaction signing for interactive submission: an object-safe async `Signer` trait (HSM/KMS-compatible) plus an in-memory Ed25519 key behind a feature flag. |
 | `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
 | `canton-codegen` / `canton-codegen-cli` | DAR → typed Rust. The CLI (`dpm-codegen-rust`, also `dpm codegen-rust`) writes a complete crate from any DAR; the library is the IR + emitter behind it. |
 | `canton-lf` | Daml-LF archive reader/decoder (the codegen front-end), built on the official `daml-lf-archive` schema and held to the official JVM reader by a conformance oracle. Internal. |
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | Pre-built typed bindings for the Splice protocol DARs, regenerated per release ("DAR as a crate"). |
+| `canton-splice-api-token-*` (V1 and V2), `canton-splice-api-featured-app-v1` | The token-standard and featured-app packages, one crate each — CIP-56 (`-v1`) and CIP-0112 (`-v2`). The crates above reference these rather than copying them, so a `Holding` is the same Rust type whichever crate you reach it through. |
+| `canton-daml-stdlib` | The Daml standard library (`daml-stdlib`, `daml-prim`, `ghc-stdlib`), which every DAR carries and no DAR ships. Every bindings crate references it, so a `RelTime` is one type rather than one per crate. |
+| `canton-conformance` | The Ledger Client Standard, one test per capability, with a guard asserting the suite and the published capability list agree in both directions. **Not published.** |
 | `canton-quickstart-licensing` | The same, for the cn-quickstart licensing DAR. **Not published** — it backs the reference app and the end-to-end tests; generate your own with the CLI. |
 
 ## Compatibility
 
+The full picture — toolchain, platform, Canton, Daml-LF, token-standard version,
+and what CI can and cannot check — is in
+[docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.2.x (current) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.3.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.2.x (current release) | 3.5.7 (pinned protos) | v2 | 1.88 |
 | 0.1.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the
@@ -42,8 +53,10 @@ crates release in **lockstep** — mix only equal versions
 |---|---|---|
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
+| `ed25519` | `canton-signer` | The in-memory Ed25519 key (`Ed25519Key`), on `ring`. **On by default via the facade.** An HSM/KMS deployment that must not link `ring` or an in-memory private key takes `canton = { default-features = false }` and implements `Signer` itself; the trait, the wire types and their validation are unconditional. |
+| `tls` | `canton-pqs` | Connecting to a PQS store over TLS (`PqsClient::connect_tls`), with the platform's root certificates. |
 
-The `canton` facade forwards both: `canton = { version = "0.2", features = ["ws", "otel"] }`.
+The `canton` facade forwards all of them — the PQS one as `pqs-tls`, since the facade's own namespace has to say which crate a `tls` belongs to: `canton = { version = "0.3", features = ["ws", "otel", "pqs-tls"] }`. `ed25519` is on by default, so turning it off is `default-features = false`.
 
 Telemetry follows the standard Rust model: the SDK **emits** (`tracing` spans, `metrics` counters labelled by method + transport); the application installs the subscriber/recorder of its choice.
 
@@ -331,6 +344,86 @@ setup first:
 More LocalNet tooling is catalogued on the
 [Canton Dev Hub](https://dev-hub.canton.foundation/).
 
+**Token standard, external signing and PQS** have live suites of their own,
+each gated on one more variable:
+
+| Variable | What it gates | Example (cn-quickstart) |
+|---|---|---|
+| `CANTON_TOKEN_REGISTRY_URL` | `canton-token`'s live suite and the five examples: the token-standard registry (a Splice **Scan**) | `http://scan.localhost:4000` on a Splice LocalNet or Canton Builder Tool; `http://localhost:5012` on cn-quickstart — see below |
+| `CANTON_TOKEN_SENDER`, `CANTON_TOKEN_RECEIVER`, `CANTON_TOKEN_EXECUTOR`, `CANTON_TOKEN_INSTRUMENT`, `CANTON_TOKEN_AMOUNT` | the examples: who transfers what to whom | `app_provider_…::1220…`, `app_user_…::1220…`, `sv::1220…`, `Amulet`, `1.0` |
+| `CANTON_TOKEN` | a ready-made bearer token, instead of the OIDC variables | on Canton Builder Tool: `$(canton builder token --validator app-provider)`, whose user carries `ParticipantAdmin` as well |
+| `CANTON_TEST_AUDIENCE` | the OIDC `audience`, where the issuer wants one (Auth0, some Keycloak realms) | |
+| `CANTON_TEST_ADMIN_CLIENT_ID`, `CANTON_TEST_ADMIN_CLIENT_SECRET` | `canton-ledger`'s `interactive_live` suite: onboarding an external party needs `ParticipantAdmin` | `app-provider-validator`, … |
+| `CANTON_PQS_URL` | `canton-pqs`'s live suite: a Scribe store following the party's participant | `postgres://pqs:pqs@localhost:5433/pqs` from [`tools/pqs/compose.yaml`](tools/pqs/compose.yaml); cn-quickstart's own is `postgres://cnadmin:…@localhost:5432/pqs-app-provider` |
+
+The **registry** is the super-validator's Scan, which serves the standard's
+off-ledger API. A Splice LocalNet (and Canton Builder Tool, which runs one)
+publishes it at `http://scan.localhost:4000`, the `/registry/…` paths
+included, so nothing needs forwarding there. cn-quickstart runs the same Scan
+when started with `SV_PROFILE=on`, on port `5012` of its `splice` container,
+unpublished to the host. Forward it:
+
+```sh
+docker run -d --name canton-rs-scan-forward \
+  --network "$(docker network ls --filter name=quickstart --format '{{.Name}}' | head -1)" \
+  -p 5012:5012 alpine/socat TCP-LISTEN:5012,fork,reuseaddr TCP:splice:5012
+curl -s http://localhost:5012/registry/metadata/v1/info   # {"adminId":"DSO::…","supportedApis":…}
+```
+
+Then the examples, in the order a wallet would run them:
+
+```sh
+export CANTON_TOKEN_REGISTRY_URL=http://localhost:5012
+export CANTON_TOKEN_SENDER='app_provider_…::1220…' CANTON_TOKEN_RECEIVER='app_user_…::1220…'
+export CANTON_TOKEN_EXECUTOR='sv::1220…' CANTON_TOKEN_INSTRUMENT=Amulet CANTON_TOKEN_AMOUNT=1.0
+cargo run -p canton-token --example v1_transfer            # CIP-56
+cargo run -p canton-token --example v2_transfer            # CIP-0112, over accounts
+cargo run -p canton-token --example v2_allocate            # reserve for a settlement
+cargo run -p canton-token --example v2_settle              # the executor settles the batch
+cargo run -p canton-token --example v2_withdraw_allocation # or the sender takes it back
+```
+
+A **party with Canton Coin** is the other prerequisite: on a Splice LocalNet
+open the App Provider wallet (`http://wallet.localhost:3000`, log in as
+`app-provider`), tap, and copy the party id from the header (Canton Builder
+Tool also prints it under `canton builder env`). With a single
+party set `CANTON_TOKEN_RECEIVER` and `CANTON_TOKEN_EXECUTOR` to the sender:
+the registry answers `kind: self`, which needs neither a pre-approval nor an
+`accept`, and the settlement can be executed by the same token. With the App
+User party as receiver the transfer is an `offer` to accept in that wallet
+(`http://wallet.localhost:2000`).
+
+Each example prints the registry's answer (`kind: self`, `direct` or `offer`,
+the contracts it named for disclosure) and the committed update id and offset;
+`CANTON_TOKEN_DRY_RUN=1` builds the command against the registry and stops
+before submitting. Settling needs both sides of a leg authorised — the
+receiver's own `ReceiverSide` allocation — which is why `v2_settle` is run
+with the sender as receiver and executor when only one party is at hand.
+
+On the **Canton Network DevNet** the same examples run against any validator
+you hold a token for, with the public Scan of a super-validator as the
+registry (`https://scan.sv-1.dev.global.canton.network.sync.global`,
+unauthenticated). The run on record, update ids included, is in
+[`docs/verification/token-standard-live-runs.md`](docs/verification/token-standard-live-runs.md).
+
+```sh
+# external signing: on an unauthenticated LocalNet nothing beyond the endpoint;
+# cn-quickstart also wants the ParticipantAdmin client
+export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=…
+cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 3 tests, one of them a refusal
+
+# PQS: a Scribe store following the participant — this compose runs one
+# (add SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=… where the participant wants a token)
+docker compose -f tools/pqs/compose.yaml up -d
+tools/pqs/wait-ready.sh      # Scribe applies its schema before the store answers
+export CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs'
+cargo test -p canton-pqs --all-features --test live -- --nocapture                   # 9 tests; the store must hold Amulet, so tap first
+
+# the registry, on its own
+export CANTON_TOKEN_REGISTRY_URL=http://scan.localhost:4000
+cargo test -p canton-token --test live -- --nocapture                                 # 5 tests against the registry
+```
+
 CI enforces `rustfmt`, `clippy -D warnings` (all features), the full test suite on Linux/macOS/Windows, rustdoc `-D warnings`, `cargo-deny`, and the MSRV build.
 
 ## MSRV
@@ -349,9 +442,9 @@ LF decoder is native Rust rather than a JVM wrapper around `daml-lf-archive`
 ([ADR-0008](docs/adr/0008-native-lf-decoder.md)); its output is held to the
 official JVM reader by a conformance oracle.
 
-**Next:** token-standard support (CIP-56 V1 + CIP-0112 V2), interactive
-submission with a pluggable signer, a typed PQS client, and the
-Ledger-Client-Standard conformance suite.
+Token-standard support (CIP-56 V1 + CIP-0112 V2), interactive submission with a
+pluggable signer, a typed PQS client and the Ledger-Client-Standard conformance
+suite have since landed on top of that.
 
 ## Contributing & security
 

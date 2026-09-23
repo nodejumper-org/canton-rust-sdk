@@ -11,6 +11,9 @@
 //! | [`auth`] | `canton-auth` | JWT/OIDC authentication (client-credentials, caching, refresh) |
 //! | [`admin`] | `canton-admin` | Party management, user self-inspect, topology read |
 //! | [`daml`] | `canton-daml` | The runtime under generated bindings: Daml primitives, codecs, command builders |
+//! | [`signer`] | `canton-signer` | Pluggable signing for interactive submission — Ed25519 built in, HSM/KMS via the trait |
+//! | [`token`] | `canton-token` | Token-standard workflows: CIP-56 at the root, CIP-0112 under `token::v2` |
+//! | [`pqs`] | `canton-pqs` | Typed reads from the Participant Query Store (`pqs-tls` for TLS) |
 //!
 //! The shared foundation (`canton-core`: [`Config`], [`Error`], TLS, retry)
 //! is re-exported at the crate root — the same types `canton-ledger` itself
@@ -35,6 +38,10 @@
 //!
 //! * `ws` — WebSocket streaming for the JSON transport (`canton-ledger/ws`).
 //! * `otel` — OTLP export + W3C trace-context propagation (`canton-ledger/otel`).
+//! * `ed25519` (default) — the in-memory Ed25519 key in `canton-signer`. Turn it
+//!   off (`default-features = false`) when every signature comes from an HSM or
+//!   KMS behind your own [`Signer`](signer::Signer) implementation.
+//! * `pqs-tls` — TLS for the Participant Query Store connection (`canton-pqs/tls`).
 //!
 //! # Quickstart
 //!
@@ -56,6 +63,12 @@ pub use canton_admin as admin;
 pub use canton_auth as auth;
 pub use canton_daml as daml;
 pub use canton_ledger as ledger;
+/// Typed reads from the Participant Query Store.
+pub use canton_pqs as pqs;
+/// Pluggable signing for interactive submission (HSM/KMS-compatible).
+pub use canton_signer as signer;
+/// Token-standard workflows: CIP-56 (V1) at the root, CIP-0112 (V2) under `v2`.
+pub use canton_token as token;
 
 /// Reading a local development network out of the environment — the variables
 /// `canton-devkit localnet env` exports, and the party ids that come with them.

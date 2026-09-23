@@ -11,17 +11,33 @@ homepage     = { workspace = true }
 categories   = { workspace = true }
 keywords     = { workspace = true }
 description  = "Canton admin client: party management, user self-inspect, and topology read (gRPC)."
-include      = ["src/**/*", "README.md", "LICENSE"]
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 
 [dependencies]
+# A package id is the SHA-256 of its payload; `get_package` verifies that
+# rather than trusting the hash the server reports beside it.
+sha2 = { workspace = true }
 canton-proto = { workspace = true }
 canton-core  = { workspace = true }
+# `canton-signer` without its in-memory Ed25519 key. The library needs only the
+# `Signer` trait and the wire types; `Ed25519Key` and `ring` come back with the
+# `ed25519` feature, which the facade turns on by default. Taken with
+# `default-features = false` because feature unification is additive: one
+# dependant pinning the default would have forced `ring` on every HSM
+# deployment in the tree, which is what it did.
+canton-signer = { workspace = true }
 tonic        = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
 tonic-prost  = { workspace = true }
 tokio        = { workspace = true, features = ["rt", "macros", "time"] }
 tracing      = { workspace = true }
 
+[features]
+# As `canton-ledger`: the trait is unconditional, the key is not.
+ed25519 = ["canton-signer/ed25519"]
+
 [dev-dependencies]
+# The package-fetch example decodes what it downloads, and authenticates.
+canton-lf    = { workspace = true }
 canton-auth  = { workspace = true }
 # Server stubs (dev-only) so in-process gRPC test servers can be built.
 canton-proto = { workspace = true, features = ["server"] }

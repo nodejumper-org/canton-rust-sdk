@@ -88,7 +88,26 @@ pub fn decode_main_package(dar: &Dar) -> Result<(Package, String), DecodeError> 
 pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeError> {
     let archive = Archive::decode(archive_bytes)?;
     let package_id = verified_package_id(&archive)?;
-    let payload = ArchivePayload::decode(archive.payload.as_slice())?;
+    Ok((decode_payload(&archive.payload)?, package_id))
+}
+
+/// Decode an `ArchivePayload` — the *inner* half of an archive, without the
+/// hash beside it.
+///
+/// Which half you have depends on where the package came from. A DAR entry is a
+/// whole `Archive`: payload, hash and hash function together, which is why
+/// [`decode_package`] can check the id against the bytes. The Ledger API's
+/// `GetPackage` hands the three back as separate response fields, so a caller
+/// there holds only this — and does the check itself, against the id it asked
+/// for. Two shapes, and mistaking one for the other fails with a proto error
+/// about a `hash` field that says nothing about the cause.
+///
+/// # Errors
+/// [`DecodeError::Proto`] if the bytes are not an `ArchivePayload`,
+/// [`DecodeError::UnsupportedVersion`] if the package is not Daml-LF 2.x, and
+/// [`DecodeError::UnsupportedMinor`] for an LF 2 minor this build cannot read.
+pub fn decode_payload(payload_bytes: &[u8]) -> Result<Package, DecodeError> {
+    let payload = ArchivePayload::decode(payload_bytes)?;
     // Major first: a minor only means something once the major is LF 2. An LF 1
     // archive — which is every DAR a Daml 2.x SDK built — carries minors like
     // "15", and judging it by the minor gate would tell the reader that
@@ -98,7 +117,7 @@ pub fn decode_package(archive_bytes: &[u8]) -> Result<(Package, String), DecodeE
         return Err(DecodeError::UnsupportedVersion);
     };
     check_minor(&payload.minor)?;
-    Ok((package, package_id))
+    Ok(package)
 }
 
 /// The package id of an archive, checked against its contents rather than

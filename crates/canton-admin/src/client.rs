@@ -121,6 +121,125 @@ impl AdminClient {
         .await
     }
 
+    /// Ask the participant what allocating an external party for `public_key`
+    /// would look like, without allocating it.
+    ///
+    /// The first half of external-party onboarding. The participant computes
+    /// the key's fingerprint and the party id derived from it, builds the
+    /// onboarding topology transactions, and returns one hash over them. None
+    /// of it is submitted: that is [`allocate_external_party`], after the key
+    /// has signed the hash.
+    ///
+    /// [`allocate_external_party`]: Self::allocate_external_party
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails, or [`Error::UnexpectedResponse`]
+    /// if the participant answers without a hash to sign or without the
+    /// fingerprint — either of which would leave the caller unable to sign as
+    /// this party at all.
+    pub async fn generate_external_party_topology(
+        &self,
+        synchronizer: &str,
+        party_hint: &str,
+        public_key: &canton_signer::PublicKey,
+    ) -> Result<crate::external_party::ExternalPartyTopology> {
+        let request = pb::GenerateExternalPartyTopologyRequest {
+            synchronizer: synchronizer.to_string(),
+            party_hint: party_hint.to_string(),
+            public_key: Some(public_key.into()),
+            ..Default::default()
+        };
+        telemetry::instrument(
+            "generate_external_party_topology",
+            TRANSPORT_GRPC,
+            async move {
+                let response = self
+                    .with_retry(|| {
+                        let request = request.clone();
+                        async move {
+                            let mut client = service!(self, PartyManagementServiceClient::new);
+                            Ok(client
+                                .generate_external_party_topology(request)
+                                .await?
+                                .into_inner())
+                        }
+                    })
+                    .await?;
+                crate::external_party::ExternalPartyTopology::from_response(response)
+            },
+        )
+        .await
+    }
+
+    /// Allocate the external party described by `topology`, authorized by
+    /// `signer`.
+    ///
+    /// The second half. The signature is over
+    /// [`multi_hash`](crate::external_party::ExternalPartyTopology::multi_hash)
+    /// — one hash covering every onboarding transaction, so one signature
+    /// authorizes the whole set — and it is what proves the party controls the
+    /// key being registered for it.
+    ///
+    /// `user_id` gets `act_as` rights on the new party; empty grants none.
+    ///
+    /// Returns the allocated party id. This waits for the allocation to reach
+    /// the synchronizer, so the party is usable when it returns.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if signing fails or the RPC does. A signature made
+    /// by a key other than the one in the topology is rejected by the
+    /// participant, not here.
+    pub async fn allocate_external_party(
+        &self,
+        synchronizer: &str,
+        topology: &crate::external_party::ExternalPartyTopology,
+        signer: &dyn canton_signer::Signer,
+        user_id: &str,
+    ) -> Result<String> {
+        let signature = signer.sign(topology.multi_hash()).await?;
+        let request = pb::AllocateExternalPartyRequest {
+            synchronizer: synchronizer.to_string(),
+            onboarding_transactions: topology
+                .transactions()
+                .iter()
+                .map(
+                    |transaction| pb::allocate_external_party_request::SignedTransaction {
+                        transaction: transaction.clone(),
+                        // The multi-hash signature below covers every transaction,
+                        // so none needs one of its own.
+                        signatures: Vec::new(),
+                    },
+                )
+                .collect(),
+            multi_hash_signatures: vec![(&signature).into()],
+            identity_provider_id: String::new(),
+            // The party is not usable until it is on the synchronizer, and a
+            // caller that just allocated it is about to use it.
+            wait_for_allocation: Some(true),
+            user_id: user_id.to_string(),
+        };
+        telemetry::instrument("allocate_external_party", TRANSPORT_GRPC, async move {
+            // Deliberately not retried, exactly as `allocate_party` is not.
+            // `AllocateExternalPartyRequest` carries no command or submission
+            // id, so there is no idempotency key that would make a second
+            // attempt a duplicate — and `wait_for_allocation` makes the call
+            // long enough that losing the response to a committed allocation is
+            // realistic. Retrying would be a guess about Canton's behaviour
+            // dressed up as resilience.
+            let response = {
+                let mut client = service!(self, PartyManagementServiceClient::new);
+                client.allocate_external_party(request).await?.into_inner()
+            };
+            if response.party_id.is_empty() {
+                return Err(Error::UnexpectedResponse(
+                    "allocate_external_party returned no party id".to_string(),
+                ));
+            }
+            Ok(response.party_id)
+        })
+        .await
+    }
+
     /// List one page of known parties (`ListKnownParties`). Pass the returned
     /// token to fetch the next page; `page_size` `0` uses the server default.
     ///
@@ -333,6 +452,67 @@ impl AdminClient {
     /// known, `Unspecified` otherwise.
     ///
     /// # Errors
+    /// Download a package the participant knows, as `ArchivePayload` bytes.
+    ///
+    /// This is what `canton_lf::decode_payload` reads — the *inner* half of an
+    /// archive. A DAR entry is the whole `Archive`, payload and hash together,
+    /// and `canton_lf::decode_package` reads that one; the Ledger API returns
+    /// the parts separately, so the two are different bytes and each has its
+    /// own decoder.
+    ///
+    /// Bindings can therefore be generated from what a participant has actually
+    /// vetted, rather than from a DAR file that has to be found somewhere — and
+    /// for a package that only ever existed on a network, there may be no such
+    /// file at all.
+    ///
+    /// The payload is hashed and the digest checked against `package_id` before the bytes are
+    /// handed back. A package id **is** the hash of its payload, so that check
+    /// is what makes asking by id pin the content exactly, with nothing further
+    /// to checksum.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails, and
+    /// [`Error::UnexpectedResponse`] if the participant answers with no payload
+    /// or whose bytes do not hash to the id that was asked for.
+    pub async fn get_package(&self, package_id: &str) -> Result<Vec<u8>> {
+        let package_id = package_id.to_string();
+        let package_for_check = package_id.clone();
+        telemetry::instrument("get_package", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let package_id = package_id.clone();
+                    async move {
+                        let mut client = service!(self, PackageServiceClient::new);
+                        Ok(client
+                            .get_package(lapi::GetPackageRequest { package_id })
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            if response.archive_payload.is_empty() {
+                return Err(Error::UnexpectedResponse(
+                    "the participant returned an empty archive".to_string(),
+                ));
+            }
+            // A package id *is* the SHA-256 of its payload, so the check is to
+            // hash the bytes — not to read the `hash` field back. That field is
+            // the server's own claim about what it sent, so comparing it to the
+            // id proves only that the server is self-consistent, and an empty
+            // one skipped the check altogether. Hashing the payload is what
+            // makes asking by id pin the content.
+            let computed = hex_sha256(&response.archive_payload);
+            if computed != package_for_check {
+                return Err(Error::UnexpectedResponse(format!(
+                    "asked for package {package_for_check} and got {} bytes hashing to {computed}",
+                    response.archive_payload.len()
+                )));
+            }
+            Ok(response.archive_payload)
+        })
+        .await
+    }
+
     /// Returns an [`Error`] if authentication or the RPC fails.
     pub async fn get_package_status(&self, package_id: &str) -> Result<lapi::PackageStatus> {
         let package_id = package_id.to_string();
@@ -374,5 +554,67 @@ impl AdminClient {
                 _ => None,
             })
             .collect())
+    }
+}
+
+/// The lowercase hex SHA-256 of `bytes` — which, for a Daml-LF package
+/// payload, *is* its package id.
+fn hex_sha256(bytes: &[u8]) -> String {
+    use sha2::{Digest as _, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::with_capacity(64), |mut out, byte| {
+            use std::fmt::Write as _;
+            let _ = write!(out, "{byte:02x}");
+            out
+        })
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod package_integrity_tests {
+    use super::hex_sha256;
+
+    /// The known-answer test, so the helper is pinned to SHA-256 rather than to
+    /// whatever it currently computes.
+    #[test]
+    fn the_digest_is_sha256_in_lowercase_hex() {
+        assert_eq!(
+            hex_sha256(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(
+            hex_sha256(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    /// The property `get_package` relies on: the committed V2 corpus is named
+    /// by the id its bytes hash to, and that is what makes asking by id pin the
+    /// content. If this helper ever stopped being SHA-256, those names would
+    /// stop meaning anything and nothing else would notice.
+    #[test]
+    fn a_committed_payload_hashes_to_the_id_in_its_name() {
+        let dir = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../testdata/token-standard-v2"
+        );
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return; // not checked out — the drift guard covers this corpus too
+        };
+        let mut checked = 0;
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let Some(stem) = name.strip_suffix(".lfpayload") else {
+                continue;
+            };
+            let Some((_, id)) = stem.rsplit_once('-') else {
+                continue;
+            };
+            let bytes = std::fs::read(entry.path()).expect("the payload reads");
+            assert_eq!(hex_sha256(&bytes), id, "{name} does not hash to its own id");
+            checked += 1;
+        }
+        assert!(checked >= 9, "expected the V2 corpus, checked {checked}");
     }
 }

@@ -7,6 +7,642 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.3.0] — unreleased
+
+### Changed — one crate per Daml package (**breaking**)
+
+- The eight token-standard and featured-app packages are now crates of their
+  own: `canton-splice-api-token-metadata-v1`, `-holding-v1`, `-allocation-v1`,
+  `-allocation-instruction-v1`, `-allocation-request-v1`, `-burn-mint-v1`,
+  `-transfer-instruction-v1` and `canton-splice-api-featured-app-v1`.
+  `canton-splice-amulet`, `-wallet`, `-wallet-payments` and
+  `canton-quickstart-licensing` reference them instead of carrying copies.
+- **Why it is breaking:** those packages previously existed once inside *each*
+  crate that depended on them, and Rust treats the copies as unrelated types.
+  A `ContractId<Holding>` read through `canton-splice-amulet` did not typecheck
+  against the `Holding` of `canton-splice-wallet`, so no program could use both
+  crates together. They are now one type.
+- **Migration:** a path that went through the containing crate now goes through
+  the package's own crate — `canton_splice_amulet::splice_api_token_holding_v1::…`
+  becomes `canton_splice_api_token_holding_v1::splice_api_token_holding_v1::…`,
+  and the new crate is added to `Cargo.toml`. Nothing changes on the ledger:
+  the package ids, template ids and wire encodings are identical.
+- `splice-util` is unchanged — it ships no DAR of its own, so it stays inside
+  `canton-splice-amulet`, and `canton-splice-wallet` reaches it from there.
+- **`canton-daml-stdlib`** (new) owns the Daml standard library — `daml-stdlib`,
+  `daml-prim`, `ghc-stdlib` and their per-module packages — and every bindings
+  crate references it. The same defect applied to those: `RelTime` appears in
+  public field types (`HoldingView`'s lock expiry, `AnyValue::AV_RelTime`), and
+  each crate declared its own. The standard library ships no DAR, so this crate
+  is generated from a *selection* of packages out of the DAR committed to this
+  repository — which means its drift guard needs no external checkout.
+- Every crate shrank by the standard library it no longer carries:
+  `canton-splice-api-token-metadata-v1` 134 KB → 12 KB,
+  `canton-splice-wallet` 310 KB → 189 KB, `canton-splice-amulet` 556 KB → 435 KB.
+
+### Fixed — the pre-submission review, September 2026
+
+Five agents went over the branch the way M1 and M2 were reviewed — a gap audit
+against the proposal, three adversarial code reviews (token, signing, PQS +
+conformance + release hygiene), and a test runner over every live suite, both
+feature profiles, the CI gates and a semver diff — and this is what they
+turned up. Every finding was re-verified against the code before it was acted
+on; the ones that did not survive that check are not here.
+
+- **`canton-pqs` did not require TLS from `connect_tls`.** The connection
+  string went to the driver unchanged, and tokio-postgres's default is
+  `sslmode=prefer` — so a store with TLS off, or a string carrying
+  `sslmode=disable`, gave a plaintext session from a method named
+  `connect_tls`, with no error. The mode is `Require` now, and a test proves a
+  store that answers the TLS request with "no" is refused.
+- **`canton-pqs` called every error without a SQLSTATE retriable** — a typo in
+  the connection string, a wrong password, a parameter the driver cannot bind,
+  a column it cannot decode. An application looping on `is_retriable()` spun
+  on its own mistake. The driver's permanent kinds are classified
+  `InvalidRequest`; and the client, which held one connection and could only
+  ever say "retriable" once the store had closed it, now reconnects.
+- **`canton-pqs` had no deadlines.** Connect and query are bounded (30s by
+  default; `connect_with_timeout`, `with_timeout`) and surface as
+  `Error::Timeout`.
+- **`Predicate::eq("count", 5)` matched nothing.** LF-JSON stores every number
+  as a string; a jsonb number never equals one. Numbers bind in their string
+  form now. And a `limit` without an order was a random sample — pages could
+  overlap — so a limit orders by ledger offset, then contract id.
+- **The registry's 409 was permanent.** Every token-standard document defines
+  it as "a contract in the reply is mid-reassignment": transient, gone in
+  seconds. Reported as a connection-class error now, which retries.
+- **`Instrument` was a transcription of metadata-v1 1.0.0.** The 1.2.0
+  document adds `paused`, `pauseInfo` and `accountInputFieldsToShow`; a wallet
+  on this crate could not say why a paused instrument refused. Added. The
+  seven OpenAPI documents are vendored under `testdata/openapi/` at the Splice
+  release the LocalNet runs, with provenance, and a test pins every path the
+  crate spells against them.
+- **`canton_token::holdings`.** A transfer or allocation naming no input
+  holdings is refused by Splice's registry, and one naming a *locked* holding
+  fails at the interpreter — both after the registry round-trip succeeded,
+  which is how the V2 examples failed on a machine that had just run the
+  allocation example. The module reads the sender's `Holding` views from the
+  ACS and says which are spendable; the examples use it when
+  `CANTON_TOKEN_HOLDINGS` is unset, and all three commit first try.
+- **`execute_submission` did not recognise its own retry.** A retried attempt
+  the participant de-duplicated came back as `ALREADY_EXISTS` and was
+  reported as failure — the case `submit_commands` already handles. Handled
+  the same way; `Prepared::change_id` / `Executable::change_id` hand out what
+  `await_completion` needs; `execute_submission_and_wait` returns the whole
+  response, completion offset included, rather than the update id alone.
+- **Three live suites skipped silently.** `canton-token`, `canton-pqs` and
+  `interactive_live` neither said so nor looked at `CANTON_TEST_REQUIRE_LIVE`;
+  a run with no registry, no store and no participant was green. They carry
+  the same guard as the ledger and admin suites.
+- **A conformance row claimed party management over JSON with a test that
+  built a gRPC client.** There is no `/v2/parties` in the JSON client; the row
+  is a declared gap with the reason. (`packages__json_package_mgmt` went the
+  other way — see *reading packages*.)
+- **docs.rs metadata was missing on every M3 crate**, so `connect_tls` and the
+  in-memory key would not have been documented, and nothing after publication
+  can fix that. Every hand-written crate carries the block now, with
+  `doc(cfg)` on the gated items. Generated crates forbid `unsafe_code` in the
+  file itself — the workspace lint never reached them.
+- **Docs that had fallen behind**: RELEASING.md's thirteen-crate order (there
+  are thirty-one; derived from the manifests now), the facade's feature list
+  (`ed25519` and `pqs-tls` were undocumented), `canton-token`'s CIP-56-only
+  title for a crate that implements both standards, and this file, which the
+  merge from 0.2.3 had left with every M3 entry under a published version.
+- **Coverage and mutation passes over the M3 crates**, the two phases the
+  September runner did not reach. Every `canton-token` workflow function — V1
+  allocation, the instruction choices, all of `v2::*` — now has an in-process
+  drive against the registry stub that asserts the request and that the
+  registry's context lands inside the exercise argument (a mutation run showed
+  a workflow could drop the context and no test would notice); the holdings
+  read is driven against an in-process `StateService`; the JSON transport's
+  bounded reads, wrapped submission and party endpoints are covered by the
+  scripted server; the interactive-submission accessors, the registry's
+  transport verdict (refactored to be testable on the strings it reads), the
+  PQS row accessors and path spellings, and the signer's `Debug` and
+  fingerprint are pinned by unit tests. The proposal's "submit → observe →
+  query on both transports" runs in CI as one flow per transport against an
+  in-process participant (`submit_observe_query_over_grpc` / `_over_json`),
+  with the contract id threaded through all three steps; the live suites run
+  the same flow against a real node.
+- **`rustls` 0.23.45 in the lockfile** for RUSTSEC-2026-0285 (TLS 1.3
+  handshake messages accepted across encryption-level boundaries), which
+  cargo-deny caught on the milestone PR. The manifests already allowed the
+  fixed version; a consumer of 0.2.x gets it with `cargo update -p rustls`.
+- **The live suites run on any LocalNet, not only cn-quickstart.** The
+  interactive-submission suite runs against an unauthenticated participant
+  (Canton Builder Tool, Splice LocalNet's default) with nothing beyond the
+  endpoint, where before it skipped for want of an admin client; the PQS suite
+  reads `Amulet` — which any Splice LocalNet holds once its party has tapped —
+  instead of the reference app's `AppInstallRequest`, and
+  [`tools/pqs/compose.yaml`](tools/pqs/compose.yaml) runs a Scribe store
+  against any participant on the host in one command. The README's testing
+  section says where a LocalNet's registry is (`scan.localhost:4000`) and how
+  a single party runs every token example, `settle_batch` included.
+- **The live runs are on record.** The three token-standard examples and the
+  JSON-only package read were run again on 2026-09-07 and their output is
+  committed verbatim, with the environment and commands, under
+  [`docs/verification/`](docs/verification/token-standard-live-runs.md); the
+  compatibility matrix's offsets now point at that run. On 2026-09-22 the
+  same examples ran against a validator on the Canton Network **DevNet**
+  (Canton 3.5.17, Splice 0.8.1, the public SV Scan as the registry): both
+  transfers settled as `direct`, the allocation was created and then
+  withdrawn by the sender — `v2_withdraw_allocation` is the new example that
+  does so — a second allocation was **settled by its executor** through
+  Amulet's settlement factory (`v2_settle`, the other new example, which
+  finds the allocations naming the caller as executor and settles each
+  settlement as one batch), and every update id was read back from the node.
+  The factory first refused a one-sided leg: a V2 leg needs both sides
+  authorised, so `v2_allocate` now authorises both when the sender is also
+  the receiver. The token examples take a `CANTON_TOKEN` bearer token as
+  well as OIDC credentials, and an OIDC `CANTON_TEST_AUDIENCE`.
+- **`canton-ledger`'s tests did not build on their own**: the dev-dependency on
+  `canton-signer` inherited `default-features = false` and the tests import
+  the in-memory key. Green only through the facade's feature unification.
+
+### Changed — `Error::Http` grew a `url` field (**breaking**)
+
+`canton-core` reads `Error::Http::body` as the response — a category, a retry
+delay, a correlation id — and the registry client had been prefixing the URL
+onto it, which broke every one of those reads on that lane. It was doing so
+for a real reason: a 404 from a mistyped base URL and a 404 from an unknown
+contract read the same otherwise. Both were right, so the variant carries
+both: `body` is the response and nothing else, `url: Option<String>` is where
+the request went, and Display reads `http 404 at <url>: <body>`.
+
+The variant is `#[non_exhaustive]` from here. Construct it with
+`Error::http(status, body)` or `Error::http_at(status, body, url)`; match it
+with `..`. That is the migration for code on 0.2.x that built or matched the
+variant by hand.
+
+### Added — interactive submission with a pluggable signer
+
+- **`canton-signer`** (new) — `Signer`, an object-safe async trait for signing a
+  prepared transaction's hash, so an HSM or KMS fits behind it. `Ed25519Key` is
+  the in-memory implementation, on `ring`, behind a default `ed25519` feature an
+  HSM implementer can turn off.
+- A key is not yet an identity: Canton addresses a key by a fingerprint it
+  computes itself, so `Ed25519Key` cannot sign for the ledger until
+  `into_signer(fingerprint)` gives it one. The ordering the types enforce is the
+  real one.
+- **`canton-ledger`** — `prepare_submission`, `execute_submission`,
+  `execute_submission_and_wait`, `execute_submission_and_wait_for_transaction`,
+  with the flow as a type per stage: `Prepare` → `Prepared` → `Executable`.
+  Nothing unsigned can be executed, because there is no such value. Signing
+  refuses a party that is not acting, and `unsigned_parties` answers "who is
+  still missing" without a round trip.
+- **`canton-ledger`** — `connected_synchronizers`, so "which synchronizer?" is a
+  question the participant answers rather than configuration.
+- **`canton-admin`** — `generate_external_party_topology` and
+  `allocate_external_party`: onboarding a party whose key the participant does
+  not hold, which is two calls with a signature over the onboarding multi-hash
+  in between.
+- **Verified live** on a Canton 3.5.7 participant: an external party is
+  onboarded by signing its own topology, a command is prepared, signed off the
+  participant and committed, and a signature from the wrong key is refused —
+  `Received 0 valid signatures from distinct keys (1 invalid)`. That last one is
+  the control: it is what shows the signature is carrying the authorization.
+
+### Added — token standard (CIP-56)
+
+- The `canton` facade re-exports the three new crates as `canton::signer`,
+  `canton::token` and `canton::pqs`. Without that, `cargo add canton` — which
+  the README describes as getting "everything below as one version-locked set" —
+  delivered none of this milestone.
+- **`canton-token`** (new) — the *workflow* over the generated token-standard
+  types, which it does not re-declare: `RegistryClient` for the off-ledger API,
+  choice contexts with their disclosures, `TransferFactory_Transfer`, and the
+  allocate path with execute / withdraw / cancel.
+- Every path and payload comes from the standard's OpenAPI documents. Two are
+  vendored in cn-quickstart; the other two were taken from the pinned upstream
+  commit those copies name.
+- The standard specifies `choiceArguments` as the choice "encoded using the Daml
+  JSON API, with `extraArgs.context` and `extraArgs.meta` set to the empty
+  object", and returns the context the same way — which is what `canton-daml`
+  implements. So a generated choice serializes straight onto the wire and the
+  reply deserializes straight into the generated `ChoiceContext`.
+- `TokenCommand` keeps a command and its disclosures together and converts into
+  either an ordinary or an *interactive* submission, so a token transfer can be
+  signed by a party whose key the participant does not hold.
+- Each choice on an allocation fetches its own context: the standard says a
+  context may be specific to the choice, so sharing one is a bug that works
+  until a registry starts distinguishing them.
+- The **V2 workflow** lives in `canton_token::v2`, keeping the same function
+  names one module down: `token::transfer` and `token::v2::transfer` are
+  different standards, and the path is what says which you meant.
+
+### Added — conformance to the Ledger Client Standard
+
+- **`canton-conformance`** (new, not published) — one test per capability of the
+  standard, named for the row it answers, so a reviewer can read the two side by
+  side. `conformance/capabilities.toml` is the machine-readable checklist,
+  derived from the capability matrix DA published.
+- A completeness guard asserts the two agree **in both directions**: no
+  capability claimed without a test, and no test claiming a capability the
+  registry does not list. Checked against the suite's source rather than a run
+  of it, so an ignored test does not count as coverage.
+- The suite exercises the SDK **through the `canton` facade**, which is how it
+  found that `canton::telemetry` was not re-exported — the metric names and
+  transport labels an application builds a dashboard from were unreachable from
+  `cargo add canton`. They are exported now.
+- One row is honest about its limits rather than quietly weaker: **contract
+  keys** are generated and exercisable by key, but no template in this corpus
+  declares a key, so the test asserts the mechanism is present and says so.
+- [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md) — toolchain,
+  platform, Canton release, Daml-LF minors, token-standard version, and a table
+  of what CI checks against what needs a live node.
+- A `conformance` CI job runs the suite and asserts the count matches the
+  registry **exactly**, with nothing ignored. `>=` across every binary in the
+  package left slack equal to the number of guard tests, and an `#[ignore]`d
+  capability could hide in it — the name-based guard reads the suite's source,
+  so it counts an ignored test as coverage.
+
+### Fixed — a full M3 review, and what it turned up
+
+Two independent reviews of the whole milestone: one against the proposal, one
+hunting bugs and checking whether the problem classes found in M1 and M2 had
+recurred. Every finding below was verified against the code before being acted
+on, and two of the reviews' own claims did not survive that check.
+
+**Retriability, which M1 got wrong in two places and M3 got wrong in two more.**
+
+- `canton-pqs` classified *every* Postgres SQLSTATE as `InvalidRequest`, which
+  is not retriable. A failover (`57P01`), a serialization failure (`40001`), a
+  deadlock, `53300 too_many_connections` — all reported to the caller as "PQS
+  rejected the query", pointing whoever read it at a predicate that was never
+  wrong, and making an application give up on a five-second restart. Now
+  classified by SQLSTATE *class*: `08`, `40`, `53`, `55` and `57` are transient,
+  everything else is the caller's. `classify` had no test at all; it has three.
+- `canton-token`'s registry client turned every transport failure into a
+  retriable `Error::Connection` carrying only reqwest's outer sentence. A
+  certificate the client cannot verify was retried forever, and the word
+  "certificate" — which lives in the source chain — never reached the operator.
+  The chain is now walked, and a certificate failure, a malformed URL and a
+  redirect loop are reported as non-retriable.
+
+**Two integrity checks that did not check.**
+
+- `canton-admin::get_package` compared the participant's *own* `hash` field
+  against the id that was asked for, and skipped the comparison entirely when
+  that field was empty — while its doc claimed "a package id **is** the hash of
+  its payload, so that check is what makes asking by id pin the content". It now
+  hashes the payload.
+- The committed V2 payload corpus is documented as needing no checksum file
+  "because each file name ends with the id it hashes to". Nothing hashed them.
+  The shared generation table now does, and rejects a name that does not carry a
+  64-hex id — `rsplit('-').next()` returned the whole filename when there was no
+  `-`, so `foo.lfpayload` yielded the package id `foo` and the error written for
+  that shape was unreachable.
+
+**A guard that was absent from the configuration it was written for.** The
+Ed25519 signature-length check in `canton-signer` sat inside
+`#[cfg(feature = "ed25519")]`, and the crate's docs tell HSM/KMS callers to
+build with `default-features = false`. The length of an Ed25519 signature is a
+property of the algorithm, not of the in-memory implementation, so the check is
+now unconditional — and CI runs the tests with default features off, which the
+feature-powerset job could not (it passes `--no-dev-deps`, so tests are never
+compiled under a feature combination).
+
+**A query that silently returned less than it should.** `Predicate::not_eq`
+rendered as `<>`, which yields SQL NULL against a missing JSON path and drops
+the row. Since a query matches on the package *name* so it survives a Smart
+Contract Upgrade, a result set normally mixes payloads of different versions
+with different field sets — so adding a field in v2 would have quietly dropped
+every v1 contract from a `not_eq` on it. Now `IS DISTINCT FROM`. The ordered
+comparisons keep NULL semantics, which is right, and now say so.
+
+**`instrument()` reported a misconfigured base URL as an answer.** Any 404
+became `Ok(None)` — "this registry does not issue it" — so a base URL one path
+component off made a wallet's polling call return a steady, quiet `None` while
+every other call on the same client failed loudly. A 404 whose body is not JSON
+did not come from a registry handler and is now an error that says so.
+
+**The conformance registry claimed less than the SDK does, and nothing could
+tell.** `conformance/capabilities.toml` listed 39 rows; the Ledger Client
+Standard has 49 in scope. The two existing guards compare the registry to the
+suite, so a row missing from *both* was invisible to them — and ten were,
+including **Explicit disclosure**, an M3 row and a named sub-item of the
+token-standard deliverable. Meanwhile the CI job derived its threshold from that
+same short file, so the gate grew easier as the registry shrank.
+
+- The ten rows are added, each with a test: explicit disclosure, interface
+  subscriptions, node health, gRPC package management, vetting, the three
+  topology reads, and user self-inspect.
+- One of them is **not** added as a claim. "JSON package mgmt" is an M1 row this
+  SDK does not implement — `JsonClient` covers version, ledger end, commands,
+  ACS and updates, and has no package endpoint — so it is recorded as a
+  `[[gap]]` with a reason. A capability nobody can name a test for is not one
+  this SDK has, and writing a test that named it anyway is precisely the fake
+  coverage the mechanism exists to prevent.
+- A third guard asserts capabilities + gaps account for every in-scope row, so
+  dropping one now fails rather than passing quietly. Removing "Explicit
+  disclosure" was used to check the guard actually fires.
+- The CI counter requires an exact match with **zero ignored**, and counts
+  `[[capability]]` blocks rather than `id` lines — gaps carry an `id` too.
+
+**Reachability through the facade.** `canton-pqs`'s `tls` feature was not
+forwarded, so `PqsClient::connect_tls` did not exist for a `cargo add canton`
+user; reaching a PQS behind TLS meant a second, separately-versioned dependency
+— the version skew the facade exists to prevent. Forwarded as `pqs-tls`, and the
+conformance suite now names the method, which is the file that states the rule.
+
+**The registry stub did not check the HTTP verb.** It recorded path and body
+only, and answered `200` to any request line, so a factory issued as a `GET`
+passed every assertion — `reqwest` sends the body either way. The method is
+recorded and asserted.
+
+**Documentation that claimed more than the code did.** The compatibility matrix
+said bindings drift covers "all nineteen" generated crates (CI covers eighteen;
+`canton-quickstart-licensing` builds its DAR from source and is guarded
+locally), and opened by saying every row is exercised in CI while its own table
+lists four that are not. The capability registry cited `canton-kernel` and
+`canton-daml-runtime`, neither of which exists — they are `canton-core` and
+`canton-daml`. The facade's landing-page table omitted all three M3 crates and
+still described the token crate as CIP-56 only. Three intra-doc links were
+broken, two of them predating this work.
+
+**Reviewer claims that did not survive checking**, recorded because a review is
+evidence, not a verdict: the count of missing capability rows was first reported
+against a 49-row total I could not reproduce until I found that three sections
+of the map use a different column order; and "all ten are implemented" was wrong
+for JSON package management, which is why that one became a gap rather than a
+test.
+
+### Verified — both token standards, against a live registry
+
+The registry half of `canton-token` had been exercised only by
+`tests/inprocess.rs`, because the environment was recorded as having no
+registry. That was wrong: a LocalNet's registry is the **scan**, which the
+super-validator runs, and cn-quickstart runs one under `SV_PROFILE=on` on port
+5012 — it simply does not publish that port to the host.
+
+Against it, with the Amulet instrument declaring both standards
+(`splice-api-token-transfer-instruction-v1` **and** `-v2`):
+
+- **A V1 transfer settles end to end** — factory resolved against the registry,
+  submitted with the four contracts it named for disclosure, committed at offset
+  39643.
+- **A V2 `Account`-based transfer against Amulet on a LocalNet, exercised as a
+  V2 implementation** — committed at offset 39646. The proposal's verification
+  clause names the V2 *reference token*; that network is retired (see the
+  compatibility matrix), so this is the closest available target, and the
+  first time the `/v2/` paths, the `Account` model and the `actors` field have
+  met a real registry rather than a transcription of its specification.
+- **V2 event parsing on a committed transaction** — `events::holdings_changes`
+  read back one holdings change: one holding spent, two produced, two transfer
+  legs. The interface is matched on its qualified name rather than its package
+  id, and this is the first evidence that a *real* registry's event satisfies
+  that match.
+- `tests/live.rs` (new, env-gated on `CANTON_TOKEN_REGISTRY_URL`) covers the
+  registry read path: the admin party parses, instruments decode with the
+  optional fields genuinely absent, a not-issued instrument is `None` rather
+  than an error, page tokens round-trip, and the declared API versions are
+  readable. As with the other live suites, a set variable that cannot be reached
+  **fails rather than skips**.
+
+**What the first real submission found.** Both examples passed an empty
+`inputHoldingCids`, with a comment that a registry may select holdings itself.
+Splice's reference registry does not: the transfer reached the Daml interpreter
+and failed with `At least one holding must be provided`. An end-to-end example
+that cannot complete against the reference implementation is not end to end, so
+both examples now take `CANTON_TOKEN_HOLDINGS` and say why it is not optional in
+practice. The V2 example also reads its own committed transaction back through
+`holdings_changes`, which is where a reader would look for it.
+
+### Fixed — a three-milestone review, and the fixes that had siblings
+
+Three reviews: M1+M2 against their proposal text, M3 exhaustively, and a sweep
+for fixes applied in one place while the same pattern survived elsewhere. The
+third was the one worth running.
+
+**The cause chain, now in one place.** The previous round fixed how the registry
+client reports a transport failure. Four other sites had the same two defects —
+a message that dropped everything under the outer error, and a verdict of
+retriable `Error::Connection` for conditions no amount of waiting fixes. Two of
+them, `canton-ledger`'s JSON client and `canton-auth`'s token fetch, sit *inside*
+`run_with_retry`, which the registry client did not: an IdP or participant behind
+a certificate the client cannot verify ran the full retry schedule and then
+reported `error sending request for url (…)`, with the word *certificate* one
+level down in a chain nobody read. `canton_core::chain` is now the single walker
+— three crates had each grown a private copy before anyone noticed the fourth had
+none — and each site classifies for itself, because what is permanent differs:
+a bad token endpoint is `Auth`, a bad JSON body is `UnexpectedResponse`.
+
+**`PqsClient::connect` had the bug the same file's `classify` had just lost.**
+Fixed by the SQLSTATE class rule already written twelve lines below it. Verified
+against the running store: a wrong password is now
+`invalid request: … the store refused the connection (28P01): … FATAL: password
+authentication failed`, non-retriable, instead of a retriable `db error`.
+
+**The token deliverable could not be *called* through the facade.** Every entry
+point takes a generated type — `transfer` takes a `Transfer` — and the facade
+depends on no `canton-splice-*` crate, so a `cargo add canton` user could reach
+the functions and not name their arguments. `canton_token::types` re-exports the
+modules (`types::v1::transfer_instruction`, `types::v2::holding`, `types::metadata`
+…), whole modules rather than a hand-listed set that goes stale on the next
+record the standard adds. This is the `pqs-tls` defect one level up, and larger:
+that one hid a feature, this one hid the milestone.
+
+**External-party onboarding now checks the one relation it can.** A party id is
+`<hint>::<namespace>`, and for an external party the namespace *is* the
+fingerprint of the key being registered — so a response assembled for a
+different key is now refused before anything signs it. The multi-hash still
+cannot be recomputed (that needs Canton's hash-purpose scheme, which this
+workspace does not implement); this is the free check that was missing beside it.
+
+**Half-applied fixes from the previous round, completed:**
+
+- The HTTP-verb assertion reached the six POST endpoints and none of the GET
+  ones — in the file whose own new comment names both.
+- `CANTON_TOKEN_HOLDINGS` was added to both examples with a doc that still
+  carried the pre-fix reassurance, contradicting the call-site comment eight
+  lines below it. The helper now warns when the variable is unset rather than
+  defaulting quietly into a failure that arrives from the Daml interpreter.
+- `pqs-tls` reached the manifest and the module table but not the facade's own
+  canonical feature list, which reads as complete.
+- `get_package`'s doc still described the check the hash fix removed — that the
+  SDK trusts the server's `hash` field.
+
+**Documentation that claimed more than the code did.** The published matrix
+called a run "against the V2 reference token" six lines after naming the
+instrument as Amulet; it now says what it is — a V2 implementation exercised as
+one — and points at what the clause still needs. `docs/daml-lf-type-mapping.md`,
+the M2 deliverable document, said references are "always"
+`crate::<package>::<module>::<Type>`; every one of the nineteen generated crates
+in this repository disproves it, and the cross-crate form is now documented with
+the emitted code beside it. ADR-0005 claimed the bindings crates encode the DAR
+version in their version metadata (they do not). The CHANGELOG said thirteen
+generated crates in the same entry where it said nineteen. Two CI comments
+described a four-guard shape that no longer exists, and `canton-quickstart-licensing`
+pointed at the wrong crate for its own drift guard.
+
+**The CI step gating the conformance count did not check that it ran.**
+`cargo test` exits 0 on "0 passed", so deleting every completeness guard would
+have turned green the step that everything downstream depends on. Its sibling
+steps already assert their own markers.
+
+### Added — the V2 token standard (CIP-0112)
+
+- Six new bindings crates: `canton-splice-api-token-holding-v2` (which carries
+  the **`Account`** model), `-transfer-instruction-v2`, `-transfer-events-v2`
+  (the `EventLog` a V2 transfer is parsed from), `-allocation-v2` (with
+  `SettlementFactory`, `Allocation_Settle` and `FinalizedAllocation` — executor
+  settlement), `-allocation-instruction-v2` and `-allocation-request-v2`.
+- V2 reuses `splice-api-token-metadata-v1`: there is no `metadata-v2`.
+- **Where the packages came from.** V2 ships as no DAR anyone publishes —
+  cn-quickstart carries only the V1 set, the Splice repository holds Daml
+  sources rather than built artefacts, and there are no release assets. It is
+  live on the network, so it was taken from a participant through the Ledger
+  API's `GetPackage` and committed under `testdata/token-standard-v2`. A package
+  id is the SHA-256 of its own bytes and each file name ends with that id, so
+  the corpus is pinned by construction and needs no checksum file.
+- The V2 crates reference `canton-daml-stdlib` and the metadata crate rather
+  than copying them, exactly as the V1 crates do — the `ghc-stdlib` and
+  `daml-stdlib` packages they depend on carry the same ids the V1 corpus uses,
+  which is why one stdlib crate serves both.
+- The drift guard covers all nineteen generated crates, and the seven generated
+  from committed packages are guarded in CI with no external checkout.
+- **`canton_token::v2`** — the workflow over those types: transfer with
+  accept/reject/withdraw, allocate, `settle_batch`, and the allocation and
+  allocation-instruction choices. Four differences from V1 a caller meets at
+  once, each of which the module documents: a transfer moves between
+  **accounts** rather than parties (and both the owner and the provider of an
+  account are optional); every choice names its **actors**, which V1 left
+  implicit in the submitting party; a V2 allocation names the settlement it
+  belongs to when it is *created*; and settlement moved to a **batch** on the
+  settlement factory, which is what lets both legs of a delivery-versus-payment
+  settle together. Asking for a V1 `execute-transfer` context is refused before
+  it reaches the network, naming the settlement factory as its replacement —
+  a registry would answer 404 with nothing that says why.
+- The V2 paths were taken from the OpenAPI documents rather than derived from
+  V1: the collections are singular (`transfer-instruction`,
+  `allocation-instruction`, `allocation`) *except* the choice contexts on an
+  allocation, which are under the plural `allocations`. A test pins each one,
+  because a client that regularises the odd one out gets a 404 from a registry
+  that is working correctly.
+- **`canton_token::v2::events`** — `holdings_changes` reads what actually moved
+  off a transaction. A V2 registry records it by exercising
+  `EventLog_HoldingsChange` on the `EventLog` interface, and that is the only
+  complete answer: the creates and archives show holdings appearing and
+  disappearing without saying which transfer they belonged to. Events are
+  matched on the interface's **qualified name**, not its package id — pinning
+  the id would make a client stop seeing events the day a network upgraded the
+  standard, and that failure reads as "nothing moved" rather than as an error.
+  The choice name alone is not enough either: it is not reserved. An argument
+  that does not decode is reported rather than skipped, for the same reason.
+- `examples/v2_transfer.rs` is the V1 example's counterpart, written to be read
+  beside it, and `examples/v2_allocate.rs` is the allocation flow — the half
+  that needs three parties rather than two. Run against the live registry with
+  app-provider as sender, app-user as receiver and the super-validator as
+  executor: allocated at offset 40176, six events. It stops before settling on
+  purpose; that is the executor's move from their own participant, and one
+  process holding both sides would prove nothing about a pattern whose whole
+  point is that the principals differ.
+- The allocation example is also the first thing written entirely against
+  `canton_token::types` — it names `SettlementInfo`, `AllocationSpecification`,
+  `TransferLegSide` and `Account` with no direct dependency on any
+  `canton-splice-*` crate, which is what the re-export was for.
+
+### Added — reading packages from a participant
+
+- **The same reads over JSON.** `JsonClient::list_packages` (`GET
+  /v2/packages`) and `JsonClient::package_status` (`GET
+  /v2/packages/{package-id}/status`), returning the gRPC path's
+  `PackageStatus` so a caller switches transports without re-learning the
+  vocabulary. Asked for in [issue #2](https://github.com/nodejumper-org/canton-rust-sdk/issues/2)
+  by a JSON-only deployment; the conformance registry's one declared gap
+  (`packages__json_package_mgmt`) becomes a capability with it. DAR upload
+  (`POST /v2/dars`) is deliberately not included — an operator write with its
+  own authorization story, tracked separately.
+
+- **Party management over JSON.** `JsonClient::list_known_parties_page` /
+  `list_known_parties` (`GET /v2/parties`, paged), `get_parties`
+  (`GET /v2/parties/{party}`), `allocate_party` / `allocate_party_with`
+  (`POST /v2/parties`, the latter with synchronizer, user, identity provider
+  and annotations through `AllocateParty`), `update_party_details`
+  (`PATCH /v2/parties/{party}` with a field mask) and `participant_id`. All
+  answer in the gRPC path's `admin::PartyDetails`, so a caller switches
+  transports without re-learning the type. Allocation and update are not
+  retried, for the reason `canton-admin` gives. With this the conformance
+  registry's last declared gap (`parties__json_party_mgmt`) is a capability:
+  51 rows, 51 tests, no gaps (two rows the plan had filed under post-v1 turned out delivered by the signing work — external-party creation and listing connected synchronizers — and are claimed).
+
+- **`canton-admin`** — `get_package` downloads a package's `ArchivePayload`
+  bytes and checks the hash the participant returns against the id that was
+  asked for. With `list_packages`, that is enough to generate bindings from
+  what a network has actually vetted rather than from a file that has to be
+  found — and for a package that exists only on a network, there may be no file.
+- **`canton-lf`** — `decode_payload` reads that shape. A DAR entry is a whole
+  `Archive` (payload, hash and hash function together) and `decode_package`
+  reads *that*; the Ledger API returns the three as separate fields. Mistaking
+  one for the other fails with a protobuf error about a `hash` field that says
+  nothing about the cause.
+- **`canton-codegen`** — `lower_packages_selecting` generates from decoded
+  packages rather than only from a DAR.
+
+### Added — the Participant Query Store
+
+- **`canton-pqs`** (new) — a typed read client for PQS/Scribe. A query names its
+  template by *type*: the qname is `PACKAGE_NAME:MODULE_NAME:ENTITY_NAME`, read
+  off the generated `Contract`, and it is the package **name**, so a query
+  survives an upgrade instead of pinning one build.
+- PQS stores payloads in the Daml JSON encoding, which `canton-daml` implements,
+  so a contract read from Postgres deserializes into the same generated type a
+  transaction stream yields. Two ways in, one set of types.
+- Predicates compile to parameterized statements. Every value is a parameter and
+  so is every JSON field path — bound as `text[]` and applied with `#>` — so the
+  statement text depends on a query's shape and never on its data.
+- Ordered comparisons on numbers are numeric: LF-JSON carries `Int64` and
+  `Numeric` as strings, so comparing lexically would sort `"9"` after `"10"`.
+- `tls` feature for `connect_tls`; off by default, since PQS is usually inside a
+  trust boundary.
+- **Verified live** against a running Scribe 3.5.4 store: 969 active contracts
+  read as typed payloads, payload and party-column predicates filtering in the
+  database, containment, lookup by id, and a pinned-offset read.
+
+### Added — codegen
+
+- `Selection` and `lower_dar_selecting`: generate a crate from part of a DAR.
+  A reference that leaves the selection is reported as a skipped type rather
+  than emitted, since the path would name a module the crate does not have —
+  it would compile where it is generated and fail in the consumer.
+- `Selection::and_prefixed` and `ExternalPackages::with_prefixed` take package
+  **name prefixes**, for a family that arrives as many packages. The standard
+  library is some thirty of them, and which ones a DAR carries depends on what
+  its Daml source touched, so an exact list is right for one DAR and wrong for
+  the next. A prefix matches at a `-` boundary: `daml-prim` does not also match
+  a `daml-primary`.
+
+> **Publish order — this replaces 0.2.0's, which no longer works.**
+> `canton-ledger` and `canton-admin` now depend on `canton-signer`, so it has to
+> go out before them rather than not at all:
+>
+> `canton-proto` → `canton-core` → `canton-auth` → `canton-lf` → `canton-daml`
+> → **`canton-signer`** → `canton-ledger` → `canton-admin` → `canton-codegen` →
+> `canton-codegen-cli` → **`canton-pqs`**
+> → `canton-daml-stdlib` (every binding references it)
+> → `canton-splice-api-token-metadata-v1`, `canton-splice-api-featured-app-v1`
+> → `-holding-v1` → `-allocation-v1` → `-allocation-instruction-v1`,
+> `-allocation-request-v1`, `-burn-mint-v1`, `-transfer-instruction-v1`
+> → `canton-splice-api-token-holding-v2` → `-transfer-instruction-v2`,
+> `-transfer-events-v2`, `-allocation-v2` → `-allocation-instruction-v2`,
+> `-allocation-request-v2`
+> → `canton-splice-amulet` → `canton-splice-wallet-payments` →
+> `canton-splice-wallet` → **`canton-token`** → `canton` (last: the facade
+> re-exports everything above).
+>
+> `canton-sample` and `canton-quickstart-licensing` stay unpublished.
+
+### Changed — CI
+
+- The packaging check derives its crate list from `cargo metadata` rather than
+  a hand-written one, so a crate added to the workspace cannot be left out of
+  it — the previous list silently stopped covering the eight crates above.
+- The bindings drift guard checks all nineteen generated crates (it checked
+  three), reading the crate/DAR/external-package table from the same file the
+  regeneration example uses so the two cannot disagree. `canton-daml-stdlib` is
+  generated from the DAR committed here, so that one is guarded in CI with no
+  checkout at all.
+
 ## [0.2.3] — 2026-08-25
 
 ### Fixed
@@ -124,6 +760,7 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - The README compatibility table listed 0.2 as unreleased.
 
 ## [0.2.0] — 2026-08-24
+
 
 All `canton-*` crates release in lockstep, so the M1 crates move to 0.2.0 with
 the rest. Everything the 0.1.x line gained after the M1 submission — the read

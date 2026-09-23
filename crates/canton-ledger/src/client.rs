@@ -42,11 +42,41 @@ fn wildcard_event_format(parties: &[String]) -> pb::EventFormat {
     }
 }
 
-/// Refuse a command set the participant is certain to refuse.
+/// Give an execute request a submission id if it has none.
 ///
-/// Every one of these costs a round trip and comes back as a server-side error
-/// that reads like the ledger's fault. They are the caller's, and they are
-/// knowable here.
+/// The change ID de-duplicates a submission; the submission id only tells the
+/// completions of separate *attempts* apart, and the Ledger API asks for a
+/// different one on each retry. Generating it per attempt rather than when the
+/// request is built is what makes attempts distinguishable while leaving the
+/// change ID — and therefore the de-duplication — untouched.
+trait HasSubmissionId {
+    fn submission_id_mut(&mut self) -> &mut String;
+}
+
+macro_rules! has_submission_id {
+    ($($t:ty),+) => {$(
+        impl HasSubmissionId for $t {
+            fn submission_id_mut(&mut self) -> &mut String {
+                &mut self.submission_id
+            }
+        }
+    )+};
+}
+
+has_submission_id!(
+    pb::interactive::ExecuteSubmissionRequest,
+    pb::interactive::ExecuteSubmissionAndWaitRequest,
+    pb::interactive::ExecuteSubmissionAndWaitForTransactionRequest
+);
+
+fn fresh_submission_id<T: HasSubmissionId>(mut request: T) -> T {
+    let id = request.submission_id_mut();
+    if id.is_empty() {
+        *id = uuid::Uuid::new_v4().to_string();
+    }
+    request
+}
+
 /// Whether a failed submission is the participant refusing a command it already
 /// has — and, on a retry, one this client is responsible for having sent.
 ///
@@ -59,6 +89,11 @@ fn is_duplicate_of_our_own(status: &tonic::Status) -> bool {
     status.code() == tonic::Code::AlreadyExists
 }
 
+/// Refuse a command set the participant is certain to refuse.
+///
+/// Every one of these costs a round trip and comes back as a server-side error
+/// that reads like the ledger's fault. They are the caller's, and they are
+/// knowable here.
 fn validate_commands(commands: &pb::Commands) -> Result<()> {
     if commands.act_as.is_empty() {
         return Err(Error::InvalidRequest(
@@ -481,6 +516,228 @@ impl CantonClient {
                             );
                             Ok(client
                                 .submit_and_wait_for_transaction(request)
+                                .await?
+                                .into_inner())
+                        }
+                    })
+                    .await?;
+
+                response.transaction.ok_or_else(|| {
+                    Error::UnexpectedResponse("response contained no transaction".to_string())
+                })
+            },
+        )
+        .await
+    }
+
+    /// The synchronizers this participant is connected to for `party`.
+    ///
+    /// Allocating an external party and preparing a submission both name a
+    /// synchronizer, and a caller has no other way to discover one — so this
+    /// is what turns "which synchronizer?" from configuration into a question
+    /// the participant answers.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the RPC fails.
+    pub async fn connected_synchronizers(
+        &self,
+        party: &str,
+    ) -> Result<Vec<pb::get_connected_synchronizers_response::ConnectedSynchronizer>> {
+        let request = pb::GetConnectedSynchronizersRequest {
+            party: party.to_string(),
+            ..Default::default()
+        };
+        telemetry::instrument("connected_synchronizers", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client =
+                            service!(self, pb::state_service_client::StateServiceClient::new);
+                        Ok(client
+                            .get_connected_synchronizers(request)
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            Ok(response.connected_synchronizers)
+        })
+        .await
+    }
+
+    /// Interpret a submission without authorizing it, returning the transaction
+    /// and the hash to sign.
+    ///
+    /// The first half of interactive submission: the participant works out what
+    /// the commands do, and hands back a hash for the party's key — which it
+    /// does not hold — to sign. See [`crate::interactive`] for the flow, and
+    /// for how long a prepared transaction stays executable.
+    ///
+    /// Retried like any other read: preparation commits nothing.
+    ///
+    /// # Errors
+    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
+    /// returns no hash — which would leave nothing to sign.
+    pub async fn prepare_submission(
+        &self,
+        prepare: crate::interactive::Prepare,
+    ) -> Result<crate::interactive::Prepared> {
+        // Built once, outside the instrumented future, so retries reuse one
+        // command id — the change ID stays stable and the submission remains
+        // de-duplication-safe across attempts, exactly as `submit` does.
+        let act_as = prepare.act_as().to_vec();
+        // Carried through: the Ledger API's default event format for
+        // `…_and_wait_for_transaction` covers `act_as` *and* `read_as`, so
+        // dropping it here would silently return a narrower transaction.
+        let read_as = prepare.read_as().to_vec();
+        let (command_id, user_id, request) = prepare.into_request();
+        telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client = service!(
+                            self,
+                            pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                        );
+                        Ok(client.prepare_submission(request).await?.into_inner())
+                    }
+                })
+                .await?;
+            crate::interactive::Prepared::from_response(response, act_as, read_as, command_id, user_id)
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and return once the participant has
+    /// accepted it for processing.
+    ///
+    /// Acceptance is not commitment: the outcome arrives on the completion
+    /// stream. Use [`execute_submission_and_wait`](Self::execute_submission_and_wait)
+    /// to wait for it.
+    ///
+    /// # Retry caveat
+    /// With retry enabled, an attempt whose response was lost is retried under
+    /// a fresh submission id and the same change id, and the participant
+    /// answers `ALREADY_EXISTS`: that is the earlier attempt having landed,
+    /// and it is reported as success here, as on
+    /// [`submit`](Self::submit). An `Ok` still means only
+    /// *accepted*; whether it committed is a completion, reachable by
+    /// [`await_completion`](Self::await_completion) with the
+    /// [`Executable::change_id`](crate::interactive::Executable::change_id)
+    /// taken before the call.
+    ///
+    /// # Errors
+    /// As any gRPC call. A missing or wrong signature is a rejection from the
+    /// participant, not a local error.
+    pub async fn execute_submission(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<()> {
+        let request = executable.into_execute_request();
+        telemetry::instrument("execute_submission", TRANSPORT_GRPC, async move {
+            let attempt = std::sync::atomic::AtomicU32::new(0);
+            self.with_retry(|| {
+                let request = fresh_submission_id(request.clone());
+                let retry = attempt.fetch_add(1, std::sync::atomic::Ordering::Relaxed) > 0;
+                async move {
+                    let mut client = service!(
+                        self,
+                        pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                    );
+                    match client.execute_submission(request).await {
+                        Ok(_) => Ok(()),
+                        Err(status) if retry && is_duplicate_of_our_own(&status) => {
+                            // Same reasoning as the ordinary submit: a
+                            // previous attempt of this loop was accepted and
+                            // its answer lost, and reporting the duplicate as
+                            // a failure would say the opposite of what
+                            // happened.
+                            tracing::debug!(
+                                "execute retry was de-duplicated; the earlier attempt is the one that landed"
+                            );
+                            Ok(())
+                        }
+                        Err(status) => Err(Error::from(status)),
+                    }
+                }
+            })
+            .await
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and wait for it to commit.
+    ///
+    /// The response carries the update id **and** the completion offset — the
+    /// offset a follow-up completion or update read starts from, which is why
+    /// it is returned whole rather than as the id alone.
+    ///
+    /// # Retry caveat
+    /// As [`execute_submission`](Self::execute_submission): a retried attempt
+    /// that the participant de-duplicates is reported as the rejection it
+    /// answers with, so on an ambiguous outcome recover through
+    /// [`await_completion`](Self::await_completion) with the change id taken
+    /// before the call.
+    ///
+    /// # Errors
+    /// As any gRPC call, plus a rejection if the transaction fails.
+    pub async fn execute_submission_and_wait(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<pb::interactive::ExecuteSubmissionAndWaitResponse> {
+        let request = executable.into_execute_and_wait_request();
+        telemetry::instrument("execute_submission_and_wait", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = fresh_submission_id(request.clone());
+                    async move {
+                        let mut client = service!(
+                            self,
+                            pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                        );
+                        Ok(client
+                            .execute_submission_and_wait(request)
+                            .await?
+                            .into_inner())
+                    }
+                })
+                .await?;
+            Ok(response)
+        })
+        .await
+    }
+
+    /// Submit a signed prepared transaction and wait for the committed
+    /// transaction itself.
+    ///
+    /// The events it carries follow
+    /// [`Executable::with_transaction_shape`](crate::interactive::Executable::with_transaction_shape).
+    ///
+    /// # Errors
+    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
+    /// reports success without a transaction.
+    pub async fn execute_submission_and_wait_for_transaction(
+        &self,
+        executable: crate::interactive::Executable,
+    ) -> Result<pb::Transaction> {
+        let event_format = wildcard_event_format(&executable.witnesses());
+        let request = executable.into_execute_and_wait_for_transaction_request(event_format);
+        telemetry::instrument(
+            "execute_submission_and_wait_for_transaction",
+            TRANSPORT_GRPC,
+            async move {
+                let response = self
+                    .with_retry(|| {
+                        let request = fresh_submission_id(request.clone());
+                        async move {
+                            let mut client = service!(
+                                self,
+                                pb::interactive::interactive_submission_service_client::InteractiveSubmissionServiceClient::new
+                            );
+                            Ok(client
+                                .execute_submission_and_wait_for_transaction(request)
                                 .await?
                                 .into_inner())
                         }

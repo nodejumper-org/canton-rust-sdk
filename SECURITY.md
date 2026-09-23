@@ -24,8 +24,10 @@ respective maintainers.
 
 Until 1.0, only the **latest released minor version** receives security
 fixes. An independent security review of the client, codegen, and token
-crates is scheduled at Milestone 3 of the funding proposal; its scope and
-remediation summary will be published.
+crates is the pass-through item of milestone 3 of the funding proposal; its
+scope is drafted in [`docs/security/audit-scope.md`](docs/security/audit-scope.md),
+to be agreed with the Canton Foundation's security subcommittee before the
+review begins, and the report and remediation summary will be published there.
 
 ## Handling of secrets
 

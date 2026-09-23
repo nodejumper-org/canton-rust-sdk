@@ -1,8 +1,10 @@
+#![forbid(unsafe_code)]
 #![allow(non_camel_case_types, non_snake_case, unused_imports, clippy::all)]
 //! Typed Rust bindings generated from a Daml archive (DAR).
 //!
 //! **Generated file — do not edit by hand.** Regenerate with
-//! `dpm-codegen-rust --dar <the DAR> --out <this crate>`; edits are lost.
+//! `dpm-codegen-rust` from the source this crate's `Cargo.toml` records
+//! (a DAR, or a participant's package payloads); edits are lost.
 //!
 //! Each Daml package in the DAR's dependency closure is one top-level
 //! module, and each Daml module a submodule under it, so cross-package

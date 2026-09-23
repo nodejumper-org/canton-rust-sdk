@@ -376,14 +376,25 @@ impl TokenProvider {
             .post(&config.token_url)
             .timeout(FETCH_TIMEOUT)
             .form(&params);
+        // Union of both branches' improvements: main's credential placement
+        // (Okta's Basic vs the body), and this branch's transport-error
+        // classification — a certificate failure is a permanent Auth error,
+        // not a retriable Connection one.
         if config.client_auth == ClientAuth::Basic {
             request = request.basic_auth(&config.client_id, Some(&config.client_secret));
         }
         let response = request.send().await.map_err(|e| {
-            Error::Connection(format!(
-                "token request to {} failed: {e}",
-                canton_core::redact_url(&config.token_url)
-            ))
+            let url = canton_core::redact_url(&config.token_url);
+            let detail = canton_core::chain(&e);
+            if e.is_timeout() {
+                return Error::Timeout;
+            }
+            if e.is_builder() || detail.to_ascii_lowercase().contains("certificate") {
+                return Error::Auth(format!(
+                    "the token endpoint {url} cannot be reached: {detail}"
+                ));
+            }
+            Error::Connection(format!("token request to {url} failed: {detail}"))
         })?;
 
         // A credential rejection (401/403, e.g. `invalid_client`) is a definite
@@ -397,13 +408,15 @@ impl TokenProvider {
                     "token endpoint rejected the credentials (http {status}): {body}"
                 )));
             }
-            return Err(Error::Http { status, body });
+            return Err(Error::http(status, body));
         }
 
-        let body = response
-            .text()
-            .await
-            .map_err(|e| Error::Connection(format!("reading token response failed: {e}")))?;
+        let body = response.text().await.map_err(|e| {
+            Error::Connection(format!(
+                "reading token response failed: {}",
+                canton_core::chain(&e)
+            ))
+        })?;
         serde_json::from_str::<TokenResponse>(&body).map_err(Error::from)
     }
 }

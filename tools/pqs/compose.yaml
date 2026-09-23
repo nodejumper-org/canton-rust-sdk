@@ -1,0 +1,56 @@
+# A Scribe (PQS) store for any LocalNet participant on this machine, for
+# `canton-pqs`'s live suite. Postgres plus Scribe, following the App Provider
+# participant's Ledger API on the host; nothing else. The image is Digital
+# Asset's public one, so no registry login is needed.
+#
+#   # an unauthenticated participant
+#   docker compose -f tools/pqs/compose.yaml up -d
+#   # one that wants a token (Canton Builder Tool, a Splice LocalNet with auth on)
+#   SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=$(canton builder token --validator app-provider) \
+#     docker compose -f tools/pqs/compose.yaml up -d
+#
+#   tools/pqs/wait-ready.sh          # Scribe applies its schema first; a query before that fails
+#   CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs' \
+#   CANTON_TEST_REQUIRE_LIVE=1 cargo test -p canton-pqs --all-features --test live -- --nocapture
+#   docker compose -f tools/pqs/compose.yaml down -v
+#
+# Scribe reads from the ledger's beginning, so contracts created before it
+# started are in the store too. Point `SCRIBE_SOURCE_LEDGER_HOST` / `_PORT`
+# elsewhere for another participant. With `SCRIBE_SOURCE_LEDGER_AUTH=OAuth`
+# the ledger is read as `CANTON_TOKEN`'s user; for OIDC client credentials use
+# the `SCRIBE_PIPELINE_OAUTH_*` variables cn-quickstart's `pqs` module shows.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: pqs
+      POSTGRES_PASSWORD: pqs
+      POSTGRES_DB: pqs
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pqs -d pqs"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  scribe:
+    image: ${SCRIBE_IMAGE:-europe-docker.pkg.dev/da-images/public/docker/scribe}:${SCRIBE_VERSION:-3.5.4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SCRIBE_SOURCE_LEDGER_HOST: ${SCRIBE_SOURCE_LEDGER_HOST:-host.docker.internal}
+      SCRIBE_SOURCE_LEDGER_PORT: ${SCRIBE_SOURCE_LEDGER_PORT:-3901}
+      SCRIBE_SOURCE_LEDGER_AUTH: ${SCRIBE_SOURCE_LEDGER_AUTH:-NoAuth}
+      SCRIBE_PIPELINE_OAUTH_ACCESSTOKEN: ${CANTON_TOKEN:-}
+      SCRIBE_PIPELINE_LEDGER_START: ${SCRIBE_PIPELINE_LEDGER_START:-Genesis}
+      SCRIBE_TARGET_POSTGRES_HOST: postgres
+      SCRIBE_TARGET_POSTGRES_PORT: "5432"
+      SCRIBE_TARGET_POSTGRES_USERNAME: pqs
+      SCRIBE_TARGET_POSTGRES_PASSWORD: pqs
+      SCRIBE_TARGET_POSTGRES_DATABASE: pqs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["pipeline", "ledger", "postgres-document"]
+    restart: on-failure:100

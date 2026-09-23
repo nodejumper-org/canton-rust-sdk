@@ -17,6 +17,13 @@ include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
 canton-proto = { workspace = true }
 canton-core  = { workspace = true }
 canton-auth  = { workspace = true }
+# `canton-signer` without its in-memory Ed25519 key. The library needs only the
+# `Signer` trait and the wire types; `Ed25519Key` and `ring` come back with the
+# `ed25519` feature, which the facade turns on by default. Taken with
+# `default-features = false` because feature unification is additive: one
+# dependant pinning the default would have forced `ring` on every HSM
+# deployment in the tree, which is what it did.
+canton-signer = { workspace = true }
 tonic        = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
 tonic-prost  = { workspace = true }
 prost-types  = { workspace = true }
@@ -41,6 +48,9 @@ rustls-native-certs = { workspace = true, optional = true }
 http = { version = "1", optional = true }
 
 [features]
+# The in-memory Ed25519 key, for callers who want one. An HSM/KMS caller
+# turns this off and implements `Signer` themselves.
+ed25519 = ["canton-signer/ed25519"]
 # WebSocket streaming for the JSON transport (unbounded live tails).
 ws = [
     "dep:tokio-tungstenite",
@@ -54,9 +64,18 @@ ws = [
 otel = ["canton-core/otel", "dep:http"]
 
 [dev-dependencies]
+# The interactive tests sign with the in-memory key; dependants do not have to.
+canton-signer = { workspace = true, features = ["ed25519"] }
+# The interactive-submission live test allocates an external party, which is
+# an admin RPC. No cycle: canton-admin does not depend on this crate.
+canton-admin = { workspace = true }
+
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 # Server stubs (dev-only) so in-process gRPC test servers can be built.
 canton-proto = { workspace = true, features = ["server"] }
+# `router` lets one in-process participant serve several gRPC services on one
+# port, which is what the submit → observe → query flow test needs.
+tonic        = { workspace = true, features = ["transport", "codegen", "router"] }
 tokio-stream = { workspace = true, features = ["net"] }
 rcgen = "0.13"
 # The trace-propagation test needs a real OpenTelemetry context to propagate:

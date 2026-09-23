@@ -1,0 +1,63 @@
+[package]
+name         = "canton-token"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+readme       = "README.md"
+authors      = { workspace = true }
+repository   = { workspace = true }
+homepage     = { workspace = true }
+categories   = ["api-bindings", "asynchronous"]
+keywords     = ["canton", "daml", "token-standard", "cip-56", "cip-0112"]
+description  = "Canton Network token-standard workflows (CIP-56 and CIP-0112): registry client, choice contexts, transfers and allocations."
+include      = ["src/**/*", "examples/**/*", "README.md", "LICENSE"]
+
+[dependencies]
+canton-core   = { workspace = true }
+canton-proto  = { workspace = true }
+canton-ledger = { workspace = true }
+canton-daml   = { workspace = true }
+# For draining the ACS stream in `holdings`.
+futures-util  = { workspace = true }
+
+# The token-standard types are generated, not re-declared here. These crates
+# *are* the standard — one crate per Daml package, so the `Holding` this crate
+# names is the same Rust type an application reads out of the ledger.
+canton-splice-api-token-metadata-v1               = { workspace = true }
+canton-splice-api-token-holding-v1                = { workspace = true }
+canton-splice-api-token-transfer-instruction-v1   = { workspace = true }
+canton-splice-api-token-allocation-v1             = { workspace = true }
+canton-splice-api-token-allocation-instruction-v1 = { workspace = true }
+canton-splice-api-token-holding-v2                = { workspace = true }
+canton-splice-api-token-transfer-instruction-v2   = { workspace = true }
+canton-splice-api-token-allocation-v2             = { workspace = true }
+canton-splice-api-token-allocation-instruction-v2 = { workspace = true }
+canton-splice-api-token-transfer-events-v2        = { workspace = true }
+
+reqwest    = { workspace = true, features = ["json", "rustls-tls"] }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+# A registry returns `createdEventBlob` base64-encoded, as JSON must; the gRPC
+# `DisclosedContract` takes bytes.
+base64     = { workspace = true }
+tracing    = { workspace = true }
+
+[dev-dependencies]
+# The in-process registry stub speaks HTTP/1.1 over a TCP socket: one request,
+# one response, and no server framework the published crate would not carry.
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net", "io-util"] }
+# The example authenticates and submits, so it needs the pieces a real
+# application uses; the library itself needs neither.
+canton-auth = { workspace = true }
+# The holdings read is driven against an in-process `StateService`, which
+# needs the server half of the generated protos and a listener stream.
+canton-proto = { workspace = true, features = ["server"] }
+tonic        = { workspace = true, features = ["transport", "codegen"] }
+tokio-stream = { workspace = true, features = ["net"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+[lints]
+workspace = true

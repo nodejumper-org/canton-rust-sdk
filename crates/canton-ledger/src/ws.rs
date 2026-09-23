@@ -114,10 +114,7 @@ fn error_frame(value: &Value) -> Error {
         .get("grpcCodeValue")
         .and_then(Value::as_i64)
         .map_or(500, grpc_code_to_http_status);
-    Error::Http {
-        status,
-        body: value.to_string(),
-    }
+    Error::http(status, value.to_string())
 }
 
 /// The canonical HTTP status for a gRPC code (the google.rpc code mapping).
@@ -351,7 +348,7 @@ mod tests {
         });
         assert!(is_error_frame(&error));
         match error_frame(&error) {
-            Error::Http { status, body } => {
+            Error::Http { status, body, .. } => {
                 assert_eq!(status, 403, "PERMISSION_DENIED maps to 403");
                 assert!(body.contains("JSON_API_X"));
             }

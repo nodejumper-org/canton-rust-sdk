@@ -1,0 +1,435 @@
+//! Against a running PQS.
+//!
+//! The query compiler is checked without a database — that is what its unit
+//! tests do. What only a real store can answer is whether the statements it
+//! produces are ones Postgres accepts against the schema Scribe actually
+//! creates, and whether a payload read out of it deserializes into the same
+//! generated type the Ledger API path yields. Both are the point of the crate.
+//!
+//! The contracts read are `Amulet` (Canton Coin), which the party the store
+//! follows holds on any Splice LocalNet once it has tapped in its wallet — so
+//! the suite needs no application package on the participant.
+//!
+//! ```sh
+//! # cn-quickstart's store
+//! CANTON_PQS_URL='host=localhost port=5432 user=cnadmin password=… dbname=pqs-app-provider' \
+//!   cargo test -p canton-pqs --test live -- --nocapture
+//! # or a store of your own against any LocalNet: tools/pqs/compose.yaml
+//! docker compose -f tools/pqs/compose.yaml up -d && tools/pqs/wait-ready.sh
+//! CANTON_PQS_URL='postgres://pqs:pqs@localhost:5433/pqs' \
+//!   cargo test -p canton-pqs --test live -- --nocapture
+//! ```
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
+/// A skipped test and a passing test are the same line in cargo's output. Set
+/// `CANTON_TEST_REQUIRE_LIVE=1`, as any run that claims to have exercised a
+/// live environment should, and a missing one fails here instead of passing
+/// quietly. Same contract as `canton-ledger`'s live suite.
+macro_rules! skip {
+    ($($arg:tt)*) => {{
+        let reason = format!($($arg)*);
+        assert!(
+            std::env::var("CANTON_TEST_REQUIRE_LIVE").is_err(),
+            "live test skipped while CANTON_TEST_REQUIRE_LIVE is set: {reason}"
+        );
+        eprintln!("SKIP (no live environment): {reason}");
+    }};
+}
+
+use canton_pqs::{PqsClient, Predicate, Query};
+use canton_splice_amulet::splice_amulet::Splice_Amulet::Amulet;
+
+async fn client() -> Option<PqsClient> {
+    let url = std::env::var("CANTON_PQS_URL").ok()?;
+    // Configured but unreachable is a failure, not a skip. Treating it as a
+    // skip meant a run against a broken store reported six passes.
+    Some(
+        PqsClient::connect(&url)
+            .await
+            .expect("CANTON_PQS_URL is set, so PQS must be reachable"),
+    )
+}
+
+/// The store must hold the contracts these tests read, or they assert nothing.
+///
+/// Returned rather than skipped: "no rows" and "nothing was checked" look
+/// identical in a passing run, and five of these tests used to end that way.
+async fn require_sample(client: &PqsClient) -> canton_pqs::Contract<Amulet> {
+    let contracts = client.active::<Amulet>().await.expect("the query runs");
+    contracts.into_iter().next().expect(
+        "this store holds no Amulet, so these tests would assert nothing — tap some Canton Coin \
+         in the wallet of the party the store follows, or point CANTON_PQS_URL at a store that has",
+    )
+}
+
+/// The store says how far it has ingested. Everything else reads against it.
+#[tokio::test]
+async fn pqs_reports_how_far_it_has_ingested() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let offset = client.latest_offset().await.expect("an offset");
+    println!("latest offset: {offset}");
+    assert!(offset > 0, "a store with contracts has a positive offset");
+}
+
+/// The whole point: a contract read from Postgres is the same generated type a
+/// transaction stream yields. If the payload encoding were anything but Daml
+/// JSON, this would not compile away — it would fail here.
+#[tokio::test]
+async fn a_contract_read_from_postgres_is_the_generated_type() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let contracts = client.active::<Amulet>().await.expect("the query runs");
+
+    println!("active Amulet: {}", contracts.len());
+    let contract = contracts.first().expect(
+        "this store holds no Amulet, so nothing would be asserted — tap some Canton Coin first",
+    );
+
+    // The payload is typed, not a JSON blob.
+    let payload: &Amulet = contract.payload();
+    println!(
+        "  {} dso={} owner={}",
+        contract.contract_id().as_str(),
+        payload.dso.as_str(),
+        payload.owner.as_str()
+    );
+
+    assert!(!contract.contract_id().as_str().is_empty());
+    assert_eq!(
+        contract.archived_at_offset(),
+        None,
+        "read at the latest offset"
+    );
+    assert!(contract.created_at_offset() > 0);
+    assert!(
+        contract.created_effective_at().is_some(),
+        "a created contract has a ledger effective time"
+    );
+    assert_eq!(contract.package_name(), "splice-amulet");
+    assert!(
+        contract.signatories().contains(&payload.owner.to_string()),
+        "the owner signs an Amulet: {:?}",
+        contract.signatories()
+    );
+}
+
+/// A predicate on the payload reaches the database as parameters and filters
+/// there — not in Rust after fetching everything.
+#[tokio::test]
+async fn a_payload_predicate_filters_in_the_database() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let sample = require_sample(&client).await;
+    let owner = sample.payload().owner.to_string();
+
+    let matching = client
+        .run(&Query::<Amulet>::active().filter(Predicate::eq("owner", owner.clone())))
+        .await
+        .expect("the filtered query runs");
+    assert!(
+        !matching.is_empty(),
+        "the contract that supplied the value must match it"
+    );
+    assert!(
+        matching
+            .iter()
+            .all(|c| c.payload().owner.to_string() == owner)
+    );
+
+    // And a value nothing has returns nothing, rather than everything.
+    let none = client
+        .run(&Query::<Amulet>::active().filter(Predicate::eq("owner", "nobody::1220deadbeef")))
+        .await
+        .expect("the query runs");
+    assert!(none.is_empty(), "an unmatched filter must match nothing");
+}
+
+/// Containment is the predicate an index can serve, so it has to work against
+/// the real column type.
+#[tokio::test]
+async fn containment_and_party_columns_work_against_the_real_schema() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let sample = require_sample(&client).await;
+    let owner = sample.payload().owner.to_string();
+
+    let by_containment = client
+        .run(
+            &Query::<Amulet>::active()
+                .filter(Predicate::contains(serde_json::json!({ "owner": owner }))),
+        )
+        .await
+        .expect("containment runs");
+    assert!(!by_containment.is_empty());
+
+    let by_signatory = client
+        .run(&canton_pqs::active_signed_by::<Amulet>(&owner))
+        .await
+        .expect("the signatory query runs");
+    assert!(
+        !by_signatory.is_empty(),
+        "the owner signs, so a signatory filter must find it"
+    );
+}
+
+/// An ordered comparison has to be accepted by Postgres, cast and all. A
+/// lexical comparison of an LF-JSON number is the bug this guards.
+#[tokio::test]
+async fn an_ordered_comparison_is_a_statement_postgres_accepts() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    // Against a real numeric field, on contracts that exist. Pointed at a path
+    // no contract has, this returned zero rows whether the comparison was
+    // numeric or lexical — it could not tell the bug it names from correct
+    // behaviour.
+    //
+    // Amulet amounts are LF-JSON strings like "504680.1600000000", which is
+    // exactly where a lexical comparison goes wrong.
+    let amounts = client
+        .query(&canton_pqs::Sql {
+            text: "SELECT payload #>> ARRAY['amount','initialAmount'] AS a \
+                   FROM active('splice-amulet:Splice.Amulet:Amulet') LIMIT 1"
+                .to_string(),
+            params: Vec::new(),
+        })
+        .await
+        .expect("the store is readable");
+    let Some(amount) = amounts
+        .first()
+        .and_then(|row| row.try_get::<_, Option<String>>("a").ok().flatten())
+    else {
+        eprintln!("skipping: this store holds no Amulet to compare against");
+        return;
+    };
+    let amount: f64 = amount.parse().expect("an amulet amount is a number");
+    println!("comparing against an amulet amount of {amount}");
+
+    let matching = |sql: String, threshold: String| {
+        let client = client.clone();
+        async move {
+            let rows = client
+                .query(&canton_pqs::Sql {
+                    text: sql,
+                    params: vec![canton_pqs::Param::Text(threshold)],
+                })
+                .await
+                .expect("Postgres accepts the statement");
+            rows[0].try_get::<_, i64>("n").expect("a count")
+        }
+    };
+
+    // The threshold is a single digit larger than the amount's first: "9".
+    // Numerically 504680.16 > 9; as text, "504680.16" < "9" because '5' < '9'.
+    // That is the whole bug in one comparison — the reason "9" sorts after "10"
+    // — so the two must disagree here or the cast is not doing anything.
+    let numeric = matching(
+        "SELECT count(*) AS n FROM active('splice-amulet:Splice.Amulet:Amulet') \
+         WHERE (payload #>> ARRAY['amount','initialAmount'])::numeric > $1::text::numeric"
+            .to_string(),
+        "9".to_string(),
+    )
+    .await;
+    let lexical = matching(
+        "SELECT count(*) AS n FROM active('splice-amulet:Splice.Amulet:Amulet') \
+         WHERE payload #>> ARRAY['amount','initialAmount'] > $1"
+            .to_string(),
+        "9".to_string(),
+    )
+    .await;
+
+    assert!(numeric > 0, "{amount} compared numerically must exceed 9");
+    println!("numeric matched {numeric}, lexical matched {lexical}");
+    assert_ne!(
+        numeric, lexical,
+        "if the two agree on this store the test proves nothing about the cast — \
+         pick a threshold where they differ"
+    );
+}
+
+/// `lookup_contract` finds a contract by id whether or not it is still active,
+/// which a filter on `active()` cannot do.
+#[tokio::test]
+async fn a_contract_is_found_by_id() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let sample = require_sample(&client).await;
+
+    let found = client
+        .lookup::<Amulet>(sample.contract_id().as_str())
+        .await
+        .expect("the lookup runs")
+        .expect("the contract is there");
+    assert_eq!(found.contract_id().as_str(), sample.contract_id().as_str());
+
+    let missing = client
+        .lookup::<Amulet>("00deadbeef")
+        .await
+        .expect("the lookup runs");
+    assert!(missing.is_none(), "an unknown id is None, not an error");
+}
+
+/// Reading at an offset is what makes a paged or repeated read consistent:
+/// the ACS as of a point, rather than a moving target.
+#[tokio::test]
+async fn the_acs_can_be_read_as_of_an_offset() {
+    let Some(client) = client().await else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    let offset = client.latest_offset().await.expect("an offset");
+    let now = client.active::<Amulet>().await.expect("the query runs");
+    let pinned = client
+        .run(&Query::<Amulet>::active_at(offset))
+        .await
+        .expect("the pinned query runs");
+
+    assert_eq!(
+        now.len(),
+        pinned.len(),
+        "the latest offset is what active() defaults to"
+    );
+
+    // An offset the store no longer holds is refused, and says so. That is
+    // the right answer rather than an empty result: "nothing was active then"
+    // and "I cannot tell you what was active then" are different facts, and a
+    // caller paging backwards needs to know which it got.
+    let err = client
+        .run(&Query::<Amulet>::active_at(1))
+        .await
+        .expect_err("an offset before the oldest is refused");
+    let message = err.to_string();
+    assert!(
+        message.contains("oldest known offset"),
+        "the database's own explanation must survive: {message}"
+    );
+}
+
+/// A store that refuses the connection is not something waiting fixes.
+///
+/// This was reported as a retriable `Error::Connection` carrying only
+/// `error connecting to server`, so an application looping on `is_retriable()`
+/// retried a wrong password forever and the operator was never told which of
+/// the many things that can go wrong had. The query path had already been
+/// fixed; the connect path in the same file had not.
+#[tokio::test]
+async fn a_refused_connection_is_not_retried_forever() {
+    let Some(url) = std::env::var("CANTON_PQS_URL").ok() else {
+        return;
+    };
+    // The same store, with a password it will not accept.
+    let wrong = url
+        .split_whitespace()
+        .map(|part| {
+            if part.starts_with("password=") {
+                "password=definitely-not-the-password".to_string()
+            } else {
+                part.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    if wrong == url {
+        return; // a URL-form connection string; nothing to substitute
+    }
+
+    let error = PqsClient::connect(&wrong)
+        .await
+        .expect_err("a wrong password must not connect");
+    assert!(
+        !error.is_retriable(),
+        "a rejected password is permanent, so retrying it just spins: {error:?}"
+    );
+    // And the message has to name the cause, which lives in the source chain.
+    let message = error.to_string().to_ascii_lowercase();
+    assert!(
+        message.contains("password") || message.contains("authentication"),
+        "the message must say what was refused: {error}"
+    );
+    println!("refused as expected: {error}");
+}
+
+/// The store closing a connection is the ordinary failure a long-lived client
+/// meets — a failover, an idle timeout, a restart — and the client must carry
+/// on rather than answer "retriable" forever from a dead socket. This
+/// terminates the client's own backend from a second connection and expects
+/// the next read to succeed on a fresh one, with nothing done by the caller.
+#[tokio::test]
+async fn a_connection_the_store_closes_is_replaced_on_the_next_read() {
+    let Some(url) = std::env::var("CANTON_PQS_URL").ok() else {
+        skip!("set CANTON_PQS_URL to a Scribe store");
+        return;
+    };
+    // Named, so the terminating statement below reaches this backend and no
+    // other — Scribe itself connects as the same user.
+    let name = format!("canton-pqs-live-{}", std::process::id());
+    let mut config: tokio_postgres::Config = url.parse().expect("CANTON_PQS_URL parses");
+    config.application_name(&name);
+    let named = {
+        let mut parts = vec![format!("application_name={name}")];
+        for host in config.get_hosts() {
+            if let tokio_postgres::config::Host::Tcp(host) = host {
+                parts.push(format!("host={host}"));
+            }
+        }
+        if let Some(port) = config.get_ports().first() {
+            parts.push(format!("port={port}"));
+        }
+        if let Some(user) = config.get_user() {
+            parts.push(format!("user={user}"));
+        }
+        if let Some(password) = config.get_password() {
+            parts.push(format!("password={}", String::from_utf8_lossy(password)));
+        }
+        if let Some(dbname) = config.get_dbname() {
+            parts.push(format!("dbname={dbname}"));
+        }
+        parts.join(" ")
+    };
+    let client = PqsClient::connect(&named).await.expect("connects");
+    let before = client
+        .latest_offset()
+        .await
+        .expect("a read on the first connection");
+
+    // A second, plain connection does the terminating.
+    let (admin, connection) = tokio_postgres::connect(&url, tokio_postgres::NoTls)
+        .await
+        .expect("a second connection");
+    tokio::spawn(connection);
+    let terminated = admin
+        .query(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+             WHERE application_name = $1 AND pid <> pg_backend_pid()",
+            &[&name],
+        )
+        .await
+        .expect("pg_terminate_backend");
+    assert_eq!(
+        terminated.len(),
+        1,
+        "exactly the client's backend was found by name"
+    );
+    // The termination is asynchronous from the client's point of view; give
+    // the socket a moment to be seen as closed.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    let after = client
+        .latest_offset()
+        .await
+        .expect("the read after the store closed the connection succeeds on a fresh one");
+    assert!(after >= before, "{after} >= {before}");
+    println!("reconnected transparently: offset {before} before, {after} after");
+}
