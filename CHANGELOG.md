@@ -124,6 +124,10 @@ on; the ones that did not survive that check are not here.
   in-process participant (`submit_observe_query_over_grpc` / `_over_json`),
   with the contract id threaded through all three steps; the live suites run
   the same flow against a real node.
+- **`rustls` 0.23.45 in the lockfile** for RUSTSEC-2026-0285 (TLS 1.3
+  handshake messages accepted across encryption-level boundaries), which
+  cargo-deny caught on the milestone PR. The manifests already allowed the
+  fixed version; a consumer of 0.2.x gets it with `cargo update -p rustls`.
 - **The live suites run on any LocalNet, not only cn-quickstart.** The
   interactive-submission suite runs against an unauthenticated participant
   (Canton Builder Tool, Splice LocalNet's default) with nothing beyond the
