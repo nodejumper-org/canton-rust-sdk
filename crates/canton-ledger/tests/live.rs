@@ -1506,6 +1506,28 @@ fn admin_oidc() -> Option<OidcConfig> {
     ))
 }
 
+/// The environment's exported bearer token, if it carries `ParticipantAdmin`
+/// — checked through user self-inspect over gRPC rather than assumed.
+async fn exported_token_with_participant_admin() -> Option<String> {
+    let token = canton_core::localnet::token(None)?;
+    let admin = canton_admin::AdminClient::connect_lazy(
+        canton_admin::Config::new(endpoint()?).with_token(token.clone()),
+    )
+    .ok()?;
+    let rights = admin.current_user_rights().await.ok()?;
+    rights
+        .iter()
+        .any(|r| {
+            matches!(
+                r.kind,
+                Some(canton_ledger::proto::admin::right::Kind::ParticipantAdmin(
+                    _
+                ))
+            )
+        })
+        .then_some(token)
+}
+
 /// Issue #2's setup — JSON only, no gRPC and no admin port — checking which
 /// packages the participant has before submitting.
 #[tokio::test]
@@ -1583,14 +1605,27 @@ async fn json_party_reads_as_a_plain_user() {
 /// control.
 #[tokio::test]
 async fn json_party_management_round_trip() {
-    let Some((json_url, oidc)) = json_endpoint().zip(admin_oidc()) else {
-        skip!(
-            "json_party_management_round_trip: set CANTON_TEST_JSON_ENDPOINT and \
-             CANTON_TEST_ADMIN_CLIENT_ID/CANTON_TEST_ADMIN_CLIENT_SECRET (ParticipantAdmin)"
-        );
+    let Some(json_url) = json_endpoint() else {
+        skip!("json_party_management_round_trip: set CANTON_TEST_JSON_ENDPOINT");
         return;
     };
-    let json = JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc));
+    let json = match admin_oidc() {
+        Some(oidc) => JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc)),
+        // No admin client in the environment: the exported token may carry
+        // `ParticipantAdmin` itself (Canton Builder Tool's does). Asked before
+        // it is relied on, so a token without the right skips rather than
+        // failing half-way through an allocation.
+        None => {
+            let Some(token) = exported_token_with_participant_admin().await else {
+                skip!(
+                    "json_party_management_round_trip: set CANTON_TEST_ADMIN_CLIENT_ID/\
+                     CANTON_TEST_ADMIN_CLIENT_SECRET, or export a token carrying ParticipantAdmin"
+                );
+                return;
+            };
+            JsonClient::new(json_url).with_token(token)
+        }
+    };
 
     // Paging: a page of two has a successor on any LocalNet (DSO, app
     // provider, app user, the participant's own admin party).

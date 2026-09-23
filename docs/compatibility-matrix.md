@@ -5,7 +5,7 @@ listed on the strength of "it should work" — but not everything is checked by
 CI, and the table under [What CI runs, and what it cannot](#what-ci-runs-and-what-it-cannot)
 says exactly which rows rest on a developer-run live suite instead.
 
-Version **0.3.0** (unreleased).
+Version **0.3.0**, released 2026-09-23.
 
 ## Rust
 

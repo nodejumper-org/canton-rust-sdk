@@ -4,7 +4,7 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
-> **Status:** the Ledger API client and the type-safe DAR codegen are both **released** on crates.io (0.2.x). Everything here is verified against a Canton **3.5.7** participant: hermetic tests plus a live suite (submit, streaming, recovery, TLS/mTLS, auth), and an end-to-end typed loop — generate bindings from a DAR, submit a typed create, read it back, exercise a choice — over gRPC and JSON. CI holds the whole workspace to `-D warnings` on every feature combination. On this branch (unreleased, ships as 0.3.0): external signing — interactive submission with a pluggable `Signer`, verified live, an external party onboarded by signing its own topology and a command prepared, signed off the participant and committed; token-standard support for **both** standards — CIP-56 and CIP-0112, each with its own end-to-end transfer example — over a registry client whose every path and payload is transcribed from the standard's OpenAPI documents and pinned by test; and a PQS client verified live against **Scribe 3.5.4**.
+> **Status:** 0.3.0 is on crates.io: the Ledger API client, the type-safe DAR codegen, the token standard in both versions (CIP-56 and CIP-0112), interactive submission with a pluggable `Signer`, and a typed PQS client. Everything here is verified against a Canton **3.5.7** participant — hermetic tests plus the live suites (submit, streaming, recovery, TLS/mTLS, auth, external signing, PQS against **Scribe 3.5.4**), an end-to-end typed loop over gRPC and JSON, and the five token-standard examples against a live registry — and the token-standard examples were also run on the Canton Network DevNet (Canton 3.5.17), with the output on record under [`docs/verification/`](docs/verification/token-standard-live-runs.md). CI holds the whole workspace to `-D warnings` on every feature combination.
 
 ## Crates
 
@@ -36,8 +36,8 @@ and what CI can and cannot check — is in
 
 | SDK version | Canton version | Ledger API | Rust (MSRV) |
 |---|---|---|---|
-| 0.3.x (this branch, unreleased) | 3.5.7 (pinned protos) | v2 | 1.88 |
-| 0.2.x (current release) | 3.5.7 (pinned protos) | v2 | 1.88 |
+| 0.3.x (current release) | 3.5.7 (pinned protos); token examples also run on 3.5.17 (DevNet) | v2 | 1.88 |
+| 0.2.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 | 0.1.x | 3.5.7 (pinned protos) | v2 | 1.88 |
 
 The vendored `.proto` files are pinned to the Canton release above; moving the

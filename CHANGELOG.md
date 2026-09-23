@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [0.3.0] — unreleased
+## [0.3.0] — 2026-09-23
 
 ### Changed — one crate per Daml package (**breaking**)
 

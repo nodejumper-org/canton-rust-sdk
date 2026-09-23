@@ -87,6 +87,31 @@ fn admin_client(config: OidcConfig) -> Option<AdminClient> {
     AdminClient::connect_lazy(Config::new(endpoint()?).with_oidc(TokenProvider::new(config))).ok()
 }
 
+/// The admin OIDC client where the environment has one; otherwise the
+/// ordinary token, but only after user self-inspect says it carries
+/// `ParticipantAdmin` (Canton Builder Tool's exported token does) — a test
+/// that runs and fails with `PermissionDenied` is worse than one that skips.
+async fn admin_capable_client() -> Option<AdminClient> {
+    if let Some(oidc) = admin_oidc() {
+        return admin_client(oidc);
+    }
+    let client = ordinary_client()?;
+    let rights = client.current_user_rights().await.ok()?;
+    rights
+        .iter()
+        .any(|r| {
+            matches!(
+                r.kind,
+                Some(
+                    canton_proto::com::daml::ledger::api::v2::admin::right::Kind::ParticipantAdmin(
+                        _
+                    )
+                )
+            )
+        })
+        .then_some(client)
+}
+
 #[tokio::test]
 async fn user_self_inspect_reports_the_authenticated_user() {
     let Some(client) = ordinary_client() else {
@@ -121,10 +146,11 @@ async fn participant_id_is_returned() {
 
 #[tokio::test]
 async fn party_admin_allocate_list_and_get() {
-    let Some(client) = admin_oidc().and_then(admin_client) else {
+    let Some(client) = admin_capable_client().await else {
         skip!(
             "party_admin_allocate_list_and_get: set CANTON_TEST_ENDPOINT + \
-             CANTON_TEST_ADMIN_CLIENT_ID/CANTON_TEST_ADMIN_CLIENT_SECRET (ParticipantAdmin)"
+             CANTON_TEST_ADMIN_CLIENT_ID/CANTON_TEST_ADMIN_CLIENT_SECRET (ParticipantAdmin), \
+             or export a token that carries the right"
         );
         return;
     };
