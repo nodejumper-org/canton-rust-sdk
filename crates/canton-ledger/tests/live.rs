@@ -1609,22 +1609,21 @@ async fn json_party_management_round_trip() {
         skip!("json_party_management_round_trip: set CANTON_TEST_JSON_ENDPOINT");
         return;
     };
-    let json = match admin_oidc() {
-        Some(oidc) => JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc)),
+    let json = if let Some(oidc) = admin_oidc() {
+        JsonClient::new(json_url).with_oidc(TokenProvider::new(oidc))
+    } else {
         // No admin client in the environment: the exported token may carry
         // `ParticipantAdmin` itself (Canton Builder Tool's does). Asked before
         // it is relied on, so a token without the right skips rather than
         // failing half-way through an allocation.
-        None => {
-            let Some(token) = exported_token_with_participant_admin().await else {
-                skip!(
-                    "json_party_management_round_trip: set CANTON_TEST_ADMIN_CLIENT_ID/\
-                     CANTON_TEST_ADMIN_CLIENT_SECRET, or export a token carrying ParticipantAdmin"
-                );
-                return;
-            };
-            JsonClient::new(json_url).with_token(token)
-        }
+        let Some(token) = exported_token_with_participant_admin().await else {
+            skip!(
+                "json_party_management_round_trip: set CANTON_TEST_ADMIN_CLIENT_ID/\
+                 CANTON_TEST_ADMIN_CLIENT_SECRET, or export a token carrying ParticipantAdmin"
+            );
+            return;
+        };
+        JsonClient::new(json_url).with_token(token)
     };
 
     // Paging: a page of two has a successor on any LocalNet (DSO, app
