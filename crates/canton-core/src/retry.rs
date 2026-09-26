@@ -111,7 +111,20 @@ where
                 // then, so coming back at 1.5s spends an attempt on a rejection
                 // that was guaranteed. Without a recommendation the local
                 // backoff is ours to scatter in either direction.
-                let recommended = err.retry_delay();
+                //
+                // The recommendation is bounded: a participant that asks for a
+                // year is not scheduling a retry, it is parking the caller
+                // (and whatever the call holds) in a sleep nobody can see.
+                let recommended = err.retry_delay().map(|server| {
+                    if server > MAX_SERVER_DELAY {
+                        tracing::warn!(
+                            recommended = ?server,
+                            cap = ?MAX_SERVER_DELAY,
+                            "the participant recommended a retry delay above the cap; capping it"
+                        );
+                    }
+                    server.min(MAX_SERVER_DELAY)
+                });
                 let delay = recommended.map_or(backoff, |server| server.max(backoff));
                 let delay = match recommended {
                     Some(minimum) => with_jitter(delay).max(minimum),
@@ -134,8 +147,16 @@ fn with_jitter(backoff: Duration) -> Duration {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.subsec_nanos());
     let factor = 0.5 + f64::from(nanos % 1024) / 1024.0;
-    backoff.mul_f64(factor)
+    // `mul_f64` panics when the product does not fit a `Duration`; the input
+    // may come from the server, so the fallible form, and the unjittered
+    // delay when it cannot be stretched.
+    Duration::try_from_secs_f64(backoff.as_secs_f64() * factor).unwrap_or(backoff)
 }
+
+/// The longest server-recommended retry delay honoured. Canton's own
+/// recommendations are seconds; anything above this is capped (and logged),
+/// so a hostile or confused participant cannot park a caller in a sleep.
+pub const MAX_SERVER_DELAY: Duration = Duration::from_secs(60);
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
@@ -259,6 +280,77 @@ mod tests {
             "the server's delay is a minimum, slept only {:?}",
             started.elapsed()
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_server_recommended_delay_is_capped() {
+        // A participant "recommending" a year is capped to MAX_SERVER_DELAY
+        // (plus jitter), not slept through.
+        let status = {
+            use tonic_types::{ErrorDetails, StatusExt as _};
+            let mut details = ErrorDetails::new();
+            details.set_retry_info(Some(Duration::from_secs(365 * 86_400)));
+            tonic::Status::with_error_details(tonic::Code::Unavailable, "wait", details)
+        };
+        let started = tokio::time::Instant::now();
+        let calls = Cell::new(0);
+        let result: Result<u32> = run_with_retry(Some(&fast()), || {
+            calls.set(calls.get() + 1);
+            let n = calls.get();
+            let err = Error::from(status.clone());
+            async move { if n == 1 { Err(err) } else { Ok(n) } }
+        })
+        .await;
+        assert_eq!(result.unwrap(), 2);
+        assert!(
+            started.elapsed() >= MAX_SERVER_DELAY,
+            "{:?}",
+            started.elapsed()
+        );
+        assert!(
+            started.elapsed() <= MAX_SERVER_DELAY.mul_f64(1.5) + Duration::from_secs(1),
+            "slept {:?}",
+            started.elapsed()
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn an_absurd_json_retry_info_neither_panics_nor_hangs() {
+        // The value survives parsing (it is below Duration::MAX) but would
+        // overflow the jitter arithmetic: the case that panicked the task.
+        for body in [
+            r#"{"errorCategory":1,"retryInfo":"1.8e19 seconds"}"#,
+            r#"{"errorCategory":1,"retryInfo":"1.3e19 seconds"}"#,
+            r#"{"cause":"busy","retryInfo":"18000000000000000000 seconds"}"#,
+        ] {
+            let started = tokio::time::Instant::now();
+            let calls = Cell::new(0);
+            let result: Result<u32> = run_with_retry(Some(&fast()), || {
+                calls.set(calls.get() + 1);
+                let n = calls.get();
+                let err = Error::Http {
+                    status: 503,
+                    body: body.to_string(),
+                    url: None,
+                };
+                async move { if n == 1 { Err(err) } else { Ok(n) } }
+            })
+            .await;
+            assert_eq!(result.unwrap(), 2, "{body}");
+            assert!(
+                started.elapsed() <= MAX_SERVER_DELAY.mul_f64(1.5) + Duration::from_secs(1),
+                "{body}: slept {:?}",
+                started.elapsed()
+            );
+        }
+    }
+
+    #[test]
+    fn jitter_never_panics() {
+        for backoff in [Duration::ZERO, Duration::from_millis(1), Duration::MAX] {
+            let jittered = with_jitter(backoff);
+            assert!(jittered <= Duration::MAX);
+        }
     }
 
     #[tokio::test]
