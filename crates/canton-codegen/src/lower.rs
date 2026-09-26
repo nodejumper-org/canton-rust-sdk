@@ -1381,11 +1381,25 @@ impl Lowering<'_> {
                 .qualify
                 .as_ref()
                 .map_or_else(String::new, |q| q.current_id.to_string()),
-            package_name: package_name(self.package).unwrap_or_default().to_string(),
+            package_name: self.source_safe_package_name()?,
             fields,
             choices,
             key,
         })
+    }
+
+    /// The package name, refused if it could not be written into generated
+    /// source (it appears in docs and in `#<package-name>` template ids).
+    fn source_safe_package_name(&self) -> Result<String, SkippedType> {
+        let name = package_name(self.package).unwrap_or_default();
+        if is_source_safe(name) {
+            Ok(name.to_string())
+        } else {
+            Err(SkippedType::new(format!(
+                "package name `{}` contains characters that cannot appear in generated source",
+                name.escape_debug()
+            )))
+        }
     }
 
     /// Lower one `TemplateChoice`: its name, consuming flag, argument type, and
@@ -1395,6 +1409,12 @@ impl Lowering<'_> {
         let name = interned_str(self.package, choice.name_interned_str)
             .ok_or_else(|| SkippedType::new("unresolved choice name"))?
             .to_string();
+        if !is_source_safe(&name) {
+            return Err(SkippedType::new(format!(
+                "choice `{}` contains characters that cannot appear in generated source",
+                name.escape_debug()
+            )));
+        }
         let argument = choice
             .arg_binder
             .as_ref()
@@ -1495,6 +1515,12 @@ impl Lowering<'_> {
                 let label = interned_str(self.package, field.field_interned_str)
                     .ok_or_else(|| SkippedType::new("unresolved field label"))?
                     .to_string();
+                if !is_source_safe(&label) {
+                    return Err(SkippedType::new(format!(
+                        "field `{}` contains characters that cannot appear in generated source",
+                        label.escape_debug()
+                    )));
+                }
                 let ty = self.type_(field_type(field)?)?;
                 Ok(Field { label, ty })
             })
@@ -2026,6 +2052,19 @@ fn check_type_params(name: &str, params: &[String]) -> Result<(), SkippedType> {
 /// (`Red'`) is ordinary Daml and Haskell. A name that fails is skipped with a
 /// reason, which is the contract this crate documents; aborting the process
 /// with a `proc_macro2` backtrace is not.
+/// Whether a Daml string may be written into generated source at all.
+///
+/// Names that are not Rust identifiers (choice names, field labels, package
+/// names) reach the output only inside string literals and `#[doc]`
+/// attributes, where `quote!` escapes them. A control character survives
+/// that: rustdoc reads a newline inside a doc attribute as a new Markdown
+/// line, so a name carrying a fenced code block becomes a doctest that
+/// `cargo test` runs. A DAR is untrusted input, so such a name is refused
+/// rather than escaped.
+fn is_source_safe(name: &str) -> bool {
+    !name.chars().any(char::is_control) && !name.contains("*/")
+}
+
 fn is_rust_ident(name: &str) -> bool {
     !name.is_empty()
         && !name.starts_with(|c: char| c.is_ascii_digit())
@@ -2930,6 +2969,19 @@ mod tests {
         // the skip-with-a-reason this crate promises.
         assert!(is_rust_ident("Red"));
         assert!(is_rust_ident("_x9"));
+        for ok in ["Accept", "owner", "splice-amulet", "Amulet_Transfer", "a b"] {
+            assert!(is_source_safe(ok), "{ok:?}");
+        }
+        for bad in [
+            "Accept\n```",
+            "a\rb",
+            "tab\there",
+            "end*/",
+            "\u{7f}",
+            "\u{85}",
+        ] {
+            assert!(!is_source_safe(bad), "{bad:?} must be refused");
+        }
         for bad in ["Red'", "", "9lives", "naïve", "a-b", "A.B"] {
             assert!(!is_rust_ident(bad), "{bad:?} is not a Rust identifier");
         }

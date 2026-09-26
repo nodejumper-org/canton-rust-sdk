@@ -557,6 +557,45 @@ mod tests {
         assert!(!src.contains("/**"), "{src}");
     }
 
+    /// A DAR is untrusted input. A choice name, field label or package name
+    /// carrying a newline and a code fence must not become a doctest in the
+    /// user's crate (rustdoc reads doc attributes as Markdown, and
+    /// `cargo test` runs doctests).
+    #[test]
+    fn hostile_names_cannot_open_a_doctest_in_generated_docs() {
+        use crate::ir::{Choice, Template};
+
+        let payload = "```\nfn main() { std::process::exit(7) }\n```";
+        let template = Template {
+            name: "Deal".to_string(),
+            module_name: "Market".to_string(),
+            package_id: "abc123".to_string(),
+            package_name: format!("market\n{payload}"),
+            fields: vec![field(&format!("owner\n    {payload}"), DamlType::Party)],
+            choices: vec![Choice {
+                name: format!("Accept\n{payload}\n"),
+                consuming: true,
+                argument: DamlType::Unit,
+                returns: DamlType::Unit,
+            }],
+            key: None,
+        };
+
+        let src = generate_template(&template).unwrap();
+        syn::parse_file(&src).unwrap();
+        assert!(!src.contains("/**"), "{src}");
+        // Every doc attribute is one line, so no line of the output can open
+        // a fence; the payload survives only as inert text inside one line.
+        for line in src.lines() {
+            assert!(!line.trim_start().starts_with("```"), "{src}");
+            assert!(
+                !line.trim_start().starts_with("///") || !line.contains('\n'),
+                "{src}"
+            );
+        }
+        assert!(!src.contains("/// ```"), "{src}");
+    }
+
     #[test]
     fn keyed_template_emits_with_key_impl() {
         use crate::ir::{Template, TypeRef};
