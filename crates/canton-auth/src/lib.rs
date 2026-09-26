@@ -301,8 +301,14 @@ impl TokenProvider {
         // The per-request timeout in `fetch` is the guarantee; the client-level
         // timeout here is belt-and-braces (a bare builder with a timeout does
         // not fail in practice, but the fallback stays bounded either way).
+        // No redirects: the request carries the client secret, and a 3xx
+        // from the token endpoint (or whatever sits in front of it) would
+        // have `reqwest` replay it, form body and all, at the address of the
+        // redirect's choosing. A token endpoint that answers 3xx is refused
+        // in `fetch` instead.
         let http = reqwest::Client::builder()
             .timeout(FETCH_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
         Self {
@@ -402,6 +408,21 @@ impl TokenProvider {
         // stay retriable via the shared error model.
         if !response.status().is_success() {
             let status = response.status().as_u16();
+            if response.status().is_redirection() {
+                // Not followed (see `new`): the secret stays with the endpoint
+                // it was configured for, and the caller hears why.
+                let target = response
+                    .headers()
+                    .get(reqwest::header::LOCATION)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("<no Location header>");
+                let url = canton_core::redact_url(&config.token_url);
+                return Err(Error::Auth(format!(
+                    "token endpoint {url} answered http {status} redirecting to {target}; \
+                     a redirect is refused because following it would send the client \
+                     secret elsewhere"
+                )));
+            }
             let body = response.text().await.unwrap_or_default();
             if matches!(status, 401 | 403) {
                 return Err(Error::Auth(format!(

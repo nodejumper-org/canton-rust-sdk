@@ -205,15 +205,21 @@ impl RegistryClient {
     /// [`Error::InvalidRequest`] if `base_url` is not a URL, or an HTTP client
     /// cannot be built.
     pub fn new(base_url: &str) -> Result<Self> {
+        // No redirects: what the registry answers is put into commands the
+        // caller signs, so it must come from the registry the caller named,
+        // not from wherever a 3xx points.
         let http = reqwest::Client::builder()
             .timeout(DEFAULT_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|e| Error::InvalidRequest(format!("cannot build an HTTP client: {e}")))?;
         Self::with_http_client(base_url, http)
     }
 
     /// A client using an HTTP client the caller has already configured —
-    /// timeouts, proxies, a custom TLS root store.
+    /// timeouts, proxies, a custom TLS root store. Configure it with
+    /// `reqwest::redirect::Policy::none()`, as [`Self::new`] does: a registry
+    /// answer reached through a redirect is not the registry's.
     ///
     /// # Errors
     /// [`Error::InvalidRequest`] if `base_url` is not a URL.

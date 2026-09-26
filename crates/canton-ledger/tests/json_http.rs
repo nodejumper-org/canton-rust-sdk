@@ -953,6 +953,65 @@ async fn a_retry_refused_for_another_reason_is_not_a_success() {
     );
 }
 
+/// A participant does not redirect. One that does (or a proxy in front of it)
+/// is answered with the status it sent: the bearer token and the command body
+/// are never replayed at the redirect's address, and a 3xx is not retried.
+#[tokio::test]
+async fn a_redirect_is_not_followed_on_the_json_lane() {
+    // The redirect target records whether anything reaches it.
+    let (target, reached) = scripted_server(vec![(200, r#"{"version":"x"}"#.to_string())]).await;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let hits = Arc::new(Mutex::new(0usize));
+    let counter = hits.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            *counter.lock().unwrap() += 1;
+            let response = format!(
+                "HTTP/1.1 307 Temporary Redirect\r\nLocation: {target}/v2/version\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+            let _ = socket.write_all(response.as_bytes()).await;
+            let _ = socket.shutdown().await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let client = JsonClient::new(format!("http://127.0.0.1:{port}"))
+        .with_token("bearer-secret")
+        .with_retry(
+            canton_ledger::RetryConfig::default()
+                .with_max_attempts(3)
+                .with_initial_backoff(Duration::from_millis(1)),
+        );
+    let error = client.version().await.expect_err("a redirect is a failure");
+    assert!(
+        matches!(&error, canton_ledger::Error::Http { status: 307, .. }),
+        "{error:?}"
+    );
+    assert!(!error.is_retriable(), "{error:?}");
+    assert_eq!(*hits.lock().unwrap(), 1, "a 3xx must not be retried");
+    assert!(
+        reached.lock().unwrap().is_empty(),
+        "the request was replayed at the redirect target"
+    );
+
+    let error = client
+        .submit(&commands())
+        .await
+        .expect_err("a redirected submission is a failure");
+    assert!(
+        matches!(&error, canton_ledger::Error::Http { status: 307, .. }),
+        "{error:?}"
+    );
+    assert!(reached.lock().unwrap().is_empty());
+}
+
 // ---- JSON: submit → observe → query, as one flow ------------------------------
 
 /// The same three operations the gRPC flow test threads together, over the

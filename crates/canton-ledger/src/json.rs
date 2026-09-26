@@ -562,6 +562,15 @@ fn is_duplicate_submission(error: &Error) -> bool {
         || error.code() == Some(tonic::Code::AlreadyExists)
 }
 
+/// The HTTP client every JSON lane starts from. Redirects are not followed:
+/// the requests carry a bearer token and, on a submission, a command body,
+/// and a 3xx from the participant's address would have `reqwest` replay both
+/// wherever the redirect points. A participant does not redirect; anything
+/// that does is answered as the status it sent, which is not retried.
+fn http_client_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder().redirect(reqwest::redirect::Policy::none())
+}
+
 /// Add W3C trace-context headers to an outgoing request (a no-op without the
 /// `otel` feature, or when no OpenTelemetry context is active).
 /// Percent-encode `value` as one path segment or one query value: everything
@@ -660,7 +669,9 @@ impl JsonClient {
         }
         Self {
             base_url,
-            http: reqwest::Client::new(),
+            http: http_client_builder()
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             auth: Auth::None,
             tls: None,
             retry: None,
@@ -794,7 +805,7 @@ impl JsonClient {
     /// Returns [`Error::InvalidRequest`] if a certificate/identity PEM is
     /// invalid or the HTTPS client cannot be built.
     pub fn with_tls(mut self, tls: &canton_core::TlsConfig) -> Result<Self> {
-        let mut builder = reqwest::Client::builder();
+        let mut builder = http_client_builder();
         if let Some(ca) = &tls.ca_certificate_pem {
             let cert = reqwest::Certificate::from_pem(ca)
                 .map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
