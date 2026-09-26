@@ -1012,6 +1012,67 @@ async fn a_redirect_is_not_followed_on_the_json_lane() {
     assert!(reached.lock().unwrap().is_empty());
 }
 
+/// A server that answers every request with `status`, then a chunked body
+/// that never ends (until the client hangs up).
+async fn endless_server(status: &'static str) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let head = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n"
+                );
+                if socket.write_all(head.as_bytes()).await.is_err() {
+                    return;
+                }
+                let chunk = format!("{:x}\r\n{}\r\n", 65536, "x".repeat(65536));
+                while socket.write_all(chunk.as_bytes()).await.is_ok() {}
+            });
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    format!("http://127.0.0.1:{port}")
+}
+
+/// A body that never ends is cut off at the client's decoding limit rather
+/// than read into memory until the process dies; the same for an error body,
+/// which is kept only up to a fixed cap. The gRPC lane has had this bound
+/// from the start (`max_decoding_message_size`); this is the JSON lane's.
+#[tokio::test]
+async fn an_unbounded_body_is_refused_at_the_decoding_limit() {
+    let url = endless_server("200 OK").await;
+    let client = JsonClient::new(url).with_max_decoding_message_size(1 << 20);
+    let error = client
+        .version()
+        .await
+        .expect_err("an endless body is refused");
+    assert!(
+        matches!(&error, canton_ledger::Error::UnexpectedResponse(m) if m.contains("limit")),
+        "{error:?}"
+    );
+
+    let url = endless_server("500 Internal Server Error").await;
+    let client = JsonClient::new(url);
+    let error = client.version().await.expect_err("a 500 is a failure");
+    match &error {
+        canton_ledger::Error::Http { status, body, .. } => {
+            assert_eq!(*status, 500);
+            assert!(
+                body.len() < 128 * 1024,
+                "error body kept whole: {} bytes",
+                body.len()
+            );
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
 // ---- JSON: submit → observe → query, as one flow ------------------------------
 
 /// The same three operations the gRPC flow test threads together, over the

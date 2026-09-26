@@ -618,24 +618,68 @@ fn with_trace_context(request: reqwest::RequestBuilder) -> reqwest::RequestBuild
     request
 }
 
-/// Validate an HTTP response and deserialize its JSON body.
+/// How much of an error body is kept. The status is the verdict; the body is
+/// context for a log line, and a participant (or whatever answers in its
+/// place) does not get to size the error the caller stores and prints.
+const ERROR_BODY_CAP: usize = 64 * 1024;
+
+/// Validate an HTTP response and deserialize its JSON body, reading at most
+/// `cap` bytes of it: the JSON lane's counterpart to the gRPC decoding limit,
+/// so a hostile or broken node cannot make the client allocate without bound.
 async fn read_json<T: for<'de> Deserialize<'de>>(
     response: reqwest::Response,
     path: &str,
+    cap: usize,
 ) -> Result<T> {
     // Non-2xx carries its status (e.g. `413` past the node's list cap, `401`
     // for a bad token), so callers can branch and retry 5xx/429.
     if !response.status().is_success() {
         let status = response.status().as_u16();
-        let body = response.text().await.unwrap_or_default();
+        let body = read_body(response, ERROR_BODY_CAP, path)
+            .await
+            .unwrap_or_else(|e| format!("<body not read: {e}>"));
         return Err(Error::http_at(status, body, path));
     }
-    let body = response
-        .text()
-        .await
-        .map_err(|e| Error::Connection(format!("reading json body from {path} failed: {e}")))?;
+    let body = read_body(response, cap, path).await?;
     // A malformed body is a deserialization error (Error::Json), not a bad request.
     serde_json::from_str::<T>(&body).map_err(Error::from)
+}
+
+/// Read a response body, refusing one that declares or grows past `cap`.
+/// `reqwest`'s own `text()` reads to the end whatever the size; this reads
+/// chunk by chunk and stops at the cap, so the bound holds for a chunked
+/// stream with no `Content-Length` as much as for a declared one.
+async fn read_body(mut response: reqwest::Response, cap: usize, path: &str) -> Result<String> {
+    if let Some(declared) = response
+        .content_length()
+        .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
+    {
+        {
+            return Err(Error::UnexpectedResponse(format!(
+                "{path} answered with a {declared}-byte body, above the {cap}-byte limit \
+                 (raise it with `with_max_decoding_message_size` if it is expected)"
+            )));
+        }
+    }
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| Error::Connection(format!("reading json body from {path} failed: {e}")))?
+    {
+        if buffer.len() + chunk.len() > cap {
+            return Err(Error::UnexpectedResponse(format!(
+                "{path} answered with a body above the {cap}-byte limit \
+                 (raise it with `with_max_decoding_message_size` if it is expected)"
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buffer).map_err(|e| {
+        Error::UnexpectedResponse(format!(
+            "{path} answered with a body that is not UTF-8: {e}"
+        ))
+    })
 }
 
 /// Upgrade an `http://` base URL to `https://` when TLS is configured.
@@ -870,7 +914,7 @@ impl JsonClient {
                 .send()
                 .await
                 .map_err(|e| transport_error(path, &e))?;
-            read_json(response, path).await
+            read_json(response, path, self.max_decoding_message_size).await
         })
         .await
     }
@@ -905,7 +949,7 @@ impl JsonClient {
             .send()
             .await
             .map_err(|e| transport_error(path, &e))?;
-        read_json(response, path).await
+        read_json(response, path, self.max_decoding_message_size).await
     }
 
     /// One PATCH, no retry: the callers are mutations whose lost response the
@@ -928,7 +972,7 @@ impl JsonClient {
             .send()
             .await
             .map_err(|e| transport_error(path, &e))?;
-        read_json(response, path).await
+        read_json(response, path, self.max_decoding_message_size).await
     }
 
     /// The participant's Ledger API version (`GET /v2/version`, unauthenticated).

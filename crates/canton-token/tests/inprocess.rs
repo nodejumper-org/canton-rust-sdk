@@ -287,6 +287,39 @@ async fn a_redirecting_registry_is_not_followed() {
     );
 }
 
+/// A registry answer that never ends is cut off at the client's limit rather
+/// than read into memory until the process dies.
+#[tokio::test]
+async fn an_unbounded_registry_answer_is_refused() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let head = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n";
+                if socket.write_all(head.as_bytes()).await.is_err() {
+                    return;
+                }
+                let chunk = format!("{:x}\r\n{}\r\n", 1 << 20, "x".repeat(1 << 20));
+                while socket.write_all(chunk.as_bytes()).await.is_ok() {}
+            });
+        }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    let client = RegistryClient::new(&format!("http://127.0.0.1:{port}")).expect("client");
+    let err = client.info().await.expect_err("an endless body is refused");
+    assert!(
+        matches!(&err, canton_core::Error::UnexpectedResponse(m) if m.contains("limit")),
+        "{err:?}"
+    );
+}
+
 #[tokio::test]
 async fn a_failing_registry_reports_its_own_message() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");

@@ -423,7 +423,9 @@ impl TokenProvider {
                      secret elsewhere"
                 )));
             }
-            let body = response.text().await.unwrap_or_default();
+            let body = read_body(response, ERROR_BODY_CAP)
+                .await
+                .unwrap_or_else(|e| format!("<body not read: {e}>"));
             if matches!(status, 401 | 403) {
                 return Err(Error::Auth(format!(
                     "token endpoint rejected the credentials (http {status}): {body}"
@@ -432,14 +434,49 @@ impl TokenProvider {
             return Err(Error::http(status, body));
         }
 
-        let body = response.text().await.map_err(|e| {
-            Error::Connection(format!(
-                "reading token response failed: {}",
-                canton_core::chain(&e)
-            ))
-        })?;
+        let body = read_body(response, TOKEN_BODY_CAP).await?;
         serde_json::from_str::<TokenResponse>(&body).map_err(Error::from)
     }
+}
+
+/// A token response is a few kilobytes of JSON; anything larger is not one.
+const TOKEN_BODY_CAP: usize = 64 * 1024;
+/// How much of an error body is kept for the message.
+const ERROR_BODY_CAP: usize = 8 * 1024;
+
+/// Read a response body, refusing one that declares or grows past `cap`, so
+/// an endpoint (or whatever answers in its place) cannot make the caller
+/// allocate without bound.
+async fn read_body(mut response: reqwest::Response, cap: usize) -> Result<String> {
+    if let Some(declared) = response
+        .content_length()
+        .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
+    {
+        {
+            return Err(Error::UnexpectedResponse(format!(
+                "token endpoint answered with a {declared}-byte body, above the {cap}-byte limit"
+            )));
+        }
+    }
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| {
+        Error::Connection(format!(
+            "reading token response failed: {}",
+            canton_core::chain(&e)
+        ))
+    })? {
+        if buffer.len() + chunk.len() > cap {
+            return Err(Error::UnexpectedResponse(format!(
+                "token endpoint answered with a body above the {cap}-byte limit"
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buffer).map_err(|e| {
+        Error::UnexpectedResponse(format!(
+            "token endpoint answered with a body that is not UTF-8: {e}"
+        ))
+    })
 }
 
 /// Lets a [`TokenProvider`] back the SDK's shared [`canton_core::Auth`] without
