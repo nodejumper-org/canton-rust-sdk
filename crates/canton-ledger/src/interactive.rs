@@ -87,7 +87,10 @@ impl Prepare {
             min_ledger_time_rel: None,
             verbose_hashing: false,
             max_record_time: None,
-            hashing_scheme_version: None,
+            // Asked for explicitly rather than left to the participant: the
+            // scheme decides what the signature covers, and `Prepared` refuses
+            // a response hashed under one the caller did not ask for.
+            hashing_scheme_version: Some(ipb::HashingSchemeVersion::V2 as i32),
             taps_max_passes: None,
             // The participant estimates by default; only an explicit opt-out
             // is sent, so leaving this alone changes nothing.
@@ -271,6 +274,13 @@ impl Prepare {
     /// it as a field: the participant reads it from the prepared transaction's
     /// own `submitter_info`, which is what makes a repeated execution a
     /// duplicate rather than a second transaction.
+    /// The hashing scheme this request asks for, if any, so the response can
+    /// be held to it.
+    pub(crate) fn requested_hashing_scheme(&self) -> Option<ipb::HashingSchemeVersion> {
+        self.hashing_scheme_version
+            .and_then(|v| ipb::HashingSchemeVersion::try_from(v).ok())
+    }
+
     pub(crate) fn into_request(self) -> (String, Option<String>, ipb::PrepareSubmissionRequest) {
         let command_id = self
             .command_id
@@ -354,6 +364,10 @@ fn min_ledger_time(
 ///   trusted** — the API calls the hash "provided for convenience" for exactly
 ///   this reason.
 ///
+/// Every hashing scheme the participant offers is a SHA-256, so its hash is
+/// 32 bytes; anything else is not a hash this SDK knows how to sign for.
+const PREPARED_HASH_LEN: usize = 32;
+
 /// Interactive submission keeps the key away from the participant. It does not,
 /// on its own, make a dishonest participant harmless.
 #[derive(Clone, Debug)]
@@ -372,6 +386,7 @@ pub struct Prepared {
 impl Prepared {
     pub(crate) fn from_response(
         response: ipb::PrepareSubmissionResponse,
+        requested_scheme: Option<ipb::HashingSchemeVersion>,
         act_as: Vec<String>,
         read_as: Vec<String>,
         command_id: String,
@@ -392,6 +407,31 @@ impl Prepared {
             return Err(Error::UnexpectedResponse(
                 "prepare returned no transaction hash".to_string(),
             ));
+        }
+        // What the signer is handed is trusted from the participant (see the
+        // struct docs), so the little that can be checked here is checked:
+        // the hash is one the SDK knows the shape of, under the scheme that
+        // was asked for. A participant answering under another scheme, or with
+        // a hash of another length, is not one to sign for.
+        let scheme = ipb::HashingSchemeVersion::try_from(response.hashing_scheme_version)
+            .ok()
+            .filter(|s| *s != ipb::HashingSchemeVersion::Unspecified)
+            .ok_or_else(|| {
+                Error::UnexpectedResponse(format!(
+                    "prepare answered under an unknown hashing scheme ({})",
+                    response.hashing_scheme_version
+                ))
+            })?;
+        if let Some(requested) = requested_scheme.filter(|requested| *requested != scheme) {
+            return Err(Error::UnexpectedResponse(format!(
+                "prepare hashed under {scheme:?} but {requested:?} was requested"
+            )));
+        }
+        if response.prepared_transaction_hash.len() != PREPARED_HASH_LEN {
+            return Err(Error::UnexpectedResponse(format!(
+                "prepare returned a {}-byte transaction hash; {scheme:?} hashes are {PREPARED_HASH_LEN} bytes",
+                response.prepared_transaction_hash.len()
+            )));
         }
         Ok(Self {
             transaction: response.prepared_transaction,
@@ -823,11 +863,12 @@ mod tests {
                         ..Default::default()
                     }),
                 }),
-                prepared_transaction_hash: vec![1, 2, 3],
+                prepared_transaction_hash: vec![1; 32],
                 hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
                 hashing_details: None,
                 cost_estimation: None,
             },
+            Some(ipb::HashingSchemeVersion::V2),
             act_as,
             Vec::new(),
             "command-1".to_string(),
@@ -848,6 +889,7 @@ mod tests {
                 hashing_details: None,
                 cost_estimation: None,
             },
+            None,
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
@@ -872,6 +914,7 @@ mod tests {
                 hashing_details: None,
                 cost_estimation: None,
             },
+            None,
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
@@ -879,6 +922,90 @@ mod tests {
         )
         .expect_err("no transaction");
         assert!(err.to_string().contains("nothing to execute"), "{err}");
+    }
+
+    fn response_with(hash: Vec<u8>, scheme: i32) -> ipb::PrepareSubmissionResponse {
+        ipb::PrepareSubmissionResponse {
+            prepared_transaction: Some(ipb::PreparedTransaction {
+                transaction: None,
+                metadata: Some(ipb::Metadata {
+                    submitter_info: Some(ipb::metadata::SubmitterInfo {
+                        act_as: vec!["alice".to_string()],
+                        command_id: "command-1".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+            }),
+            prepared_transaction_hash: hash,
+            hashing_scheme_version: scheme,
+            hashing_details: None,
+            cost_estimation: None,
+        }
+    }
+
+    fn refused(
+        response: ipb::PrepareSubmissionResponse,
+        requested: Option<ipb::HashingSchemeVersion>,
+    ) -> String {
+        let err = Prepared::from_response(
+            response,
+            requested,
+            vec!["alice".to_string()],
+            Vec::new(),
+            "command-1".to_string(),
+            None,
+        )
+        .expect_err("refused");
+        assert!(matches!(err, Error::UnexpectedResponse(_)), "{err:?}");
+        err.to_string()
+    }
+
+    #[test]
+    fn a_hash_under_an_unknown_scheme_is_refused() {
+        let message = refused(response_with(vec![1; 32], 0), None);
+        assert!(message.contains("unknown hashing scheme"), "{message}");
+        let message = refused(response_with(vec![1; 32], 99), None);
+        assert!(message.contains("unknown hashing scheme (99)"), "{message}");
+    }
+
+    #[test]
+    fn a_hash_under_a_scheme_that_was_not_requested_is_refused() {
+        let message = refused(
+            response_with(vec![1; 32], ipb::HashingSchemeVersion::V3 as i32),
+            Some(ipb::HashingSchemeVersion::V2),
+        );
+        assert!(
+            message.contains("V3") && message.contains("V2 was requested"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn a_hash_of_the_wrong_length_is_refused() {
+        for len in [1usize, 31, 33, 64] {
+            let message = refused(
+                response_with(vec![7; len], ipb::HashingSchemeVersion::V2 as i32),
+                Some(ipb::HashingSchemeVersion::V2),
+            );
+            assert!(
+                message.contains(&format!("{len}-byte transaction hash")),
+                "{message}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_scheme_asked_for_defaults_to_v2() {
+        let prepare = Prepare::new("alice");
+        assert_eq!(
+            prepare.requested_hashing_scheme(),
+            Some(ipb::HashingSchemeVersion::V2)
+        );
+        let prepare = prepare.with_hashing_scheme_version(ipb::HashingSchemeVersion::V3);
+        assert_eq!(
+            prepare.requested_hashing_scheme(),
+            Some(ipb::HashingSchemeVersion::V3)
+        );
     }
 
     #[tokio::test]
@@ -1126,10 +1253,10 @@ mod tests {
     #[tokio::test]
     async fn the_signer_is_handed_the_participants_hash() {
         let prepared = prepared(&["alice"]);
-        assert_eq!(prepared.hash(), &[1, 2, 3]);
+        assert_eq!(prepared.hash(), &[1; 32]);
 
         let key = Ed25519Key::from_seed(&[4; 32]).expect("seed");
-        let expected = key.sign_raw(&[1, 2, 3]);
+        let expected = key.sign_raw(&[1; 32]);
         let wire = prepared
             .sign_as("alice", &signer("1220aa"))
             .await
@@ -1201,7 +1328,7 @@ mod tests {
                         ..Default::default()
                     }),
                 }),
-                prepared_transaction_hash: vec![9, 9, 9],
+                prepared_transaction_hash: vec![9; 32],
                 hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
                 hashing_details: Some("hashed thus".to_string()),
                 cost_estimation: Some(ipb::CostEstimation {
@@ -1209,6 +1336,7 @@ mod tests {
                     ..Default::default()
                 }),
             },
+            Some(ipb::HashingSchemeVersion::V2),
             vec!["alice".to_string()],
             vec!["carol".to_string()],
             "command-7".to_string(),

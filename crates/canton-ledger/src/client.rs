@@ -591,6 +591,7 @@ impl CantonClient {
         // `…_and_wait_for_transaction` covers `act_as` *and* `read_as`, so
         // dropping it here would silently return a narrower transaction.
         let read_as = prepare.read_as().to_vec();
+        let requested_scheme = prepare.requested_hashing_scheme();
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -605,7 +606,14 @@ impl CantonClient {
                     }
                 })
                 .await?;
-            crate::interactive::Prepared::from_response(response, act_as, read_as, command_id, user_id)
+            crate::interactive::Prepared::from_response(
+                response,
+                requested_scheme,
+                act_as,
+                read_as,
+                command_id,
+                user_id,
+            )
         })
         .await
     }
