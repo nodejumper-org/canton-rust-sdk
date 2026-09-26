@@ -513,6 +513,85 @@ async fn a_participant_that_repeats_a_page_token_is_an_error_not_a_prefix() {
     assert_eq!(seen.lock().unwrap().len(), 2, "it stopped at the repeat");
 }
 
+/// Two tokens handed out in turn are as endless as one repeated: the second
+/// time either is seen, the listing stops with an error.
+#[tokio::test]
+async fn a_participant_that_cycles_between_page_tokens_is_an_error_not_a_loop() {
+    let page = |party: &str, next: &str| {
+        format!(
+            r#"{{"partyDetails":[{}],"nextPageToken":"{next}"}}"#,
+            party_json(party, "{}")
+        )
+    };
+    let (url, seen) = scripted_server(vec![
+        (200, page("a::1220aa", "A")),
+        (200, page("b::1220bb", "B")),
+        (200, page("c::1220cc", "A")),
+        (200, page("d::1220dd", "B")),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a cycle of tokens cannot be followed");
+    assert!(
+        matches!(error, canton_ledger::Error::UnexpectedResponse(_)),
+        "{error:?}"
+    );
+    assert!(format!("{error}").contains("after 3 parties"), "{error}");
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        3,
+        "it stopped at the first token seen twice"
+    );
+}
+
+/// A participant that mints a fresh token on every page is cut off at the
+/// page cap rather than followed until memory runs out.
+#[tokio::test]
+async fn a_participant_that_mints_page_tokens_forever_is_cut_off_at_the_cap() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let served = Arc::new(Mutex::new(0usize));
+    let counter = served.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let n = {
+                let mut c = counter.lock().unwrap();
+                *c += 1;
+                *c
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let body = format!(
+                    r#"{{"partyDetails":[{}],"nextPageToken":"fresh-{n}"}}"#,
+                    party_json(&format!("p{n}::1220aa"), "{}")
+                );
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = socket.write_all(response.as_bytes()).await;
+                let _ = socket.shutdown().await;
+            });
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let client = JsonClient::new(format!("http://127.0.0.1:{port}"));
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a list that never ends cannot be followed forever");
+    assert!(format!("{error}").contains("did not end after"), "{error}");
+    assert_eq!(*served.lock().unwrap(), canton_core::MAX_LIST_PAGES);
+}
+
 #[tokio::test]
 async fn get_parties_puts_the_first_in_the_path_and_the_rest_in_the_query() {
     let body = format!(

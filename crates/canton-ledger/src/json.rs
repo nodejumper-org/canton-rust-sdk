@@ -1128,16 +1128,33 @@ impl JsonClient {
         telemetry::instrument("list_known_parties", TRANSPORT_JSON, async {
             let mut all = Vec::new();
             let mut page_token: Option<String> = None;
-            loop {
+            let mut seen = std::collections::HashSet::new();
+            for page in 1.. {
                 let (parties, next) = self.list_known_parties_page(0, page_token.clone()).await?;
                 all.extend(parties);
                 let Some(next) = next else {
                     break;
                 };
-                if page_token.as_deref() == Some(next.as_str()) {
+                // A server that never advances the token, cycles between a
+                // few, or mints a fresh one forever would have this loop run
+                // until memory ran out. Stopping quietly is no better: the
+                // caller would receive a prefix of the party list with nothing
+                // to say it is a prefix, and "which parties exist" is a
+                // question whose wrong answer looks exactly like a right one.
+                // So a token seen before, or more pages than any participant
+                // has, fails.
+                if !seen.insert(next.clone()) {
                     return Err(Error::UnexpectedResponse(format!(
-                        "the participant repeated the same page token after {} parties; \
+                        "the participant repeated a page token after {} parties; \
                          the list is incomplete and cannot be continued",
+                        all.len()
+                    )));
+                }
+                if page >= canton_core::MAX_LIST_PAGES {
+                    return Err(Error::UnexpectedResponse(format!(
+                        "the party listing did not end after {} pages and {} parties; \
+                         the list is incomplete and cannot be continued",
+                        canton_core::MAX_LIST_PAGES,
                         all.len()
                     )));
                 }
