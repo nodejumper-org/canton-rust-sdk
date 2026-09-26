@@ -254,6 +254,72 @@ async fn the_disclosures_are_attached_to_whichever_submission_is_used() {
 
 /// A registry that fails says why, and the error carries exactly that: the
 /// body is the registry's message, so the shared error model can read it.
+/// What the registry answers goes into commands the caller signs, so it has
+/// to come from the registry the caller named: a 3xx is not followed, and the
+/// redirect target never hears from the client.
+#[tokio::test]
+async fn a_redirecting_registry_is_not_followed() {
+    let (target, reached) = registry(serde_json::json!({"adminId": "attacker::1220"})).await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            let response = format!(
+                "HTTP/1.1 302 Found\r\nLocation: {target}/registry/metadata/v1/info\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+            let _ = socket.write_all(response.as_bytes()).await;
+            let _ = socket.shutdown().await;
+        }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    let client = RegistryClient::new(&format!("http://127.0.0.1:{port}")).expect("client");
+    let err = client.info().await.expect_err("a redirect is refused");
+    assert!(!err.is_retriable(), "{err:?}");
+    assert!(
+        reached.lock().expect("lock").method.is_empty(),
+        "the client followed the redirect"
+    );
+}
+
+/// A registry answer that never ends is cut off at the client's limit rather
+/// than read into memory until the process dies.
+#[tokio::test]
+async fn an_unbounded_registry_answer_is_refused() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let head = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n";
+                if socket.write_all(head.as_bytes()).await.is_err() {
+                    return;
+                }
+                let chunk = format!("{:x}\r\n{}\r\n", 1 << 20, "x".repeat(1 << 20));
+                while socket.write_all(chunk.as_bytes()).await.is_ok() {}
+            });
+        }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    let client = RegistryClient::new(&format!("http://127.0.0.1:{port}")).expect("client");
+    let err = client.info().await.expect_err("an endless body is refused");
+    assert!(
+        matches!(&err, canton_core::Error::UnexpectedResponse(m) if m.contains("limit")),
+        "{err:?}"
+    );
+}
+
 #[tokio::test]
 async fn a_failing_registry_reports_its_own_message() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");

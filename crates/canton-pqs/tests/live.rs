@@ -106,10 +106,17 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
         "read at the latest offset"
     );
     assert!(contract.created_at_offset() > 0);
-    assert!(
-        contract.created_effective_at().is_some(),
-        "a created contract has a ledger effective time"
-    );
+    // A contract Scribe ingested from the update stream carries the ledger
+    // effective time of its creation. One it seeded from an ACS snapshot (a
+    // store started with `SCRIBE_PIPELINE_LEDGER_START=Latest`, as against a
+    // long-running network) does not, so that assertion holds only for a
+    // store that read the ledger from the beginning.
+    if std::env::var("SCRIBE_PIPELINE_LEDGER_START").as_deref() != Ok("Latest") {
+        assert!(
+            contract.created_effective_at().is_some(),
+            "a created contract has a ledger effective time"
+        );
+    }
     assert_eq!(contract.package_name(), "splice-amulet");
     assert!(
         contract.signatories().contains(&payload.owner.to_string()),

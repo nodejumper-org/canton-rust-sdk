@@ -165,7 +165,7 @@ impl AdminClient {
                         }
                     })
                     .await?;
-                crate::external_party::ExternalPartyTopology::from_response(response)
+                crate::external_party::ExternalPartyTopology::from_response(response, public_key)
             },
         )
         .await
@@ -230,6 +230,13 @@ impl AdminClient {
                 let mut client = service!(self, PartyManagementServiceClient::new);
                 client.allocate_external_party(request).await?.into_inner()
             };
+            if response.party_id != topology.party_id() {
+                return Err(Error::UnexpectedResponse(format!(
+                    "allocate_external_party allocated `{}`, not the `{}` that was signed for",
+                    response.party_id,
+                    topology.party_id()
+                )));
+            }
             if response.party_id.is_empty() {
                 return Err(Error::UnexpectedResponse(
                     "allocate_external_party returned no party id".to_string(),
@@ -282,7 +289,8 @@ impl AdminClient {
         telemetry::instrument("list_known_parties", TRANSPORT_GRPC, async {
             let mut all = Vec::new();
             let mut page_token = String::new();
-            loop {
+            let mut seen = std::collections::HashSet::new();
+            for page in 1.. {
                 let sent = page_token.clone();
                 let (parties, next) = self
                     .with_retry(|| {
@@ -304,15 +312,26 @@ impl AdminClient {
                 if next.is_empty() {
                     break;
                 }
-                // A server that never advances the token would loop forever.
-                // Stopping quietly is no better: the caller receives a prefix
-                // of the party list with nothing to say it is a prefix, and
-                // "which parties exist" is a question whose wrong answer looks
-                // exactly like a right one. So this fails.
-                if next == sent {
+                // A server that never advances the token, cycles between a
+                // few, or mints a fresh one forever would have this loop run
+                // until memory ran out. Stopping quietly is no better: the
+                // caller receives a prefix of the party list with nothing to
+                // say it is a prefix, and "which parties exist" is a question
+                // whose wrong answer looks exactly like a right one. So a
+                // token seen before, or more pages than any participant has,
+                // fails.
+                if next == sent || !seen.insert(next.clone()) {
                     return Err(Error::UnexpectedResponse(format!(
-                        "the participant repeated the same page token after {} parties; \
+                        "the participant repeated a page token after {} parties; \
                          the list is incomplete and cannot be continued",
+                        all.len()
+                    )));
+                }
+                if page >= canton_core::MAX_LIST_PAGES {
+                    return Err(Error::UnexpectedResponse(format!(
+                        "the party listing did not end after {} pages and {} parties; \
+                         the list is incomplete and cannot be continued",
+                        canton_core::MAX_LIST_PAGES,
                         all.len()
                     )));
                 }

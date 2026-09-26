@@ -33,8 +33,15 @@ pub use decode::{
 };
 
 /// The generated Daml-LF archive types, from the vendored `.proto` files:
-/// `pb::daml_lf_dev` (the `Archive`/`ArchivePayload` wrapper) and
+/// `pb::daml_lf` (the `Archive`/`ArchivePayload` wrapper) and
 /// `pb::daml_lf_2` (the LF 2 AST — `Package`, `Module`, `DefDataType`, …).
+/// These are the vendored schema, generated: they change whenever the schema
+/// is re-vendored for a newer Canton (a field added, an enum grown, a module
+/// renamed) and are exempt from the SemVer promise the hand-written API
+/// makes, as `canton-proto`'s types are (ADR-0002). Hidden from the rendered
+/// docs for that reason; they remain reachable for callers who want the raw
+/// archive.
+#[doc(hidden)]
 pub mod pb {
     #![allow(
         clippy::all,

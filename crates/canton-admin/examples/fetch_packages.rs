@@ -59,7 +59,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let archive = admin.get_package(&id).await?;
         // The name is inside the payload, so it is read rather than guessed —
         // `list_packages` returns ids and nothing else.
-        let package = canton_lf::decode_payload(&archive)?;
+        // A package in an LF version this build does not decode is reported
+        // and skipped, not fatal: the participant vets whatever the network
+        // agreed on, and one newer package must not hide the rest.
+        let package = match canton_lf::decode_payload(&archive) {
+            Ok(package) => package,
+            Err(canton_lf::DecodeError::UnsupportedMinor { minor, supported }) => {
+                eprintln!(
+                    "skipping {}: Daml-LF 2.{minor} (this build reads {supported})",
+                    &id[..16]
+                );
+                continue;
+            }
+            Err(other) => return Err(other.into()),
+        };
         let name = canton_lf::package_name(&package).unwrap_or("unnamed");
         let version = canton_lf::package_version(&package).unwrap_or("0.0.0");
         if !filters.is_empty() && !filters.iter().any(|f| name.contains(f.as_str())) {

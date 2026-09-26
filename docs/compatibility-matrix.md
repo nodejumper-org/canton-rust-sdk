@@ -5,7 +5,7 @@ listed on the strength of "it should work" — but not everything is checked by
 CI, and the table under [What CI runs, and what it cannot](#what-ci-runs-and-what-it-cannot)
 says exactly which rows rest on a developer-run live suite instead.
 
-Version **0.3.0**, released 2026-09-23.
+Version **0.3.1**, unreleased (the pre-audit fixes over 0.3.0, released 2026-09-23).
 
 ## Rust
 
@@ -49,6 +49,7 @@ the stability policy in [`canton-proto`](../crates/canton-proto/src/lib.rs) and
 |---|---|
 | LF 2.1 | supported |
 | LF 2.2 | supported |
+| LF 2.3 | supported since 0.3.1 (the schema is Canton 3.5.17's; a DevNet participant vets Digital Asset's utility apps and `daml-stdlib` 3.5.1 at this version) |
 | LF 2.x, other minors | refused, naming the minor and this build's range |
 | LF 1.x | refused, naming the **major** |
 

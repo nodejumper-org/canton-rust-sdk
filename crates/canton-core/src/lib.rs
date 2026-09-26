@@ -15,7 +15,8 @@ pub mod retry;
 pub mod telemetry;
 
 pub use config::{
-    Auth, Config, DEFAULT_MAX_DECODING_MESSAGE_SIZE, TlsConfig, TokenSource, redact_url,
+    Auth, Config, DEFAULT_MAX_DECODING_MESSAGE_SIZE, MAX_LIST_PAGES, TlsConfig, TokenSource,
+    redact_url,
 };
 pub use error::{Error, ErrorCategory, ErrorInfo, ResourceInfo, Result, chain};
 pub use retry::RetryConfig;

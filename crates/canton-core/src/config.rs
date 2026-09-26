@@ -222,6 +222,13 @@ pub struct Config {
 /// problem.
 pub const DEFAULT_MAX_DECODING_MESSAGE_SIZE: usize = 128 * 1024 * 1024;
 
+/// The most pages a paginated listing (`list_known_parties` on either
+/// transport) will follow before it is reported as not ending. At the
+/// participant's default page size that is far more parties than any
+/// participant hosts; a server that keeps minting page tokens is either
+/// broken or hostile, and either way the caller must not wait on it forever.
+pub const MAX_LIST_PAGES: usize = 10_000;
+
 /// Hand-written so the endpoint's userinfo is redacted. `auth` and `tls` redact
 /// themselves; the endpoint was the remaining way a credential reached a log
 /// through a `Config`, and a `Config` is exactly the thing an application

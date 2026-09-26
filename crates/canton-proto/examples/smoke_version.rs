@@ -14,7 +14,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "http://localhost:3901".to_string());
 
     println!("connecting to {endpoint} ...");
-    let mut client = VersionServiceClient::connect(endpoint).await?;
+    // An `https://` endpoint (a DevNet validator) needs TLS with the system
+    // roots; a LocalNet participant speaks plain HTTP/2.
+    let mut channel = tonic::transport::Channel::from_shared(endpoint.clone())?;
+    if endpoint.starts_with("https://") {
+        channel =
+            channel.tls_config(tonic::transport::ClientTlsConfig::new().with_native_roots())?;
+    }
+    let mut client = VersionServiceClient::new(channel.connect().await?);
 
     let response = client
         .get_ledger_api_version(GetLedgerApiVersionRequest {})

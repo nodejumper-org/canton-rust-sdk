@@ -28,6 +28,7 @@
 
 mod client;
 mod command;
+pub mod hashing;
 pub mod interactive;
 mod json;
 pub mod request;

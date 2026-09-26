@@ -513,6 +513,85 @@ async fn a_participant_that_repeats_a_page_token_is_an_error_not_a_prefix() {
     assert_eq!(seen.lock().unwrap().len(), 2, "it stopped at the repeat");
 }
 
+/// Two tokens handed out in turn are as endless as one repeated: the second
+/// time either is seen, the listing stops with an error.
+#[tokio::test]
+async fn a_participant_that_cycles_between_page_tokens_is_an_error_not_a_loop() {
+    let page = |party: &str, next: &str| {
+        format!(
+            r#"{{"partyDetails":[{}],"nextPageToken":"{next}"}}"#,
+            party_json(party, "{}")
+        )
+    };
+    let (url, seen) = scripted_server(vec![
+        (200, page("a::1220aa", "A")),
+        (200, page("b::1220bb", "B")),
+        (200, page("c::1220cc", "A")),
+        (200, page("d::1220dd", "B")),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a cycle of tokens cannot be followed");
+    assert!(
+        matches!(error, canton_ledger::Error::UnexpectedResponse(_)),
+        "{error:?}"
+    );
+    assert!(format!("{error}").contains("after 3 parties"), "{error}");
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        3,
+        "it stopped at the first token seen twice"
+    );
+}
+
+/// A participant that mints a fresh token on every page is cut off at the
+/// page cap rather than followed until memory runs out.
+#[tokio::test]
+async fn a_participant_that_mints_page_tokens_forever_is_cut_off_at_the_cap() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let served = Arc::new(Mutex::new(0usize));
+    let counter = served.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let n = {
+                let mut c = counter.lock().unwrap();
+                *c += 1;
+                *c
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let body = format!(
+                    r#"{{"partyDetails":[{}],"nextPageToken":"fresh-{n}"}}"#,
+                    party_json(&format!("p{n}::1220aa"), "{}")
+                );
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = socket.write_all(response.as_bytes()).await;
+                let _ = socket.shutdown().await;
+            });
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let client = JsonClient::new(format!("http://127.0.0.1:{port}"));
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a list that never ends cannot be followed forever");
+    assert!(format!("{error}").contains("did not end after"), "{error}");
+    assert_eq!(*served.lock().unwrap(), canton_core::MAX_LIST_PAGES);
+}
+
 #[tokio::test]
 async fn get_parties_puts_the_first_in_the_path_and_the_rest_in_the_query() {
     let body = format!(
@@ -855,18 +934,22 @@ async fn ledger_end_is_the_offset_the_participant_reports() {
     );
 }
 
-/// The participant names a duplicate two ways — the 409 status, and
-/// `DUPLICATE_COMMAND` in the body — and either alone is enough, because
-/// proxies rewrite one and older nodes omit the other. Anything else on a
-/// retry is the failure it says it is.
+/// A retry the participant refuses as a duplicate of the earlier attempt is a
+/// success: the command landed. Canton names that two ways — the error id
+/// `DUPLICATE_COMMAND`, and the gRPC code `ALREADY_EXISTS` (`grpcCodeValue`
+/// 6) — and either is enough, whatever the HTTP status a proxy left on it.
 #[tokio::test]
-async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
+async fn a_retry_refused_as_a_duplicate_is_a_success() {
     for (status, body) in [
-        (409, r#"{"cause":"conflict"}"#),
+        (
+            409,
+            r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists","errorCategory":3,"grpcCodeValue":6}"#,
+        ),
         (
             400,
             r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists"}"#,
         ),
+        (409, r#"{"code":"NA","cause":"redacted","grpcCodeValue":6}"#),
     ] {
         let (url, seen) = scripted_server(vec![
             (503, r#"{"cause":"lost"}"#.to_string()),
@@ -883,6 +966,50 @@ async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
             .await
             .unwrap_or_else(|e| panic!("{status} {body}: {e}"));
         assert_eq!(seen.lock().unwrap().len(), 2, "{status} {body}");
+    }
+}
+
+/// A 409 is not a duplicate by itself: Canton's JSON lane puts `ABORTED`
+/// there too, and `PARTICIPANT_BACKPRESSURE` is `ABORTED`. Two of those in a
+/// row mean nothing was accepted, and the caller must hear that rather than
+/// `Ok`. The same for a body that only mentions the word.
+#[tokio::test]
+async fn a_retry_refused_for_another_reason_is_not_a_success() {
+    let backpressure = r#"{"code":"PARTICIPANT_BACKPRESSURE","cause":"The participant is overloaded","errorCategory":2,"grpcCodeValue":10}"#;
+    for responses in [
+        vec![
+            (409, backpressure.to_string()),
+            (409, backpressure.to_string()),
+        ],
+        vec![
+            (503, r#"{"cause":"lost"}"#.to_string()),
+            (409, r#"{"cause":"conflict"}"#.to_string()),
+        ],
+        vec![
+            (503, r#"{"cause":"lost"}"#.to_string()),
+            (
+                400,
+                r#"{"code":"INVALID_ARGUMENT","cause":"not a DUPLICATE_COMMAND, just says so"}"#
+                    .to_string(),
+            ),
+        ],
+    ] {
+        let last = responses.last().unwrap().clone();
+        let (url, seen) = scripted_server(responses).await;
+        let client = JsonClient::new(url).with_retry(
+            canton_ledger::RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        );
+        let error = client
+            .submit(&commands())
+            .await
+            .expect_err("nothing was accepted, so the submit must fail");
+        assert!(
+            matches!(&error, canton_ledger::Error::Http { status, .. } if *status == last.0),
+            "{error:?}"
+        );
+        assert_eq!(seen.lock().unwrap().len(), 2);
     }
 
     let (url, _seen) = scripted_server(vec![
@@ -903,6 +1030,126 @@ async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
         matches!(error, canton_ledger::Error::Http { status: 500, .. }),
         "{error:?}"
     );
+}
+
+/// A participant does not redirect. One that does (or a proxy in front of it)
+/// is answered with the status it sent: the bearer token and the command body
+/// are never replayed at the redirect's address, and a 3xx is not retried.
+#[tokio::test]
+async fn a_redirect_is_not_followed_on_the_json_lane() {
+    // The redirect target records whether anything reaches it.
+    let (target, reached) = scripted_server(vec![(200, r#"{"version":"x"}"#.to_string())]).await;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let hits = Arc::new(Mutex::new(0usize));
+    let counter = hits.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            *counter.lock().unwrap() += 1;
+            let response = format!(
+                "HTTP/1.1 307 Temporary Redirect\r\nLocation: {target}/v2/version\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+            let _ = socket.write_all(response.as_bytes()).await;
+            let _ = socket.shutdown().await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let client = JsonClient::new(format!("http://127.0.0.1:{port}"))
+        .with_token("bearer-secret")
+        .with_retry(
+            canton_ledger::RetryConfig::default()
+                .with_max_attempts(3)
+                .with_initial_backoff(Duration::from_millis(1)),
+        );
+    let error = client.version().await.expect_err("a redirect is a failure");
+    assert!(
+        matches!(&error, canton_ledger::Error::Http { status: 307, .. }),
+        "{error:?}"
+    );
+    assert!(!error.is_retriable(), "{error:?}");
+    assert_eq!(*hits.lock().unwrap(), 1, "a 3xx must not be retried");
+    assert!(
+        reached.lock().unwrap().is_empty(),
+        "the request was replayed at the redirect target"
+    );
+
+    let error = client
+        .submit(&commands())
+        .await
+        .expect_err("a redirected submission is a failure");
+    assert!(
+        matches!(&error, canton_ledger::Error::Http { status: 307, .. }),
+        "{error:?}"
+    );
+    assert!(reached.lock().unwrap().is_empty());
+}
+
+/// A server that answers every request with `status`, then a chunked body
+/// that never ends (until the client hangs up).
+async fn endless_server(status: &'static str) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 8192];
+                let _ = socket.read(&mut buf).await;
+                let head = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n"
+                );
+                if socket.write_all(head.as_bytes()).await.is_err() {
+                    return;
+                }
+                let chunk = format!("{:x}\r\n{}\r\n", 65536, "x".repeat(65536));
+                while socket.write_all(chunk.as_bytes()).await.is_ok() {}
+            });
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    format!("http://127.0.0.1:{port}")
+}
+
+/// A body that never ends is cut off at the client's decoding limit rather
+/// than read into memory until the process dies; the same for an error body,
+/// which is kept only up to a fixed cap. The gRPC lane has had this bound
+/// from the start (`max_decoding_message_size`); this is the JSON lane's.
+#[tokio::test]
+async fn an_unbounded_body_is_refused_at_the_decoding_limit() {
+    let url = endless_server("200 OK").await;
+    let client = JsonClient::new(url).with_max_decoding_message_size(1 << 20);
+    let error = client
+        .version()
+        .await
+        .expect_err("an endless body is refused");
+    assert!(
+        matches!(&error, canton_ledger::Error::UnexpectedResponse(m) if m.contains("limit")),
+        "{error:?}"
+    );
+
+    let url = endless_server("500 Internal Server Error").await;
+    let client = JsonClient::new(url);
+    let error = client.version().await.expect_err("a 500 is a failure");
+    match &error {
+        canton_ledger::Error::Http { status, body, .. } => {
+            assert_eq!(*status, 500);
+            assert!(
+                body.len() < 128 * 1024,
+                "error body kept whole: {} bytes",
+                body.len()
+            );
+        }
+        other => panic!("{other:?}"),
+    }
 }
 
 // ---- JSON: submit → observe → query, as one flow ------------------------------

@@ -10,7 +10,9 @@ Nothing below is final until the subcommittee has agreed it; the section
 
 ## What is reviewed
 
-The commit under review is the `v0.3.0` tag of
+The commit under review is the tag named in the milestone-3 submission
+(`v0.3.1`, which carries the fixes from the internal pre-audit; `v0.3.0` is
+the milestone release) of
 [`nodejumper-org/canton-rust-sdk`](https://github.com/nodejumper-org/canton-rust-sdk)
 (Apache-2.0). The proposal names three groups — the client, the codegen, and
 the token crates — which are these crates:
@@ -44,10 +46,17 @@ control, and what the SDK must guarantee in each case:
 | Time and the network (a lost response, a retried request) | never submit a command twice for one intent: change-id de-duplication on retry, and a retried execute of a signed transaction recognised as its own duplicate |
 
 Interactive submission deserves its own line: the participant never holds the
-key, so the guarantee is that what the `Signer` is asked to sign is exactly
-the hash the participant computed for the transaction the caller built, and
-that a signature is bound to the party and the hashing scheme it was made
-under.
+key, so what the `Signer` is asked to sign decides everything. Under hashing
+scheme V2 (the default, and the one the SDK asks for) the SDK recomputes the
+hash from the transaction and metadata the participant returned
+(`canton_ledger::hashing`, checked against Canton's own vectors) and refuses
+a response whose hash is not that; a caller that asks for another scheme
+explicitly signs the participant's hash as returned. A signature is bound to
+the party and the hashing scheme it was made under. The same holds for
+onboarding an external party: the multi-hash over the onboarding topology
+transactions is recomputed, and each transaction is decoded and must be one
+of the key's own namespace delegation, a key mapping to that key, or a
+hosting with confirmation or observation rights.
 
 ## What the auditor is asked for
 
@@ -87,8 +96,8 @@ under.
 
 ## Open with the subcommittee
 
-- The auditor. <status: e.g. a scope-based estimate has been requested from
-  CertiK; alternatives welcome>
+- The auditor: a quote for this scope is in hand and named in the
+  milestone-3 submission; alternatives welcome.
 - The budget, pass-through and separate from the base grant, as the proposal
   sets out.
 - Whether the review starts before or after the milestone-3 vote, given the

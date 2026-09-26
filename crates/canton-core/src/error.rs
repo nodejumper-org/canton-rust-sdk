@@ -153,16 +153,16 @@ impl Error {
             Error::Timeout | Error::Transport(_) | Error::Connection(_) => true,
             Error::Status(status) => match status_category(status) {
                 Some(category) => category.is_retriable(),
-                // No category ⇒ not a Canton self-service error. A RetryInfo
-                // detail is still an explicit "retry me"; else fall back to
+                // No category ⇒ not a Canton self-service error: fall back to
                 // the transient codes, plus a connection that died in flight.
+                // A `RetryInfo` detail on its own is not a reason: it is a
+                // hint about *when*, and a permanent code with one attached
+                // is a participant asking for a retry it will refuse again.
                 None => {
-                    status_retry_delay(status).is_some()
-                        || matches!(
-                            status.code(),
-                            Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
-                        )
-                        || is_transport_death(status)
+                    matches!(
+                        status.code(),
+                        Unavailable | DeadlineExceeded | ResourceExhausted | Aborted
+                    ) || is_transport_death(status)
                 }
             },
             // The JSON Ledger API carries the same verdict in the error body
@@ -170,7 +170,7 @@ impl Error {
             // the transient HTTP status codes.
             Error::Http { status, body, .. } => match http_category(body) {
                 Some(category) => category.is_retriable(),
-                None => http_retry_delay(body).is_some() || matches!(status, 408 | 429 | 500..=599),
+                None => matches!(status, 408 | 429 | 500..=599),
             },
             _ => false,
         }
@@ -457,9 +457,18 @@ fn parse_spelled_duration(text: &str) -> Option<std::time::Duration> {
     // an ordinary-looking `"1e15 days"` — would abort the caller's process
     // inside error classification, the one place that must stay infallible.
     // `try_from_secs_f64` rejects those the same way it rejects the NaN and
-    // negative values this guarded against before.
-    std::time::Duration::try_from_secs_f64(seconds).ok()
+    // negative values this guarded against before. What it accepts is then
+    // bounded: a `Duration` near its maximum survives parsing but not the
+    // arithmetic a retry schedule does on it, and no participant means
+    // "retry in a hundred years" anyway.
+    std::time::Duration::try_from_secs_f64(seconds)
+        .ok()
+        .map(|delay| delay.min(MAX_SPELLED_DELAY))
 }
+
+/// The longest `retryInfo` a JSON body can spell: anything above a day is not
+/// a schedule, it is a number the server put there, and it is clamped.
+const MAX_SPELLED_DELAY: std::time::Duration = std::time::Duration::from_secs(86_400);
 
 /// Canton's error categories — the coarse classification every Ledger API
 /// error carries (`ErrorInfo.metadata["category"]`), which the [error-code
@@ -780,13 +789,67 @@ mod tests {
         assert_eq!(err.category(), None);
         assert!(err.is_retriable());
 
-        // A bare RetryInfo (no category) is an explicit "retry me", even on a
-        // code the fallback would refuse.
+        // A bare RetryInfo (no category) does not turn a permanent code into
+        // a retriable one: it says when, not whether, and a participant that
+        // attaches it to FAILED_PRECONDITION is asking for a retry it will
+        // refuse again. The delay is still reported for callers who ask.
         let mut details = ErrorDetails::new();
         details.set_retry_info(Some(std::time::Duration::from_secs(2)));
         let status =
             tonic::Status::with_error_details(tonic::Code::FailedPrecondition, "wait", details);
+        let err = Error::from(status);
+        assert!(!err.is_retriable());
+        assert_eq!(err.retry_delay(), Some(std::time::Duration::from_secs(2)));
+        // …while on a transient code the same detail rides along as before.
+        let mut details = ErrorDetails::new();
+        details.set_retry_info(Some(std::time::Duration::from_secs(2)));
+        let status = tonic::Status::with_error_details(tonic::Code::Unavailable, "wait", details);
         assert!(Error::from(status).is_retriable());
+    }
+
+    #[test]
+    fn a_retry_info_on_a_permanent_http_status_is_not_retriable() {
+        let err = Error::Http {
+            status: 400,
+            body: r#"{"code":"INVALID_ARGUMENT","cause":"bad","retryInfo":"1 second"}"#.to_string(),
+            url: None,
+        };
+        assert!(!err.is_retriable());
+        assert_eq!(err.retry_delay(), Some(std::time::Duration::from_secs(1)));
+        let err = Error::Http {
+            status: 503,
+            body: r#"{"cause":"busy","retryInfo":"1 second"}"#.to_string(),
+            url: None,
+        };
+        assert!(err.is_retriable());
+    }
+
+    #[test]
+    fn a_spelled_delay_is_bounded() {
+        use std::time::Duration;
+        // Below Duration::MAX these parse, and come back clamped to the cap.
+        for text in [
+            "1.8e19 seconds",
+            "1.3e19 seconds",
+            "2 days",
+            "48 hours",
+            "200000 days",
+        ] {
+            let parsed = parse_spelled_duration(text).unwrap_or_else(|| panic!("{text}"));
+            assert!(parsed <= MAX_SPELLED_DELAY, "{text}: {parsed:?}");
+            // Whatever it is, the retry schedule's arithmetic on it cannot overflow.
+            let _ = parsed.mul_f64(1.5);
+        }
+        // Beyond what a Duration can hold at all, the parse is refused as before.
+        assert_eq!(parse_spelled_duration("1e15 days"), None);
+        assert_eq!(
+            parse_spelled_duration("2 days"),
+            Some(Duration::from_secs(86_400))
+        );
+        assert_eq!(
+            parse_spelled_duration("12 hours"),
+            Some(Duration::from_secs(43_200))
+        );
     }
 
     #[test]
@@ -887,7 +950,7 @@ mod tests {
             // The rarer units and the day arm: mutation testing showed these
             // conversion factors were never exercised, so a wrong multiplier
             // in day/microsecond/nanosecond would have passed unnoticed.
-            ("2 days", Duration::from_secs(2 * 86_400)),
+            ("0.5 days", Duration::from_secs(43_200)),
             ("1 day", Duration::from_secs(86_400)),
             ("500 microseconds", Duration::from_micros(500)),
             ("250 nanoseconds", Duration::from_nanos(250)),

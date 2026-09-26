@@ -29,6 +29,8 @@ protoc-bin-vendored = { workspace = true }
 walkdir             = { workspace = true }
 
 [dev-dependencies]
+# The smoke example reaches an `https://` participant with the system roots.
+tonic = { workspace = true, features = ["transport", "codegen", "tls-ring", "tls-native-roots"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 # The vendored schemas are checksummed, so nothing can hand-edit a third-party
 # proto without the test noticing.

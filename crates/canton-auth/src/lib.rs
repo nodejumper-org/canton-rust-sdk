@@ -301,8 +301,14 @@ impl TokenProvider {
         // The per-request timeout in `fetch` is the guarantee; the client-level
         // timeout here is belt-and-braces (a bare builder with a timeout does
         // not fail in practice, but the fallback stays bounded either way).
+        // No redirects: the request carries the client secret, and a 3xx
+        // from the token endpoint (or whatever sits in front of it) would
+        // have `reqwest` replay it, form body and all, at the address of the
+        // redirect's choosing. A token endpoint that answers 3xx is refused
+        // in `fetch` instead.
         let http = reqwest::Client::builder()
             .timeout(FETCH_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
         Self {
@@ -402,7 +408,24 @@ impl TokenProvider {
         // stay retriable via the shared error model.
         if !response.status().is_success() {
             let status = response.status().as_u16();
-            let body = response.text().await.unwrap_or_default();
+            if response.status().is_redirection() {
+                // Not followed (see `new`): the secret stays with the endpoint
+                // it was configured for, and the caller hears why.
+                let target = response
+                    .headers()
+                    .get(reqwest::header::LOCATION)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("<no Location header>");
+                let url = canton_core::redact_url(&config.token_url);
+                return Err(Error::Auth(format!(
+                    "token endpoint {url} answered http {status} redirecting to {target}; \
+                     a redirect is refused because following it would send the client \
+                     secret elsewhere"
+                )));
+            }
+            let body = read_body(response, ERROR_BODY_CAP)
+                .await
+                .unwrap_or_else(|e| format!("<body not read: {e}>"));
             if matches!(status, 401 | 403) {
                 return Err(Error::Auth(format!(
                     "token endpoint rejected the credentials (http {status}): {body}"
@@ -411,14 +434,49 @@ impl TokenProvider {
             return Err(Error::http(status, body));
         }
 
-        let body = response.text().await.map_err(|e| {
-            Error::Connection(format!(
-                "reading token response failed: {}",
-                canton_core::chain(&e)
-            ))
-        })?;
+        let body = read_body(response, TOKEN_BODY_CAP).await?;
         serde_json::from_str::<TokenResponse>(&body).map_err(Error::from)
     }
+}
+
+/// A token response is a few kilobytes of JSON; anything larger is not one.
+const TOKEN_BODY_CAP: usize = 64 * 1024;
+/// How much of an error body is kept for the message.
+const ERROR_BODY_CAP: usize = 8 * 1024;
+
+/// Read a response body, refusing one that declares or grows past `cap`, so
+/// an endpoint (or whatever answers in its place) cannot make the caller
+/// allocate without bound.
+async fn read_body(mut response: reqwest::Response, cap: usize) -> Result<String> {
+    if let Some(declared) = response
+        .content_length()
+        .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
+    {
+        {
+            return Err(Error::UnexpectedResponse(format!(
+                "token endpoint answered with a {declared}-byte body, above the {cap}-byte limit"
+            )));
+        }
+    }
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| {
+        Error::Connection(format!(
+            "reading token response failed: {}",
+            canton_core::chain(&e)
+        ))
+    })? {
+        if buffer.len() + chunk.len() > cap {
+            return Err(Error::UnexpectedResponse(format!(
+                "token endpoint answered with a body above the {cap}-byte limit"
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buffer).map_err(|e| {
+        Error::UnexpectedResponse(format!(
+            "token endpoint answered with a body that is not UTF-8: {e}"
+        ))
+    })
 }
 
 /// Lets a [`TokenProvider`] back the SDK's shared [`canton_core::Auth`] without

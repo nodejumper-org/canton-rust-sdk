@@ -32,9 +32,22 @@ struct MockParty {
     allocate_calls: Arc<AtomicUsize>,
     allocate_fails: bool,
     deny: bool,
+    page_tokens: PageTokens,
+    pages_served: Arc<AtomicUsize>,
+}
+
+/// How the mock hands out page tokens.
+#[derive(Clone, Copy, Default)]
+enum PageTokens {
+    /// Three pages, then the end.
+    #[default]
+    Honest,
     /// Hand back the token that was sent, forever — a participant that never
     /// advances its cursor.
-    repeat_page_token: bool,
+    Repeat,
+    /// Mint a token nobody has seen on every page, forever — a participant
+    /// whose list never ends.
+    Fresh,
 }
 
 fn party(n: usize) -> pb::PartyDetails {
@@ -64,7 +77,14 @@ impl PartyManagementService for MockParty {
             return Err(Status::permission_denied("needs ParticipantAdmin"));
         }
         let sent = request.into_inner().page_token;
-        if self.repeat_page_token && !sent.is_empty() {
+        if matches!(self.page_tokens, PageTokens::Fresh) {
+            let n = self.pages_served.fetch_add(1, Ordering::SeqCst);
+            return Ok(Response::new(pb::ListKnownPartiesResponse {
+                party_details: vec![party(n)],
+                next_page_token: format!("fresh-{n}"),
+            }));
+        }
+        if matches!(self.page_tokens, PageTokens::Repeat) && !sent.is_empty() {
             return Ok(Response::new(pb::ListKnownPartiesResponse {
                 party_details: vec![party(9)],
                 next_page_token: sent,
@@ -428,9 +448,37 @@ async fn acting_parties_keeps_only_can_act_as() {
 }
 
 #[tokio::test]
+async fn a_participant_that_mints_page_tokens_forever_is_cut_off_at_the_cap() {
+    let pages_served = Arc::new(AtomicUsize::new(0));
+    let endpoint = start_party_server(MockParty {
+        page_tokens: PageTokens::Fresh,
+        pages_served: Arc::clone(&pages_served),
+        ..Default::default()
+    })
+    .await;
+    let client = AdminClient::connect_lazy(Config::new(endpoint)).unwrap();
+
+    let error = client
+        .list_known_parties()
+        .await
+        .expect_err("a list that never ends cannot be followed forever");
+
+    assert!(
+        matches!(error, canton_admin::Error::UnexpectedResponse(_)),
+        "got {error:?}"
+    );
+    assert!(format!("{error}").contains("did not end after"), "{error}");
+    assert_eq!(
+        pages_served.load(Ordering::SeqCst),
+        canton_core::MAX_LIST_PAGES,
+        "exactly the cap, no more"
+    );
+}
+
+#[tokio::test]
 async fn a_participant_that_repeats_its_page_token_is_an_error_not_a_short_list() {
     let endpoint = start_party_server(MockParty {
-        repeat_page_token: true,
+        page_tokens: PageTokens::Repeat,
         ..Default::default()
     })
     .await;
@@ -450,7 +498,7 @@ async fn a_participant_that_repeats_its_page_token_is_an_error_not_a_short_list(
         "got {error:?}"
     );
     assert!(
-        format!("{error}").contains("repeated the same page token"),
+        format!("{error}").contains("repeated a page token"),
         "{error}"
     );
 }

@@ -205,15 +205,21 @@ impl RegistryClient {
     /// [`Error::InvalidRequest`] if `base_url` is not a URL, or an HTTP client
     /// cannot be built.
     pub fn new(base_url: &str) -> Result<Self> {
+        // No redirects: what the registry answers is put into commands the
+        // caller signs, so it must come from the registry the caller named,
+        // not from wherever a 3xx points.
         let http = reqwest::Client::builder()
             .timeout(DEFAULT_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|e| Error::InvalidRequest(format!("cannot build an HTTP client: {e}")))?;
         Self::with_http_client(base_url, http)
     }
 
     /// A client using an HTTP client the caller has already configured —
-    /// timeouts, proxies, a custom TLS root store.
+    /// timeouts, proxies, a custom TLS root store. Configure it with
+    /// `reqwest::redirect::Policy::none()`, as [`Self::new`] does: a registry
+    /// answer reached through a redirect is not the registry's.
     ///
     /// # Errors
     /// [`Error::InvalidRequest`] if `base_url` is not a URL.
@@ -306,7 +312,7 @@ impl RegistryClient {
             // A failed body read on a 404 is not "the registry does not issue
             // it": it is a transport failure, and reporting it as `None`
             // would tell a wallet the instrument does not exist.
-            let body = response.text().await.map_err(|e| connection(&e))?;
+            let body = read_body(response, ERROR_BODY_CAP, url.as_str()).await?;
             let trimmed = body.trim();
             if trimmed.is_empty() || serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
                 return Ok(None);
@@ -637,7 +643,12 @@ impl RegistryClient {
         url: &str,
     ) -> Result<T> {
         let status = response.status();
-        let body = response.text().await.map_err(|e| connection(&e))?;
+        let cap = if status.is_success() {
+            MAX_RESPONSE_BYTES
+        } else {
+            ERROR_BODY_CAP
+        };
+        let body = read_body(response, cap, url).await?;
         if status == reqwest::StatusCode::CONFLICT {
             // Every token-standard document defines 409 the same way: a
             // contract the reply would name is in the middle of a
@@ -692,6 +703,44 @@ struct ErrorResponse {
 /// **The verdict.** [`Error::Connection`] is unconditionally retriable, so
 /// mapping everything to it makes an application that loops on `is_retriable()`
 /// retry forever on a condition no amount of waiting fixes — a certificate it
+/// The most a registry answer may be. A choice context carries the disclosed
+/// contracts' `createdEventBlob`s, so it is kilobytes to a few megabytes;
+/// nothing the standard defines is larger, and a registry (or whatever answers
+/// in its place) does not get to size the client's memory.
+const MAX_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
+/// How much of an error body is kept for the message.
+const ERROR_BODY_CAP: usize = 64 * 1024;
+
+/// Read a response body, refusing one that declares or grows past `cap`.
+/// `reqwest`'s `text()` reads to the end whatever the size; this reads chunk
+/// by chunk, so the bound holds for a chunked stream without `Content-Length`.
+async fn read_body(mut response: reqwest::Response, cap: usize, url: &str) -> Result<String> {
+    if let Some(declared) = response
+        .content_length()
+        .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
+    {
+        {
+            return Err(Error::UnexpectedResponse(format!(
+                "{url}: the registry answered with a {declared}-byte body, above the {cap}-byte limit"
+            )));
+        }
+    }
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| connection(&e))? {
+        if buffer.len() + chunk.len() > cap {
+            return Err(Error::UnexpectedResponse(format!(
+                "{url}: the registry answered with a body above the {cap}-byte limit"
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buffer).map_err(|e| {
+        Error::UnexpectedResponse(format!(
+            "{url}: the registry answered with a body that is not UTF-8: {e}"
+        ))
+    })
+}
+
 /// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
 /// [`Error::InvalidRequest`], which is not retriable.
 fn connection(e: &reqwest::Error) -> Error {

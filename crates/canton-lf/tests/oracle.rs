@@ -67,7 +67,7 @@ fn render_type_applied(pkg: &Package, self_id: &str, ty: &Type, mut extra: Vec<S
         panic!("empty Type")
     };
     let (head, args): (String, Vec<String>) = match sum {
-        Sum::Interned(index) => {
+        Sum::InternedType(index) => {
             let resolved = canton_lf::interned_type(pkg, *index).expect("interned type");
             return render_type_applied(pkg, self_id, resolved, extra);
         }
@@ -322,6 +322,11 @@ fn interface_json(pkg: &Package, self_id: &str, interface: &DefInterface) -> Val
 /// The whole DAR's signature surface: every package, every module that has any
 /// serializable data type, template, or interface.
 fn signature_json(packages: &[(String, Package)]) -> Value {
+    // Ordered by package id on both sides: a DAR's entry order is the
+    // builder's business (damlc puts the main package first, the JVM reader
+    // lists it last), and the comparison is about what each package says.
+    let mut packages: Vec<&(String, Package)> = packages.iter().collect();
+    packages.sort_by(|a, b| a.0.cmp(&b.0));
     let rendered: Vec<Value> = packages
         .iter()
         .map(|(id, pkg)| {

@@ -27,7 +27,9 @@ pub(crate) fn data_type(data_type: &DataType) -> TokenStream {
 #[must_use]
 fn interface_marker(name: &str) -> TokenStream {
     let name = type_ident(name);
-    let doc = format!("Marker for the Daml interface `{name}` (held via `ContractId`).");
+    let doc = doc_text(&format!(
+        "Marker for the Daml interface `{name}` (held via `ContractId`)."
+    ));
     quote! {
         #[doc = #doc]
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -95,8 +97,20 @@ fn renamed_doc(rust_name: &Ident, daml_name: &str, kind: &str) -> TokenStream {
     if rust_name.to_string().trim_start_matches("r#") == daml_name {
         return TokenStream::new();
     }
-    let doc = format!("Daml {kind} `{daml_name}`.");
+    let doc = doc_text(&format!("Daml {kind} `{daml_name}`."));
     quote!(#[doc = #doc])
+}
+
+/// A doc attribute's text, with nothing in it that rustdoc could read as
+/// structure the Daml side did not write: control characters (a newline would
+/// start a new Markdown line, and a fenced code block a doctest) become
+/// spaces, and `*/` cannot close anything. The lowering already refuses such
+/// names; this keeps the emitter safe on its own.
+fn doc_text(text: &str) -> String {
+    text.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect::<String>()
+        .replace("*/", "* /")
 }
 
 /// Generate the `struct` for a record data type (also used for template
@@ -540,6 +554,7 @@ fn template_doc(template: &Template) -> TokenStream {
             "Keyed: also exercisable with `rt::exercise_by_key_command`.".to_string(),
         ]);
     }
+    let lines = lines.iter().map(|line| doc_text(line));
     quote!(#(#[doc = #lines])*)
 }
 
@@ -657,7 +672,7 @@ fn choice_impls(self_ty: &Ident, owner: &str, choices: &[Choice]) -> TokenStream
         let returns = rust_type(&choice.returns);
         let choice_name = &choice.name;
         let consuming = choice.consuming;
-        let doc = format!(
+        let doc = doc_text(&format!(
             "The `{}` choice on [`{}`] ({}).",
             choice.name,
             owner,
@@ -666,7 +681,7 @@ fn choice_impls(self_ty: &Ident, owner: &str, choices: &[Choice]) -> TokenStream
             } else {
                 "non-consuming"
             }
-        );
+        ));
         quote! {
             #[doc = #doc]
             impl rt::Choice<#self_ty> for #argument {

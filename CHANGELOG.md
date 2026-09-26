@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.3.1] — unreleased
+
+Fixes from an internal security review of 0.3.0, run ahead of the independent
+audit. No new features; every change closes a way for a hostile participant,
+registry, token endpoint or DAR to make the SDK do something its caller did
+not ask for. Additive to the public API; behaviour changes are listed.
+
+### Fixed — signing and onboarding
+
+- **`canton-ledger`: the hash of a prepared transaction is recomputed, not
+  taken from the participant.** Under hashing scheme V2 (the default, and now
+  requested explicitly) the new `canton_ledger::hashing` module rebuilds the
+  hash from the returned transaction and metadata, byte for byte as Canton
+  does (checked against Canton's own test vectors), and `prepare_submission`
+  refuses a response whose hash is of something else. A response under an
+  unknown scheme, a scheme other than the one requested, or with a hash that
+  is not 32 bytes is refused too. A caller that asks for another scheme
+  explicitly signs the participant's hash as returned, with a warning.
+- **`canton-admin`: the external-party onboarding set is read before it is
+  signed for.** The multi-hash is recomputed over the returned topology
+  transactions, each transaction is decoded, and only the key's own namespace
+  delegation, a key mapping to that key, and hosting with confirmation or
+  observation rights are accepted; a participant that slips in a second host
+  with submission rights, a delegation to another key, or any other mapping
+  is refused. `allocate_external_party` refuses a participant that allocated a
+  party other than the one signed for.
+
+### Fixed — transport and retries
+
+- **`canton-auth`, `canton-ledger`, `canton-token`: HTTP redirects are no
+  longer followed.** The token client refuses a 3xx from the token endpoint
+  instead of replaying the client secret at the redirect target; the JSON
+  Ledger API client and the registry client answer a 3xx as the status it is,
+  unretried, so a bearer token or a command body is never re-sent elsewhere.
+- **HTTP response bodies are read only up to a bound** on all three lanes: the
+  JSON client up to its decoding limit (`with_max_decoding_message_size`), the
+  token client up to 64 KiB, the registry client up to 64 MiB; error bodies
+  are kept up to 64 KiB. The bound holds without a `Content-Length`.
+- **`canton-core`: a server-recommended retry delay is capped** at
+  `MAX_SERVER_DELAY` (60 s, logged when capped), a spelled `retryInfo` is
+  clamped after parsing, and the jitter arithmetic can no longer panic on a
+  hostile value. A `RetryInfo` detail on its own no longer makes a permanent
+  gRPC code or a permanent HTTP status retriable.
+- **`canton-ledger`: a retried JSON submission counts as de-duplicated only
+  on `DUPLICATE_COMMAND` or `ALREADY_EXISTS`**, not on any HTTP 409 (which is
+  `ABORTED` as often as not on Canton's JSON lane) or on a body that merely
+  mentions the word. Two backpressure refusals no longer come back as `Ok`.
+- **`canton-ledger`, `canton-admin`: a party listing that cycles page tokens
+  or never ends is reported as incomplete** (`MAX_LIST_PAGES`) instead of
+  followed until memory runs out.
+
+### Fixed — codegen
+
+- **`canton-codegen`: a Daml name cannot inject into generated docs.** Lowering
+  refuses a choice, field or package name carrying a control character or
+  `*/`, and the emitter keeps every doc attribute on one line, so a DAR cannot
+  plant a Markdown fence (and with it a doctest that `cargo test` would run)
+  in the generated crate.
+
+### Added — Daml-LF 2.3
+
+- **`canton-lf` decodes LF 2.3**, the version Canton 3.5.x SDKs emit and a
+  DevNet participant already vets (Digital Asset's utility apps,
+  `daml-stdlib` 3.5.1). The vendored archive schema is now Canton 3.5.17's,
+  trimmed as before (expression bodies stay opaque), and the conformance
+  oracle runs against the 3.5.17 JVM reader (`daml-lf-archive_2.13`).
+  Bindings generated from a 290-package DevNet DAR at LF 2.3 compile; the
+  committed bindings are unchanged. In the generated types `pb::daml_lf_dev`
+  is now `pb::daml_lf` and a `Type` referencing an interned type spells it
+  `InternedType`, following the schema. `canton_lf::pb` is now
+  `#[doc(hidden)]`: generated schema types, exempt from SemVer as
+  `canton-proto`'s are (ADR-0002), reachable but not part of the documented
+  surface; CI's semver guard skips `canton-lf` for this one release and takes
+  it back with 0.3.1 as the baseline.
+- `fetch_packages` skips a package in an LF version the build does not read
+  and continues, instead of stopping at it.
+
+### Changed
+
+- `Prepare` asks for `HASHING_SCHEME_VERSION_V2` explicitly rather than
+  leaving the choice to the participant.
+- `canton-proto`'s `smoke_version` example speaks TLS to an `https://`
+  participant, so it runs against a DevNet validator as well as a LocalNet.
+- Two live-suite assumptions that held only on a LocalNet are gone: the
+  participant id is checked for its shape rather than a `participant::`
+  prefix, and the PQS suite expects a ledger effective time only from a store
+  that read the ledger from the beginning (`SCRIBE_PIPELINE_LEDGER_START` is
+  the hint).
+- `tools/pqs/wait-ready.sh` waits for Scribe's ingestion to settle, not only
+  for its schema to exist.
+- `docs/security/audit-scope.md` names 0.3.1 as the commit under review and
+  states the interactive-submission guarantee as the code now provides it.
+
 ## [0.3.0] — 2026-09-23
 
 ### Changed — one crate per Daml package (**breaking**)

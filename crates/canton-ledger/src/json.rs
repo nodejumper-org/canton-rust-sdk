@@ -546,14 +546,29 @@ fn completions_request(parties: &[String], begin_exclusive: i64) -> Value {
 }
 
 /// Whether a failed submission is the participant refusing a command it already
-/// has. Canton's JSON lane maps `ALREADY_EXISTS` to HTTP 409, and names the
-/// error in the body — either signal is enough, and a body that names
-/// `DUPLICATE_COMMAND` under some other status still means the same thing.
+/// has: the error id `DUPLICATE_COMMAND`, or the gRPC code `ALREADY_EXISTS`
+/// that Canton assigns it (`grpcCodeValue` in a JSON body).
+///
+/// The HTTP status alone does not say: Canton's JSON lane maps `ALREADY_EXISTS`
+/// *and* `ABORTED` to 409, and `PARTICIPANT_BACKPRESSURE` is the latter, so a
+/// bare 409 on a retry could be a node that never accepted anything. Nor does
+/// the text: a body that merely mentions `DUPLICATE_COMMAND` in a cause string
+/// is not the error itself. Anything that is not the duplicate goes back to
+/// the retry loop to be classified.
 fn is_duplicate_submission(error: &Error) -> bool {
-    match error {
-        Error::Http { status, body, .. } => *status == 409 || body.contains("DUPLICATE_COMMAND"),
-        _ => false,
-    }
+    error
+        .error_info()
+        .is_some_and(|info| info.reason == "DUPLICATE_COMMAND")
+        || error.code() == Some(tonic::Code::AlreadyExists)
+}
+
+/// The HTTP client every JSON lane starts from. Redirects are not followed:
+/// the requests carry a bearer token and, on a submission, a command body,
+/// and a 3xx from the participant's address would have `reqwest` replay both
+/// wherever the redirect points. A participant does not redirect; anything
+/// that does is answered as the status it sent, which is not retried.
+fn http_client_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder().redirect(reqwest::redirect::Policy::none())
 }
 
 /// Add W3C trace-context headers to an outgoing request (a no-op without the
@@ -603,24 +618,68 @@ fn with_trace_context(request: reqwest::RequestBuilder) -> reqwest::RequestBuild
     request
 }
 
-/// Validate an HTTP response and deserialize its JSON body.
+/// How much of an error body is kept. The status is the verdict; the body is
+/// context for a log line, and a participant (or whatever answers in its
+/// place) does not get to size the error the caller stores and prints.
+const ERROR_BODY_CAP: usize = 64 * 1024;
+
+/// Validate an HTTP response and deserialize its JSON body, reading at most
+/// `cap` bytes of it: the JSON lane's counterpart to the gRPC decoding limit,
+/// so a hostile or broken node cannot make the client allocate without bound.
 async fn read_json<T: for<'de> Deserialize<'de>>(
     response: reqwest::Response,
     path: &str,
+    cap: usize,
 ) -> Result<T> {
     // Non-2xx carries its status (e.g. `413` past the node's list cap, `401`
     // for a bad token), so callers can branch and retry 5xx/429.
     if !response.status().is_success() {
         let status = response.status().as_u16();
-        let body = response.text().await.unwrap_or_default();
+        let body = read_body(response, ERROR_BODY_CAP, path)
+            .await
+            .unwrap_or_else(|e| format!("<body not read: {e}>"));
         return Err(Error::http_at(status, body, path));
     }
-    let body = response
-        .text()
-        .await
-        .map_err(|e| Error::Connection(format!("reading json body from {path} failed: {e}")))?;
+    let body = read_body(response, cap, path).await?;
     // A malformed body is a deserialization error (Error::Json), not a bad request.
     serde_json::from_str::<T>(&body).map_err(Error::from)
+}
+
+/// Read a response body, refusing one that declares or grows past `cap`.
+/// `reqwest`'s own `text()` reads to the end whatever the size; this reads
+/// chunk by chunk and stops at the cap, so the bound holds for a chunked
+/// stream with no `Content-Length` as much as for a declared one.
+async fn read_body(mut response: reqwest::Response, cap: usize, path: &str) -> Result<String> {
+    if let Some(declared) = response
+        .content_length()
+        .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
+    {
+        {
+            return Err(Error::UnexpectedResponse(format!(
+                "{path} answered with a {declared}-byte body, above the {cap}-byte limit \
+                 (raise it with `with_max_decoding_message_size` if it is expected)"
+            )));
+        }
+    }
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| Error::Connection(format!("reading json body from {path} failed: {e}")))?
+    {
+        if buffer.len() + chunk.len() > cap {
+            return Err(Error::UnexpectedResponse(format!(
+                "{path} answered with a body above the {cap}-byte limit \
+                 (raise it with `with_max_decoding_message_size` if it is expected)"
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buffer).map_err(|e| {
+        Error::UnexpectedResponse(format!(
+            "{path} answered with a body that is not UTF-8: {e}"
+        ))
+    })
 }
 
 /// Upgrade an `http://` base URL to `https://` when TLS is configured.
@@ -654,7 +713,9 @@ impl JsonClient {
         }
         Self {
             base_url,
-            http: reqwest::Client::new(),
+            http: http_client_builder()
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             auth: Auth::None,
             tls: None,
             retry: None,
@@ -788,7 +849,7 @@ impl JsonClient {
     /// Returns [`Error::InvalidRequest`] if a certificate/identity PEM is
     /// invalid or the HTTPS client cannot be built.
     pub fn with_tls(mut self, tls: &canton_core::TlsConfig) -> Result<Self> {
-        let mut builder = reqwest::Client::builder();
+        let mut builder = http_client_builder();
         if let Some(ca) = &tls.ca_certificate_pem {
             let cert = reqwest::Certificate::from_pem(ca)
                 .map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
@@ -853,7 +914,7 @@ impl JsonClient {
                 .send()
                 .await
                 .map_err(|e| transport_error(path, &e))?;
-            read_json(response, path).await
+            read_json(response, path, self.max_decoding_message_size).await
         })
         .await
     }
@@ -888,7 +949,7 @@ impl JsonClient {
             .send()
             .await
             .map_err(|e| transport_error(path, &e))?;
-        read_json(response, path).await
+        read_json(response, path, self.max_decoding_message_size).await
     }
 
     /// One PATCH, no retry: the callers are mutations whose lost response the
@@ -911,7 +972,7 @@ impl JsonClient {
             .send()
             .await
             .map_err(|e| transport_error(path, &e))?;
-        read_json(response, path).await
+        read_json(response, path, self.max_decoding_message_size).await
     }
 
     /// The participant's Ledger API version (`GET /v2/version`, unauthenticated).
@@ -1067,16 +1128,33 @@ impl JsonClient {
         telemetry::instrument("list_known_parties", TRANSPORT_JSON, async {
             let mut all = Vec::new();
             let mut page_token: Option<String> = None;
-            loop {
+            let mut seen = std::collections::HashSet::new();
+            for page in 1.. {
                 let (parties, next) = self.list_known_parties_page(0, page_token.clone()).await?;
                 all.extend(parties);
                 let Some(next) = next else {
                     break;
                 };
-                if page_token.as_deref() == Some(next.as_str()) {
+                // A server that never advances the token, cycles between a
+                // few, or mints a fresh one forever would have this loop run
+                // until memory ran out. Stopping quietly is no better: the
+                // caller would receive a prefix of the party list with nothing
+                // to say it is a prefix, and "which parties exist" is a
+                // question whose wrong answer looks exactly like a right one.
+                // So a token seen before, or more pages than any participant
+                // has, fails.
+                if !seen.insert(next.clone()) {
                     return Err(Error::UnexpectedResponse(format!(
-                        "the participant repeated the same page token after {} parties; \
+                        "the participant repeated a page token after {} parties; \
                          the list is incomplete and cannot be continued",
+                        all.len()
+                    )));
+                }
+                if page >= canton_core::MAX_LIST_PAGES {
+                    return Err(Error::UnexpectedResponse(format!(
+                        "the party listing did not end after {} pages and {} parties; \
+                         the list is incomplete and cannot be continued",
+                        canton_core::MAX_LIST_PAGES,
                         all.len()
                     )));
                 }

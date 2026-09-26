@@ -13,7 +13,7 @@
 //! test is about.
 use std::io::Write as _;
 
-use canton_lf::pb::daml_lf_dev::{Archive, ArchivePayload, HashFunction, archive_payload};
+use canton_lf::pb::daml_lf::{Archive, ArchivePayload, HashFunction, archive_payload};
 use prost::Message as _;
 use sha2::{Digest, Sha256};
 
@@ -38,9 +38,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut archive = Archive::decode(dar.main_package_bytes()?)?;
     let mut payload = ArchivePayload::decode(archive.payload.as_slice())?;
-    let Some(archive_payload::Sum::DamlLf2(package)) = payload.sum.as_mut() else {
+    // The wrapper keeps the package as bytes; decoded here, edited, and put
+    // back as bytes below.
+    let Some(archive_payload::Sum::DamlLf2(package_bytes)) = payload.sum.as_ref() else {
         return Err("not an LF 2 package".into());
     };
+    let mut package = canton_lf::pb::daml_lf_2::Package::decode(package_bytes.as_slice())?;
+    let package = &mut package;
     let version_index = package
         .metadata
         .as_ref()
@@ -58,6 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .as_mut()
         .ok_or("package metadata vanished between reads")?;
     metadata.version_interned_str = index;
+    payload.sum = Some(archive_payload::Sum::DamlLf2(package.encode_to_vec()));
 
     let repacked = payload.encode_to_vec();
     let new_id = Sha256::digest(&repacked)
