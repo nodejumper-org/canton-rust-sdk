@@ -165,7 +165,7 @@ impl AdminClient {
                         }
                     })
                     .await?;
-                crate::external_party::ExternalPartyTopology::from_response(response)
+                crate::external_party::ExternalPartyTopology::from_response(response, public_key)
             },
         )
         .await
@@ -230,6 +230,13 @@ impl AdminClient {
                 let mut client = service!(self, PartyManagementServiceClient::new);
                 client.allocate_external_party(request).await?.into_inner()
             };
+            if response.party_id != topology.party_id() {
+                return Err(Error::UnexpectedResponse(format!(
+                    "allocate_external_party allocated `{}`, not the `{}` that was signed for",
+                    response.party_id,
+                    topology.party_id()
+                )));
+            }
             if response.party_id.is_empty() {
                 return Err(Error::UnexpectedResponse(
                     "allocate_external_party returned no party id".to_string(),
