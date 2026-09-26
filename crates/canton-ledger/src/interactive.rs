@@ -397,12 +397,12 @@ impl Prepared {
         // de-duplicates against nothing. The hash beside it is documented as
         // "provided for convenience" and "may be removed in future versions",
         // so checking only that one guards the wrong field.
-        if response.prepared_transaction.is_none() {
+        let Some(transaction) = response.prepared_transaction.as_ref() else {
             return Err(Error::UnexpectedResponse(
                 "prepare returned no prepared transaction, so there is nothing to execute"
                     .to_string(),
             ));
-        }
+        };
         if response.prepared_transaction_hash.is_empty() {
             return Err(Error::UnexpectedResponse(
                 "prepare returned no transaction hash".to_string(),
@@ -432,6 +432,31 @@ impl Prepared {
                 "prepare returned a {}-byte transaction hash; {scheme:?} hashes are {PREPARED_HASH_LEN} bytes",
                 response.prepared_transaction_hash.len()
             )));
+        }
+        // The hash is what gets signed, so it is not taken on trust: under
+        // the scheme this SDK implements it is recomputed from the transaction
+        // the caller can read, and a participant whose hash is of something
+        // else is refused. A caller that asked for another scheme explicitly
+        // has accepted the participant's hash as it is.
+        if scheme == ipb::HashingSchemeVersion::V2 {
+            let recomputed = crate::hashing::hash_prepared_transaction_v2(transaction)
+                .map_err(|e| {
+                    Error::UnexpectedResponse(format!(
+                        "the prepared transaction cannot be hashed, so its hash cannot be checked: {e}"
+                    ))
+                })?;
+            if recomputed[..] != response.prepared_transaction_hash[..] {
+                return Err(Error::UnexpectedResponse(
+                    "the participant's transaction hash is not the hash of the transaction it \
+                     returned; refusing to sign it"
+                        .to_string(),
+                ));
+            }
+        } else {
+            tracing::warn!(
+                ?scheme,
+                "hashing scheme requested explicitly; the participant's hash is signed as returned"
+            );
         }
         Ok(Self {
             transaction: response.prepared_transaction,
@@ -846,24 +871,37 @@ mod tests {
             .into_signer(fingerprint)
     }
 
+    /// The smallest prepared transaction the hasher accepts: no nodes, and
+    /// metadata naming the acting parties and command. What a participant
+    /// returns for it is its V2 hash, computed here the way `from_response`
+    /// will recompute it.
+    fn hashable(act_as: &[String], command_id: &str) -> (ipb::PreparedTransaction, Vec<u8>) {
+        let transaction = ipb::PreparedTransaction {
+            transaction: Some(ipb::DamlTransaction {
+                version: "2.1".to_string(),
+                ..Default::default()
+            }),
+            metadata: Some(ipb::Metadata {
+                submitter_info: Some(ipb::metadata::SubmitterInfo {
+                    act_as: act_as.to_vec(),
+                    command_id: command_id.to_string(),
+                }),
+                ..Default::default()
+            }),
+        };
+        let hash = crate::hashing::hash_prepared_transaction_v2(&transaction)
+            .expect("hashable")
+            .to_vec();
+        (transaction, hash)
+    }
+
     fn prepared(act_as: &[&str]) -> Prepared {
         let act_as: Vec<String> = act_as.iter().map(ToString::to_string).collect();
+        let (transaction, hash) = hashable(&act_as, "command-1");
         Prepared::from_response(
             ipb::PrepareSubmissionResponse {
-                // A real transaction, because `from_response` now requires one:
-                // it is where the change ID lives, and the fixture previously
-                // let six tests assert on execute requests that had none.
-                prepared_transaction: Some(ipb::PreparedTransaction {
-                    transaction: None,
-                    metadata: Some(ipb::Metadata {
-                        submitter_info: Some(ipb::metadata::SubmitterInfo {
-                            act_as: act_as.clone(),
-                            command_id: "command-1".to_string(),
-                        }),
-                        ..Default::default()
-                    }),
-                }),
-                prepared_transaction_hash: vec![1; 32],
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
                 hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
                 hashing_details: None,
                 cost_estimation: None,
@@ -925,17 +963,9 @@ mod tests {
     }
 
     fn response_with(hash: Vec<u8>, scheme: i32) -> ipb::PrepareSubmissionResponse {
+        let (transaction, _) = hashable(&["alice".to_string()], "command-1");
         ipb::PrepareSubmissionResponse {
-            prepared_transaction: Some(ipb::PreparedTransaction {
-                transaction: None,
-                metadata: Some(ipb::Metadata {
-                    submitter_info: Some(ipb::metadata::SubmitterInfo {
-                        act_as: vec!["alice".to_string()],
-                        command_id: "command-1".to_string(),
-                    }),
-                    ..Default::default()
-                }),
-            }),
+            prepared_transaction: Some(transaction),
             prepared_transaction_hash: hash,
             hashing_scheme_version: scheme,
             hashing_details: None,
@@ -992,6 +1022,22 @@ mod tests {
                 "{message}"
             );
         }
+    }
+
+    /// The one that matters: a hash of something other than the returned
+    /// transaction is refused, however well-formed it is.
+    #[test]
+    fn a_hash_that_is_not_the_transactions_own_is_refused() {
+        let (_, mut hash) = hashable(&["alice".to_string()], "command-1");
+        hash[0] ^= 0xff;
+        let message = refused(
+            response_with(hash, ipb::HashingSchemeVersion::V2 as i32),
+            Some(ipb::HashingSchemeVersion::V2),
+        );
+        assert!(
+            message.contains("not the hash of the transaction"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1253,10 +1299,11 @@ mod tests {
     #[tokio::test]
     async fn the_signer_is_handed_the_participants_hash() {
         let prepared = prepared(&["alice"]);
-        assert_eq!(prepared.hash(), &[1; 32]);
+        let (_, hash) = hashable(&["alice".to_string()], "command-1");
+        assert_eq!(prepared.hash(), &hash[..]);
 
         let key = Ed25519Key::from_seed(&[4; 32]).expect("seed");
-        let expected = key.sign_raw(&[1; 32]);
+        let expected = key.sign_raw(&hash);
         let wire = prepared
             .sign_as("alice", &signer("1220aa"))
             .await
@@ -1318,17 +1365,8 @@ mod tests {
     async fn prepared_and_executable_report_what_the_participant_returned() {
         let prepared = Prepared::from_response(
             ipb::PrepareSubmissionResponse {
-                prepared_transaction: Some(ipb::PreparedTransaction {
-                    transaction: None,
-                    metadata: Some(ipb::Metadata {
-                        submitter_info: Some(ipb::metadata::SubmitterInfo {
-                            act_as: vec!["alice".to_string()],
-                            command_id: "command-7".to_string(),
-                        }),
-                        ..Default::default()
-                    }),
-                }),
-                prepared_transaction_hash: vec![9; 32],
+                prepared_transaction: Some(hashable(&["alice".to_string()], "command-7").0),
+                prepared_transaction_hash: hashable(&["alice".to_string()], "command-7").1,
                 hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
                 hashing_details: Some("hashed thus".to_string()),
                 cost_estimation: Some(ipb::CostEstimation {
