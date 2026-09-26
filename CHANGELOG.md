@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [0.3.1] — unreleased
+## [0.3.1] — 2026-09-26
 
 Fixes from an internal security review of 0.3.0, run ahead of the independent
 audit. No new features; every change closes a way for a hostile participant,
