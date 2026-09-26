@@ -546,14 +546,20 @@ fn completions_request(parties: &[String], begin_exclusive: i64) -> Value {
 }
 
 /// Whether a failed submission is the participant refusing a command it already
-/// has. Canton's JSON lane maps `ALREADY_EXISTS` to HTTP 409, and names the
-/// error in the body — either signal is enough, and a body that names
-/// `DUPLICATE_COMMAND` under some other status still means the same thing.
+/// has: the error id `DUPLICATE_COMMAND`, or the gRPC code `ALREADY_EXISTS`
+/// that Canton assigns it (`grpcCodeValue` in a JSON body).
+///
+/// The HTTP status alone does not say: Canton's JSON lane maps `ALREADY_EXISTS`
+/// *and* `ABORTED` to 409, and `PARTICIPANT_BACKPRESSURE` is the latter, so a
+/// bare 409 on a retry could be a node that never accepted anything. Nor does
+/// the text: a body that merely mentions `DUPLICATE_COMMAND` in a cause string
+/// is not the error itself. Anything that is not the duplicate goes back to
+/// the retry loop to be classified.
 fn is_duplicate_submission(error: &Error) -> bool {
-    match error {
-        Error::Http { status, body, .. } => *status == 409 || body.contains("DUPLICATE_COMMAND"),
-        _ => false,
-    }
+    error
+        .error_info()
+        .is_some_and(|info| info.reason == "DUPLICATE_COMMAND")
+        || error.code() == Some(tonic::Code::AlreadyExists)
 }
 
 /// Add W3C trace-context headers to an outgoing request (a no-op without the

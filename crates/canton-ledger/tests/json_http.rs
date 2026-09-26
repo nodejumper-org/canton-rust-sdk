@@ -855,18 +855,22 @@ async fn ledger_end_is_the_offset_the_participant_reports() {
     );
 }
 
-/// The participant names a duplicate two ways — the 409 status, and
-/// `DUPLICATE_COMMAND` in the body — and either alone is enough, because
-/// proxies rewrite one and older nodes omit the other. Anything else on a
-/// retry is the failure it says it is.
+/// A retry the participant refuses as a duplicate of the earlier attempt is a
+/// success: the command landed. Canton names that two ways — the error id
+/// `DUPLICATE_COMMAND`, and the gRPC code `ALREADY_EXISTS` (`grpcCodeValue`
+/// 6) — and either is enough, whatever the HTTP status a proxy left on it.
 #[tokio::test]
-async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
+async fn a_retry_refused_as_a_duplicate_is_a_success() {
     for (status, body) in [
-        (409, r#"{"cause":"conflict"}"#),
+        (
+            409,
+            r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists","errorCategory":3,"grpcCodeValue":6}"#,
+        ),
         (
             400,
             r#"{"code":"DUPLICATE_COMMAND","cause":"command already exists"}"#,
         ),
+        (409, r#"{"code":"NA","cause":"redacted","grpcCodeValue":6}"#),
     ] {
         let (url, seen) = scripted_server(vec![
             (503, r#"{"cause":"lost"}"#.to_string()),
@@ -883,6 +887,50 @@ async fn a_retry_refused_as_a_duplicate_by_either_signal_alone_is_a_success() {
             .await
             .unwrap_or_else(|e| panic!("{status} {body}: {e}"));
         assert_eq!(seen.lock().unwrap().len(), 2, "{status} {body}");
+    }
+}
+
+/// A 409 is not a duplicate by itself: Canton's JSON lane puts `ABORTED`
+/// there too, and `PARTICIPANT_BACKPRESSURE` is `ABORTED`. Two of those in a
+/// row mean nothing was accepted, and the caller must hear that rather than
+/// `Ok`. The same for a body that only mentions the word.
+#[tokio::test]
+async fn a_retry_refused_for_another_reason_is_not_a_success() {
+    let backpressure = r#"{"code":"PARTICIPANT_BACKPRESSURE","cause":"The participant is overloaded","errorCategory":2,"grpcCodeValue":10}"#;
+    for responses in [
+        vec![
+            (409, backpressure.to_string()),
+            (409, backpressure.to_string()),
+        ],
+        vec![
+            (503, r#"{"cause":"lost"}"#.to_string()),
+            (409, r#"{"cause":"conflict"}"#.to_string()),
+        ],
+        vec![
+            (503, r#"{"cause":"lost"}"#.to_string()),
+            (
+                400,
+                r#"{"code":"INVALID_ARGUMENT","cause":"not a DUPLICATE_COMMAND, just says so"}"#
+                    .to_string(),
+            ),
+        ],
+    ] {
+        let last = responses.last().unwrap().clone();
+        let (url, seen) = scripted_server(responses).await;
+        let client = JsonClient::new(url).with_retry(
+            canton_ledger::RetryConfig::default()
+                .with_max_attempts(2)
+                .with_initial_backoff(Duration::from_millis(1)),
+        );
+        let error = client
+            .submit(&commands())
+            .await
+            .expect_err("nothing was accepted, so the submit must fail");
+        assert!(
+            matches!(&error, canton_ledger::Error::Http { status, .. } if *status == last.0),
+            "{error:?}"
+        );
+        assert_eq!(seen.lock().unwrap().len(), 2);
     }
 
     let (url, _seen) = scripted_server(vec![
