@@ -8,8 +8,8 @@
 use prost::Message;
 
 use crate::dar::{Dar, DarError};
+use crate::pb::daml_lf::{Archive, ArchivePayload, HashFunction, archive_payload};
 use crate::pb::daml_lf_2::Package;
-use crate::pb::daml_lf_dev::{Archive, ArchivePayload, HashFunction, archive_payload};
 use sha2::{Digest as _, Sha256};
 
 /// An error decoding Daml-LF package bytes.
@@ -113,11 +113,14 @@ pub fn decode_payload(payload_bytes: &[u8]) -> Result<Package, DecodeError> {
     // "15", and judging it by the minor gate would tell the reader that
     // "Daml-LF 2.15" is unsupported and to upgrade the SDK. No version of this
     // decoder will ever read it; the major is the thing to say.
-    let Some(archive_payload::Sum::DamlLf2(package)) = payload.sum else {
+    // The wrapper keeps the LF 2 package as bytes (the upstream schema avoids a
+    // static dependency between the two files), decoded here once the minor
+    // is known to be one this build reads.
+    let Some(archive_payload::Sum::DamlLf2(package_bytes)) = payload.sum else {
         return Err(DecodeError::UnsupportedVersion);
     };
     check_minor(&payload.minor)?;
-    Ok(package)
+    Ok(Package::decode(package_bytes.as_slice())?)
 }
 
 /// The package id of an archive, checked against its contents rather than
@@ -164,15 +167,17 @@ fn hex(bytes: &[u8]) -> String {
 /// The list is evidence, not aspiration: a survey of every DAR available here —
 /// 18 of them, 648 packages across the Splice amulet/wallet/token-standard and
 /// quickstart-licensing sets — finds 617 packages at `2.1` and 31 at `2.2`, and
-/// both spellings appear inside DARs this repo generates bindings from. Both
-/// decode correctly against the vendored schema, which the conformance oracle
+/// both spellings appear inside DARs this repo generates bindings from; a
+/// Canton 3.5.17 DevNet participant additionally vets 21 packages at `2.3`
+/// (Digital Asset's utility apps and `daml-stdlib` 3.5.1). All three decode
+/// against the vendored schema (Canton 3.5.17's), which the conformance oracle
 /// checks against the official JVM `daml-lf-archive` reader.
 ///
 /// Adding a minor is a deliberate act with a procedure: re-vendor the protos if
 /// the new minor changes them, then re-run the oracle. Guessing instead means
 /// prost silently drops fields belonging to a schema it does not know, and the
 /// bindings come out quietly incomplete.
-const SUPPORTED_LF2_MINORS: &[&str] = &["1", "2"];
+const SUPPORTED_LF2_MINORS: &[&str] = &["1", "2", "3"];
 
 /// Refuse a minor we were not built against.
 ///
@@ -216,7 +221,11 @@ pub fn decode_all(dar: &Dar) -> Result<Vec<(String, Package)>, DecodeError> {
 /// instead of by an interned id string.
 #[must_use]
 pub fn imported_package_id(package: &Package, index: i32) -> Option<&str> {
-    let imports = package.package_imports.as_ref()?;
+    let crate::pb::daml_lf_2::package::ImportsSum::PackageImports(imports) =
+        package.imports_sum.as_ref()?
+    else {
+        return None;
+    };
     let i = usize::try_from(index).ok()?;
     imports.imported_packages.get(i).map(String::as_str)
 }
@@ -278,7 +287,10 @@ mod hash_tests {
     fn honest_archive() -> Archive {
         let payload = ArchivePayload {
             minor: "1".to_string(),
-            sum: Some(archive_payload::Sum::DamlLf2(Package::default())),
+            patch: 0,
+            sum: Some(archive_payload::Sum::DamlLf2(
+                Package::default().encode_to_vec(),
+            )),
         }
         .encode_to_vec();
         let hash = hex(&Sha256::digest(&payload));
@@ -349,7 +361,10 @@ mod minor_tests {
     fn archive_with_minor(minor: &str) -> Vec<u8> {
         let payload = ArchivePayload {
             minor: minor.to_string(),
-            sum: Some(archive_payload::Sum::DamlLf2(Package::default())),
+            patch: 0,
+            sum: Some(archive_payload::Sum::DamlLf2(
+                Package::default().encode_to_vec(),
+            )),
         }
         .encode_to_vec();
         let hash = hex(&Sha256::digest(&payload));
@@ -371,6 +386,7 @@ mod minor_tests {
         let payload = ArchivePayload {
             // LF 1.15 was the last LF 1 minor, so this is a real DAR's shape.
             minor: "15".to_string(),
+            patch: 0,
             sum: Some(archive_payload::Sum::DamlLf1(vec![1, 2, 3])),
         }
         .encode_to_vec();
@@ -411,7 +427,7 @@ mod minor_tests {
     /// on the wire, far from its cause.
     #[test]
     fn an_unknown_minor_is_refused_rather_than_silently_decoded() {
-        for minor in ["3", "17", "dev", ""] {
+        for minor in ["4", "17", "dev", ""] {
             let bytes = archive_with_minor(minor);
             let err = decode_package(&bytes).expect_err("minor {minor} must be refused");
             let message = err.to_string();

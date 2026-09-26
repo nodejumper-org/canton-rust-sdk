@@ -66,10 +66,35 @@ not ask for. Additive to the public API; behaviour changes are listed.
   plant a Markdown fence (and with it a doctest that `cargo test` would run)
   in the generated crate.
 
+### Added — Daml-LF 2.3
+
+- **`canton-lf` decodes LF 2.3**, the version Canton 3.5.x SDKs emit and a
+  DevNet participant already vets (Digital Asset's utility apps,
+  `daml-stdlib` 3.5.1). The vendored archive schema is now Canton 3.5.17's,
+  trimmed as before (expression bodies stay opaque), and the conformance
+  oracle runs against the 3.5.17 JVM reader (`daml-lf-archive_2.13`).
+  Bindings generated from a 290-package DevNet DAR at LF 2.3 compile; the
+  committed bindings are unchanged. In the generated types `pb::daml_lf_dev`
+  is now `pb::daml_lf` and a `Type` referencing an interned type spells it
+  `InternedType`, following the schema. `canton_lf::pb` is now
+  `#[doc(hidden)]`: generated schema types, exempt from SemVer as
+  `canton-proto`'s are (ADR-0002), reachable but not part of the documented
+  surface; CI's semver guard skips `canton-lf` for this one release and takes
+  it back with 0.3.1 as the baseline.
+- `fetch_packages` skips a package in an LF version the build does not read
+  and continues, instead of stopping at it.
+
 ### Changed
 
 - `Prepare` asks for `HASHING_SCHEME_VERSION_V2` explicitly rather than
   leaving the choice to the participant.
+- `canton-proto`'s `smoke_version` example speaks TLS to an `https://`
+  participant, so it runs against a DevNet validator as well as a LocalNet.
+- Two live-suite assumptions that held only on a LocalNet are gone: the
+  participant id is checked for its shape rather than a `participant::`
+  prefix, and the PQS suite expects a ledger effective time only from a store
+  that read the ledger from the beginning (`SCRIBE_PIPELINE_LEDGER_START` is
+  the hint).
 - `tools/pqs/wait-ready.sh` waits for Scribe's ingestion to settle, not only
   for its schema to exist.
 - `docs/security/audit-scope.md` names 0.3.1 as the commit under review and

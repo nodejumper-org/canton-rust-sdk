@@ -1645,7 +1645,7 @@ impl Lowering<'_> {
                     builtin.args.iter().chain(extra.iter().copied()).collect();
                 self.builtin(builtin.builtin, &args)
             }
-            lf::r#type::Sum::Interned(index) => {
+            lf::r#type::Sum::InternedType(index) => {
                 let resolved = interned_type(self.package, *index)
                     .ok_or_else(|| SkippedType::new("unresolved interned type"))?;
                 self.apply(resolved, extra)
@@ -1788,7 +1788,7 @@ impl Lowering<'_> {
             .first()
             .ok_or_else(|| SkippedType::new("Numeric without a scale argument"))?;
         // Follow one level of interning if the scale is stored in the type table.
-        if let Some(lf::r#type::Sum::Interned(index)) = &ty.sum {
+        if let Some(lf::r#type::Sum::InternedType(index)) = &ty.sum {
             ty = interned_type(self.package, *index)
                 .ok_or_else(|| SkippedType::new("unresolved Numeric scale"))?;
         }
@@ -3230,12 +3230,12 @@ mod tests {
         let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
         // interned_types[0] = Interned(0)
         package.interned_types = vec![lf::Type {
-            sum: Some(lf::r#type::Sum::Interned(0)),
+            sum: Some(lf::r#type::Sum::InternedType(0)),
         }];
         let mut def = record_def(0, label);
         if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
             fields.fields[0].r#type = Some(lf::Type {
-                sum: Some(lf::r#type::Sum::Interned(0)),
+                sum: Some(lf::r#type::Sum::InternedType(0)),
             });
         }
         package.modules = vec![lf::Module {
@@ -3274,16 +3274,16 @@ mod tests {
         let label = i32::try_from(package.interned_strings.len() - 1).unwrap();
         package.interned_types = vec![
             lf::Type {
-                sum: Some(lf::r#type::Sum::Interned(1)),
+                sum: Some(lf::r#type::Sum::InternedType(1)),
             },
             lf::Type {
-                sum: Some(lf::r#type::Sum::Interned(0)),
+                sum: Some(lf::r#type::Sum::InternedType(0)),
             },
         ];
         let mut def = record_def(0, label);
         if let Some(lf::def_data_type::DataCons::Record(fields)) = &mut def.data_cons {
             fields.fields[0].r#type = Some(lf::Type {
-                sum: Some(lf::r#type::Sum::Interned(0)),
+                sum: Some(lf::r#type::Sum::InternedType(0)),
             });
         }
         package.modules = vec![lf::Module {

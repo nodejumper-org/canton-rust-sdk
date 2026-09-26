@@ -140,7 +140,13 @@ async fn participant_id_is_returned() {
     };
 
     let id = client.participant_id().await.expect("participant_id");
-    assert!(id.starts_with("participant"), "got {id}");
+    // `<name>::<fingerprint>`; the name is the operator's (`participant` on a
+    // LocalNet, the node's name on DevNet), so only the shape is asserted.
+    assert!(
+        id.split_once("::")
+            .is_some_and(|(name, fp)| !name.is_empty() && fp.len() >= 8),
+        "got {id}"
+    );
     println!("participant id: {id}");
 }
 

@@ -49,6 +49,7 @@ the stability policy in [`canton-proto`](../crates/canton-proto/src/lib.rs) and
 |---|---|
 | LF 2.1 | supported |
 | LF 2.2 | supported |
+| LF 2.3 | supported since 0.3.1 (the schema is Canton 3.5.17's; a DevNet participant vets Digital Asset's utility apps and `daml-stdlib` 3.5.1 at this version) |
 | LF 2.x, other minors | refused, naming the minor and this build's range |
 | LF 1.x | refused, naming the **major** |
 

@@ -1,5 +1,5 @@
 //! Generate Rust types from the vendored Daml-LF archive `.proto` files
-//! (`daml_lf.proto` + `daml_lf2.proto`, under `proto/`, pinned to a Daml 3.3
+//! (`daml_lf.proto` + `daml_lf2.proto`, under `proto/`, pinned to Canton 3.5.17's
 //! snapshot). LF-LF messages only — no gRPC services — so plain `prost-build`.
 
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         proto_root.join("com/digitalasset/daml/lf/archive/daml_lf2.proto"),
     ];
 
-    // `include_file` wires the two proto packages (`daml_lf_dev`, `daml_lf_2`)
+    // `include_file` wires the two proto packages (`daml_lf`, `daml_lf_2`)
     // into one module tree with correct cross-package paths.
     prost_build::Config::new()
         .protoc_executable(&protoc)

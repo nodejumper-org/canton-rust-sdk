@@ -420,10 +420,15 @@ jobs:
           # cannot be checked before its first release, so each one joins this
           # list in the release after it first publishes — the M2 crates below
           # did so at 0.2.0. `canton-proto` stays out: its generated types are
-          # exempt from the stability promise (ADR-0002), and `canton-codegen-cli`
+          # exempt from the stability promise (ADR-0002). `canton-lf` is out for
+          # 0.3.1 only: it re-vendored the Daml-LF schema for Canton 3.5.17 and
+          # hid the generated `pb` module (the same exemption), which the tool
+          # reads as a break against the 0.3.0 baseline; it returns to the list
+          # once 0.3.1 is the baseline, with `pb` outside the comparison.
+          # `canton-codegen-cli`
           # is binary-only, so there is no API to compare.
           package: >-
             canton-core, canton-auth, canton-ledger, canton-admin, canton,
-            canton-lf, canton-daml, canton-codegen,
+            canton-daml, canton-codegen,
             canton-splice-amulet, canton-splice-wallet, canton-splice-wallet-payments
           feature-group: all-features

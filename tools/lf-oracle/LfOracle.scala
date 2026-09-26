@@ -1,5 +1,5 @@
 //> using scala 2.13
-//> using dep com.daml:daml-lf-archive-reader_2.13:3.4.11
+//> using dep com.daml:daml-lf-archive_2.13:3.5.17
 //> using dep com.lihaoyi::ujson:4.4.3
 //> using dep org.slf4j:slf4j-nop:2.0.16
 
@@ -165,7 +165,8 @@ object LfOracle {
   def main(args: Array[String]): Unit = {
     require(args.length == 1, "usage: LfOracle <path-to-dar>")
     val dar = DarDecoder.assertReadArchiveFromFile(new java.io.File(args(0)))
-    val packages = dar.all.map { case (id, pkg) => packageJson(id, pkg) }
+    // Sorted by package id, as the Rust side sorts, so entry order does not matter.
+    val packages = dar.all.sortBy(_._1.toString).map { case (id, pkg) => packageJson(id, pkg) }
     println(ujson.write(ujson.Obj("packages" -> ujson.Arr.from(packages))))
   }
 }
