@@ -5,7 +5,7 @@ Network DevNet (further down, dated 2026-09-22), and the reviewer's path on a
 Canton Builder Tool LocalNet (at the end, same day).
 
 The verification clause of the milestone-3 proposal asks for a V1 transfer and
-a V2 `Account`-based transfer/allocation exercised end to end. The three
+a V2 `Account`-based transfer/allocation exercised end to end. The five
 examples under [`crates/canton-token/examples`](../../crates/canton-token/examples)
 are that exercise, and this file is their output from the most recent run,
 kept verbatim so the offsets and update ids can be checked against the
@@ -517,3 +517,151 @@ from another key. An earlier run of the same day reported the same three
 tests green while two of them had quietly returned for want of an application
 package; that silent return is gone, which is what `CANTON_TEST_REQUIRE_LIVE`
 exists to guarantee.
+
+# The reviewer's path at `v0.3.1`: Canton Builder Tool, 2026-09-29
+
+The "How to verify" steps of the Milestone 3a comment on the tracking issue,
+run verbatim from a fresh clone at the `v0.3.1` tag (a32f6f3) against the same
+Canton Builder Tool LocalNet as above (Canton 3.5.7), with the App Provider
+party as sender, receiver and executor. Step numbers are the comment's. Step 1
+is the `cargo add` of the published crates into a new project; the target
+directory was warm, hence the short build time.
+
+```text
+### 3a verbatim run 2026-09-29T13:13:56Z
+### step 1
+note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+      Adding canton v0.3.1 to dependencies
+      Adding canton-token v0.3.1 to dependencies
+      Adding canton-signer v0.3.1 to dependencies
+      Adding canton-pqs v0.3.1 to dependencies
+      Adding canton-splice-api-token-holding-v2 v0.3.1 to dependencies
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.14s
+  exit=0
+  versions:   21 v0.3.1
+### step 2
+  at v0.3.1 a32f6f3
+test lower::tests::a_daml_name_rust_cannot_spell_is_skipped_not_panicked_on ... ok
+  tests passed: 632 failed: 0
+  conformance: test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  conformance: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  conformance: test result: ok. 51 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+  conformance: test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  conformance: test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  capabilities: 51  gaps: 0
+### step 3
+test external_commands__prepare_sign_execute_commits_a_transaction ... ok
+test signing__a_signature_from_another_key_is_rejected ... ok
+test signing__an_external_party_is_onboarded_by_signing_its_own_topology ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+### step 4 (no tap: the party already holds Amulet)
+  party: app_provider_builder-localnet-1::…
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+  --- v1_transfer
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    instrument:     Amulet (AMT), 10 decimals
+    holdings:       1 unlocked holding(s) of Amulet read from the ledger
+    kind:           self — sender and receiver match
+    disclosing:     4 contract(s) the registry named
+    committed 12207e951759258c98f480ae38296a36d925aeae3afbb7c6386b155c5ca1ec44787e at offset 12769 with 5 event(s)
+  --- v2_transfer
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    instrument:     Amulet (AMT), 10 decimals
+    from account:   "" / to account: ""
+    holdings:       2 unlocked holding(s) of Amulet read from the ledger
+    kind:           self — sender and receiver match
+    disclosing:     4 contract(s) the registry named
+    committed 122051d653917109557bf71b2dc07d0d9e6024128508690813823cc7d94bb192c459 at offset 12772 with 6 event(s)
+      holdings change on 00fc1b5219b7b8dba23791792ef51f06a2795e57cf44115214ee00fedc05a08064ca121220ff76501f926ceec61b4227ab711abcd5f43499dc73511028817
+  --- v2_allocate
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    sender:         app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    executor:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver = sender: authorising both sides of the leg in this allocation
+    holdings:       2 unlocked holding(s) of Amulet read from the ledger
+    disclosing:     2 contract(s) the registry named
+    allocated:      1220a5da7fbc468fe732712ea20ae879fd79855be0c5d6991935acceb551cdef405d at offset 12775 with 2 event(s)
+    the executor settles this batch with:
+      settlement id: dvp-1790687799143875
+      executor:      app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+      v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+      created:       00b77ba11301519e41621c50427bba4def60271951187d334af92780b84121d888ca121220826e55e1acfe364e1ee38e2e362b340a324f1c15a4666d75bee860d
+  --- v2_withdraw_allocation
+    sender:      app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    allocations: 1 active
+      00b77ba11301519e41621c50427bba4def60271951187d334af92780b84121d888ca121220826e55e1acfe364e1ee38e2e362b340a324f1c15a4666d75bee860d89e3cefe1
+        settlement dvp-1790687799143875 by app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e, 0 ho
+    withdrawing 00b77ba11301519e (settlement dvp-1790687799143875): disclosing 0 contract(s) the registry named
+    withdrawn:   122010ec311ee14fd721884a3630f21b52773b0f4a9a7c6e46e94fd858e0da3261c0 at offset 12778 with 2 event(s)
+  --- v2_allocate
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    sender:         app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    executor:       app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver = sender: authorising both sides of the leg in this allocation
+    holdings:       2 unlocked holding(s) of Amulet read from the ledger
+    disclosing:     2 contract(s) the registry named
+    allocated:      122060392d80bd84162d78a66a99bf1a27754531d1553defcc4e5c3a2a9722ea7b83 at offset 12781 with 2 event(s)
+    the executor settles this batch with:
+      settlement id: dvp-1790687804433583
+      executor:      app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+      v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+      created:       008ea96ea80011a23fac9b9da71d829f5cfcb4e02006b7ff50c69992f4fefa835cca121220ad9135325532c99ff85d559aa8f8b80bff293f5d691769655382f75
+  --- v2_settle
+    executor:    app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    allocations: 1 naming it as executor
+    settlement dvp-1790687804433583: 1 allocation(s), 1 leg(s)
+      leg leg-1: app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e -> app_provider_builder-localne
+      disclosing 2 contract(s) the registry named
+      settled: 1220dc87deebeb1be4fc3832672237cf6bd6685f5746db5c8066bfb69afc6069dd49 at offset 12784 with 4 event(s)
+### step 5
+ Container pqs-scribe-1 Started
+pqs ready at offset 12784
+test a_refused_connection_is_not_retried_forever ... ok
+test pqs_reports_how_far_it_has_ingested ... ok
+test a_contract_read_from_postgres_is_the_generated_type ... ok
+test an_ordered_comparison_is_a_statement_postgres_accepts ... ok
+test a_payload_predicate_filters_in_the_database ... ok
+test containment_and_party_columns_work_against_the_real_schema ... ok
+test a_contract_is_found_by_id ... ok
+test the_acs_can_be_read_as_of_an_offset ... ok
+test a_connection_the_store_closes_is_replaced_on_the_next_read ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+### done 2026-09-29T13:17:30Z
+```
+
+Every step passed as written; the five examples printed the kind the registry
+answered, the disclosed-contract count and their update id and offset, and
+`v2_settle` settled the allocation the step before created.
+
+# DevNet, 2026-09-29, at `v0.3.1`
+
+The same fresh clone, run against Nodejumper's DevNet validator (the
+participant reported Ledger API 3.5.19 that day; Splice 0.8.1) with the public
+SV Scan as the registry and the validator's own party
+(`nodejumper-dev-1::1220a5cd…`) as sender, receiver and executor.
+
+| Suite / example | Result |
+|---|---|
+| `canton-ledger` live | 36 passed |
+| `interactive_live` (external signing) | 3 passed |
+| `canton-token` registry live | 5 passed |
+| `canton-pqs` live, Scribe 3.5.4 over TLS following the participant from its latest offset | 9 passed, store ready at offset 3874307 |
+| `submit_and_read`, `recover_a_submission`, `canton-sample` | committed; the duplicate refused as `DUPLICATE_COMMAND` and the original outcome recovered; the typed loop on both transports |
+| `json_packages` / `fetch_packages` | 290 packages known, 290 written |
+
+## Read back from the participant by update id
+
+The six example runs, read back over the JSON Ledger API
+(`POST /v2/updates/update-by-id`) after the run; record times are the
+synchronizer's.
+
+| Example | Update id | Offset | Record time |
+|---|---|---|---|
+| `v1_transfer` | `1220ebc554e79602ca58b5cede1a60bf28a05eead6ee625c4e5590b576a1e0873b6d` | 3874147 | 2026-09-29T10:09:00.343272Z |
+| `v2_transfer` | `12203fbcf8faeeb8113006e9575dd1ad9d8c7d2dc50f4b06acb2778eb76f186233d5` | 3874160 | 2026-09-29T10:09:05.583538Z |
+| `v2_allocate` | `122066fb28a402e4d80fcd1d5cad14221fb871fe33fcea38b55de6d9557219e8b6e2` | 3874169 | 2026-09-29T10:09:11.593049Z |
+| `v2_withdraw_allocation` | `1220d6cddeee588d4a5573fb8caf152397a0168f94bc482e190d3e327cabb6bba22b` | 3874175 | 2026-09-29T10:09:17.353045Z |
+| `v2_allocate` | `122077f9e709bb1fa02111f62b75dfd3a4ae108de95d999dd8942dee89b9db923eff` | 3874181 | 2026-09-29T10:09:22.243755Z |
+| `v2_settle` | `12209cdb5421ab0a1791651d6a637726abc5e1505caef97fc1edf94a0311aad24610` | 3874198 | 2026-09-29T10:09:28.453035Z |
