@@ -749,15 +749,15 @@ mod tests {
         assert_eq!(change_id.command_id(), "cmd-7");
         // Left to the token: the participant resolves it, so the client cannot
         // record a user id it does not know.
-        assert!(change_id.user_id().is_empty());
+        assert_eq!(change_id.user_id(), "");
         assert_eq!(commands.command_id, "cmd-7");
         assert!(matches!(
             commands.deduplication_period,
             Some(pb::commands::DeduplicationPeriod::DeduplicationOffset(42))
         ));
         // Unset optionals stay empty (token-derived user id, no workflow).
-        assert!(commands.user_id.is_empty());
-        assert!(commands.workflow_id.is_empty());
+        assert_eq!(commands.user_id, "");
+        assert_eq!(commands.workflow_id, "");
     }
 
     #[test]
@@ -765,7 +765,7 @@ mod tests {
         let Some(pb::value::Sum::TextMap(map)) = value::empty_text_map().sum else {
             panic!("expected a text map value");
         };
-        assert!(map.entries.is_empty());
+        assert_eq!(map.entries, []);
     }
 
     #[test]

@@ -99,7 +99,7 @@ async fn a_contract_read_from_postgres_is_the_generated_type() {
         payload.owner.as_str()
     );
 
-    assert!(!contract.contract_id().as_str().is_empty());
+    assert_ne!(contract.contract_id().as_str(), "");
     assert_eq!(
         contract.archived_at_offset(),
         None,

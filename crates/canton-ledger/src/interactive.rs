@@ -1088,7 +1088,7 @@ mod tests {
             .and_sign_as("bob", &signer("1220bb"))
             .await
             .expect("bob signs");
-        assert!(executable.unsigned_parties().is_empty());
+        assert_eq!(executable.unsigned_parties(), Vec::<&str>::new());
         assert_eq!(executable.signed_by(), vec!["alice", "bob"]);
     }
 
@@ -1180,7 +1180,7 @@ mod tests {
     #[test]
     fn an_unset_command_id_is_generated_once() {
         let (id, _, request) = Prepare::new("alice").into_request();
-        assert!(!id.is_empty());
+        assert_ne!(id, "");
         assert_eq!(id, request.command_id);
     }
 

@@ -448,7 +448,7 @@ async fn a_page_with_the_server_default_size_and_no_token_sends_no_query_at_all(
         .expect("success");
 
     assert_eq!(seen.lock().unwrap()[0].path, "/v2/parties");
-    assert!(parties.is_empty());
+    assert_eq!(parties, []);
     assert_eq!(next, None);
 }
 

@@ -323,7 +323,7 @@ async fn external_commands__prepare_sign_execute_commits_a_transaction() {
         transaction.offset,
         transaction.events.len()
     );
-    assert!(!transaction.update_id.is_empty());
+    assert_ne!(transaction.update_id, "");
     assert!(
         !transaction.events.is_empty(),
         "creating a contract produces an event"

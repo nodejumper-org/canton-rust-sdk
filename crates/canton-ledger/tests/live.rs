@@ -404,7 +404,7 @@ async fn updates_stream_replays_a_created_transaction() {
 
     match first {
         canton_ledger::proto::get_updates_response::Update::Transaction(tx) => {
-            assert!(!tx.update_id.is_empty());
+            assert_ne!(tx.update_id, "");
             assert!(
                 tx.offset > begin,
                 "replayed tx should be after begin offset"
@@ -715,7 +715,7 @@ async fn json_transport_version_and_ledger_end() {
         .version()
         .await
         .expect("json version should succeed");
-    assert!(!version.is_empty());
+    assert_ne!(version, "");
 
     // ledger end is authenticated
     let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
@@ -855,7 +855,7 @@ async fn multiple_commands_submit_atomically() {
         })
         .count();
     assert_eq!(created, 2, "both creates should land in one transaction");
-    assert!(!tx.update_id.is_empty());
+    assert_ne!(tx.update_id, "");
     println!(
         "multi-command — {created} creates in update {}",
         tx.update_id
@@ -1405,7 +1405,7 @@ async fn json_submit_and_wait_reports_where_the_command_landed() {
         .submit_and_wait(&commands)
         .await
         .expect("json submit-and-wait should commit");
-    assert!(!response.update_id.is_empty());
+    assert_ne!(response.update_id, "");
     assert!(response.completion_offset > 0);
     println!(
         "json submit-and-wait — update_id={} completion_offset={}",
@@ -1638,7 +1638,7 @@ async fn json_party_management_round_trip() {
         .list_known_parties_page(2, Some(next))
         .await
         .expect("the second page");
-    assert!(!page_two.is_empty());
+    assert_ne!(page_two, []);
     assert_ne!(page[0].party, page_two[0].party, "the token advanced");
 
     let all = json.list_known_parties().await.expect("list_known_parties");

@@ -1015,7 +1015,7 @@ mod tests {
 
         assert_eq!(err.category(), None, "a redacted status has no category");
         assert_eq!(err.error_info(), None);
-        assert!(err.resource_info().is_empty());
+        assert_eq!(err.resource_info(), []);
         assert_eq!(err.retry_delay(), None);
         assert_eq!(
             err.correlation_id().as_deref(),
@@ -1039,7 +1039,7 @@ mod tests {
         };
 
         assert_eq!(err.category(), None, "-1 is not a category");
-        assert!(err.resource_info().is_empty());
+        assert_eq!(err.resource_info(), []);
         assert_eq!(err.retry_delay(), None);
         // `"NA"` is Canton saying it withheld the id, not an id spelled "NA".
         assert_eq!(err.error_info(), None, "\"NA\" is not an error id");
@@ -1065,12 +1065,11 @@ mod tests {
         assert_eq!(found[0].owner, "alice");
 
         // A status with no such detail yields nothing, not a default-filled entry.
-        assert!(
-            Error::from(tonic::Status::not_found("x"))
-                .resource_info()
-                .is_empty()
+        assert_eq!(
+            Error::from(tonic::Status::not_found("x")).resource_info(),
+            []
         );
-        assert!(Error::Timeout.resource_info().is_empty());
+        assert_eq!(Error::Timeout.resource_info(), []);
     }
 
     #[test]
@@ -1089,7 +1088,7 @@ mod tests {
         assert_eq!(found[0].resource_type, "ErrorResource(CONTRACT_ID)");
         assert_eq!(found[0].resource_name, "00ababab");
         // The JSON pairs carry no owner or description; they are empty, not absent.
-        assert!(found[0].owner.is_empty());
+        assert_eq!(found[0].owner, "");
 
         // Several resources — contention names more than one, which is why this
         // returns a Vec and not an Option.

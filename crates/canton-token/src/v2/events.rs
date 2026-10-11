@@ -207,7 +207,7 @@ mod tests {
         let other_choice = exercised("EventLog_SomethingElse", Some(interface_id()));
 
         let changes = holdings_changes(&[created, other_choice]).expect("decodes");
-        assert!(changes.is_empty());
+        assert_eq!(changes, []);
     }
 
     /// The choice name is not reserved: another package may spell a choice the
@@ -223,12 +223,12 @@ mod tests {
                 entity_name: "EventLog".to_string(),
             }),
         );
-        assert!(holdings_changes(&[impostor]).expect("decodes").is_empty());
+        assert_eq!(holdings_changes(&[impostor]).expect("decodes"), []);
 
         // And an exercise reporting no interface at all is a choice on a
         // template, not on the standard's interface.
         let bare = exercised("EventLog_HoldingsChange", None);
-        assert!(holdings_changes(&[bare]).expect("decodes").is_empty());
+        assert_eq!(holdings_changes(&[bare]).expect("decodes"), []);
     }
 
     /// The interface can arrive in `implemented_interfaces` rather than

@@ -3021,7 +3021,7 @@ mod tests {
         // Two metadata-less packages whose ids share no ASCII alphanumerics both
         // derived `p_`, and the de-collision suffix was empty — two `pub mod p__`.
         assert_ne!(ident_prefix("€€€€"), ident_prefix("£££££"));
-        assert!(!ident_prefix("€€€€").is_empty());
+        assert_ne!(ident_prefix("€€€€"), "");
         assert_eq!(ident_prefix("aabbccddee"), "aabbccdd");
     }
 
