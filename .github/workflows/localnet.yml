@@ -1,0 +1,168 @@
+name: LocalNet
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/localnet.yml
+      - testdata/live/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  LICENSING_DAR: testdata/live/quickstart-licensing-0.0.1.dar
+
+jobs:
+  localnet:
+    name: Live suites against LocalNet
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Compile every live suite before LocalNet takes the memory
+        run: |
+          set -euo pipefail
+          cargo test --no-run --all-features -p canton-ledger --test live
+          cargo test --no-run --all-features -p canton-ledger --test interactive_live
+          cargo test --no-run --all-features -p canton-admin --test live
+          cargo test --no-run --all-features -p canton-pqs --test live
+          cargo test --no-run --all-features -p canton-token --test live
+
+      - name: Boot LocalNet with validator a and PQS
+        uses: peacefulstudio/canton-localnet@1cf682aae212d4e2fefb882bcf9c97ea95036a59 # v0.8.4-3
+        with:
+          validators: a
+          pqs: true
+          party: true
+
+      - name: Map CANTON_LOCALNET exports to the CANTON_TEST names the live suites read
+        run: |
+          set -euo pipefail
+          slot=CANTON_LOCALNET_A_VALIDATOR_1
+          export_of() { printenv "${slot}_$1"; }
+          {
+            echo "CANTON_TEST_ENDPOINT=$(export_of GRPC_URL)"
+            echo "CANTON_TEST_JSON_ENDPOINT=$(export_of JSON_API_URL)"
+            echo "CANTON_TEST_TOKEN_URL=$(export_of TOKEN_URL)"
+            echo "CANTON_TEST_CLIENT_ID=$(export_of CLIENT_ID)"
+            echo "CANTON_TEST_CLIENT_SECRET=$(export_of CLIENT_SECRET)"
+            echo "CANTON_TEST_ADMIN_CLIENT_ID=$(export_of CLIENT_ID)"
+            echo "CANTON_TEST_ADMIN_CLIENT_SECRET=$(export_of CLIENT_SECRET)"
+            echo "CANTON_TEST_ADMIN_ENDPOINT=$(export_of ADMIN_GRPC_URL)"
+            echo "CANTON_TEST_PARTY=$(export_of PARTY)"
+            echo "CANTON_TOKEN_REGISTRY_URL=${CANTON_LOCALNET_SCAN_URL}"
+            echo "CANTON_PQS_URL=host=$(export_of PQS_HOST) port=$(export_of PQS_PORT) user=$(export_of PQS_USER) password=$(export_of PQS_PASSWORD) dbname=$(export_of PQS_DATABASE)"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify the quickstart-licensing DAR and upload it with curl
+        run: |
+          set -euo pipefail
+          (cd "$(dirname "$LICENSING_DAR")" && sha256sum -c "$(basename "$LICENSING_DAR").sha256")
+          token=$(curl -fsS "$CANTON_TEST_TOKEN_URL" \
+            --data-urlencode grant_type=client_credentials \
+            --data-urlencode client_id="$CANTON_TEST_ADMIN_CLIENT_ID" \
+            --data-urlencode client_secret="$CANTON_TEST_ADMIN_CLIENT_SECRET" | jq -r .access_token)
+          echo "::add-mask::$token"
+          curl -fsS -X POST "$CANTON_TEST_JSON_ENDPOINT/v2/packages" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${LICENSING_DAR}"
+          echo "CANTON_TEST_LICENSING_PKG=#quickstart-licensing" >> "$GITHUB_ENV"
+
+      - name: Fund the validator wallet with Amulet
+        run: canton-localnet tap --slot a --at-least 1000
+
+      - name: Run canton-ledger live suite, expecting 36 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-ledger --test live | tee /tmp/canton-ledger-live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-ledger-live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 36 ] || {
+            echo "::error::canton-ledger live ran $ran tests, expected 36"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-ledger live test(s) were ignored"; exit 1; }
+
+      - name: Run canton-ledger interactive submission suite, expecting 3 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-ledger --test interactive_live | tee /tmp/canton-ledger-interactive_live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-ledger-interactive_live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 3 ] || {
+            echo "::error::canton-ledger interactive_live ran $ran tests, expected 3"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-ledger interactive_live test(s) were ignored"; exit 1; }
+
+      - name: Run canton-admin live suite, expecting 5 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-admin --test live | tee /tmp/canton-admin-live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-admin-live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 5 ] || {
+            echo "::error::canton-admin live ran $ran tests, expected 5"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-admin live test(s) were ignored"; exit 1; }
+
+      - name: Run canton-pqs live suite, expecting 9 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-pqs --test live -- --nocapture | tee /tmp/canton-pqs-live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-pqs-live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 9 ] || {
+            echo "::error::canton-pqs live ran $ran tests, expected 9"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-pqs live test(s) were ignored"; exit 1; }
+          grep -q 'comparing against an amulet amount' /tmp/canton-pqs-live.log || {
+            echo "::error::canton-pqs live never compared against an Amulet; the store held none"; exit 1; }
+
+      - name: Run canton-token live suite, expecting 5 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-token --test live | tee /tmp/canton-token-live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-token-live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 5 ] || {
+            echo "::error::canton-token live ran $ran tests, expected 5"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-token live test(s) were ignored"; exit 1; }
+
+      - name: Tear down LocalNet
+        if: always()
+        uses: peacefulstudio/canton-localnet/teardown@1cf682aae212d4e2fefb882bcf9c97ea95036a59 # v0.8.4-3
+
