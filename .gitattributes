@@ -11,5 +11,6 @@ crates/canton-quickstart-*/src/lib.rs linguist-generated=true
 # copy to exactly what was vendored.
 crates/canton-proto/proto/** -text
 
-# The fixture DAR is a zip archive; never treat it as text.
+# The fixture DARs are zip archives; never treat them as text.
 testdata/*.dar binary
+testdata/live/*.dar binary

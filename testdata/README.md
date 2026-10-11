@@ -19,7 +19,9 @@ cn-quickstart builds it from source rather than tracking it in git.
 (`68a50632961f0dece11a62f4f91f579fd6591c067fbc49adbf14321eefe9d7cf`), which
 the `LocalNet` workflow verifies before uploading. Its main package id is
 `edd5a8d857f6ece9b0b3b21b1096448fc5292e7614044b916746927cbefa919a`, the id
-`canton-quickstart-licensing` pins in `PACKAGE_ID`.
+`canton-quickstart-licensing` pins in `PACKAGE_ID`; after the upload the
+workflow checks that the participant holds that id, so the DAR cannot drift
+from the bindings without failing the run.
 
 The rest of the larger corpus (splice-amulet, splice-wallet) stays env-gated —
 see the testing section of the root README.

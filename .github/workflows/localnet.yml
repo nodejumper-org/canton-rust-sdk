@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with: { toolchain: stable }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
@@ -52,19 +53,28 @@ jobs:
         run: |
           set -euo pipefail
           slot=CANTON_LOCALNET_A_VALIDATOR_1
+          # A missing export fails the step here instead of reaching a suite as an empty value.
+          for name in CANTON_LOCALNET_SCAN_URL \
+            "${slot}"_{GRPC_URL,JSON_API_URL,TOKEN_URL,CLIENT_ID,CLIENT_SECRET,ADMIN_GRPC_URL,PARTY} \
+            "${slot}"_PQS_{HOST,PORT,USER,PASSWORD,DATABASE}; do
+            [ -n "${!name:-}" ] || { echo "::error::LocalNet did not export ${name}"; exit 1; }
+          done
           export_of() { printenv "${slot}_$1"; }
+          # NAME<<delimiter with a random delimiter, so a newline in a value cannot add a variable.
+          eof="EOF_$(openssl rand -hex 16)"
+          put() { printf '%s<<%s\n%s\n%s\n' "$1" "$eof" "$2" "$eof"; }
           {
-            echo "CANTON_TEST_ENDPOINT=$(export_of GRPC_URL)"
-            echo "CANTON_TEST_JSON_ENDPOINT=$(export_of JSON_API_URL)"
-            echo "CANTON_TEST_TOKEN_URL=$(export_of TOKEN_URL)"
-            echo "CANTON_TEST_CLIENT_ID=$(export_of CLIENT_ID)"
-            echo "CANTON_TEST_CLIENT_SECRET=$(export_of CLIENT_SECRET)"
-            echo "CANTON_TEST_ADMIN_CLIENT_ID=$(export_of CLIENT_ID)"
-            echo "CANTON_TEST_ADMIN_CLIENT_SECRET=$(export_of CLIENT_SECRET)"
-            echo "CANTON_TEST_ADMIN_ENDPOINT=$(export_of ADMIN_GRPC_URL)"
-            echo "CANTON_TEST_PARTY=$(export_of PARTY)"
-            echo "CANTON_TOKEN_REGISTRY_URL=${CANTON_LOCALNET_SCAN_URL}"
-            echo "CANTON_PQS_URL=host=$(export_of PQS_HOST) port=$(export_of PQS_PORT) user=$(export_of PQS_USER) password=$(export_of PQS_PASSWORD) dbname=$(export_of PQS_DATABASE)"
+            put CANTON_TEST_ENDPOINT "$(export_of GRPC_URL)"
+            put CANTON_TEST_JSON_ENDPOINT "$(export_of JSON_API_URL)"
+            put CANTON_TEST_TOKEN_URL "$(export_of TOKEN_URL)"
+            put CANTON_TEST_CLIENT_ID "$(export_of CLIENT_ID)"
+            put CANTON_TEST_CLIENT_SECRET "$(export_of CLIENT_SECRET)"
+            put CANTON_TEST_ADMIN_CLIENT_ID "$(export_of CLIENT_ID)"
+            put CANTON_TEST_ADMIN_CLIENT_SECRET "$(export_of CLIENT_SECRET)"
+            put CANTON_TEST_ADMIN_ENDPOINT "$(export_of ADMIN_GRPC_URL)"
+            put CANTON_TEST_PARTY "$(export_of PARTY)"
+            put CANTON_TOKEN_REGISTRY_URL "${CANTON_LOCALNET_SCAN_URL}"
+            put CANTON_PQS_URL "host=$(export_of PQS_HOST) port=$(export_of PQS_PORT) user=$(export_of PQS_USER) password=$(export_of PQS_PASSWORD) dbname=$(export_of PQS_DATABASE)"
           } >> "$GITHUB_ENV"
 
       - name: Verify the quickstart-licensing DAR and upload it with curl
@@ -80,6 +90,12 @@ jobs:
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/octet-stream" \
             --data-binary "@${LICENSING_DAR}"
+          # The .sha256 only proves the DAR matches itself. Tie it to the bindings: the
+          # participant must now hold the main package id canton-quickstart-licensing pins.
+          pkg=$(grep -A1 -m1 'const PACKAGE_ID' crates/canton-quickstart-licensing/src/lib.rs | grep -oE '[0-9a-f]{64}')
+          curl -fsS "$CANTON_TEST_JSON_ENDPOINT/v2/packages" -H "Authorization: Bearer $token" \
+            | jq -e --arg id "$pkg" 'any(.packageIds[]; . == $id)' >/dev/null || {
+            echo "::error::the participant does not hold $pkg after the upload; the committed DAR is not the one canton-quickstart-licensing was generated from"; exit 1; }
           echo "CANTON_TEST_LICENSING_PKG=#quickstart-licensing" >> "$GITHUB_ENV"
 
       - name: Fund the validator wallet with Amulet
