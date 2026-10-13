@@ -28,9 +28,15 @@
 //! This runs the **sender's** half: it allocates. Settling is the executor's,
 //! from their own participant with their own credentials — the point of the
 //! pattern is that the two are different principals, so one process holding
-//! both would be demonstrating nothing. `CANTON_TOKEN_SETTLE=1` prints what the
-//! executor would exercise and the allocation's own contract id, which is what
-//! their side needs.
+//! both would be demonstrating nothing. The run prints the settlement id and
+//! the allocation's contract id, which is what the other sides need.
+//!
+//! A leg settles only when *both* of its sides are authorised, so when the
+//! receiver is a different party it consents with an allocation of its own:
+//! `CANTON_TOKEN_SIDE=receiver`, run as the receiver with its own credentials,
+//! with `CANTON_TOKEN_SETTLEMENT_ID` set to the id the sender's run printed.
+//! Nothing of the receiver's is reserved, so it names no holdings. Then the
+//! executor runs `v2_settle`, which settles both allocations as one batch.
 //!
 //! `CANTON_TOKEN_DRY_RUN=1` stops after building the command.
 
@@ -96,14 +102,9 @@ async fn pick_holdings<T>(
     sender: &str,
     instrument_id: &str,
 ) -> Result<Vec<rt::ContractId<T>>, Box<dyn std::error::Error>> {
-    let raw = std::env::var("CANTON_TOKEN_HOLDINGS").unwrap_or_default();
-    if !raw.trim().is_empty() {
-        return Ok(raw
-            .split(',')
-            .map(str::trim)
-            .filter(|id| !id.is_empty())
-            .map(|id| rt::ContractId::new(id.to_string()))
-            .collect());
+    let named = named_holdings();
+    if !named.is_empty() {
+        return Ok(named);
     }
     let spendable = canton_token::holdings::spendable(client, sender, instrument_id).await?;
     if spendable.is_empty() {
@@ -126,6 +127,75 @@ impl HoldingSummaryExt for canton_token::holdings::HoldingSummary {
     }
 }
 
+/// The holdings `CANTON_TOKEN_HOLDINGS` names (comma-separated contract ids),
+/// or none.
+fn named_holdings<T>() -> Vec<rt::ContractId<T>> {
+    std::env::var("CANTON_TOKEN_HOLDINGS")
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(|id| rt::ContractId::new(id.to_string()))
+        .collect()
+}
+
+/// Which side of the leg this run allocates: `CANTON_TOKEN_SIDE=receiver` for
+/// the receiver's consent, otherwise the sender's reservation.
+fn receiver_side() -> Result<bool, String> {
+    match std::env::var("CANTON_TOKEN_SIDE").as_deref() {
+        Err(_) | Ok("sender") => Ok(false),
+        Ok("receiver") => Ok(true),
+        Ok(other) => Err(format!(
+            "CANTON_TOKEN_SIDE is `sender` or `receiver`, not `{other}`"
+        )),
+    }
+}
+
+/// Both sides of a leg must name the same settlement, so the receiver joins
+/// the one the sender's run created rather than starting its own.
+fn settlement_id(receiving: bool, now: i64) -> Result<String, String> {
+    match std::env::var("CANTON_TOKEN_SETTLEMENT_ID") {
+        Ok(id) => Ok(id),
+        Err(_) if receiving => Err("the receiver's side joins the sender's settlement: set \
+                                    CANTON_TOKEN_SETTLEMENT_ID to the id the sender's run printed"
+            .to_string()),
+        Err(_) => Ok(format!("dvp-{now}")),
+    }
+}
+
+/// The sides of the one leg this allocation authorises.
+///
+/// `SenderSide` says these are the authorizer's holdings being reserved for the
+/// other account; `ReceiverSide` is the receiver's consent to be paid. Settling
+/// needs *both* sides of a leg authorised, and a transfer pre-approval does not
+/// stand in for the receiver's. When the sender is also the receiver, one
+/// allocation carries both sides.
+fn leg_sides(
+    receiving: bool,
+    sender: &rt::Party,
+    receiver: &rt::Party,
+    amount: &rt::Numeric,
+    instrument_id: &str,
+) -> Vec<al::TransferLegSide> {
+    let side = |side, otherside: &rt::Party| al::TransferLegSide {
+        transfer_leg_id: "leg-1".to_string(),
+        side,
+        otherside: account(otherside.clone()),
+        amount: amount.clone(),
+        instrument_id: instrument_id.to_string(),
+        meta: no_meta(),
+    };
+    if receiving {
+        return vec![side(al::TransferSide::ReceiverSide, sender)];
+    }
+    let mut sides = vec![side(al::TransferSide::SenderSide, receiver)];
+    if receiver == sender {
+        sides.push(side(al::TransferSide::ReceiverSide, sender));
+        println!("receiver = sender: authorising both sides of the leg in this allocation");
+    }
+    sides
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let registry = RegistryClient::new(&var("CANTON_TOKEN_REGISTRY_URL")?)?;
@@ -139,9 +209,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         CantonClient::connect_lazy(authenticate(Config::new(var("CANTON_TEST_ENDPOINT")?)))?;
     let receiver = rt::Party::parse(&var("CANTON_TOKEN_RECEIVER")?)?;
     let executor = rt::Party::parse(&var("CANTON_TOKEN_EXECUTOR")?)?;
+    let receiving = receiver_side()?;
+    // The party whose allocation this is, and who submits it.
+    let authorizer = if receiving { &receiver } else { &sender };
     println!("sender:         {sender}");
     println!("receiver:       {receiver}");
     println!("executor:       {executor}");
+    println!(
+        "side:           {}",
+        if receiving { "receiver" } else { "sender" }
+    );
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
@@ -154,45 +231,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // that every leg of a batch was allocated for this one and not another.
     let settlement = al::SettlementInfo {
         executors: vec![executor.clone()],
-        id: format!("dvp-{now}"),
+        id: settlement_id(receiving, now)?,
         // A contract standing for the off-ledger agreement, when there is one.
         cid: None,
         meta: no_meta(),
     };
 
-    // The sender's side of one leg: this much of this instrument, to that
-    // account. `TransferSide::SenderSide` is what says these are *our* holdings
-    // being reserved rather than someone else's being expected.
     let amount: rt::Numeric = var("CANTON_TOKEN_AMOUNT")?.parse()?;
-    let leg = al::TransferLegSide {
-        transfer_leg_id: "leg-1".to_string(),
-        side: al::TransferSide::SenderSide,
-        otherside: account(receiver.clone()),
-        amount: amount.clone(),
-        instrument_id: instrument_id.clone(),
-        meta: no_meta(),
-    };
-    // Settling needs *both* sides of a leg authorised — the receiver consents
-    // with a `ReceiverSide` allocation of its own, and a transfer pre-approval
-    // does not stand in for it. When the sender is also the receiver, one
-    // allocation can carry both sides.
-    let mut transfer_leg_sides = vec![leg];
-    if receiver == sender {
-        transfer_leg_sides.push(al::TransferLegSide {
-            transfer_leg_id: "leg-1".to_string(),
-            side: al::TransferSide::ReceiverSide,
-            otherside: account(sender.clone()),
-            amount,
-            instrument_id: instrument_id.clone(),
-            meta: no_meta(),
-        });
-        println!("receiver = sender: authorising both sides of the leg in this allocation");
-    }
+    let transfer_leg_sides = leg_sides(receiving, &sender, &receiver, &amount, &instrument_id);
 
     let allocation = al::AllocationSpecification {
         admin: admin.clone(),
-        // Whose holdings back this. The sender authorizes, so it is theirs.
-        authorizer: account(sender.clone()),
+        // Whose allocation this is: the sender's holdings back the sender's
+        // side, and the receiver's side is the receiver's consent.
+        authorizer: account(authorizer.clone()),
         transfer_leg_sides,
         // After this the executor can no longer settle and the sender's
         // holdings are theirs again. Absent means no deadline, which is a
@@ -204,8 +256,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         meta: no_meta(),
     };
 
-    let holdings: Vec<rt::ContractId<h::Holding>> =
-        pick_holdings(&client, sender.as_str(), &instrument_id).await?;
+    // The receiver reserves nothing, so it names no holdings unless told to.
+    let holdings: Vec<rt::ContractId<h::Holding>> = if receiving {
+        named_holdings()
+    } else {
+        pick_holdings(&client, sender.as_str(), &instrument_id).await?
+    };
 
     let command = canton_token::v2::allocate(
         &registry,
@@ -213,7 +269,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         allocation,
         rt::Timestamp(now),
         holdings,
-        vec![sender.clone()],
+        vec![authorizer.clone()],
     )
     .await?;
     println!(
@@ -227,7 +283,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let transaction = client
-        .submit_and_wait_for_transaction(command.into_submit(sender.as_str()))
+        .submit_and_wait_for_transaction(command.into_submit(authorizer.as_str()))
         .await?;
     println!(
         "allocated:      {} at offset {} with {} event(s)",
