@@ -495,7 +495,7 @@ settlement dvp-1790073604041114: 1 allocation(s), 1 leg(s)
   settled: 12206f9fa56dbc7208b1534bfed792427d3d7314cb22db4bbaa1bf2f5ba69aeb9092 at offset 326 with 4 event(s)
 exit=0
 ### step 7: pqs
- Container pqs-scribe-1 Started 
+ Container pqs-scribe-1 Started
 pqs ready at offset 326
 test a_refused_connection_is_not_retried_forever ... ok
 test pqs_reports_how_far_it_has_ingested ... ok
@@ -665,3 +665,113 @@ synchronizer's.
 | `v2_withdraw_allocation` | `1220d6cddeee588d4a5573fb8caf152397a0168f94bc482e190d3e327cabb6bba22b` | 3874175 | 2026-09-29T10:09:17.353045Z |
 | `v2_allocate` | `122077f9e709bb1fa02111f62b75dfd3a4ae108de95d999dd8942dee89b9db923eff` | 3874181 | 2026-09-29T10:09:22.243755Z |
 | `v2_settle` | `12209cdb5421ab0a1791651d6a637726abc5e1505caef97fc1edf94a0311aad24610` | 3874198 | 2026-09-29T10:09:28.453035Z |
+
+# V2 settlement between three parties on three participants, 2026-10-13
+
+The settlements above have one party as sender, receiver and executor. This
+run has three, each on its own participant and each submitting its own step
+with its own participant's token: the sender reserves its holding, the
+receiver consents to be paid, and the executor settles both allocations as one
+batch through Amulet's settlement factory.
+
+| | |
+|---|---|
+| LocalNet | Canton Builder Tool (Canton 3.5.7) with the App User validator added (`canton builder start --with app-user`): three participants on one synchronizer |
+| Registry | the LocalNet's own Scan, `http://scan.localhost:4000`; instrument Amulet, amount 1.0 |
+| Code | `main` plus the receiver's mode of `v2_allocate` (`CANTON_TOKEN_SIDE=receiver`); the SDK library is unchanged since `v0.3.1` |
+
+| Role | Party | Participant | Step |
+|---|---|---|---|
+| Sender | `app_provider_builder-localnet-1::122050a3…` | app-provider, `:3901` | `v2_allocate`: the sender's side, one holding reserved |
+| Receiver | `app_user_builder-localnet-1::12201187…` | app-user, `:2901` | `v2_allocate` with `CANTON_TOKEN_SIDE=receiver` and the sender's settlement id: the receiver's side |
+| Executor | `sv::1220e8c9…` | sv, `:4901` | `v2_settle`: both allocations settled as one batch |
+
+## Commands
+
+```sh
+export CANTON_TOKEN_REGISTRY_URL=http://scan.localhost:4000 CANTON_TOKEN_INSTRUMENT=Amulet CANTON_TOKEN_AMOUNT=1.0
+export CANTON_TOKEN_SENDER='<app_provider party>' CANTON_TOKEN_RECEIVER='<app_user party>' CANTON_TOKEN_EXECUTOR='<sv party>'
+
+# 1. the sender, on the app-provider participant
+CANTON_TOKEN=$(canton builder token --validator app-provider) CANTON_TEST_ENDPOINT=http://localhost:3901 \
+  cargo run -p canton-token --example v2_allocate            # prints the settlement id
+
+# 2. the receiver, on the app-user participant
+CANTON_TOKEN=$(canton builder token --validator app-user) CANTON_TEST_ENDPOINT=http://localhost:2901 \
+  CANTON_TOKEN_SIDE=receiver CANTON_TOKEN_SETTLEMENT_ID='<settlement id>' \
+  cargo run -p canton-token --example v2_allocate
+
+# 3. the executor, on the sv participant
+CANTON_TOKEN=$(canton builder token --validator sv) CANTON_TEST_ENDPOINT=http://localhost:4901 \
+  CANTON_TOKEN_SETTLEMENT='<settlement id>' cargo run -p canton-token --example v2_settle
+```
+
+The balances before and after are each party's Amulet holdings, read from its
+own participant's JSON Ledger API through the `Holding` interface.
+
+## Output
+
+```text
+### V2 DvP, three parties on three participants, 1e933c8 2026-10-13T11:20:38Z
+  sender   app_provider_builder-localnet-1::…  (app-provider participant, :3901)
+  receiver app_user_builder-localnet-1::…  (app-user participant, :2901)
+  executor sv::…  (sv participant, :4901)
+--- before: sender 1 holding(s), 190320.3200000000 Amulet; receiver 0 holding(s), 0 Amulet
+--- 1. sender allocates its side (app-provider token)
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    sender:         app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver:       app_user_builder-localnet-1::12201187a79fd5e9d82a80c85a0460893193edf9adc696e37ccde66a2343d328f246
+    executor:       sv::1220e8c961fae7b4034ce31a84388aeb59cc00c8089a9af03aa1cafb0649d328d861
+    side:           sender
+    holdings:       1 unlocked holding(s) of Amulet read from the ledger
+    disclosing:     2 contract(s) the registry named
+    allocated:      1220973efa56a4f1abaa2e7fa19a9749da150ab06eb54e6063a80039cbf7e8c398f9 at offset 13781 with 6 event(s)
+
+    the executor settles this batch with:
+      settlement id: dvp-1791890468907761
+      executor:      sv::1220e8c961fae7b4034ce31a84388aeb59cc00c8089a9af03aa1cafb0649d328d861
+      v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+      created:       00890f7477f223e750268c59f9f8c340c8a34c34f0da952ab2677c843661082cf8ca121220e2b9a78989677f876939365cf13d71e356b97241b7b4ef64db9a4122c7c2a35d
+      created:       00ad91eece6966cfdcffa618aa0cf5a50d03d200ba9e8b320789989af28c16aca3ca121220b4670ec236fead19ed728943c4add0008f01b628b7f7771deaf19b3fda52fc49
+      created:       007360ee16c857b9062e5490a0a7b6e86098395a89110f2b997f319365d5497fe2ca1212209f68e83c33c641059f59466a9ae706cfafd9475ef7c0f21270f7106590c19069
+--- 2. receiver allocates its side of dvp-1791890468907761 (app-user token)
+    registry admin: DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad
+    sender:         app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+    receiver:       app_user_builder-localnet-1::12201187a79fd5e9d82a80c85a0460893193edf9adc696e37ccde66a2343d328f246
+    executor:       sv::1220e8c961fae7b4034ce31a84388aeb59cc00c8089a9af03aa1cafb0649d328d861
+    side:           receiver
+    disclosing:     2 contract(s) the registry named
+    allocated:      1220e7606e818594c8af1c4cb7ea7f1fc1bd405adc6d4ca743ff7427e469b7c43fc0 at offset 181 with 2 event(s)
+
+    the executor settles this batch with:
+      settlement id: dvp-1791890468907761
+      executor:      sv::1220e8c961fae7b4034ce31a84388aeb59cc00c8089a9af03aa1cafb0649d328d861
+      v2::settle_batch(&registry, settlement, transfer_legs, allocations, vec![executor])
+      created:       00296653c978314158feffc8e08da6f023947fed7b2e43657fae6c02d4ef1556f6ca121220e293f9c24e71953a778797f12bbe3f55e56cf6d5c28037160d0074fd9f5b6858
+--- 3. executor settles dvp-1791890468907761 (sv token)
+    executor:    sv::1220e8c961fae7b4034ce31a84388aeb59cc00c8089a9af03aa1cafb0649d328d861
+    allocations: 2 naming it as executor
+    settlement dvp-1791890468907761: 2 allocation(s), 1 leg(s)
+      leg leg-1: app_provider_builder-localnet-1::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e -> app_user_builder-localnet-1::12201187a79fd5e9d82a80c85a0460893193edf9adc696e37ccde66a2343d328f246 : 1.0000000000 Amulet
+      disclosing 3 contract(s) the registry named
+      settled: 122062792e2766b8b39d77d65f16e2027586cb61a181c1107113f8efd144f5f54dfd at offset 23299 with 9 event(s)
+--- after: sender 1 holding(s), 190319.3200000000 Amulet; receiver 1 holding(s), 1.0000000000 Amulet
+### done 2026-10-13T11:21:14Z
+```
+
+## Read back from each participant by update id
+
+The settlement is one transaction on the synchronizer, so the three
+participants report the same record time at their own offsets.
+
+| Update | Read as | Participant | Offset | Record time |
+|---|---|---|---|---|
+| sender's allocation `1220973efa56a4f1abaa…` | sender | app-provider | 13781 | 2026-10-13T11:21:09.453125Z |
+| receiver's allocation `1220e7606e818594c8af…` | receiver | app-user | 181 | 2026-10-13T11:21:11.201934Z |
+| settlement `122062792e2766b8b39d…` | sender | app-provider | 13784 | 2026-10-13T11:21:13.592559Z |
+| settlement `122062792e2766b8b39d…` | receiver | app-user | 184 | 2026-10-13T11:21:13.592559Z |
+| settlement `122062792e2766b8b39d…` | executor | sv | 23299 | 2026-10-13T11:21:13.592559Z |
+
+The sender ends 1 Amulet lower and the receiver, which held none, holds 1
+Amulet: the leg moved between two parties on two participants, settled by a
+third.
