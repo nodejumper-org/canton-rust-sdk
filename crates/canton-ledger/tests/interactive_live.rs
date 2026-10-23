@@ -370,7 +370,7 @@ async fn external_commands__prepare_sign_execute_commits_under_hashing_scheme_v3
         "committed under V3: {} at offset {}",
         transaction.update_id, transaction.offset
     );
-    assert!(!transaction.events.is_empty());
+    assert_ne!(transaction.events, [] as [canton_ledger::proto::Event; 0]);
 }
 
 /// Prepare, sign and commit `command` as `party` under hashing scheme V3,
