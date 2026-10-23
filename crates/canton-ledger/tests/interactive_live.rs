@@ -330,6 +330,49 @@ async fn external_commands__prepare_sign_execute_commits_a_transaction() {
     );
 }
 
+/// The same round trip under hashing scheme V3, the one contract keys need:
+/// the SDK recomputes the participant's V3 hash before anything is signed, so
+/// a commit here means the two agree on the bytes.
+#[tokio::test]
+async fn external_commands__prepare_sign_execute_commits_under_hashing_scheme_v3() {
+    use canton_ledger::proto::interactive::HashingSchemeVersion;
+
+    let Some(ledger) = ledger_client() else {
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET)"
+        );
+        return;
+    };
+    let Some((party, signer)) = external_party("rust-sdk-v3").await else {
+        skip!("the participant refused or lacks the admin right to onboard an external party");
+        return;
+    };
+    let command = a_command_only_the_party_signs(&party);
+
+    let prepared = ledger
+        .prepare_submission(
+            Prepare::new(&party)
+                .add_command(command)
+                .with_hashing_scheme_version(HashingSchemeVersion::V3),
+        )
+        .await
+        .expect("the participant prepares under V3 and its hash matches the SDK's");
+    assert_eq!(prepared.hashing_scheme_version(), HashingSchemeVersion::V3);
+
+    let executable = prepared
+        .sign_with(&signer)
+        .await
+        .expect("the in-memory key signs");
+    let transaction = Box::pin(ledger.execute_submission_and_wait_for_transaction(executable))
+        .await
+        .expect("the participant accepts the V3 signature and commits");
+    println!(
+        "committed under V3: {} at offset {}",
+        transaction.update_id, transaction.offset
+    );
+    assert!(!transaction.events.is_empty());
+}
+
 /// A signature by the wrong key must be refused. Without this the round-trip
 /// test above proves only that *something* was accepted — not that the
 /// signature is what carried it.

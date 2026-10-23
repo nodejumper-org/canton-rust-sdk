@@ -592,6 +592,7 @@ impl CantonClient {
         // dropping it here would silently return a narrower transaction.
         let read_as = prepare.read_as().to_vec();
         let requested_scheme = prepare.requested_hashing_scheme();
+        let trust_participant_hash = prepare.trusts_participant_hash();
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -609,6 +610,7 @@ impl CantonClient {
             crate::interactive::Prepared::from_response(
                 response,
                 requested_scheme,
+                trust_participant_hash,
                 act_as,
                 read_as,
                 command_id,

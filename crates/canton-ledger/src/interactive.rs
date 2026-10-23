@@ -59,6 +59,7 @@ pub struct Prepare {
     hashing_scheme_version: Option<i32>,
     taps_max_passes: Option<u32>,
     estimate_traffic_cost: bool,
+    trust_participant_hash: bool,
 }
 
 impl Prepare {
@@ -95,6 +96,7 @@ impl Prepare {
             // The participant estimates by default; only an explicit opt-out
             // is sent, so leaving this alone changes nothing.
             estimate_traffic_cost: true,
+            trust_participant_hash: false,
         }
     }
 
@@ -218,14 +220,33 @@ impl Prepare {
         self
     }
 
-    /// Choose the hashing scheme (defaults to the participant's, `V2`).
+    /// Choose the hashing scheme. Defaults to `V2`, which this SDK asks for
+    /// explicitly rather than leaving to the participant; a transaction that
+    /// uses contract keys needs `V3`.
     ///
     /// The scheme decides what the hash covers, so it is echoed in the response
     /// and sent back with the signature — the participant must verify under the
-    /// same scheme it hashed with.
+    /// same scheme it hashed with. Under `V2` and `V3` the SDK recomputes the
+    /// hash from the prepared transaction and refuses a response whose hash is
+    /// of something else. Any other scheme is refused unless
+    /// [`trust_participant_hash`](Self::trust_participant_hash) is set.
     #[must_use]
     pub fn with_hashing_scheme_version(mut self, version: ipb::HashingSchemeVersion) -> Self {
         self.hashing_scheme_version = Some(version as i32);
+        self
+    }
+
+    /// Sign the participant's hash as it returns it, for a hashing scheme this
+    /// SDK cannot recompute (anything but `V2` and `V3`).
+    ///
+    /// Without this a prepared transaction hashed under such a scheme is
+    /// refused: the hash is what the signature covers, and an unchecked one
+    /// signs whatever the participant hashed, which need not be the
+    /// transaction it returned. Setting it accepts that for this submission.
+    /// It does not switch off the check under `V2` and `V3`.
+    #[must_use]
+    pub fn trust_participant_hash(mut self) -> Self {
+        self.trust_participant_hash = true;
         self
     }
 
@@ -279,6 +300,12 @@ impl Prepare {
     pub(crate) fn requested_hashing_scheme(&self) -> Option<ipb::HashingSchemeVersion> {
         self.hashing_scheme_version
             .and_then(|v| ipb::HashingSchemeVersion::try_from(v).ok())
+    }
+
+    /// Whether the caller accepted an unchecked hash for a scheme the SDK
+    /// cannot recompute.
+    pub(crate) fn trusts_participant_hash(&self) -> bool {
+        self.trust_participant_hash
     }
 
     pub(crate) fn into_request(self) -> (String, Option<String>, ipb::PrepareSubmissionRequest) {
@@ -351,18 +378,18 @@ fn min_ledger_time(
 ///
 /// # What signing this does and does not prove
 ///
-/// The hash is the **preparing participant's word**. This crate does not
-/// recompute it from [`transaction`](Self::transaction), so signing a
-/// `Prepared` authorizes whatever that participant hashed, which is not
-/// necessarily what [`transaction`](Self::transaction) shows.
+/// Under hashing schemes `V2` and `V3` the SDK recomputes the hash from
+/// [`transaction`](Self::transaction) (`crate::hashing`, checked against
+/// Canton's own vectors) and refuses a response whose hash is of something
+/// else, so the signature covers the transaction the caller can read. Under
+/// any other scheme a `Prepared` exists only if the caller set
+/// [`Prepare::trust_participant_hash`], and then the hash is the **preparing
+/// participant's word**: signing it authorizes whatever that participant
+/// hashed.
 ///
-/// The Ledger API is explicit about the two obligations that follow, and both
-/// are the caller's:
-///
-/// * show the transaction to whoever authorizes it, before signing;
-/// * **recompute the hash from the transaction if the participant is not
-///   trusted** — the API calls the hash "provided for convenience" for exactly
-///   this reason.
+/// One obligation stays the caller's under every scheme: show the transaction
+/// to whoever authorizes it before signing. The hash proves what is signed,
+/// not that it was meant.
 ///
 /// Every hashing scheme the participant offers is a SHA-256, so its hash is
 /// 32 bytes; anything else is not a hash this SDK knows how to sign for.
@@ -387,6 +414,7 @@ impl Prepared {
     pub(crate) fn from_response(
         response: ipb::PrepareSubmissionResponse,
         requested_scheme: Option<ipb::HashingSchemeVersion>,
+        trust_participant_hash: bool,
         act_as: Vec<String>,
         read_as: Vec<String>,
         command_id: String,
@@ -408,11 +436,9 @@ impl Prepared {
                 "prepare returned no transaction hash".to_string(),
             ));
         }
-        // What the signer is handed is trusted from the participant (see the
-        // struct docs), so the little that can be checked here is checked:
-        // the hash is one the SDK knows the shape of, under the scheme that
-        // was asked for. A participant answering under another scheme, or with
-        // a hash of another length, is not one to sign for.
+        // The hash must be one the SDK knows the shape of, under the scheme
+        // that was asked for. A participant answering under another scheme,
+        // or with a hash of another length, is not one to sign for.
         let scheme = ipb::HashingSchemeVersion::try_from(response.hashing_scheme_version)
             .ok()
             .filter(|s| *s != ipb::HashingSchemeVersion::Unspecified)
@@ -434,12 +460,15 @@ impl Prepared {
             )));
         }
         // The hash is what gets signed, so it is not taken on trust: under
-        // the scheme this SDK implements it is recomputed from the transaction
-        // the caller can read, and a participant whose hash is of something
-        // else is refused. A caller that asked for another scheme explicitly
-        // has accepted the participant's hash as it is.
-        if scheme == ipb::HashingSchemeVersion::V2 {
-            let recomputed = crate::hashing::hash_prepared_transaction_v2(transaction)
+        // the schemes this SDK implements it is recomputed from the
+        // transaction the caller can read, and a participant whose hash is of
+        // something else is refused. Under any other scheme it cannot be
+        // checked, and is signed as returned only if the caller said so.
+        if matches!(
+            scheme,
+            ipb::HashingSchemeVersion::V2 | ipb::HashingSchemeVersion::V3
+        ) {
+            let recomputed = crate::hashing::hash_prepared_transaction(transaction, scheme)
                 .map_err(|e| {
                     Error::UnexpectedResponse(format!(
                         "the prepared transaction cannot be hashed, so its hash cannot be checked: {e}"
@@ -452,11 +481,18 @@ impl Prepared {
                         .to_string(),
                 ));
             }
-        } else {
+        } else if trust_participant_hash {
             tracing::warn!(
                 ?scheme,
-                "hashing scheme requested explicitly; the participant's hash is signed as returned"
+                "the SDK cannot recompute this hashing scheme; the participant's hash is signed \
+                 as returned, as the caller asked"
             );
+        } else {
+            return Err(Error::UnexpectedResponse(format!(
+                "prepare hashed under {scheme:?}, which this SDK cannot recompute (it checks V2 \
+                 and V3); refusing to sign an unchecked hash. Prepare::trust_participant_hash() \
+                 signs it as returned"
+            )));
         }
         Ok(Self {
             transaction: response.prepared_transaction,
@@ -907,6 +943,7 @@ mod tests {
                 cost_estimation: None,
             },
             Some(ipb::HashingSchemeVersion::V2),
+            false,
             act_as,
             Vec::new(),
             "command-1".to_string(),
@@ -928,6 +965,7 @@ mod tests {
                 cost_estimation: None,
             },
             None,
+            false,
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
@@ -953,6 +991,7 @@ mod tests {
                 cost_estimation: None,
             },
             None,
+            false,
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
@@ -980,6 +1019,7 @@ mod tests {
         let err = Prepared::from_response(
             response,
             requested,
+            false,
             vec!["alice".to_string()],
             Vec::new(),
             "command-1".to_string(),
@@ -1038,6 +1078,86 @@ mod tests {
             message.contains("not the hash of the transaction"),
             "{message}"
         );
+    }
+
+    fn accepted(
+        response: ipb::PrepareSubmissionResponse,
+        requested: ipb::HashingSchemeVersion,
+        trust_participant_hash: bool,
+    ) -> Result<Prepared> {
+        Prepared::from_response(
+            response,
+            Some(requested),
+            trust_participant_hash,
+            vec!["alice".to_string()],
+            Vec::new(),
+            "command-1".to_string(),
+            None,
+        )
+    }
+
+    /// V3, the scheme contract keys need, is recomputed the way V2 is: its own
+    /// hash is accepted and any other refused.
+    #[test]
+    fn v3_is_recomputed_and_held_to_the_transaction() {
+        let (transaction, _) = hashable(&["alice".to_string()], "command-1");
+        let hash = crate::hashing::hash_prepared_transaction_v3(&transaction)
+            .unwrap()
+            .to_vec();
+        let ok = accepted(
+            response_with(hash.clone(), ipb::HashingSchemeVersion::V3 as i32),
+            ipb::HashingSchemeVersion::V3,
+            false,
+        );
+        assert!(ok.is_ok(), "{ok:?}");
+
+        let mut wrong = hash;
+        wrong[0] ^= 0xff;
+        let message = refused(
+            response_with(wrong, ipb::HashingSchemeVersion::V3 as i32),
+            Some(ipb::HashingSchemeVersion::V3),
+        );
+        assert!(
+            message.contains("not the hash of the transaction"),
+            "{message}"
+        );
+    }
+
+    /// A scheme the SDK cannot recompute is refused unless the caller opted
+    /// into signing the participant's hash as returned.
+    #[test]
+    fn an_unverifiable_scheme_needs_the_caller_to_trust_the_participant() {
+        let message = refused(
+            response_with(vec![7; 32], ipb::HashingSchemeVersion::V4 as i32),
+            Some(ipb::HashingSchemeVersion::V4),
+        );
+        assert!(message.contains("trust_participant_hash"), "{message}");
+
+        let trusted = accepted(
+            response_with(vec![7; 32], ipb::HashingSchemeVersion::V4 as i32),
+            ipb::HashingSchemeVersion::V4,
+            true,
+        )
+        .expect("the caller accepted an unchecked hash");
+        assert_eq!(trusted.hash(), [7; 32]);
+
+        // The opt-in does not switch the check off where the SDK can run it.
+        let (_, mut hash) = hashable(&["alice".to_string()], "command-1");
+        hash[0] ^= 0xff;
+        let err = accepted(
+            response_with(hash, ipb::HashingSchemeVersion::V2 as i32),
+            ipb::HashingSchemeVersion::V2,
+            true,
+        )
+        .expect_err("a wrong V2 hash is refused even when trusting");
+        assert!(err.to_string().contains("not the hash"), "{err}");
+
+        assert!(
+            Prepare::new("alice")
+                .trust_participant_hash()
+                .trusts_participant_hash()
+        );
+        assert!(!Prepare::new("alice").trusts_participant_hash());
     }
 
     #[test]
@@ -1375,6 +1495,7 @@ mod tests {
                 }),
             },
             Some(ipb::HashingSchemeVersion::V2),
+            false,
             vec!["alice".to_string()],
             vec!["carol".to_string()],
             "command-7".to_string(),

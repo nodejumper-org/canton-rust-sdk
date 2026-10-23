@@ -116,7 +116,7 @@ jobs:
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger live test(s) were ignored"; exit 1; }
 
-      - name: Run canton-ledger interactive submission suite, expecting 3 passed and 0 ignored
+      - name: Run canton-ledger interactive submission suite, expecting 4 passed and 0 ignored
         env:
           CANTON_TEST_REQUIRE_LIVE: "1"
         run: |
@@ -126,8 +126,8 @@ jobs:
                    /tmp/canton-ledger-interactive_live.log)
           ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
-          [ "$ran" -eq 3 ] || {
-            echo "::error::canton-ledger interactive_live ran $ran tests, expected 3"; exit 1; }
+          [ "$ran" -eq 4 ] || {
+            echo "::error::canton-ledger interactive_live ran $ran tests, expected 4"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger interactive_live test(s) were ignored"; exit 1; }
 
