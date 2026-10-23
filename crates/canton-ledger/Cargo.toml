@@ -24,6 +24,10 @@ canton-auth  = { workspace = true }
 # dependant pinning the default would have forced `ring` on every HSM
 # deployment in the tree, which is what it did.
 canton-signer = { workspace = true }
+# `update` decodes payloads into generated types with the runtime's codecs, and
+# the JSON API's `createdEventBlob` is base64.
+canton-daml  = { workspace = true }
+base64       = { workspace = true }
 # The hash a prepared transaction is signed over is recomputed here rather
 # than taken from the participant.
 sha2         = { workspace = true }
@@ -80,6 +84,9 @@ canton-proto = { workspace = true, features = ["server"] }
 # port, which is what the submit → observe → query flow test needs.
 tonic        = { workspace = true, features = ["transport", "codegen", "router"] }
 tokio-stream = { workspace = true, features = ["net"] }
+# A mock participant answers `UPDATE_NOT_FOUND` the way Canton does: as an
+# `ErrorInfo` detail on the status, which is what the point reads key on.
+tonic-types  = { workspace = true }
 rcgen = "0.13"
 # The trace-propagation test needs a real OpenTelemetry context to propagate:
 # without a tracer installed there is no trace id, and the test would pass on a

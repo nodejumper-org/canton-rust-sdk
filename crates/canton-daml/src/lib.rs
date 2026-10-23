@@ -803,6 +803,7 @@ mod tests {
                 module_name: AppInstall::MODULE_NAME.to_string(),
                 entity_name: AppInstall::ENTITY_NAME.to_string(),
             }),
+            package_name: AppInstall::PACKAGE_NAME.to_string(),
             create_arguments: Some(record),
             ..Default::default()
         };
@@ -817,6 +818,13 @@ mod tests {
         let error = AppInstall::from_created_event(&wrong).unwrap_err();
         assert!(error.message().contains("SomethingElse"), "{error}");
         assert!(error.message().contains("AppInstall"), "{error}");
+
+        // The same module and entity from another package is another
+        // template, however well its payload fits.
+        let mut foreign = event.clone();
+        foreign.package_name = "someone-elses-app".to_string();
+        let error = AppInstall::from_created_event(&foreign).unwrap_err();
+        assert!(error.message().contains("someone-elses-app"), "{error}");
 
         // No payload is a typed error.
         let mut empty = event.clone();
@@ -851,6 +859,7 @@ mod tests {
         let event = json!({"CreatedEvent": {
             "contractId": "00abc",
             "templateId": "somepackage:Licensing.AppInstall:AppInstall",
+            "packageName": "app-install",
             "createArgument": payload,
         }});
         let decoded = AppInstall::from_json_created_event(&event).unwrap();
@@ -860,6 +869,7 @@ mod tests {
         // Bare, the way an ACS entry's `createdEvent` arrives once unwrapped.
         let bare = json!({
             "templateId": "somepackage:Licensing.AppInstall:AppInstall",
+            "packageName": "app-install",
             "createArgument": payload,
         });
         assert!(AppInstall::from_json_created_event(&bare).is_ok());
@@ -869,6 +879,7 @@ mod tests {
         // whole reason the gRPC path checks, and the reason this one must.
         let impostor = json!({"CreatedEvent": {
             "templateId": "somepackage:Other.Module:SomethingElse",
+            "packageName": "app-install",
             "createArgument": payload,
         }});
         let error = AppInstall::from_json_created_event(&impostor)
@@ -883,9 +894,21 @@ mod tests {
         // version it vetted, so pinning it would reject a legitimate upgrade.
         let upgraded = json!({"CreatedEvent": {
             "templateId": "adifferentpackageid:Licensing.AppInstall:AppInstall",
+            "packageName": "app-install",
             "createArgument": payload,
         }});
         assert!(AppInstall::from_json_created_event(&upgraded).is_ok());
+
+        // The package **name** is compared: the same module and entity from an
+        // unrelated package is a different template.
+        let foreign = json!({"CreatedEvent": {
+            "templateId": "adifferentpackageid:Licensing.AppInstall:AppInstall",
+            "packageName": "someone-elses-app",
+            "createArgument": payload,
+        }});
+        let error = AppInstall::from_json_created_event(&foreign)
+            .expect_err("another package must not decode");
+        assert!(error.to_string().contains("someone-elses-app"), "{error}");
 
         // No payload at all is an error, not a default-constructed value.
         let empty = json!({"CreatedEvent": {"contractId": "00abc"}});

@@ -978,6 +978,167 @@ async fn both_transports_describe_the_same_failure_identically() {
     );
 }
 
+/// Reading a committed transaction back by its id and by its offset, on both
+/// transports, without scanning a stream; and "not there" is `None`, not an
+/// error.
+#[tokio::test]
+async fn point_reads_find_a_committed_transaction_by_id_and_by_offset() {
+    use canton_ledger::proto::get_update_response::Update;
+    let (Some((client, party, pkg)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("point reads: no endpoints, credentials, party or package");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("point reads: no credentials in the environment");
+        return;
+    };
+    let committed = client
+        .submit_and_wait_for_transaction(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("a create commits");
+
+    let by_id = client
+        .update_by_id(committed.update_id.clone(), vec![party.clone()])
+        .await
+        .expect("read by id");
+    let Some(Update::Transaction(by_id)) = by_id else {
+        panic!("the update id names a transaction: {by_id:?}");
+    };
+    assert_eq!(by_id.offset, committed.offset);
+    let by_offset = client
+        .update_by_offset(committed.offset, vec![party.clone()])
+        .await
+        .expect("read by offset");
+    let Some(Update::Transaction(by_offset)) = by_offset else {
+        panic!("the offset holds a transaction: {by_offset:?}");
+    };
+    assert_eq!(by_offset.update_id, committed.update_id);
+
+    let json_by_id = json
+        .update_by_id(committed.update_id.clone(), vec![party.clone()])
+        .await
+        .expect("JSON read by id")
+        .expect("JSON finds it too");
+    assert_eq!(
+        json_by_id["update"]["Transaction"]["value"]["offset"],
+        serde_json::json!(committed.offset)
+    );
+    let json_by_offset = json
+        .update_by_offset(committed.offset, vec![party.clone()])
+        .await
+        .expect("JSON read by offset")
+        .expect("JSON finds it too");
+    assert_eq!(
+        json_by_offset["update"]["Transaction"]["value"]["updateId"],
+        serde_json::json!(committed.update_id)
+    );
+
+    // An id of the right shape that names nothing, and an offset past the end.
+    let nothing = format!("1220{}", "0".repeat(64));
+    assert!(
+        client
+            .update_by_id(nothing.clone(), vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    assert!(
+        json.update_by_id(nothing, vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    let past_the_end = client.ledger_end().await.expect("ledger end") + 1_000_000;
+    assert!(
+        client
+            .update_by_offset(past_the_end, vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    println!(
+        "point reads: {} at offset {} found by id and offset on both transports",
+        committed.update_id, committed.offset
+    );
+}
+
+/// The same update read over gRPC and over JSON comes out as the same SDK
+/// type with the same contents, so code reading updates does not care which
+/// transport carried them (ADR-0010 §4).
+#[tokio::test]
+async fn typed_updates_agree_across_transports() {
+    use canton_ledger::update::Update;
+    use tokio_stream::StreamExt as _;
+    let (Some((client, party, pkg)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("typed updates: no endpoints, credentials, party or package");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("typed updates: no credentials in the environment");
+        return;
+    };
+    let committed = client
+        .submit_and_wait_for_transaction(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("a create commits");
+    let request = canton_ledger::UpdatesRequest::new(vec![party.clone()], committed.offset - 1)
+        .until(committed.offset);
+
+    let over_grpc: Vec<Update> = client
+        .updates_typed_with(request.clone())
+        .await
+        .expect("open the typed stream")
+        .collect::<Result<Vec<_>, _>>()
+        .await
+        .expect("typed gRPC updates");
+    let over_json = json
+        .updates_typed_with(&request, None)
+        .await
+        .expect("typed JSON updates");
+
+    assert_eq!(over_grpc.len(), 1, "{over_grpc:?}");
+    assert_eq!(over_json.len(), 1, "{over_json:?}");
+    let (Some(g), Some(j)) = (over_grpc[0].as_transaction(), over_json[0].as_transaction()) else {
+        panic!("both are the transaction");
+    };
+    assert_eq!(g.update_id, committed.update_id);
+    assert_eq!(g.update_id, j.update_id);
+    assert_eq!(g.offset, j.offset);
+    assert_eq!(g.synchronizer_id, j.synchronizer_id);
+    assert_eq!(g.effective_at, j.effective_at);
+    assert_eq!(g.record_time, j.record_time);
+    let (gc, jc): (Vec<_>, Vec<_>) = (g.created().collect(), j.created().collect());
+    assert_eq!(gc.len(), 1);
+    assert_eq!(gc.len(), jc.len());
+    assert_eq!(gc[0].contract_id, jc[0].contract_id);
+    assert_eq!(gc[0].template_id, jc[0].template_id);
+    assert_eq!(gc[0].package_name, jc[0].package_name);
+    assert_eq!(gc[0].signatories, jc[0].signatories);
+    assert_eq!(gc[0].witness_parties, jc[0].witness_parties);
+    assert_eq!(gc[0].created_at, jc[0].created_at);
+    println!(
+        "typed: {} at offset {} reads the same over gRPC and JSON",
+        g.update_id, g.offset
+    );
+}
+
+/// Both transports report the same pruning points.
+#[tokio::test]
+async fn latest_pruned_offsets_agree_across_transports() {
+    let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("latest_pruned_offsets: no endpoints or credentials");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("latest_pruned_offsets: no credentials in the environment");
+        return;
+    };
+    let grpc = client.latest_pruned_offsets().await.expect("gRPC");
+    let over_json = json.latest_pruned_offsets().await.expect("JSON");
+    assert_eq!(grpc, over_json);
+    println!("pruned up to {grpc:?}");
+}
+
 #[tokio::test]
 async fn grpc_and_json_transports_agree() {
     let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {

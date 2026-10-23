@@ -96,6 +96,20 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: 1.88.0
 
+  # The committed Cargo.lock is what CI builds with; a user who adds a crate
+  # resolves every dependency afresh, to its newest version in range. zip 2.6
+  # changed a type inside 2.x and every fresh build of canton-lf 0.3.1 failed
+  # while CI stayed green on the locked 2.4. This builds what users build.
+  latest-deps:
+    name: Builds with every dependency at its newest compatible version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - run: cargo update
+      - run: cargo check --workspace --all-targets --all-features
+
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -327,6 +341,17 @@ jobs:
           cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle.log
           grep -q 'oracle agreement:' /tmp/oracle.log || {
             echo "::error::the oracle skipped instead of running"; exit 1; }
+      - name: The same, on a keyed Daml-LF 2.3 DAR
+        env:
+          CANTON_LF_ORACLE_DAR: testdata/contract-keys/contractkeys.dar
+        run: |
+          # The DAR above is LF 2.1 throughout; this one carries LF 2.3 packages
+          # and templates with contract keys, which the decoder and the
+          # 3.5.17 reader must also agree on.
+          (cd testdata/contract-keys && sha256sum --check --strict contractkeys.dar.sha256)
+          cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle-keys.log
+          grep -q 'oracle agreement:' /tmp/oracle-keys.log || {
+            echo "::error::the oracle skipped instead of running"; exit 1; }
 
   # The published bindings crates are checked-in generated code, and the
   # tests that keep them in step with the emitter are gated on a DAR that lives
@@ -420,15 +445,16 @@ jobs:
           # cannot be checked before its first release, so each one joins this
           # list in the release after it first publishes — the M2 crates below
           # did so at 0.2.0. `canton-proto` stays out: its generated types are
-          # exempt from the stability promise (ADR-0002). `canton-lf` is out for
-          # 0.3.1 only: it re-vendored the Daml-LF schema for Canton 3.5.17 and
-          # hid the generated `pb` module (the same exemption), which the tool
-          # reads as a break against the 0.3.0 baseline; it returns to the list
-          # once 0.3.1 is the baseline, with `pb` outside the comparison.
-          # `canton-codegen-cli`
+          # exempt from the stability promise (ADR-0002). `canton-lf` and
+          # `canton-codegen` are out until 0.3.2 is the baseline: 0.3.1 of both
+          # no longer builds from a fresh resolve (zip 2.6, see `latest-deps`),
+          # so the tool cannot build the baseline to compare against. Their
+          # public API is unchanged since 0.3.1 (only a private function and a
+          # test moved). Both return then, `canton-lf` with `pb` outside the
+          # comparison, since 0.3.1 hid that generated module. `canton-codegen-cli`
           # is binary-only, so there is no API to compare.
           package: >-
             canton-core, canton-auth, canton-ledger, canton-admin, canton,
-            canton-daml, canton-codegen,
+            canton-daml,
             canton-splice-amulet, canton-splice-wallet, canton-splice-wallet-payments
           feature-group: all-features

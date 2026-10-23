@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [0.3.2] — 2026-10-23
+
+The review findings filed against 0.3.1 by the C#/.NET SDK's maintainer
+(#7–#12), fixed. Two behaviour changes are listed first because they can turn
+a call that succeeded into one that is refused. Both refuse what should not
+have been accepted, and the public API only grows, so they ship as a patch:
+`cargo update` brings them, and the fix for 0.3.1's broken fresh build, to
+every project on `0.3`.
+
+### Changed — behaviour
+
+- **A created event must name its package to decode** (#7).
+  `Template::from_created_event` and `from_json_created_event` now compare the
+  event's package **name** with the template's, as well as its module and
+  entity; the package **id** is still not compared, so an upgraded version
+  decodes. An event from another package that defines the same `Module:Entity`
+  with a payload of the same shape used to decode as this template; it is now
+  refused. An event with no template id, or with a package id and no package
+  name, is refused rather than decoded on trust. Events a participant returns
+  carry both; a hand-built event in a test may need `package_name` set.
+- **A prepared transaction hashed under a scheme the SDK cannot check is
+  refused unless the caller opts in** (#10). Under V2 and V3 the hash is
+  recomputed and held to the transaction; any other scheme (V4) used to be
+  signed as the participant returned it with only a warning, and now needs
+  `Prepare::trust_participant_hash()`.
+
+### Added
+
+- **Hashing scheme V3** (#10): `canton_ledger::hashing::hash_prepared_transaction_v3`
+  and `hash_prepared_transaction(prepared, version)`, byte for byte as Canton
+  3.5.17 builds V3 (no encoding-version bytes; keys on create, fetch and
+  exercise nodes; the by-key flag; lookup-by-key nodes; the metadata's maximum
+  record time), checked against Canton's own V3 vectors. Interactive submission
+  recomputes the hash under V3 as it does under V2, so a transaction that uses
+  contract keys is no longer signed on the participant's word. Live: an
+  external party creates a keyed contract and exercises it by key under V3.
+- **Point reads and pruning points on both transports** (#12):
+  `update_by_offset`, `update_by_id` (and `_with` forms taking an
+  `UpdatesRequest`'s format) and `latest_pruned_offsets` on `CantonClient` and
+  `JsonClient`. "No such update" is `Ok(None)`. `Error::pruned_earliest_offset`
+  names the earliest offset the participant can still serve when a read starts
+  below its pruning point; a resumable stream yields that refusal rather than
+  moving forward on its own.
+- **Updates as SDK types** (#11): `canton_ledger::update`, the update envelope
+  (`Update`, `Transaction`, created, archived and exercised events,
+  `Reassignment`, `TopologyTransaction`, `OffsetCheckpoint`) built from either
+  transport, with payloads decoded by the generated type
+  (`CreatedEvent::decode`) and the wire form still reachable.
+  `CantonClient::updates_typed_with`, `updates_resumable_typed_with` and
+  `JsonClient::updates_typed_with` return them. At 1.0 these take the plain
+  names and the proto-typed reads move to `*_raw` (ADR-0010 §4).
+- **A keyed Daml-LF 2.3 DAR under CI** (#8): `testdata/contract-keys`, pinned
+  by commit and checksum. The LF oracle runs on it, the codegen compile test
+  builds bindings from it and an exercise-by-key command from them, and the
+  `commands__contract_keys` conformance row generates from it.
+- `v2_allocate` runs the receiver's side of a leg (`CANTON_TOKEN_SIDE=receiver`),
+  so a V2 settlement between three different parties runs from the examples.
+- The live suites run nightly and on demand against a disposable LocalNet with
+  OIDC (#9, contributed by the C#/.NET SDK's maintainer).
+
+### Fixed
+
+- **`canton-lf` 0.3.x does not build on a fresh install.** zip 2.6, inside the
+  `2` range the crate accepts, added a type parameter to `ZipFile`, which
+  `canton-lf` named; the workspace lockfile held zip at 2.4, so CI stayed green
+  while `cargo add canton-lf`, `cargo add canton-codegen` and
+  `cargo install canton-codegen-cli` (without `--locked`) failed to compile.
+  The entry is now read through `std::io::Read`, which builds on every 2.x, the
+  lockfile moves to zip 2.6.1, and a new CI job builds the workspace with every
+  dependency at its newest compatible version.
+- The lockfile, which `canton-codegen-cli` installs with under `--locked`,
+  moves past the RustSec advisories published since 0.3.1: rustls 0.23.46,
+  rustls-webpki 0.103.16, webpki-roots 1.0.11, tokio 1.54.1, ctutils 0.4.5.
+  Three advisories against zip (RUSTSEC-2026-0367, -0368, -0369) are fixed
+  only in zip 9 and concern its extraction API, which `canton-lf` does not
+  call: it reads each DAR entry into memory under a size cap. Moving to zip 9
+  changes the error type `canton_lf::DarError::Zip` carries, so it waits for
+  0.4; `deny.toml` records the three with that reason.
+- The `Prepared` and `Prepare::with_hashing_scheme_version` docs still said
+  the SDK did not recompute the hash and that the scheme defaulted to the
+  participant's; both were stale since 0.3.1 (#10).
+
 ## [0.3.1] — 2026-09-26
 
 Fixes from an internal security review of 0.3.0, run ahead of the independent

@@ -592,6 +592,7 @@ impl CantonClient {
         // dropping it here would silently return a narrower transaction.
         let read_as = prepare.read_as().to_vec();
         let requested_scheme = prepare.requested_hashing_scheme();
+        let trust_participant_hash = prepare.trusts_participant_hash();
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -609,6 +610,7 @@ impl CantonClient {
             crate::interactive::Prepared::from_response(
                 response,
                 requested_scheme,
+                trust_participant_hash,
                 act_as,
                 read_as,
                 command_id,
@@ -936,6 +938,137 @@ impl CantonClient {
                 }
             })
             .await
+        })
+        .await
+    }
+
+    /// How far the participant has pruned (`StateService.GetLatestPrunedOffsets`).
+    ///
+    /// A read that starts at or below
+    /// [`participant_pruned_up_to_inclusive`](PrunedOffsets::participant_pruned_up_to_inclusive)
+    /// is refused; [`Error::pruned_earliest_offset`] says the same thing after
+    /// the fact, on the error such a read returns.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn latest_pruned_offsets(&self) -> Result<PrunedOffsets> {
+        telemetry::instrument("latest_pruned_offsets", TRANSPORT_GRPC, async {
+            self.with_retry(|| async {
+                let mut client = service!(self, pb::state_service_client::StateServiceClient::new);
+                let response = client
+                    .get_latest_pruned_offsets(pb::GetLatestPrunedOffsetsRequest {})
+                    .await?
+                    .into_inner();
+                Ok(PrunedOffsets {
+                    participant_pruned_up_to_inclusive: response.participant_pruned_up_to_inclusive,
+                    all_divulged_contracts_pruned_up_to_inclusive: response
+                        .all_divulged_contracts_pruned_up_to_inclusive,
+                })
+            })
+            .await
+        })
+        .await
+    }
+
+    /// The update at `offset`, as `parties` see it (`UpdateService.GetUpdateByOffset`),
+    /// in the default format of [`UpdatesRequest::new`](crate::request::UpdatesRequest::new).
+    ///
+    /// Reading back a stored offset without scanning a stream to it. `Ok(None)`
+    /// when there is no update at that offset visible to `parties`.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn update_by_offset(
+        &self,
+        offset: i64,
+        parties: Vec<String>,
+    ) -> Result<Option<pb::get_update_response::Update>> {
+        self.update_by_offset_with(offset, &crate::request::UpdatesRequest::new(parties, 0))
+            .await
+    }
+
+    /// Like [`Self::update_by_offset`], in the format an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) describes (parties,
+    /// template or interface filters, transaction shape, created-event blobs,
+    /// reassignments, topology events, verbosity). Its offsets are not used.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the request names no party, or authentication or
+    /// the RPC fails.
+    pub async fn update_by_offset_with(
+        &self,
+        offset: i64,
+        format: &crate::request::UpdatesRequest,
+    ) -> Result<Option<pb::get_update_response::Update>> {
+        format.validate()?;
+        let request = pb::GetUpdateByOffsetRequest {
+            offset,
+            update_format: Some(format.update_format()),
+        };
+        telemetry::instrument("update_by_offset", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client =
+                            service!(self, pb::update_service_client::UpdateServiceClient::new);
+                        Ok(client.get_update_by_offset(request).await?.into_inner())
+                    }
+                })
+                .await;
+            found(response)?.map(present_update).transpose()
+        })
+        .await
+    }
+
+    /// The update with id `update_id`, as `parties` see it
+    /// (`UpdateService.GetUpdateById`), in the default format of
+    /// [`UpdatesRequest::new`](crate::request::UpdatesRequest::new).
+    ///
+    /// The id is what a submission's completion and its transaction carry, so
+    /// this reads back the outcome of a command without scanning for it.
+    /// `Ok(None)` when no update with that id is visible to `parties`.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the RPC fails.
+    pub async fn update_by_id(
+        &self,
+        update_id: impl Into<String>,
+        parties: Vec<String>,
+    ) -> Result<Option<pb::get_update_response::Update>> {
+        self.update_by_id_with(update_id, &crate::request::UpdatesRequest::new(parties, 0))
+            .await
+    }
+
+    /// Like [`Self::update_by_id`], in the format an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) describes. Its
+    /// offsets are not used.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the request names no party, or authentication or
+    /// the RPC fails.
+    pub async fn update_by_id_with(
+        &self,
+        update_id: impl Into<String>,
+        format: &crate::request::UpdatesRequest,
+    ) -> Result<Option<pb::get_update_response::Update>> {
+        format.validate()?;
+        let request = pb::GetUpdateByIdRequest {
+            update_id: update_id.into(),
+            update_format: Some(format.update_format()),
+        };
+        telemetry::instrument("update_by_id", TRANSPORT_GRPC, async move {
+            let response = self
+                .with_retry(|| {
+                    let request = request.clone();
+                    async move {
+                        let mut client =
+                            service!(self, pb::update_service_client::UpdateServiceClient::new);
+                        Ok(client.get_update_by_id(request).await?.into_inner())
+                    }
+                })
+                .await;
+            found(response)?.map(present_update).transpose()
         })
         .await
     }
@@ -1356,6 +1489,24 @@ impl CantonClient {
         }))
     }
 
+    /// Like [`Self::updates_with`], as the SDK's own
+    /// [`Update`](crate::update::Update): the type
+    /// [`JsonClient::updates_typed_with`](crate::JsonClient::updates_typed_with)
+    /// returns too, so code that reads updates depends on neither the transport
+    /// nor the vendored protos (ADR-0010 §4). Checkpoints are dropped, as
+    /// [`Self::updates_with`] drops them.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails; the
+    /// stream yields one for a malformed update.
+    pub async fn updates_typed_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> Result<impl Stream<Item = Result<crate::update::Update>> + Send + use<>> {
+        let stream = self.updates_with(request).await?;
+        Ok(stream.map(|item| item.and_then(crate::update::Update::from_grpc)))
+    }
+
     /// The update stream with `OffsetCheckpoint` frames left in.
     ///
     /// A checkpoint is not an update anyone subscribed for, which is why
@@ -1408,6 +1559,12 @@ impl CantonClient {
     /// participant's status, details and retriable classification intact —
     /// rather than an error of the SDK's own.
     ///
+    /// A resume point the participant has since pruned is not retried: the
+    /// stream yields the refusal, and
+    /// [`Error::pruned_earliest_offset`](canton_core::Error::pruned_earliest_offset)
+    /// names where readable data begins. Moving forward to it loses the pruned
+    /// history, so that is the caller's call, never the stream's.
+    ///
     /// # Example
     /// ```no_run
     /// # async fn run(client: canton_ledger::CantonClient, party: String)
@@ -1427,6 +1584,16 @@ impl CantonClient {
         begin_offset: i64,
     ) -> impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<> {
         self.updates_resumable_with(crate::request::UpdatesRequest::new(parties, begin_offset))
+    }
+
+    /// Like [`Self::updates_resumable_with`], as the SDK's own
+    /// [`Update`](crate::update::Update).
+    pub fn updates_resumable_typed_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> impl Stream<Item = Result<crate::update::Update>> + Send + use<> {
+        self.updates_resumable_with(request)
+            .map(|item| item.and_then(crate::update::Update::from_grpc))
     }
 
     /// Like [`Self::updates_resumable`], with the full request surface of an
@@ -1516,6 +1683,47 @@ impl CantonClient {
             }
         }
     }
+}
+
+/// How far a participant has pruned, as `latest_pruned_offsets` reports it on
+/// either transport.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PrunedOffsets {
+    /// Updates and completions at or below this offset are gone; a read must
+    /// start after it.
+    pub participant_pruned_up_to_inclusive: i64,
+    /// Divulged contracts are pruned up to this offset, which may lag the
+    /// participant's own pruning point.
+    pub all_divulged_contracts_pruned_up_to_inclusive: i64,
+}
+
+/// A point read's "not there": `Ok(None)` rather than an error, because asking
+/// whether an offset or an id holds an update the caller can see is a question
+/// with two ordinary answers. Every other failure stays an error.
+pub(crate) fn found<T>(result: Result<T>) -> Result<Option<T>> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(error) if is_update_not_found(&error) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+fn is_update_not_found(error: &Error) -> bool {
+    match error.error_info() {
+        Some(info) => info.reason == "UPDATE_NOT_FOUND",
+        None => error.code() == Some(tonic::Code::NotFound),
+    }
+}
+
+/// A point read's response carries its update in a oneof that a well-formed
+/// response always sets.
+fn present_update(response: pb::GetUpdateResponse) -> Result<pb::get_update_response::Update> {
+    response.update.ok_or_else(|| {
+        Error::UnexpectedResponse(
+            "the participant returned an update response with no update".to_string(),
+        )
+    })
 }
 
 #[cfg(test)]

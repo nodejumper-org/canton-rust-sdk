@@ -44,8 +44,28 @@ goes private and the identity is read through a small typed accessor. Deferred
 rather than done now for the same reason as the others: it is a breaking change,
 and 0.x users should migrate once.
 
+**4. Update reads return the SDK's own types; the `prost` ones become the
+escape hatch.** ADR-0002 promised that raw proto types would leave the default
+public path, and for update reads they had not: `updates_resumable` yields
+`pb::get_updates_response::Update` and the JSON client returns raw JSON, so
+code written against one transport did not read the other, and a re-vendored
+proto reached callers who matched on it without a version signal
+(nodejumper-org/canton-rust-sdk#11). The types now exist and are additive:
+[`canton_ledger::update`](../../crates/canton-ledger/src/update.rs) (`Update`,
+`Transaction`, `Event` with created, archived and exercised events,
+`Reassignment`, `TopologyTransaction`, `OffsetCheckpoint`), built from either
+transport, with payloads decoded by the generated type and the wire form still
+reachable. `updates_typed_with` and `updates_resumable_typed_with` (gRPC) and
+`updates_typed_with` (JSON) return them, and `Update::from_grpc`,
+`from_grpc_point` and `from_json` convert anything else. At 1.0 the typed reads
+take the plain names (`updates`, `updates_with`, `updates_resumable`, the point
+reads) and the proto- and JSON-returning ones move to `*_raw`, so the default
+path is transport-neutral and the wire types are something a caller opts into.
+Deferred for the reason the others are: renaming now would break every 0.x
+reader of updates, and they should migrate once.
+
 ## Consequences
 
-- Both changes ride the 1.0 release train, listed in its migration notes.
+- These changes ride the 1.0 release train, listed in its migration notes.
 - Until then the current shapes stay: churning them at 0.x would break users
   twice for the same lesson.

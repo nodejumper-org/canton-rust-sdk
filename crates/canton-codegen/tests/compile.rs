@@ -264,6 +264,114 @@ fn compile_dar(dar_path: &str, target_dir: Option<&std::path::Path>) -> Result<D
     Ok(report)
 }
 
+/// Contract keys from a real DAR: bindings generated from the keyed LF 2.3
+/// fixture (`testdata/contract-keys`, six keyed templates) compile against the
+/// runtime, and the by-key commands built from them carry the template, the
+/// key and the choice the Ledger API expects. The committed DAR keeps this
+/// running in CI with no external setup.
+#[test]
+fn keyed_dar_bindings_build_exercise_by_key_commands() {
+    if std::env::var("CODEGEN_COMPILE_TEST").is_err() {
+        eprintln!("skipping: set CODEGEN_COMPILE_TEST=1 to run (spawns cargo)");
+        return;
+    }
+    let dar_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../testdata/contract-keys/contractkeys.dar"
+    );
+    let dar = canton_lf::Dar::open(dar_path).expect("the keyed fixture is committed");
+    let (krate, _) = canton_codegen::lower_dar(&dar).expect("lower");
+    let generated = generate_crate(&krate).expect("generate");
+    for template in [
+        "Account",
+        "Enrollment",
+        "Holiday",
+        "Membership",
+        "Schedule",
+        "Steward",
+    ] {
+        assert!(
+            generated.contains(&format!("impl rt::WithKey for {template} ")),
+            "{template} declares a key, so its binding implements WithKey"
+        );
+    }
+
+    let daml = concat!(env!("CARGO_MANIFEST_DIR"), "/../canton-daml");
+    let proto = concat!(env!("CARGO_MANIFEST_DIR"), "/../canton-proto");
+    let dir = std::env::temp_dir().join("canton-codegen-keyed-dar");
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::create_dir_all(dir.join("tests")).unwrap();
+    fs::write(
+        dir.join("Cargo.toml"),
+        format!(
+            "[package]\nname = \"gen_contractkeys\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n\
+             [dependencies]\ncanton-daml = {{ path = {daml:?} }}\n\n\
+             [dev-dependencies]\ncanton-proto = {{ path = {proto:?} }}\n\n\
+             [workspace]\n"
+        ),
+    )
+    .unwrap();
+    fs::write(dir.join("src/lib.rs"), &generated).unwrap();
+    let test = r##"
+use canton_daml as rt;
+use canton_proto::com::daml::ledger::api::v2::command::Command as Cmd;
+use canton_proto::com::daml::ledger::api::v2::value::Sum;
+use gen_contractkeys::contractkeys_h61a17c769e62::ContractKeys::{
+    Account, AccountKey, Credit, Revise, Steward,
+};
+
+#[test]
+fn exercise_by_key_carries_template_key_and_choice() {
+    // A party key.
+    let steward = rt::Party::new("alice::1220ab");
+    let command = rt::exercise_by_key_command::<Steward, Revise>(
+        &steward,
+        &Revise { revised: "v2".to_string() },
+    );
+    let Some(Cmd::ExerciseByKey(by_key)) = command.command else {
+        panic!("an exercise-by-key command");
+    };
+    let template = by_key.template_id.expect("template id");
+    assert_eq!(template.package_id, "#contractkeys-h61a17c769e62");
+    assert_eq!(template.module_name, "ContractKeys");
+    assert_eq!(template.entity_name, "Steward");
+    assert_eq!(by_key.choice, "Revise");
+    assert!(matches!(
+        by_key.contract_key.and_then(|v| v.sum),
+        Some(Sum::Party(p)) if p == "alice::1220ab"
+    ));
+
+    // A record key, which must round-trip through the codec it is sent with.
+    let key = AccountKey {
+        custodian: rt::Party::new("bank::1220cd"),
+        label: "savings".to_string(),
+    };
+    let command = rt::exercise_by_key_command::<Account, Credit>(&key, &Credit { delta: rt::Int64(5) });
+    let Some(Cmd::ExerciseByKey(by_key)) = command.command else {
+        panic!("an exercise-by-key command");
+    };
+    let sent = by_key.contract_key.expect("a key");
+    let back = <AccountKey as rt::FromValue>::from_value(&sent).expect("the key decodes");
+    assert_eq!(back, key);
+    assert_eq!(by_key.choice, "Credit");
+}
+"##;
+    fs::write(dir.join("tests/by_key.rs"), test).unwrap();
+    let output = Command::new(env!("CARGO"))
+        .args(["test", "--quiet"])
+        .current_dir(&dir)
+        .output()
+        .expect("spawn cargo");
+    assert!(
+        output.status.success(),
+        "keyed bindings did not build or pass:\n{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    println!("keyed bindings compiled; exercise-by-key commands built from them check out");
+}
+
 /// The whole-DAR proof: decode a real DAR and its full dependency closure,
 /// lower it into a qualified `pub mod` tree, and **compile** the generated crate
 /// against `canton-daml`. Syntactic validity (`syn::parse`) is not enough — this

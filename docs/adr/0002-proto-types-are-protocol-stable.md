@@ -26,6 +26,7 @@ Split the stability promise in two, documented in `canton-proto` and on every
 
 - Honest, checkable contract for design partners; `cargo-semver-checks` is
   scoped to the hand-written surface.
-- Consumers needing insulation from wire types should use the M2 typed
-  bindings once they land; M2 also closes raw proto types out of the default
-  public path.
+- Consumers needing insulation from wire types use the generated bindings for
+  payloads and `canton_ledger::update` for the update envelope. The proto-typed
+  update reads stay public until 1.0, when they move behind `*_raw` names
+  (ADR-0010 §4).

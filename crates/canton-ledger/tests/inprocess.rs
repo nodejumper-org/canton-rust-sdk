@@ -356,6 +356,34 @@ fn tx_update(offset: i64) -> pb::GetUpdatesResponse {
     }
 }
 
+/// A point read's answer: the transaction at offset 42 / id `u42`, and
+/// Canton's `UPDATE_NOT_FOUND` for anything else. A request without a format
+/// is refused, as the participant refuses it.
+fn point_read(hit: bool, has_format: bool) -> Result<Response<pb::GetUpdateResponse>, Status> {
+    use tonic_types::{ErrorDetails, StatusExt as _};
+    if !has_format {
+        return Err(Status::invalid_argument("missing update_format"));
+    }
+    if hit {
+        return Ok(Response::new(pb::GetUpdateResponse {
+            update: Some(pb::get_update_response::Update::Transaction(
+                pb::Transaction {
+                    update_id: "u42".to_string(),
+                    offset: 42,
+                    ..Default::default()
+                },
+            )),
+        }));
+    }
+    let details =
+        ErrorDetails::with_error_info("UPDATE_NOT_FOUND", "", std::collections::HashMap::new());
+    Err(Status::with_error_details(
+        tonic::Code::NotFound,
+        "Update not found, or not visible.",
+        details,
+    ))
+}
+
 /// UpdateService whose first `get_updates` yields offsets 1,2 then drops with
 /// `Unavailable`; the second yields 3,4 then ends. Records each request's
 /// `begin_exclusive` so the test can prove the client resumed from the last
@@ -394,15 +422,21 @@ impl UpdateService for FlakyUpdates {
 
     async fn get_update_by_offset(
         &self,
-        _r: Request<pb::GetUpdateByOffsetRequest>,
+        r: Request<pb::GetUpdateByOffsetRequest>,
     ) -> Result<Response<pb::GetUpdateResponse>, Status> {
-        Err(Status::unimplemented("test"))
+        point_read(
+            r.get_ref().offset == 42,
+            r.get_ref().update_format.is_some(),
+        )
     }
     async fn get_update_by_id(
         &self,
-        _r: Request<pb::GetUpdateByIdRequest>,
+        r: Request<pb::GetUpdateByIdRequest>,
     ) -> Result<Response<pb::GetUpdateResponse>, Status> {
-        Err(Status::unimplemented("test"))
+        point_read(
+            r.get_ref().update_id == "u42",
+            r.get_ref().update_format.is_some(),
+        )
     }
     async fn get_update_by_hash(
         &self,
@@ -549,7 +583,10 @@ impl StateService for FlakyAcs {
         &self,
         _r: Request<pb::GetLatestPrunedOffsetsRequest>,
     ) -> Result<Response<pb::GetLatestPrunedOffsetsResponse>, Status> {
-        Err(Status::unimplemented("test"))
+        Ok(Response::new(pb::GetLatestPrunedOffsetsResponse {
+            participant_pruned_up_to_inclusive: 7,
+            all_divulged_contracts_pruned_up_to_inclusive: 3,
+        }))
     }
 }
 
@@ -1729,4 +1766,50 @@ async fn submit_observe_query_over_grpc() {
         "the ACS holds the contract the submission created"
     );
     assert!(acs.next().await.is_none(), "and nothing else");
+}
+
+// ---- gRPC: point reads and pruning points ------------------------------------
+
+#[tokio::test]
+async fn point_reads_return_the_update_and_none_for_what_is_not_there() {
+    use pb::get_update_response::Update;
+    let port = serve_updates(FlakyUpdates::default()).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+    let party = vec!["alice".to_string()];
+
+    let Some(Update::Transaction(tx)) = client.update_by_offset(42, party.clone()).await.unwrap()
+    else {
+        panic!("offset 42 holds a transaction");
+    };
+    assert_eq!(tx.update_id, "u42");
+    let Some(Update::Transaction(tx)) = client.update_by_id("u42", party.clone()).await.unwrap()
+    else {
+        panic!("u42 names a transaction");
+    };
+    assert_eq!(tx.offset, 42);
+
+    // `UPDATE_NOT_FOUND` is an answer, not a failure.
+    assert!(
+        client
+            .update_by_offset(43, party.clone())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(client.update_by_id("u43", party).await.unwrap().is_none());
+
+    // A read that names no party is refused before it is sent.
+    let error = client.update_by_id("u42", Vec::new()).await.unwrap_err();
+    assert!(error.to_string().contains("at least one party"), "{error}");
+}
+
+#[tokio::test]
+async fn latest_pruned_offsets_reports_both_pruning_points() {
+    let port = serve_state(FlakyAcs::default()).await;
+    let client =
+        CantonClient::connect_lazy(Config::new(format!("http://localhost:{port}"))).unwrap();
+    let pruned = client.latest_pruned_offsets().await.unwrap();
+    assert_eq!(pruned.participant_pruned_up_to_inclusive, 7);
+    assert_eq!(pruned.all_divulged_contracts_pruned_up_to_inclusive, 3);
 }

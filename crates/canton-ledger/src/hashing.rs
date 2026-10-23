@@ -8,13 +8,18 @@
 //! it is recomputed here from the transaction the caller can read, and the
 //! response is refused if the two differ.
 //!
-//! This is Canton's hashing scheme V2 (`HashingSchemeVersion.V2`), byte for
-//! byte as `com.digitalasset.canton.protocol.hash` builds it: every value is
-//! prefixed by a type tag, every variable-length item by its length, every
-//! collection by its size, and the transaction and its metadata are hashed
-//! separately before the final hash over both. The test module carries
-//! Canton's own vectors for each node kind, the transaction, the metadata and
-//! the whole.
+//! These are Canton's hashing schemes V2 and V3 (`HashingSchemeVersion.V2`,
+//! `.V3`), byte for byte as `com.digitalasset.canton.protocol.hash` builds
+//! them: every value is prefixed by a type tag, every variable-length item by
+//! its length, every collection by its size, and the transaction and its
+//! metadata are hashed separately before the final hash over both.
+//!
+//! V3 is V2 without the node and metadata encoding-version bytes, plus what
+//! contract keys need: the key on create, fetch and exercise nodes, the
+//! by-key flag on fetch and exercise, the lookup-by-key node, and the
+//! metadata's maximum record time. A transaction that uses contract keys can
+//! only be hashed under V3. The test module carries Canton's own vectors for
+//! each node kind, the transaction, the metadata and the whole, under both.
 
 use canton_proto::com::daml::ledger::api::v2 as api;
 use canton_proto::com::daml::ledger::api::v2::interactive as ipb;
@@ -24,14 +29,14 @@ use std::collections::HashMap;
 
 /// `HashPurpose.PreparedSubmission`.
 const PURPOSE_PREPARED_SUBMISSION: u32 = 48;
-/// The scheme byte that follows the purpose in the final hash.
-const HASHING_SCHEME_V2: u8 = 2;
-/// The one node encoding and the one metadata encoding the V2 scheme has.
+/// The node encoding and the metadata encoding V2 prefixes; V3 dropped both.
 const NODE_ENCODING_V1: u8 = 1;
 const METADATA_ENCODING_V1: u8 = 1;
-/// The only LF serialization version the V2 scheme hashes. Anything newer
-/// (contract keys, external call results) needs V3 or V4.
+/// LF serialization versions as a prepared transaction spells them: `2.1`
+/// for a node without a contract key, `2` for one with. V2 hashes only the
+/// first, V3 both; anything newer (external call results) needs V4.
 const SERIALIZATION_V1: &str = "2.1";
+const SERIALIZATION_V2: &str = "2";
 /// Deeper than any transaction a participant prepares; a hostile one could
 /// nest exercises until the recursion below ran out of stack.
 const MAX_DEPTH: usize = 256;
@@ -40,6 +45,73 @@ const CREATE_TAG: u8 = 0;
 const EXERCISE_TAG: u8 = 1;
 const FETCH_TAG: u8 = 2;
 const ROLLBACK_TAG: u8 = 3;
+const QUERY_BY_KEY_TAG: u8 = 4;
+
+/// The hashing schemes this module implements.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Scheme {
+    V2,
+    V3,
+}
+
+impl Scheme {
+    /// The scheme byte that follows the purpose in the final hash.
+    fn byte(self) -> u8 {
+        match self {
+            Self::V2 => 2,
+            Self::V3 => 3,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::V2 => "V2",
+            Self::V3 => "V3",
+        }
+    }
+
+    /// Refuse an LF serialization version this scheme does not hash.
+    fn check_version(self, lf_version: &str, what: &str) -> Result<(), HashingError> {
+        let covered = match self {
+            Self::V2 => lf_version == SERIALIZATION_V1,
+            Self::V3 => lf_version == SERIALIZATION_V1 || lf_version == SERIALIZATION_V2,
+        };
+        if covered {
+            return Ok(());
+        }
+        let hint = match self {
+            Self::V2 if lf_version == SERIALIZATION_V2 => {
+                "; it uses contract keys, so prepare it under V3"
+            }
+            _ => "",
+        };
+        Err(err(format!(
+            "{what} uses LF serialization version `{lf_version}`, which hashing scheme {} does \
+             not cover{hint}",
+            self.name()
+        )))
+    }
+
+    /// Refuse a contract key, or a by-key flag, the node may not carry: V2 has
+    /// no encoding for either, and under V3 a node at serialization version
+    /// `2.1` cannot have one (Canton refuses the same node the same way).
+    fn check_key(self, lf_version: &str, keyed: bool, what: &str) -> Result<(), HashingError> {
+        if !keyed {
+            return Ok(());
+        }
+        match self {
+            Self::V2 => Err(err(format!(
+                "{what} uses a contract key, which hashing scheme V2 does not cover; prepare it \
+                 under V3"
+            ))),
+            Self::V3 if lf_version == SERIALIZATION_V1 => Err(err(format!(
+                "{what} uses a contract key but declares LF serialization version \
+                 `{SERIALIZATION_V1}`, which has none"
+            ))),
+            Self::V3 => Ok(()),
+        }
+    }
+}
 
 /// Why a prepared transaction could not be hashed. Every case is either a
 /// response the participant should not have sent or a feature the V2 scheme
@@ -74,12 +146,14 @@ impl Builder {
         Self { digest }
     }
 
-    /// A node builder: no purpose, the node encoding version first.
-    fn for_node() -> Self {
+    /// A node builder: no purpose; under V2 the node encoding version first.
+    fn for_node(scheme: Scheme) -> Self {
         let mut builder = Self {
             digest: Sha256::new(),
         };
-        builder.byte(NODE_ENCODING_V1);
+        if scheme == Scheme::V2 {
+            builder.byte(NODE_ENCODING_V1);
+        }
         builder
     }
 
@@ -179,6 +253,41 @@ impl Builder {
 
     fn contract_id(&mut self, id: &str) -> Result<&mut Self, HashingError> {
         self.bytes(&decode_hex(id)?)
+    }
+
+    /// A contract key with its maintainers (V3): the key's package name,
+    /// template id, value and hash, then the maintainers as a set.
+    fn key(&mut self, key: &ipb::GlobalKeyWithMaintainers) -> Result<&mut Self, HashingError> {
+        let global = required(key.key.as_ref(), "a contract key without its key")?;
+        let hash: Hash = global
+            .hash
+            .as_slice()
+            .try_into()
+            .map_err(|_| err("a contract key whose hash is not 32 bytes"))?;
+        self.string(&global.package_name)?
+            .identifier(required(
+                global.template_id.as_ref(),
+                "a contract key without a template id",
+            )?)?
+            .value(
+                required(global.key.as_ref(), "a contract key without a value")?,
+                0,
+            )?
+            .hash(&hash)
+            .string_set(&key.maintainers)
+    }
+
+    fn optional_key(
+        &mut self,
+        key: Option<&ipb::GlobalKeyWithMaintainers>,
+    ) -> Result<&mut Self, HashingError> {
+        match key {
+            Some(key) => {
+                self.byte(1);
+                self.key(key)
+            }
+            None => Ok(self.byte(0)),
+        }
     }
 
     fn value(&mut self, value: &api::Value, depth: usize) -> Result<&mut Self, HashingError> {
@@ -331,26 +440,16 @@ fn decode_hex(text: &str) -> Result<Vec<u8>, HashingError> {
         .collect()
 }
 
-fn version_v1(lf_version: &str, what: &str) -> Result<(), HashingError> {
-    if lf_version == SERIALIZATION_V1 {
-        Ok(())
-    } else {
-        Err(err(format!(
-            "{what} uses LF serialization version `{lf_version}`, which hashing scheme V2 does not cover (only `{SERIALIZATION_V1}`); ask for a newer scheme"
-        )))
-    }
-}
-
 /// A create node, as a transaction node (with its seed) or as a disclosed
 /// contract (without one).
-fn hash_create(create: &node::Create, seed: Option<&Hash>) -> Result<Hash, HashingError> {
-    version_v1(&create.lf_version, "a create node")?;
-    if create.key.is_some() {
-        return Err(err(
-            "a create node with a contract key is not covered by hashing scheme V2",
-        ));
-    }
-    let mut b = Builder::for_node();
+fn hash_create(
+    create: &node::Create,
+    seed: Option<&Hash>,
+    scheme: Scheme,
+) -> Result<Hash, HashingError> {
+    scheme.check_version(&create.lf_version, "a create node")?;
+    scheme.check_key(&create.lf_version, create.key.is_some(), "a create node")?;
+    let mut b = Builder::for_node(scheme);
     b.string(&create.lf_version)?.byte(CREATE_TAG);
     match seed {
         Some(seed) => {
@@ -375,17 +474,20 @@ fn hash_create(create: &node::Create, seed: Option<&Hash>) -> Result<Hash, Hashi
         )?
         .string_set(&create.signatories)?
         .string_set(&create.stakeholders)?;
+    if scheme == Scheme::V3 {
+        b.optional_key(create.key.as_ref())?;
+    }
     Ok(b.finish())
 }
 
-fn hash_fetch(fetch: &node::Fetch) -> Result<Hash, HashingError> {
-    version_v1(&fetch.lf_version, "a fetch node")?;
-    if fetch.key.is_some() || fetch.by_key {
-        return Err(err(
-            "a fetch node by key is not covered by hashing scheme V2",
-        ));
-    }
-    let mut b = Builder::for_node();
+fn hash_fetch(fetch: &node::Fetch, scheme: Scheme) -> Result<Hash, HashingError> {
+    scheme.check_version(&fetch.lf_version, "a fetch node")?;
+    scheme.check_key(
+        &fetch.lf_version,
+        fetch.key.is_some() || fetch.by_key,
+        "a fetch node",
+    )?;
+    let mut b = Builder::for_node(scheme);
     b.string(&fetch.lf_version)?
         .byte(FETCH_TAG)
         .contract_id(&fetch.contract_id)?
@@ -398,12 +500,46 @@ fn hash_fetch(fetch: &node::Fetch) -> Result<Hash, HashingError> {
         .string_set(&fetch.stakeholders)?
         .optional_identifier(fetch.interface_id.as_ref())?
         .string_set(&fetch.acting_parties)?;
+    if scheme == Scheme::V3 {
+        b.bool(fetch.by_key).optional_key(fetch.key.as_ref())?;
+    }
+    Ok(b.finish())
+}
+
+/// A lookup-by-key node (V3 only): the key looked up and the contracts found.
+fn hash_query_by_key(query: &node::QueryByKey, scheme: Scheme) -> Result<Hash, HashingError> {
+    if scheme == Scheme::V2 {
+        return Err(err(
+            "a lookup-by-key node uses a contract key, which hashing scheme V2 does not cover; \
+             prepare it under V3",
+        ));
+    }
+    scheme.check_version(&query.lf_version, "a lookup-by-key node")?;
+    scheme.check_key(&query.lf_version, true, "a lookup-by-key node")?;
+    let mut b = Builder::for_node(scheme);
+    b.string(&query.lf_version)?
+        .byte(QUERY_BY_KEY_TAG)
+        .string(&query.package_name)?
+        .identifier(required(
+            query.template_id.as_ref(),
+            "a lookup-by-key node without a template id",
+        )?)?
+        .bool(query.exhaustive)
+        .key(required(
+            query.key.as_ref(),
+            "a lookup-by-key node without a key",
+        )?)?
+        .count(query.result.len())?;
+    for contract_id in &query.result {
+        b.contract_id(contract_id)?;
+    }
     Ok(b.finish())
 }
 
 struct Tree<'a> {
     nodes: HashMap<&'a str, &'a node::Node>,
     seeds: HashMap<i32, Hash>,
+    scheme: Scheme,
 }
 
 impl Tree<'_> {
@@ -434,20 +570,21 @@ impl Tree<'_> {
                 let seed = self
                     .seed(node_id)
                     .ok_or_else(|| err(format!("no node seed for create node `{node_id}`")))?;
-                hash_create(create, Some(seed))
+                hash_create(create, Some(seed), self.scheme)
             }
-            node::node::NodeType::Fetch(fetch) => hash_fetch(fetch),
+            node::node::NodeType::Fetch(fetch) => hash_fetch(fetch, self.scheme),
             node::node::NodeType::Exercise(exercise) => {
-                version_v1(&exercise.lf_version, "an exercise node")?;
-                if exercise.key.is_some() || exercise.by_key {
-                    return Err(err(
-                        "an exercise node by key is not covered by hashing scheme V2",
-                    ));
-                }
+                self.scheme
+                    .check_version(&exercise.lf_version, "an exercise node")?;
+                self.scheme.check_key(
+                    &exercise.lf_version,
+                    exercise.key.is_some() || exercise.by_key,
+                    "an exercise node",
+                )?;
                 let seed = self
                     .seed(node_id)
                     .ok_or_else(|| err(format!("no node seed for exercise node `{node_id}`")))?;
-                let mut b = Builder::for_node();
+                let mut b = Builder::for_node(self.scheme);
                 b.string(&exercise.lf_version)?
                     .byte(EXERCISE_TAG)
                     .hash(seed)
@@ -478,8 +615,12 @@ impl Tree<'_> {
                         b.byte(0);
                     }
                 }
-                b.string_set(&exercise.choice_observers)?
-                    .count(exercise.children.len())?;
+                b.string_set(&exercise.choice_observers)?;
+                if self.scheme == Scheme::V3 {
+                    b.bool(exercise.by_key)
+                        .optional_key(exercise.key.as_ref())?;
+                }
+                b.count(exercise.children.len())?;
                 for child in &exercise.children {
                     let child_hash = self.hash_node(child, depth + 1)?;
                     b.hash(&child_hash);
@@ -487,7 +628,7 @@ impl Tree<'_> {
                 Ok(b.finish())
             }
             node::node::NodeType::Rollback(rollback) => {
-                let mut b = Builder::for_node();
+                let mut b = Builder::for_node(self.scheme);
                 b.byte(ROLLBACK_TAG).count(rollback.children.len())?;
                 for child in &rollback.children {
                     let child_hash = self.hash_node(child, depth + 1)?;
@@ -495,15 +636,16 @@ impl Tree<'_> {
                 }
                 Ok(b.finish())
             }
-            node::node::NodeType::QueryByKey(_) => Err(err(
-                "a lookup-by-key node is not covered by hashing scheme V2",
-            )),
+            node::node::NodeType::QueryByKey(query) => hash_query_by_key(query, self.scheme),
         }
     }
 }
 
-fn hash_transaction(transaction: &ipb::DamlTransaction) -> Result<Hash, HashingError> {
-    version_v1(&transaction.version, "the transaction")?;
+fn hash_transaction(
+    transaction: &ipb::DamlTransaction,
+    scheme: Scheme,
+) -> Result<Hash, HashingError> {
+    scheme.check_version(&transaction.version, "the transaction")?;
     let mut nodes = HashMap::new();
     for entry in &transaction.nodes {
         let Some(ipb::daml_transaction::node::VersionedNode::V1(node)) = &entry.versioned_node
@@ -523,7 +665,11 @@ fn hash_transaction(transaction: &ipb::DamlTransaction) -> Result<Hash, HashingE
             .map_err(|_| err(format!("the seed of node {} is not 32 bytes", seed.node_id)))?;
         seeds.insert(seed.node_id, bytes);
     }
-    let tree = Tree { nodes, seeds };
+    let tree = Tree {
+        nodes,
+        seeds,
+        scheme,
+    };
     let mut b = Builder::with_purpose();
     b.string(&transaction.version)?
         .count(transaction.roots.len())?;
@@ -534,14 +680,16 @@ fn hash_transaction(transaction: &ipb::DamlTransaction) -> Result<Hash, HashingE
     Ok(b.finish())
 }
 
-fn hash_metadata(metadata: &ipb::Metadata) -> Result<Hash, HashingError> {
+fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, HashingError> {
     let submitter = required(
         metadata.submitter_info.as_ref(),
         "metadata without submitter info",
     )?;
     let mut b = Builder::with_purpose();
-    b.byte(METADATA_ENCODING_V1)
-        .strings(&submitter.act_as)?
+    if scheme == Scheme::V2 {
+        b.byte(METADATA_ENCODING_V1);
+    }
+    b.strings(&submitter.act_as)?
         .string(&submitter.command_id)?
         .string(&metadata.transaction_uuid)?
         .int(
@@ -569,22 +717,26 @@ fn hash_metadata(metadata: &ipb::Metadata) -> Result<Hash, HashingError> {
             return Err(err("an input contract that is not a v1 create"));
         };
         b.unsigned_long(input.created_at)?;
-        let contract_hash = hash_create(create, None)?;
+        let contract_hash = hash_create(create, None, scheme)?;
         b.hash(&contract_hash);
+    }
+    if scheme == Scheme::V3 {
+        match metadata.max_record_time {
+            Some(micros) => {
+                b.byte(1).unsigned_long(micros)?;
+            }
+            None => {
+                b.byte(0);
+            }
+        }
     }
     Ok(b.finish())
 }
 
-/// The hash the participant should have returned for `prepared` under
-/// hashing scheme V2: what the signer signs.
-///
-/// # Errors
-/// [`HashingError`] if the transaction is not something the V2 scheme
-/// covers, or is not self-consistent (a node missing, a seed missing, a
-/// contract id that is not hex).
-pub fn hash_prepared_transaction_v2(
+fn hash_prepared(
     prepared: &ipb::PreparedTransaction,
-) -> Result<[u8; 32], HashingError> {
+    scheme: Scheme,
+) -> Result<Hash, HashingError> {
     let transaction = required(
         prepared.transaction.as_ref(),
         "a prepared transaction without a transaction",
@@ -593,21 +745,67 @@ pub fn hash_prepared_transaction_v2(
         prepared.metadata.as_ref(),
         "a prepared transaction without metadata",
     )?;
-    let transaction_hash = hash_transaction(transaction)?;
-    let metadata_hash = hash_metadata(metadata)?;
+    let transaction_hash = hash_transaction(transaction, scheme)?;
+    let metadata_hash = hash_metadata(metadata, scheme)?;
     let mut b = Builder::with_purpose();
-    b.byte(HASHING_SCHEME_V2)
+    b.byte(scheme.byte())
         .hash(&transaction_hash)
         .hash(&metadata_hash);
     Ok(b.finish())
 }
 
+/// The hash the participant should have returned for `prepared` under
+/// hashing scheme V2: what the signer signs.
+///
+/// # Errors
+/// [`HashingError`] if the transaction is not something the V2 scheme
+/// covers (a contract key, a node at a newer LF serialization version), or is
+/// not self-consistent (a node missing, a seed missing, a contract id that is
+/// not hex).
+pub fn hash_prepared_transaction_v2(
+    prepared: &ipb::PreparedTransaction,
+) -> Result<[u8; 32], HashingError> {
+    hash_prepared(prepared, Scheme::V2)
+}
+
+/// The hash the participant should have returned for `prepared` under
+/// hashing scheme V3, the one a transaction with contract keys needs.
+///
+/// # Errors
+/// As [`hash_prepared_transaction_v2`], for what V3 does not cover (a node at
+/// a newer LF serialization version than keys need, such as external call
+/// results).
+pub fn hash_prepared_transaction_v3(
+    prepared: &ipb::PreparedTransaction,
+) -> Result<[u8; 32], HashingError> {
+    hash_prepared(prepared, Scheme::V3)
+}
+
+/// The hash the participant should have returned for `prepared` under
+/// `version`, for the schemes this module implements.
+///
+/// # Errors
+/// [`HashingError`] for a scheme other than V2 or V3, and otherwise as
+/// [`hash_prepared_transaction_v2`] and [`hash_prepared_transaction_v3`].
+pub fn hash_prepared_transaction(
+    prepared: &ipb::PreparedTransaction,
+    version: ipb::HashingSchemeVersion,
+) -> Result<[u8; 32], HashingError> {
+    match version {
+        ipb::HashingSchemeVersion::V2 => hash_prepared(prepared, Scheme::V2),
+        ipb::HashingSchemeVersion::V3 => hash_prepared(prepared, Scheme::V3),
+        other => Err(err(format!(
+            "hashing scheme {other:?} is not one this SDK recomputes (it does V2 and V3)"
+        ))),
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    //! Canton's own vectors (`protocol/hash/v2/NodeHashTest.scala` and
-    //! `MetadataHashTest.scala`), rebuilt as the API protos a participant
-    //! returns.
+    //! Canton's own vectors (`protocol/hash/v2/` and `v3/`, `NodeHashTest.scala`
+    //! and `MetadataHashTest.scala`, Canton 3.5.17), rebuilt as the API protos a
+    //! participant returns.
     use super::*;
 
     fn hex(text: &str) -> Vec<u8> {
@@ -785,35 +983,40 @@ mod tests {
         }
     }
 
+    fn tree(tx: &ipb::DamlTransaction, scheme: Scheme) -> Tree<'_> {
+        let mut nodes = HashMap::new();
+        for entry in &tx.nodes {
+            let Some(ipb::daml_transaction::node::VersionedNode::V1(node)) = &entry.versioned_node
+            else {
+                unreachable!()
+            };
+            nodes.insert(entry.node_id.as_str(), node);
+        }
+        let seeds = tx
+            .node_seeds
+            .iter()
+            .map(|s| (s.node_id, s.seed.as_slice().try_into().unwrap()))
+            .collect();
+        Tree {
+            nodes,
+            seeds,
+            scheme,
+        }
+    }
+
     #[test]
     fn canton_vectors_for_each_node_kind() {
         let seed: Hash = hex(CREATE_SEED).try_into().unwrap();
         assert_eq!(
-            to_hex(&hash_create(&create(), Some(&seed)).unwrap()),
+            to_hex(&hash_create(&create(), Some(&seed), Scheme::V2).unwrap()),
             "6d2cfe58c2294000592034f4bdfe397fe246901bb8b63e3b9e041bb478e174b7"
         );
         assert_eq!(
-            to_hex(&hash_fetch(&fetch()).unwrap()),
+            to_hex(&hash_fetch(&fetch(), Scheme::V2).unwrap()),
             "c962c6098394f3d11cd6f0c795de9517d32a8e3e1979cec76cd2f66254efc610"
         );
         let tx = transaction();
-        let tree = {
-            let mut nodes = HashMap::new();
-            for entry in &tx.nodes {
-                let Some(ipb::daml_transaction::node::VersionedNode::V1(node)) =
-                    &entry.versioned_node
-                else {
-                    unreachable!()
-                };
-                nodes.insert(entry.node_id.as_str(), node);
-            }
-            let seeds = tx
-                .node_seeds
-                .iter()
-                .map(|s| (s.node_id, s.seed.as_slice().try_into().unwrap()))
-                .collect();
-            Tree { nodes, seeds }
-        };
+        let tree = tree(&tx, Scheme::V2);
         assert_eq!(
             to_hex(&tree.hash_node("2", 0).unwrap()),
             "070970eb4b2de72561dafb67017ca33850650a8103e5134e16044ba78991f48c"
@@ -827,11 +1030,11 @@ mod tests {
     #[test]
     fn canton_vectors_for_the_transaction_the_metadata_and_the_whole() {
         assert_eq!(
-            to_hex(&hash_transaction(&transaction()).unwrap()),
+            to_hex(&hash_transaction(&transaction(), Scheme::V2).unwrap()),
             "154f334d24a8a5e4d0ce51ac87d93821b3256f885f21d3f779a1640abf481983"
         );
         assert_eq!(
-            to_hex(&hash_metadata(&metadata()).unwrap()),
+            to_hex(&hash_metadata(&metadata(), Scheme::V2).unwrap()),
             "6e89fcbcc9605179a47919b5e65a864e470e7a133f4f9f39b1e4545b223db769"
         );
         let prepared = ipb::PreparedTransaction {
@@ -849,7 +1052,7 @@ mod tests {
         let mut create = create();
         create.lf_version = "2.2".to_string();
         assert!(
-            hash_create(&create, None)
+            hash_create(&create, None, Scheme::V2)
                 .unwrap_err()
                 .to_string()
                 .contains("2.2")
@@ -858,7 +1061,7 @@ mod tests {
         let mut tx = transaction();
         tx.node_seeds.clear();
         assert!(
-            hash_transaction(&tx)
+            hash_transaction(&tx, Scheme::V2)
                 .unwrap_err()
                 .to_string()
                 .contains("seed")
@@ -867,7 +1070,7 @@ mod tests {
         let mut tx = transaction();
         tx.roots.push("9".to_string());
         assert!(
-            hash_transaction(&tx)
+            hash_transaction(&tx, Scheme::V2)
                 .unwrap_err()
                 .to_string()
                 .contains("`9`")
@@ -880,7 +1083,7 @@ mod tests {
         ));
         tx.roots = strings(&["4"]);
         assert!(
-            hash_transaction(&tx)
+            hash_transaction(&tx, Scheme::V2)
                 .unwrap_err()
                 .to_string()
                 .contains("lookup-by-key")
@@ -889,7 +1092,7 @@ mod tests {
         let mut fetch = fetch();
         fetch.contract_id = "zz".to_string();
         assert!(
-            hash_fetch(&fetch)
+            hash_fetch(&fetch, Scheme::V2)
                 .unwrap_err()
                 .to_string()
                 .contains("not hex")
@@ -901,7 +1104,216 @@ mod tests {
         let mut tx = transaction();
         tx.nodes = vec![wrap("2", node::node::NodeType::Exercise(exercise(&["2"])))];
         tx.roots = strings(&["2"]);
-        let error = hash_transaction(&tx).unwrap_err();
+        let error = hash_transaction(&tx, Scheme::V2).unwrap_err();
         assert!(error.to_string().contains("deeper"), "{error}");
+    }
+
+    // V3: the same nodes as V2, at LF serialization version `2` and carrying a
+    // contract key (and, on fetch and exercise, the by-key flag).
+    const KEY_HASH: &str = "4d1741d27564ab1f1e74873034760583a1a71edaa90dbad6be3a78c0bf3eec7c";
+
+    fn global_key() -> ipb::GlobalKeyWithMaintainers {
+        ipb::GlobalKeyWithMaintainers {
+            key: Some(ipb::GlobalKey {
+                template_id: Some(identifier("package", "module_key", "name")),
+                package_name: "package_name_key".to_string(),
+                key: Some(text("hello")),
+                hash: hex(KEY_HASH),
+            }),
+            maintainers: strings(&["david"]),
+        }
+    }
+
+    fn create_v3() -> node::Create {
+        node::Create {
+            lf_version: "2".to_string(),
+            key: Some(global_key()),
+            ..create()
+        }
+    }
+
+    fn fetch_v3() -> node::Fetch {
+        node::Fetch {
+            lf_version: "2".to_string(),
+            key: Some(global_key()),
+            by_key: true,
+            ..fetch()
+        }
+    }
+
+    fn exercise_v3(children: &[&str]) -> node::Exercise {
+        node::Exercise {
+            lf_version: "2".to_string(),
+            key: Some(global_key()),
+            by_key: true,
+            ..exercise(children)
+        }
+    }
+
+    fn query_v3() -> node::QueryByKey {
+        node::QueryByKey {
+            lf_version: "2".to_string(),
+            package_name: "package-name-0".to_string(),
+            template_id: Some(identifier("package", "module", "name")),
+            exhaustive: true,
+            key: Some(global_key()),
+            result: strings(&[CID]),
+        }
+    }
+
+    fn transaction_v3() -> ipb::DamlTransaction {
+        let mut tx = transaction();
+        tx.version = "2".to_string();
+        tx.nodes = vec![
+            wrap("0", node::node::NodeType::Create(create_v3())),
+            wrap("1", node::node::NodeType::Fetch(fetch_v3())),
+            wrap(
+                "2",
+                node::node::NodeType::Exercise(exercise_v3(&["0", "1"])),
+            ),
+            wrap(
+                "3",
+                node::node::NodeType::Rollback(node::Rollback {
+                    children: strings(&["1", "2"]),
+                }),
+            ),
+        ];
+        tx
+    }
+
+    fn metadata_v3() -> ipb::Metadata {
+        let mut metadata = metadata();
+        for input in &mut metadata.input_contracts {
+            if let Some(ipb::metadata::input_contract::Contract::V1(create)) = &mut input.contract {
+                create.lf_version = "2".to_string();
+            }
+        }
+        metadata.max_record_time = Some(2_592_000_000_000);
+        metadata
+    }
+
+    #[test]
+    fn canton_v3_vectors_for_each_node_kind() {
+        let seed: Hash = hex(CREATE_SEED).try_into().unwrap();
+        assert_eq!(
+            to_hex(&hash_create(&create_v3(), Some(&seed), Scheme::V3).unwrap()),
+            "0120d370509f54c07d8209f5af2d23f7f972997deb5fc5e0ebe886354395a3bc"
+        );
+        assert_eq!(
+            to_hex(&hash_fetch(&fetch_v3(), Scheme::V3).unwrap()),
+            "20437df1980bb7d4d94ad53181dc6005bae37b5990719070c48a3960e8dda3a4"
+        );
+        let tx = transaction_v3();
+        let tree = tree(&tx, Scheme::V3);
+        assert_eq!(
+            to_hex(&tree.hash_node("2", 0).unwrap()),
+            "516c4689acabf9d1f0087a02a7dafad884d9080c48112a57a6d20b9f72d4b697"
+        );
+        assert_eq!(
+            to_hex(&tree.hash_node("3", 0).unwrap()),
+            "ea61ab05f9ab9769ab5c91493a601ccad9e784bd4c0b3bc4b7777f0da68eab4d"
+        );
+        assert_eq!(
+            to_hex(&hash_query_by_key(&query_v3(), Scheme::V3).unwrap()),
+            "72c45c5a05a875621f16f2fe64d6c6db662ff41ee124d6c4f281409f5899b96c"
+        );
+    }
+
+    #[test]
+    fn canton_v3_vectors_for_the_transaction_the_metadata_and_the_whole() {
+        // The two disclosed contracts, as the metadata trace hashes them.
+        let metadata = metadata_v3();
+        let disclosed: Vec<String> = metadata
+            .input_contracts
+            .iter()
+            .map(|input| {
+                let Some(ipb::metadata::input_contract::Contract::V1(create)) = &input.contract
+                else {
+                    unreachable!()
+                };
+                to_hex(&hash_create(create, None, Scheme::V3).unwrap())
+            })
+            .collect();
+        assert_eq!(
+            disclosed,
+            [
+                "84c7946905ba3afac9a2e8d360129b92c9055cc9792655f9a0c9195b08ade109",
+                "e53bfab08a6142fc61781fcb242591824716501df665ebd4b68d7406c988f1b0"
+            ]
+        );
+        assert_eq!(
+            to_hex(&hash_transaction(&transaction_v3(), Scheme::V3).unwrap()),
+            "36f0d1f4e9742a5cf54795fd1633f46b8235fafa93da006dafe10eb358d465c4"
+        );
+        assert_eq!(
+            to_hex(&hash_metadata(&metadata, Scheme::V3).unwrap()),
+            "5a4c6aa89bb80d0af05a3f0614ba07bc7469795fff66d7b9e87c876eb0137e0a"
+        );
+        let prepared = ipb::PreparedTransaction {
+            transaction: Some(transaction_v3()),
+            metadata: Some(metadata),
+        };
+        let full = "db37e4e251b83196260900fd43aacf934e1893b7ac58db4c1bfa8ced432b3b84";
+        assert_eq!(
+            to_hex(&hash_prepared_transaction_v3(&prepared).unwrap()),
+            full
+        );
+        assert_eq!(
+            to_hex(&hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::V3).unwrap()),
+            full
+        );
+    }
+
+    /// V3 hashes a transaction without keys too: V2's nodes at `2.1`, hashed
+    /// without the encoding-version bytes, differ from their V2 hashes.
+    #[test]
+    fn v3_also_hashes_a_transaction_without_keys_and_not_as_v2_does() {
+        let prepared = ipb::PreparedTransaction {
+            transaction: Some(transaction()),
+            metadata: Some(metadata()),
+        };
+        let v2 = hash_prepared_transaction_v2(&prepared).unwrap();
+        let v3 = hash_prepared_transaction_v3(&prepared).unwrap();
+        assert_ne!(v2, v3);
+    }
+
+    #[test]
+    fn what_v2_and_v3_do_not_cover_is_refused_not_guessed() {
+        // A keyed node under V2: refused, pointing at V3.
+        let error = hash_create(&create_v3(), None, Scheme::V2).unwrap_err();
+        assert!(error.to_string().contains("V3"), "{error}");
+        let mut keyed_at_v1 = fetch();
+        keyed_at_v1.by_key = true;
+        let error = hash_fetch(&keyed_at_v1, Scheme::V2).unwrap_err();
+        assert!(error.to_string().contains("V3"), "{error}");
+        let error = hash_query_by_key(&query_v3(), Scheme::V2).unwrap_err();
+        assert!(error.to_string().contains("V3"), "{error}");
+
+        // A key on a node that says it has none (serialization `2.1`), under V3.
+        let mut inconsistent = create_v3();
+        inconsistent.lf_version = "2.1".to_string();
+        let error = hash_create(&inconsistent, None, Scheme::V3).unwrap_err();
+        assert!(error.to_string().contains("2.1"), "{error}");
+
+        // Newer than V3 covers (external call results are `3`).
+        let mut newer = create_v3();
+        newer.lf_version = "3".to_string();
+        assert!(hash_create(&newer, None, Scheme::V3).is_err());
+
+        // A key whose hash is not a hash.
+        let mut short = create_v3();
+        short.key.as_mut().unwrap().key.as_mut().unwrap().hash = vec![1, 2, 3];
+        let error = hash_create(&short, None, Scheme::V3).unwrap_err();
+        assert!(error.to_string().contains("32 bytes"), "{error}");
+
+        // A scheme this module does not implement.
+        let prepared = ipb::PreparedTransaction {
+            transaction: Some(transaction()),
+            metadata: Some(metadata()),
+        };
+        assert!(hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::V4).is_err());
+        assert!(
+            hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::Unspecified).is_err()
+        );
     }
 }

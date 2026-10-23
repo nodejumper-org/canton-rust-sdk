@@ -378,27 +378,45 @@ fn commands__command_recovery() {
 /// Contract keys are generated and exercisable by key.
 #[test]
 fn commands__contract_keys() {
+    // A real keyed DAR: Daml-LF 2.3 with six keyed templates (party, record,
+    // tuple and optional keys), pinned in `testdata/contract-keys` with its
+    // provenance and checksum.
     let dar = canton_lf::Dar::open(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../testdata/splice-api-token-holding-v1-1.0.0.dar"
+        "/../../testdata/contract-keys/contractkeys.dar"
     ))
-    .expect("the fixture DAR");
+    .expect("the keyed fixture DAR");
     let (krate, _) = canton_codegen::lower_dar(&dar).expect("lower");
     let source = canton_codegen::generate_crate(&krate).expect("generate");
-    // The runtime carries the by-key exercise; the generator emits `WithKey`
-    // for a template that has one. This fixture has none, so what is asserted
-    // is that the mechanism exists rather than that this DAR uses it.
-    assert!(source.contains("impl rt::Contract for"));
-    // A keyed template gets `WithKey`, and the runtime exercises by key.
-    //
-    // **No template in this repository's corpus declares a key** — none of the
-    // Splice DARs does — so nothing here can exercise the round trip. What is
-    // asserted is that the mechanism is present and public;
-    // `canton-codegen`'s own tests cover emitting it from a DAR that has one.
-    // Saying so is the point: a conformance suite that quietly asserted
-    // something weaker would read as coverage this row does not have.
-    // `with_key_is_public` below names the trait and its associated key type,
-    // so this row fails to compile if either is withdrawn.
+    // Each keyed template gets `WithKey`, naming its key type.
+    for (template, key) in [
+        ("Steward", "type Key = rt::Party;"),
+        (
+            "Account",
+            "type Key = crate::contractkeys_h61a17c769e62::ContractKeys::AccountKey;",
+        ),
+        (
+            "Holiday",
+            "type Key = crate::contractkeys_h61a17c769e62::ContractKeys::HolidayKey;",
+        ),
+        (
+            "Schedule",
+            "type Key = crate::contractkeys_h61a17c769e62::KeyBuilders::ScheduleKey;",
+        ),
+        ("Membership", "impl rt::WithKey for Membership"),
+        ("Enrollment", "impl rt::WithKey for Enrollment"),
+    ] {
+        let impl_at = source
+            .find(&format!("impl rt::WithKey for {template} "))
+            .unwrap_or_else(|| panic!("{template} declares a key, so it implements WithKey"));
+        let window = &source[impl_at..source.len().min(impl_at + 200)];
+        assert!(window.contains(key), "{template}'s key type: {window}");
+    }
+    // The by-key round trip itself (bindings generated from this DAR, compiled,
+    // an exercise-by-key command built and its key decoded back) is
+    // `canton-codegen`'s `keyed_dar_bindings_build_exercise_by_key_commands`,
+    // which spawns cargo. `with_key_is_public` below names the trait and its
+    // associated key type, so this row fails to compile if either is withdrawn.
 }
 
 // ---- Reads and streams ------------------------------------------------------

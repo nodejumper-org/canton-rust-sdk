@@ -57,29 +57,33 @@ pub trait Template: Contract + ToValue + FromValue {
     /// let install: AppInstall = AppInstall::from_created_event(&event)?;
     /// ```
     ///
-    /// When the event carries a template id, its module/entity are checked
-    /// first, so decoding an event of the wrong template fails with a clear
-    /// error instead of a field-shape mismatch. The package id is deliberately
-    /// **not** compared: under Smart Contract Upgrade the ledger may report any
-    /// vetted version of the package.
+    /// The event's identity is checked before its payload, so decoding an
+    /// event of another template fails with a clear error instead of a
+    /// field-shape mismatch, or worse, a clean decode of the wrong contract:
+    /// its module and entity, and its package **name**. The package **id** is
+    /// deliberately not compared: under Smart Contract Upgrade the ledger may
+    /// report any vetted version of the package. A party's stream carries events
+    /// from every application it takes part in, and another package can define
+    /// the same `Module:Entity` with a payload of the same shape.
     ///
     /// # Errors
-    /// Returns [`ValueError`] if the event is a different template, carries no
-    /// payload, or its payload does not decode as `Self`.
+    /// Returns [`ValueError`] if the event carries no template id or no package
+    /// name, is a different template or comes from a different package,
+    /// carries no payload, or its payload does not decode as `Self`.
     fn from_created_event(
         event: &canton_proto::com::daml::ledger::api::v2::CreatedEvent,
     ) -> Result<Self, ValueError> {
-        if let Some(id) = &event.template_id
-            && (id.entity_name != Self::ENTITY_NAME || id.module_name != Self::MODULE_NAME)
-        {
-            return Err(ValueError::new(format!(
-                "event is {}:{}, expected {}:{}",
-                id.module_name,
-                id.entity_name,
-                Self::MODULE_NAME,
-                Self::ENTITY_NAME,
-            )));
-        }
+        let id = event.template_id.as_ref().ok_or_else(|| {
+            ValueError::new(
+                "created event carries no template id, so it cannot be checked to be this template",
+            )
+        })?;
+        check_identity::<Self>(
+            &id.module_name,
+            &id.entity_name,
+            &event.package_name,
+            &id.package_id,
+        )?;
         let record = event
             .create_arguments
             .as_ref()
@@ -114,14 +118,15 @@ pub trait Template: Contract + ToValue + FromValue {
     /// `{"created": {"createdEvent": {…}}}`. There is no ambiguity — a created
     /// event does not itself have those keys.
     ///
-    /// The module and entity of `templateId` are checked, and the package id is
-    /// deliberately not, for the reason given on
+    /// The module and entity of `templateId` and the `packageName` are checked,
+    /// and the package id is deliberately not, for the reasons given on
     /// [`Template::from_created_event`].
     ///
     /// # Errors
-    /// Returns [`ValueError`] if the value is not a created event, is a
-    /// different template, carries no `createArgument`, or its payload does not
-    /// deserialize as `Self`.
+    /// Returns [`ValueError`] if the value is not a created event, carries no
+    /// `templateId` or no package name, is a different template or comes from
+    /// a different package, carries no `createArgument`, or its payload does
+    /// not deserialize as `Self`.
     fn from_json_created_event(event: &serde_json::Value) -> Result<Self, ValueError>
     where
         Self: serde::de::DeserializeOwned,
@@ -135,23 +140,28 @@ pub trait Template: Contract + ToValue + FromValue {
             .find_map(|key| inner.get(key))
             .unwrap_or(inner);
 
-        if let Some(id) = created
+        let id = created
             .get("templateId")
             .and_then(serde_json::Value::as_str)
-        {
-            // `<package>:<Module>:<Entity>` — the package part is whatever
-            // version the ledger vetted, so only the last two are compared.
-            let mut parts = id.rsplit(':');
-            let entity = parts.next().unwrap_or_default();
-            let module = parts.next().unwrap_or_default();
-            if entity != Self::ENTITY_NAME || module != Self::MODULE_NAME {
-                return Err(ValueError::new(format!(
-                    "event is {module}:{entity}, expected {}:{}",
-                    Self::MODULE_NAME,
-                    Self::ENTITY_NAME,
-                )));
-            }
-        }
+            .ok_or_else(|| {
+                ValueError::new(
+                    "created event carries no templateId, so it cannot be checked to be this \
+                     template",
+                )
+            })?;
+        // `<package>:<Module>:<Entity>`: module names are dotted and entity
+        // names carry no colon, so the package part is what precedes the last
+        // two. It is whatever version the ledger vetted, and is compared only
+        // when it names the package (`#<package-name>`).
+        let mut parts = id.rsplitn(3, ':');
+        let entity = parts.next().unwrap_or_default();
+        let module = parts.next().unwrap_or_default();
+        let package = parts.next().unwrap_or_default();
+        let package_name = created
+            .get("packageName")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        check_identity::<Self>(module, entity, package_name, package)?;
 
         let payload = created.get("createArgument").ok_or_else(|| {
             // Singular: the gRPC field is `create_arguments` and this one is
@@ -163,6 +173,50 @@ pub trait Template: Contract + ToValue + FromValue {
             // which is the same bargain the gRPC codec strikes.
             .map_err(|error| ValueError::new(format!("payload did not decode: {error}")))
     }
+}
+
+/// Check that a created event is `T`: the same module and entity, from a
+/// package of the same **name**.
+///
+/// The package name comes from the event's own `package_name` field, or, when
+/// that is empty, from a `#<package-name>` package reference. A package id
+/// alone does not say which package it is, so an event that carries no name is
+/// refused rather than decoded on trust. A template generated without a package
+/// name (`T::PACKAGE_NAME` empty) is checked on module and entity only.
+fn check_identity<T: Contract + ?Sized>(
+    module: &str,
+    entity: &str,
+    package_name: &str,
+    package_ref: &str,
+) -> Result<(), ValueError> {
+    if entity != T::ENTITY_NAME || module != T::MODULE_NAME {
+        return Err(ValueError::new(format!(
+            "event is {module}:{entity}, expected {}:{}",
+            T::MODULE_NAME,
+            T::ENTITY_NAME,
+        )));
+    }
+    if T::PACKAGE_NAME.is_empty() {
+        return Ok(());
+    }
+    let name = if package_name.is_empty() {
+        package_ref.strip_prefix('#').ok_or_else(|| {
+            ValueError::new(format!(
+                "event of {module}:{entity} carries no package name, so it cannot be checked to \
+                 come from `{}`",
+                T::PACKAGE_NAME
+            ))
+        })?
+    } else {
+        package_name
+    };
+    if name != T::PACKAGE_NAME {
+        return Err(ValueError::new(format!(
+            "event of {module}:{entity} is from package `{name}`, expected `{}`",
+            T::PACKAGE_NAME
+        )));
+    }
+    Ok(())
 }
 
 /// A Daml interface: a [`Contract`] identified by a marker type (held via
@@ -221,8 +275,91 @@ mod json_envelope_tests {
     fn created() -> serde_json::Value {
         serde_json::json!({
             "templateId": "whatever-package:M:Widget",
+            "packageName": "app",
             "createArgument": { "owner": "alice" }
         })
+    }
+
+    fn with(patch: &[(&str, serde_json::Value)]) -> serde_json::Value {
+        let mut event = created();
+        for (key, value) in patch {
+            if value.is_null() {
+                event.as_object_mut().expect("object").remove(*key);
+            } else {
+                event[*key] = value.clone();
+            }
+        }
+        event
+    }
+
+    fn grpc(package_id: &str, package_name: &str) -> pb::CreatedEvent {
+        pb::CreatedEvent {
+            template_id: Some(pb::Identifier {
+                package_id: package_id.to_string(),
+                module_name: "M".to_string(),
+                entity_name: "Widget".to_string(),
+            }),
+            package_name: package_name.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Another package that defines `M:Widget` with the same payload shape is
+    /// a different template, and decoding its event as this one is refused;
+    /// another *version* of the same package (a different id under the same
+    /// name) is the same template, and decodes.
+    #[test]
+    fn the_package_name_is_checked_and_the_package_id_is_not() {
+        use serde_json::json;
+        assert!(
+            Widget::from_json_created_event(&with(&[(
+                "templateId",
+                json!("another-version:M:Widget")
+            )]))
+            .is_ok()
+        );
+        let foreign =
+            Widget::from_json_created_event(&with(&[("packageName", json!("someone-elses-app"))]))
+                .expect_err("a foreign package must not decode");
+        assert!(
+            foreign.to_string().contains("someone-elses-app"),
+            "{foreign}"
+        );
+
+        // A `#<package-name>` reference names the package too.
+        let by_name = with(&[
+            ("templateId", json!("#app:M:Widget")),
+            ("packageName", serde_json::Value::Null),
+        ]);
+        assert!(Widget::from_json_created_event(&by_name).is_ok());
+        let by_other_name = with(&[
+            ("templateId", json!("#other:M:Widget")),
+            ("packageName", serde_json::Value::Null),
+        ]);
+        assert!(Widget::from_json_created_event(&by_other_name).is_err());
+
+        // gRPC: the name rides in `package_name`; the id is whatever was vetted.
+        let error = Widget::from_created_event(&grpc("bbbb", "someone-elses-app"))
+            .expect_err("a foreign package must not decode");
+        assert!(error.to_string().contains("someone-elses-app"), "{error}");
+    }
+
+    /// An event the identity check cannot be run on is refused, not decoded on
+    /// trust: no template id, or a package id with no package name beside it.
+    #[test]
+    fn an_event_whose_identity_cannot_be_checked_is_refused() {
+        let no_template = with(&[("templateId", serde_json::Value::Null)]);
+        assert!(Widget::from_json_created_event(&no_template).is_err());
+        let no_name = with(&[("packageName", serde_json::Value::Null)]);
+        let error = Widget::from_json_created_event(&no_name).expect_err("no package name");
+        assert!(error.to_string().contains("no package name"), "{error}");
+
+        let mut event = grpc("bbbb", "app");
+        event.template_id = None;
+        let error = Widget::from_created_event(&event).expect_err("no template id");
+        assert!(error.to_string().contains("no template id"), "{error}");
+        let error = Widget::from_created_event(&grpc("bbbb", "")).expect_err("no package name");
+        assert!(error.to_string().contains("no package name"), "{error}");
     }
 
     #[test]

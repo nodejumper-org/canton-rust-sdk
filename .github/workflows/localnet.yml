@@ -98,10 +98,27 @@ jobs:
             echo "::error::the participant does not hold $pkg after the upload; the committed DAR is not the one canton-quickstart-licensing was generated from"; exit 1; }
           echo "CANTON_TEST_LICENSING_PKG=#quickstart-licensing" >> "$GITHUB_ENV"
 
+      - name: Verify the contract-keys DAR and upload it with curl
+        run: |
+          set -euo pipefail
+          # The keyed Daml-LF 2.3 fixture the interactive suite creates and
+          # exercises by key under hashing scheme V3.
+          (cd testdata/contract-keys && sha256sum --check --strict contractkeys.dar.sha256)
+          token=$(curl -fsS "$CANTON_TEST_TOKEN_URL" \
+            --data-urlencode grant_type=client_credentials \
+            --data-urlencode client_id="$CANTON_TEST_ADMIN_CLIENT_ID" \
+            --data-urlencode client_secret="$CANTON_TEST_ADMIN_CLIENT_SECRET" | jq -r .access_token)
+          echo "::add-mask::$token"
+          curl -fsS -X POST "$CANTON_TEST_JSON_ENDPOINT/v2/packages" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@testdata/contract-keys/contractkeys.dar"
+          echo "CANTON_TEST_CONTRACT_KEYS_PKG=#contractkeys-h61a17c769e62" >> "$GITHUB_ENV"
+
       - name: Fund the validator wallet with Amulet
         run: canton-localnet tap --slot a --at-least 1000
 
-      - name: Run canton-ledger live suite, expecting 36 passed and 0 ignored
+      - name: Run canton-ledger live suite, expecting 39 passed and 0 ignored
         env:
           CANTON_TEST_REQUIRE_LIVE: "1"
         run: |
@@ -111,12 +128,12 @@ jobs:
                    /tmp/canton-ledger-live.log)
           ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
-          [ "$ran" -eq 36 ] || {
-            echo "::error::canton-ledger live ran $ran tests, expected 36"; exit 1; }
+          [ "$ran" -eq 39 ] || {
+            echo "::error::canton-ledger live ran $ran tests, expected 39"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger live test(s) were ignored"; exit 1; }
 
-      - name: Run canton-ledger interactive submission suite, expecting 3 passed and 0 ignored
+      - name: Run canton-ledger interactive submission suite, expecting 5 passed and 0 ignored
         env:
           CANTON_TEST_REQUIRE_LIVE: "1"
         run: |
@@ -126,8 +143,8 @@ jobs:
                    /tmp/canton-ledger-interactive_live.log)
           ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
-          [ "$ran" -eq 3 ] || {
-            echo "::error::canton-ledger interactive_live ran $ran tests, expected 3"; exit 1; }
+          [ "$ran" -eq 5 ] || {
+            echo "::error::canton-ledger interactive_live ran $ran tests, expected 5"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger interactive_live test(s) were ignored"; exit 1; }
 
