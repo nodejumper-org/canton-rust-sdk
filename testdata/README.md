@@ -23,5 +23,9 @@ the `LocalNet` workflow verifies before uploading. Its main package id is
 workflow checks that the participant holds that id, so the DAR cannot drift
 from the bindings without failing the run.
 
+`contract-keys/contractkeys.dar` is a keyed Daml-LF 2.3 package (six keyed
+templates) from the C#/.NET SDK's conformance fixtures, pinned by commit and
+checksum; see [its README](contract-keys/README.md).
+
 The rest of the larger corpus (splice-amulet, splice-wallet) stays env-gated —
 see the testing section of the root README.

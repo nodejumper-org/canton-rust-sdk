@@ -373,6 +373,116 @@ async fn external_commands__prepare_sign_execute_commits_under_hashing_scheme_v3
     assert!(!transaction.events.is_empty());
 }
 
+/// Prepare, sign and commit `command` as `party` under hashing scheme V3,
+/// returning the prepared transaction it was signed over.
+async fn commit_under_v3(
+    ledger: &CantonClient,
+    party: &str,
+    signer: &Ed25519Signer,
+    command: canton_ledger::proto::Command,
+) -> canton_ledger::proto::interactive::PreparedTransaction {
+    use canton_ledger::proto::interactive::HashingSchemeVersion;
+    let prepared = ledger
+        .prepare_submission(
+            Prepare::new(party)
+                .add_command(command)
+                .with_hashing_scheme_version(HashingSchemeVersion::V3),
+        )
+        .await
+        .expect("the participant prepares under V3 and its hash matches the SDK's");
+    let transaction = prepared
+        .transaction()
+        .cloned()
+        .expect("a prepared transaction");
+    let executable = prepared.sign_with(signer).await.expect("signs");
+    let committed = Box::pin(ledger.execute_submission_and_wait_for_transaction(executable))
+        .await
+        .expect("the participant accepts the V3 signature and commits");
+    println!(
+        "committed under V3: {} at offset {}",
+        committed.update_id, committed.offset
+    );
+    transaction
+}
+
+/// Contract keys under hashing scheme V3: the external party creates a keyed
+/// contract and exercises a choice on it **by key**. Both transactions carry
+/// keyed nodes (serialization version `2`), which V2 cannot hash, so the
+/// signature stands on the SDK's own V3 recomputation of the participant's
+/// hash. Needs the `testdata/contract-keys` DAR on the participant.
+#[tokio::test]
+async fn external_commands__a_keyed_contract_is_created_and_exercised_by_key_under_v3() {
+    use canton_ledger::proto::interactive::transaction::v1::node::NodeType;
+    let Ok(pkg) = std::env::var("CANTON_TEST_CONTRACT_KEYS_PKG") else {
+        skip!(
+            "set CANTON_TEST_CONTRACT_KEYS_PKG (`#contractkeys-h61a17c769e62`, after uploading testdata/contract-keys/contractkeys.dar)"
+        );
+        return;
+    };
+    let Some(ledger) = ledger_client() else {
+        skip!("set CANTON_TEST_ENDPOINT (and the credentials the participant asks for)");
+        return;
+    };
+    let Some((party, signer)) = external_party("rust-sdk-keys").await else {
+        skip!("the participant refused or lacks the admin right to onboard an external party");
+        return;
+    };
+    let steward = identifier(&pkg, "ContractKeys", "Steward");
+
+    let created = commit_under_v3(
+        &ledger,
+        &party,
+        &signer,
+        canton_ledger::create(
+            steward.clone(),
+            record(vec![
+                ("steward", value::party(&party)),
+                ("charter", value::text("v1")),
+            ]),
+        ),
+    )
+    .await;
+    let keyed_create = created
+        .transaction
+        .iter()
+        .flat_map(|tx| &tx.nodes)
+        .any(|node| {
+            matches!(
+                &node.versioned_node,
+                Some(canton_ledger::proto::interactive::daml_transaction::node::VersionedNode::V1(n))
+                    if matches!(&n.node_type, Some(NodeType::Create(c)) if c.key.is_some())
+            )
+        });
+    assert!(keyed_create, "the create node carries the contract key");
+
+    let by_key = canton_ledger::proto::Command {
+        command: Some(canton_ledger::proto::command::Command::ExerciseByKey(
+            canton_ledger::proto::ExerciseByKeyCommand {
+                template_id: Some(steward),
+                contract_key: Some(value::party(&party)),
+                choice: "Revise".to_string(),
+                choice_argument: Some(value::record(record(vec![("revised", value::text("v2"))]))),
+            },
+        )),
+    };
+    let exercised = commit_under_v3(&ledger, &party, &signer, by_key).await;
+    let exercised_by_key = exercised
+        .transaction
+        .iter()
+        .flat_map(|tx| &tx.nodes)
+        .any(|node| {
+            matches!(
+                &node.versioned_node,
+                Some(canton_ledger::proto::interactive::daml_transaction::node::VersionedNode::V1(n))
+                    if matches!(&n.node_type, Some(NodeType::Exercise(e)) if e.by_key && e.key.is_some())
+            )
+        });
+    assert!(
+        exercised_by_key,
+        "the exercise node is by key and carries the key"
+    );
+}
+
 /// A signature by the wrong key must be refused. Without this the round-trip
 /// test above proves only that *something* was accepted — not that the
 /// signature is what carried it.

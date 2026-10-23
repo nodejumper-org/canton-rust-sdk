@@ -327,6 +327,17 @@ jobs:
           cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle.log
           grep -q 'oracle agreement:' /tmp/oracle.log || {
             echo "::error::the oracle skipped instead of running"; exit 1; }
+      - name: The same, on a keyed Daml-LF 2.3 DAR
+        env:
+          CANTON_LF_ORACLE_DAR: testdata/contract-keys/contractkeys.dar
+        run: |
+          # The DAR above is LF 2.1 throughout; this one carries LF 2.3 packages
+          # and templates with contract keys, which the decoder and the
+          # 3.5.17 reader must also agree on.
+          (cd testdata/contract-keys && sha256sum --check --strict contractkeys.dar.sha256)
+          cargo test -p canton-lf --test oracle -- --nocapture | tee /tmp/oracle-keys.log
+          grep -q 'oracle agreement:' /tmp/oracle-keys.log || {
+            echo "::error::the oracle skipped instead of running"; exit 1; }
 
   # The published bindings crates are checked-in generated code, and the
   # tests that keep them in step with the emitter are gated on a DAR that lives

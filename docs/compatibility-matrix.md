@@ -195,8 +195,10 @@ claim. A completeness guard asserts the two agree in both
 directions: no capability without a test, and no test claiming a capability the
 registry does not list.
 
-One row is worth reading carefully. **Contract keys** are generated and
-exercisable by key, but no template in this repository's corpus declares a key —
-none of the Splice DARs does — so the conformance test asserts the mechanism is
-present rather than exercising a round trip. The emission itself is covered by
-`canton-codegen`'s own tests.
+One row is worth reading carefully. **Contract keys** are covered by a real
+keyed DAR, [`testdata/contract-keys`](../testdata/contract-keys/README.md)
+(Daml-LF 2.3, six keyed templates): the conformance row generates bindings
+from it, `canton-codegen`'s compile test builds them and an exercise-by-key
+command from them, and the `lf-conformance` job holds the decoder to the JVM
+reader on it. A transaction that uses keys is signed under hashing scheme V3,
+which the SDK recomputes like V2.
