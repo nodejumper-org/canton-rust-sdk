@@ -1489,6 +1489,24 @@ impl CantonClient {
         }))
     }
 
+    /// Like [`Self::updates_with`], as the SDK's own
+    /// [`Update`](crate::update::Update): the type
+    /// [`JsonClient::updates_typed_with`](crate::JsonClient::updates_typed_with)
+    /// returns too, so code that reads updates depends on neither the transport
+    /// nor the vendored protos (ADR-0010 §4). Checkpoints are dropped, as
+    /// [`Self::updates_with`] drops them.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or opening the stream fails; the
+    /// stream yields one for a malformed update.
+    pub async fn updates_typed_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> Result<impl Stream<Item = Result<crate::update::Update>> + Send + use<>> {
+        let stream = self.updates_with(request).await?;
+        Ok(stream.map(|item| item.and_then(crate::update::Update::from_grpc)))
+    }
+
     /// The update stream with `OffsetCheckpoint` frames left in.
     ///
     /// A checkpoint is not an update anyone subscribed for, which is why
@@ -1566,6 +1584,16 @@ impl CantonClient {
         begin_offset: i64,
     ) -> impl Stream<Item = Result<pb::get_updates_response::Update>> + Send + use<> {
         self.updates_resumable_with(crate::request::UpdatesRequest::new(parties, begin_offset))
+    }
+
+    /// Like [`Self::updates_resumable_with`], as the SDK's own
+    /// [`Update`](crate::update::Update).
+    pub fn updates_resumable_typed_with(
+        &self,
+        request: crate::request::UpdatesRequest,
+    ) -> impl Stream<Item = Result<crate::update::Update>> + Send + use<> {
+        self.updates_resumable_with(request)
+            .map(|item| item.and_then(crate::update::Update::from_grpc))
     }
 
     /// Like [`Self::updates_resumable`], with the full request surface of an

@@ -1062,6 +1062,66 @@ async fn point_reads_find_a_committed_transaction_by_id_and_by_offset() {
     );
 }
 
+/// The same update read over gRPC and over JSON comes out as the same SDK
+/// type with the same contents, so code reading updates does not care which
+/// transport carried them (ADR-0010 §4).
+#[tokio::test]
+async fn typed_updates_agree_across_transports() {
+    use canton_ledger::update::Update;
+    use tokio_stream::StreamExt as _;
+    let (Some((client, party, pkg)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("typed updates: no endpoints, credentials, party or package");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("typed updates: no credentials in the environment");
+        return;
+    };
+    let committed = client
+        .submit_and_wait_for_transaction(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("a create commits");
+    let request = canton_ledger::UpdatesRequest::new(vec![party.clone()], committed.offset - 1)
+        .until(committed.offset);
+
+    let over_grpc: Vec<Update> = client
+        .updates_typed_with(request.clone())
+        .await
+        .expect("open the typed stream")
+        .collect::<Result<Vec<_>, _>>()
+        .await
+        .expect("typed gRPC updates");
+    let over_json = json
+        .updates_typed_with(&request, None)
+        .await
+        .expect("typed JSON updates");
+
+    assert_eq!(over_grpc.len(), 1, "{over_grpc:?}");
+    assert_eq!(over_json.len(), 1, "{over_json:?}");
+    let (Some(g), Some(j)) = (over_grpc[0].as_transaction(), over_json[0].as_transaction()) else {
+        panic!("both are the transaction");
+    };
+    assert_eq!(g.update_id, committed.update_id);
+    assert_eq!(g.update_id, j.update_id);
+    assert_eq!(g.offset, j.offset);
+    assert_eq!(g.synchronizer_id, j.synchronizer_id);
+    assert_eq!(g.effective_at, j.effective_at);
+    assert_eq!(g.record_time, j.record_time);
+    let (gc, jc): (Vec<_>, Vec<_>) = (g.created().collect(), j.created().collect());
+    assert_eq!(gc.len(), 1);
+    assert_eq!(gc.len(), jc.len());
+    assert_eq!(gc[0].contract_id, jc[0].contract_id);
+    assert_eq!(gc[0].template_id, jc[0].template_id);
+    assert_eq!(gc[0].package_name, jc[0].package_name);
+    assert_eq!(gc[0].signatories, jc[0].signatories);
+    assert_eq!(gc[0].witness_parties, jc[0].witness_parties);
+    assert_eq!(gc[0].created_at, jc[0].created_at);
+    println!(
+        "typed: {} at offset {} reads the same over gRPC and JSON",
+        g.update_id, g.offset
+    );
+}
+
 /// Both transports report the same pruning points.
 #[tokio::test]
 async fn latest_pruned_offsets_agree_across_transports() {

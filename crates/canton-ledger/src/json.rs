@@ -1601,6 +1601,31 @@ impl JsonClient {
         })
         .await
     }
+
+    /// Like [`Self::updates_with`], as the SDK's own
+    /// [`Update`](crate::update::Update): the type
+    /// [`CantonClient::updates_typed_with`](crate::CantonClient::updates_typed_with)
+    /// yields too. `OffsetCheckpoint` heartbeats are dropped, as the gRPC lane
+    /// drops them.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails, the result
+    /// set exceeds the node limit (`413`), or an element is malformed.
+    pub async fn updates_typed_with(
+        &self,
+        request: &crate::request::UpdatesRequest,
+        limit: Option<i64>,
+    ) -> Result<Vec<crate::update::Update>> {
+        let raw = self.updates_with(request, limit).await?;
+        let mut updates = Vec::with_capacity(raw.len());
+        for element in &raw {
+            let update = crate::update::Update::from_json(element)?;
+            if !matches!(update, crate::update::Update::OffsetCheckpoint(_)) {
+                updates.push(update);
+            }
+        }
+        Ok(updates)
+    }
 }
 
 /// Append a `?limit=<n>` query when a limit is set.

@@ -33,6 +33,7 @@ pub mod interactive;
 mod json;
 pub mod request;
 mod submission;
+pub mod update;
 #[cfg(feature = "ws")]
 mod ws;
 

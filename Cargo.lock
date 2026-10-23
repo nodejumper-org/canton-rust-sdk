@@ -355,9 +355,11 @@ name = "canton-ledger"
 version = "0.3.1"
 dependencies = [
  "async-stream",
+ "base64",
  "canton-admin",
  "canton-auth",
  "canton-core",
+ "canton-daml",
  "canton-proto",
  "canton-signer",
  "futures-core",

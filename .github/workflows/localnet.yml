@@ -118,7 +118,7 @@ jobs:
       - name: Fund the validator wallet with Amulet
         run: canton-localnet tap --slot a --at-least 1000
 
-      - name: Run canton-ledger live suite, expecting 38 passed and 0 ignored
+      - name: Run canton-ledger live suite, expecting 39 passed and 0 ignored
         env:
           CANTON_TEST_REQUIRE_LIVE: "1"
         run: |
@@ -128,8 +128,8 @@ jobs:
                    /tmp/canton-ledger-live.log)
           ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
-          [ "$ran" -eq 38 ] || {
-            echo "::error::canton-ledger live ran $ran tests, expected 38"; exit 1; }
+          [ "$ran" -eq 39 ] || {
+            echo "::error::canton-ledger live ran $ran tests, expected 39"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger live test(s) were ignored"; exit 1; }
 
