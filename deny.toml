@@ -1,5 +1,15 @@
 [advisories]
 version = 2
+# zip's extraction API: SUID/SGID bits kept, and symlinks followed out of the
+# destination, when an archive is unpacked to disk. canton-lf never extracts:
+# it reads each DAR entry into memory under a size cap. The fix is only in
+# zip 9, and `canton_lf::DarError::Zip` carries zip's error type, so the move
+# is a breaking change that waits for 0.4.
+ignore = [
+    { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits; canton-lf never extracts" },
+    { id = "RUSTSEC-2026-0368", reason = "zip extract() follows symlinks out of the destination; canton-lf never extracts" },
+    { id = "RUSTSEC-2026-0369", reason = "zip stream extract() applies permissions through symlinks; canton-lf never extracts" },
+]
 
 [licenses]
 version = 2

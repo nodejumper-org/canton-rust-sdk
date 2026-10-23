@@ -77,6 +77,14 @@ every project on `0.3`.
   The entry is now read through `std::io::Read`, which builds on every 2.x, the
   lockfile moves to zip 2.6.1, and a new CI job builds the workspace with every
   dependency at its newest compatible version.
+- The lockfile, which `canton-codegen-cli` installs with under `--locked`,
+  moves past the RustSec advisories published since 0.3.1: rustls 0.23.46,
+  rustls-webpki 0.103.16, webpki-roots 1.0.11, tokio 1.54.1, ctutils 0.4.5.
+  Three advisories against zip (RUSTSEC-2026-0367, -0368, -0369) are fixed
+  only in zip 9 and concern its extraction API, which `canton-lf` does not
+  call: it reads each DAR entry into memory under a size cap. Moving to zip 9
+  changes the error type `canton_lf::DarError::Zip` carries, so it waits for
+  0.4; `deny.toml` records the three with that reason.
 - The `Prepared` and `Prepare::with_hashing_scheme_version` docs still said
   the SDK did not recompute the hash and that the scheme defaulted to the
   participant's; both were stale since 0.3.1 (#10).
