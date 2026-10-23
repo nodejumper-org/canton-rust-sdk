@@ -1235,3 +1235,78 @@ async fn submit_observe_query_over_json() {
     assert_eq!(requests[1].body["endInclusive"], offset);
     assert_eq!(requests[2].body["activeAtOffset"], offset);
 }
+
+#[tokio::test]
+async fn point_reads_send_the_key_and_a_format_and_read_not_found_as_none() {
+    let not_found = r#"{"code":"UPDATE_NOT_FOUND","cause":"Update not found, or not visible.","context":{},"grpcCodeValue":5}"#;
+    let (url, seen) = scripted_server(vec![
+        (
+            200,
+            r#"{"update":{"Transaction":{"value":{"updateId":"u42","offset":42}}}}"#.to_string(),
+        ),
+        (
+            200,
+            r#"{"update":{"Transaction":{"value":{"updateId":"u42","offset":42}}}}"#.to_string(),
+        ),
+        (404, not_found.to_string()),
+    ])
+    .await;
+    let client = JsonClient::new(url);
+    let alice = vec!["alice".to_string()];
+
+    let by_id = client
+        .update_by_id("u42", alice.clone())
+        .await
+        .expect("success");
+    assert_eq!(
+        by_id.expect("found")["update"]["Transaction"]["value"]["offset"],
+        42
+    );
+    let by_offset = client
+        .update_by_offset(42, alice.clone())
+        .await
+        .expect("success");
+    assert!(by_offset.is_some());
+    // `UPDATE_NOT_FOUND` is an answer, not a failure.
+    assert!(
+        client
+            .update_by_offset(43, alice)
+            .await
+            .expect("not an error")
+            .is_none()
+    );
+
+    let requests = seen.lock().unwrap().clone();
+    assert_eq!(requests[0].path, "/v2/updates/update-by-id");
+    assert_eq!(requests[0].body["updateId"], "u42");
+    assert_eq!(requests[1].path, "/v2/updates/update-by-offset");
+    assert_eq!(requests[1].body["offset"], 42);
+    for request in &requests {
+        assert!(
+            request.body["updateFormat"]["includeTransactions"]["eventFormat"]["filtersByParty"]
+                .get("alice")
+                .is_some(),
+            "the reading party must reach the update format: {}",
+            request.body
+        );
+    }
+}
+
+#[tokio::test]
+async fn latest_pruned_offsets_reads_both_pruning_points() {
+    let (url, seen) = scripted_server(vec![(
+        200,
+        r#"{"participantPrunedUpToInclusive":7,"allDivulgedContractsPrunedUpToInclusive":3}"#
+            .to_string(),
+    )])
+    .await;
+    let pruned = JsonClient::new(url)
+        .latest_pruned_offsets()
+        .await
+        .expect("success");
+    assert_eq!(pruned.participant_pruned_up_to_inclusive, 7);
+    assert_eq!(pruned.all_divulged_contracts_pruned_up_to_inclusive, 3);
+    let request = seen.lock().unwrap()[0].clone();
+    assert_eq!(request.method, "GET");
+    assert_eq!(request.path, "/v2/state/latest-pruned-offsets");
+}

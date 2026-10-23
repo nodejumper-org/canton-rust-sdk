@@ -80,6 +80,9 @@ canton-proto = { workspace = true, features = ["server"] }
 # port, which is what the submit → observe → query flow test needs.
 tonic        = { workspace = true, features = ["transport", "codegen", "router"] }
 tokio-stream = { workspace = true, features = ["net"] }
+# A mock participant answers `UPDATE_NOT_FOUND` the way Canton does: as an
+# `ErrorInfo` detail on the status, which is what the point reads key on.
+tonic-types  = { workspace = true }
 rcgen = "0.13"
 # The trace-propagation test needs a real OpenTelemetry context to propagate:
 # without a tracer installed there is no trace id, and the test would pass on a

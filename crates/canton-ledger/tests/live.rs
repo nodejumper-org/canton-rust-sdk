@@ -978,6 +978,107 @@ async fn both_transports_describe_the_same_failure_identically() {
     );
 }
 
+/// Reading a committed transaction back by its id and by its offset, on both
+/// transports, without scanning a stream; and "not there" is `None`, not an
+/// error.
+#[tokio::test]
+async fn point_reads_find_a_committed_transaction_by_id_and_by_offset() {
+    use canton_ledger::proto::get_update_response::Update;
+    let (Some((client, party, pkg)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("point reads: no endpoints, credentials, party or package");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("point reads: no credentials in the environment");
+        return;
+    };
+    let committed = client
+        .submit_and_wait_for_transaction(Submit::new(&party).add_command(app_install(&party, &pkg)))
+        .await
+        .expect("a create commits");
+
+    let by_id = client
+        .update_by_id(committed.update_id.clone(), vec![party.clone()])
+        .await
+        .expect("read by id");
+    let Some(Update::Transaction(by_id)) = by_id else {
+        panic!("the update id names a transaction: {by_id:?}");
+    };
+    assert_eq!(by_id.offset, committed.offset);
+    let by_offset = client
+        .update_by_offset(committed.offset, vec![party.clone()])
+        .await
+        .expect("read by offset");
+    let Some(Update::Transaction(by_offset)) = by_offset else {
+        panic!("the offset holds a transaction: {by_offset:?}");
+    };
+    assert_eq!(by_offset.update_id, committed.update_id);
+
+    let json_by_id = json
+        .update_by_id(committed.update_id.clone(), vec![party.clone()])
+        .await
+        .expect("JSON read by id")
+        .expect("JSON finds it too");
+    assert_eq!(
+        json_by_id["update"]["Transaction"]["value"]["offset"],
+        serde_json::json!(committed.offset)
+    );
+    let json_by_offset = json
+        .update_by_offset(committed.offset, vec![party.clone()])
+        .await
+        .expect("JSON read by offset")
+        .expect("JSON finds it too");
+    assert_eq!(
+        json_by_offset["update"]["Transaction"]["value"]["updateId"],
+        serde_json::json!(committed.update_id)
+    );
+
+    // An id of the right shape that names nothing, and an offset past the end.
+    let nothing = format!("1220{}", "0".repeat(64));
+    assert!(
+        client
+            .update_by_id(nothing.clone(), vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    assert!(
+        json.update_by_id(nothing, vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    let past_the_end = client.ledger_end().await.expect("ledger end") + 1_000_000;
+    assert!(
+        client
+            .update_by_offset(past_the_end, vec![party.clone()])
+            .await
+            .expect("not found is not an error")
+            .is_none()
+    );
+    println!(
+        "point reads: {} at offset {} found by id and offset on both transports",
+        committed.update_id, committed.offset
+    );
+}
+
+/// Both transports report the same pruning points.
+#[tokio::test]
+async fn latest_pruned_offsets_agree_across_transports() {
+    let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {
+        skip!("latest_pruned_offsets: no endpoints or credentials");
+        return;
+    };
+    let Some(json) = authenticate_json(JsonClient::new(&json_url)) else {
+        skip!("latest_pruned_offsets: no credentials in the environment");
+        return;
+    };
+    let grpc = client.latest_pruned_offsets().await.expect("gRPC");
+    let over_json = json.latest_pruned_offsets().await.expect("JSON");
+    assert_eq!(grpc, over_json);
+    println!("pruned up to {grpc:?}");
+}
+
 #[tokio::test]
 async fn grpc_and_json_transports_agree() {
     let (Some((client, _, _)), Some(json_url)) = (full_setup(), json_endpoint()) else {

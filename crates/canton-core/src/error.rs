@@ -293,6 +293,34 @@ impl Error {
     }
 }
 
+/// The reason Canton gives a read that reaches below the participant's
+/// pruning point, and the metadata key that names where readable data begins.
+const PRUNED_DATA_ACCESSED: &str = "PARTICIPANT_PRUNED_DATA_ACCESSED";
+const EARLIEST_OFFSET_KEY: &str = "earliest_offset";
+
+impl Error {
+    /// The earliest offset the participant can still serve, when this error
+    /// is its refusal of a read that started below its pruning point
+    /// (`PARTICIPANT_PRUNED_DATA_ACCESSED`).
+    ///
+    /// A stream or a page that began at a pruned offset cannot continue from
+    /// there, and nothing retries it into success. What to do instead is the
+    /// caller's decision, because both choices change what it has seen: resume
+    /// from this offset and accept the pruned history is gone, or rebuild from
+    /// a fresh snapshot of the active contract set. The SDK never moves a
+    /// resume point forward on its own.
+    ///
+    /// Available on either transport; `None` for any other error.
+    #[must_use]
+    pub fn pruned_earliest_offset(&self) -> Option<i64> {
+        let info = self.error_info()?;
+        if info.reason != PRUNED_DATA_ACCESSED {
+            return None;
+        }
+        info.metadata.get(EARLIEST_OFFSET_KEY)?.parse().ok()
+    }
+}
+
 /// The category of the status's `ErrorInfo`, when present and recognized.
 /// Whether a status is a connection that died *mid-call*, rather than a verdict
 /// the participant returned.
@@ -704,6 +732,39 @@ mod tests {
                 .is_none()
         );
         assert!(Error::Timeout.error_info().is_none());
+    }
+
+    /// A read below the pruning point names where readable data begins, on
+    /// both transports; any other error names nothing.
+    #[test]
+    fn a_pruned_read_names_the_earliest_offset_it_could_have_served() {
+        use tonic_types::{ErrorDetails, StatusExt as _};
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("earliest_offset".to_string(), "4200".to_string());
+        let details =
+            ErrorDetails::with_error_info("PARTICIPANT_PRUNED_DATA_ACCESSED", "", metadata);
+        let status =
+            tonic::Status::with_error_details(tonic::Code::FailedPrecondition, "pruned", details);
+        assert_eq!(Error::from(status).pruned_earliest_offset(), Some(4200));
+
+        let body = serde_json::json!({
+            "code": "PARTICIPANT_PRUNED_DATA_ACCESSED",
+            "cause": "Updates request from 10 to 20 precedes pruned offset 4200",
+            "context": { "earliest_offset": "4200", "category": "9" },
+            "grpcCodeValue": 9
+        });
+        assert_eq!(
+            Error::http(400, body.to_string()).pruned_earliest_offset(),
+            Some(4200)
+        );
+
+        let other =
+            serde_json::json!({ "code": "UPDATE_NOT_FOUND", "context": {}, "grpcCodeValue": 5 });
+        assert_eq!(
+            Error::http(404, other.to_string()).pruned_earliest_offset(),
+            None
+        );
+        assert_eq!(Error::Timeout.pruned_earliest_offset(), None);
     }
 
     /// A synthetic Canton-style status: `ErrorInfo` with a `category` metadata

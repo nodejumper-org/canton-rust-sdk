@@ -1398,6 +1398,110 @@ impl JsonClient {
         .await
     }
 
+    /// How far the participant has pruned (`GET /v2/state/latest-pruned-offsets`),
+    /// the JSON twin of [`CantonClient::latest_pruned_offsets`](crate::CantonClient::latest_pruned_offsets).
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn latest_pruned_offsets(&self) -> Result<crate::PrunedOffsets> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Body {
+            participant_pruned_up_to_inclusive: i64,
+            all_divulged_contracts_pruned_up_to_inclusive: i64,
+        }
+        telemetry::instrument("latest_pruned_offsets", TRANSPORT_JSON, async {
+            let body: Body = self.get("/v2/state/latest-pruned-offsets").await?;
+            Ok(crate::PrunedOffsets {
+                participant_pruned_up_to_inclusive: body.participant_pruned_up_to_inclusive,
+                all_divulged_contracts_pruned_up_to_inclusive: body
+                    .all_divulged_contracts_pruned_up_to_inclusive,
+            })
+        })
+        .await
+    }
+
+    /// The update at `offset`, as `parties` see it
+    /// (`POST /v2/updates/update-by-offset`), in the default format of
+    /// [`UpdatesRequest::new`](crate::request::UpdatesRequest::new): the JSON
+    /// twin of [`CantonClient::update_by_offset`](crate::CantonClient::update_by_offset).
+    /// The element is raw JSON (`{"update": …}`), as [`Self::updates`] returns
+    /// them. `Ok(None)` when no update at that offset is visible to `parties`.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn update_by_offset(
+        &self,
+        offset: i64,
+        parties: Vec<String>,
+    ) -> Result<Option<Value>> {
+        self.update_by_offset_with(offset, &crate::request::UpdatesRequest::new(parties, 0))
+            .await
+    }
+
+    /// Like [`Self::update_by_offset`], in the format an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) describes. Its
+    /// offsets are not used.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the request names no party, or authentication or
+    /// the request fails.
+    pub async fn update_by_offset_with(
+        &self,
+        offset: i64,
+        format: &crate::request::UpdatesRequest,
+    ) -> Result<Option<Value>> {
+        format.validate()?;
+        telemetry::instrument("update_by_offset", TRANSPORT_JSON, async {
+            let body = json!({
+                "offset": offset,
+                "updateFormat": format.json_body()["updateFormat"],
+            });
+            crate::client::found(self.post("/v2/updates/update-by-offset", &body).await)
+        })
+        .await
+    }
+
+    /// The update with id `update_id`, as `parties` see it
+    /// (`POST /v2/updates/update-by-id`): the JSON twin of
+    /// [`CantonClient::update_by_id`](crate::CantonClient::update_by_id).
+    /// `Ok(None)` when no update with that id is visible to `parties`.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if authentication or the request fails.
+    pub async fn update_by_id(
+        &self,
+        update_id: impl Into<String>,
+        parties: Vec<String>,
+    ) -> Result<Option<Value>> {
+        self.update_by_id_with(update_id, &crate::request::UpdatesRequest::new(parties, 0))
+            .await
+    }
+
+    /// Like [`Self::update_by_id`], in the format an
+    /// [`UpdatesRequest`](crate::request::UpdatesRequest) describes. Its
+    /// offsets are not used.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the request names no party, or authentication or
+    /// the request fails.
+    pub async fn update_by_id_with(
+        &self,
+        update_id: impl Into<String>,
+        format: &crate::request::UpdatesRequest,
+    ) -> Result<Option<Value>> {
+        format.validate()?;
+        let update_id = update_id.into();
+        telemetry::instrument("update_by_id", TRANSPORT_JSON, async {
+            let body = json!({
+                "updateId": update_id,
+                "updateFormat": format.json_body()["updateFormat"],
+            });
+            crate::client::found(self.post("/v2/updates/update-by-id", &body).await)
+        })
+        .await
+    }
+
     /// Fix a submission's identity **before** sending it, returning a
     /// [`JsonSubmission`](crate::JsonSubmission) that carries its
     /// [`ChangeId`](crate::ChangeId) — the JSON lane's
