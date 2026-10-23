@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [Unreleased]
+## [0.3.2] — 2026-10-23
 
 The review findings filed against 0.3.1 by the C#/.NET SDK's maintainer
 (#7–#12), fixed. Two behaviour changes are listed first because they can turn
-a call that succeeded into one that is refused.
+a call that succeeded into one that is refused. Both refuse what should not
+have been accepted, and the public API only grows, so they ship as a patch:
+`cargo update` brings them, and the fix for 0.3.1's broken fresh build, to
+every project on `0.3`.
 
 ### Changed — behaviour
 

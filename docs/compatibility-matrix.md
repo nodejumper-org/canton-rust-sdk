@@ -5,7 +5,7 @@ listed on the strength of "it should work" — but not everything is checked by
 CI on every push, and the table under [What CI runs, and what it cannot](#what-ci-runs-and-what-it-cannot)
 says exactly which rows run only in the nightly `LocalNet` workflow.
 
-Version **0.3.1**, released 2026-09-26 (the pre-audit fixes over 0.3.0, released 2026-09-23).
+Version **0.3.2**, released 2026-10-23 (the review fixes over 0.3.1: contract keys under hashing scheme V3, point reads, transport-neutral update types).
 
 ## Rust
 
@@ -37,7 +37,7 @@ participant; CI runs them against LocalNet in the `LocalNet` workflow, nightly a
 |---|---|
 | Ledger API | **v2** |
 | Canton | **3.5.7** — the release the `.proto` files are vendored from |
-| Verified against | a Canton 3.5.7 participant (LocalNet): submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party. A Canton **3.5.17** participant on the Canton Network **DevNet** (Splice validator 0.8.1): the token-standard workflows, JSON package and party reads, gRPC over TLS with a Keycloak token |
+| Verified against | a Canton 3.5.7 participant (LocalNet): submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party, including contract keys under hashing scheme V3. A Canton **3.5.17** and, since 0.3.2, **3.6.3** participant on the Canton Network **DevNet**: the token-standard workflows, the ledger live suite, interactive submission under V2 and V3, JSON package and party reads, PQS over TLS, gRPC over TLS with a Keycloak token |
 | Run in CI | the `LocalNet` workflow boots [canton-localnet](https://github.com/peacefulstudio/canton-localnet) v0.8.4-3, which vendors **Splice 0.8.4**, and runs the live suites against it nightly and on demand. The Canton participant is the one that Splice release ships; the workflow does not pin it, and the 3.5.7 row above is the developer-run verification |
 
 Moving the supported Canton range re-vendors the protos in a new SDK minor. See
