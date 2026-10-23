@@ -104,7 +104,7 @@ impl Dar {
         let mut remaining = total_budget;
 
         for index in 0..archive.len() {
-            let entry = archive.by_index(index)?;
+            let mut entry = archive.by_index(index)?;
             if !entry.is_file() {
                 continue;
             }
@@ -118,7 +118,8 @@ impl Dar {
             }
 
             let cap = MAX_ENTRY_BYTES.min(remaining);
-            let data = read_capped(entry, cap).map_err(|why| match why {
+            let declared = entry.size();
+            let data = read_capped(&mut entry, declared, cap).map_err(|why| match why {
                 TooLarge::Io(error) => DarError::Io(error),
                 // Which limit bit is decided here, where both are known: a cap
                 // the budget shrank means the archive as a whole is too big,
@@ -227,17 +228,21 @@ impl Dar {
 /// left of the archive's budget when that is smaller — which is what keeps a
 /// single read from over-allocating past the total.
 ///
+/// It takes the entry as any reader rather than as `zip`'s entry type: that
+/// type gained a type parameter in zip 2.6, inside the 2.x range this crate
+/// accepts, and naming it broke every build that resolved the newer zip.
+///
 /// `Err(TooLarge)` carries nothing: only the caller knows which of the two
 /// limits was the binding one, and saying the wrong one sends the reader to
 /// look at an entry that is not the problem.
-fn read_capped(mut entry: zip::read::ZipFile<'_>, cap: u64) -> Result<Vec<u8>, TooLarge> {
-    if entry.size() > cap {
+fn read_capped(entry: &mut impl Read, declared: u64, cap: u64) -> Result<Vec<u8>, TooLarge> {
+    if declared > cap {
         return Err(TooLarge::Refused);
     }
     let mut data = Vec::new();
     // `take` one byte past the cap: hitting it means the entry lied about its
     // size and is over the limit.
-    Read::take(&mut entry, cap + 1)
+    Read::take(entry, cap + 1)
         .read_to_end(&mut data)
         .map_err(TooLarge::Io)?;
     if data.len() as u64 > cap {

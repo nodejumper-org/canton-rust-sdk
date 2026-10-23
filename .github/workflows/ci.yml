@@ -96,6 +96,20 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: 1.88.0
 
+  # The committed Cargo.lock is what CI builds with; a user who adds a crate
+  # resolves every dependency afresh, to its newest version in range. zip 2.6
+  # changed a type inside 2.x and every fresh build of canton-lf 0.3.1 failed
+  # while CI stayed green on the locked 2.4. This builds what users build.
+  latest-deps:
+    name: Builds with every dependency at its newest compatible version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with: { toolchain: stable }
+      - run: cargo update
+      - run: cargo check --workspace --all-targets --all-features
+
   docs:
     runs-on: ubuntu-latest
     steps:

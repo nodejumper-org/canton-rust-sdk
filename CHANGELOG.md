@@ -66,6 +66,14 @@ a call that succeeded into one that is refused.
 
 ### Fixed
 
+- **`canton-lf` 0.3.x does not build on a fresh install.** zip 2.6, inside the
+  `2` range the crate accepts, added a type parameter to `ZipFile`, which
+  `canton-lf` named; the workspace lockfile held zip at 2.4, so CI stayed green
+  while `cargo add canton-lf`, `cargo add canton-codegen` and
+  `cargo install canton-codegen-cli` (without `--locked`) failed to compile.
+  The entry is now read through `std::io::Read`, which builds on every 2.x, the
+  lockfile moves to zip 2.6.1, and a new CI job builds the workspace with every
+  dependency at its newest compatible version.
 - The `Prepared` and `Prepare::with_hashing_scheme_version` docs still said
   the SDK did not recompute the hash and that the scheme defaulted to the
   participant's; both were stale since 0.3.1 (#10).
