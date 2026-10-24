@@ -27,10 +27,12 @@
 //! here so a `cargo add canton` user gets a version-locked runtime without a
 //! second dependency line.
 //!
-//! Generating the bindings themselves is a **build-time** step, so the
-//! generator is deliberately *not* re-exported: install the CLI with
-//! `cargo install canton-codegen-cli`, or depend on `canton-codegen` from a
-//! build script.
+//! Generating the bindings themselves happens **ahead of time**: the output is
+//! a crate you commit, regenerated in CI when the DAR changes. So the generator
+//! is deliberately *not* re-exported: install the CLI with
+//! `cargo install canton-codegen-cli`, or call `canton-codegen` from a tool or
+//! a CI step. A build script cannot do it (see the README's codegen section:
+//! Cargo resolves the bindings' path dependency before any build script runs).
 //!
 //! # Feature flags
 //!

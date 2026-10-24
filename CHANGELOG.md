@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
+## [Unreleased]
+
+### Documentation
+
+- **A documentation site**, built from `book/` with mdBook and published to
+  GitHub Pages: guides for getting started, local development, reading the
+  ledger, codegen, the token standard, interactive submission, PQS, and the
+  admin API and telemetry. The compatibility matrix, the ADRs, the changelog
+  and the project files are copied in at build time, so the site and the
+  repository cannot drift apart, and CI fails on a link inside it that points
+  at nothing.
+- **`MAINTENANCE.md`**: what is maintained, in what order (security fixes,
+  then critical bugs, then new Canton releases), how releases are made, and
+  what is not promised.
+- Corrected while writing the guides:
+  - turning off the facade's default features drops the in-memory key type,
+    not `ring`, which the TLS stack uses;
+  - codegen runs ahead of time, not from a build script;
+  - `JsonClient::with_max_decoding_message_size` also caps HTTP response
+    bodies;
+  - PQS `Op::Eq` compares the stored text, so numeric equality across scales
+    needs `Op::Ge` plus `Op::Le`;
+  - the compatibility matrix's live-test counts and its LocalNet settlement
+    row were stale.
+
 ## [0.3.2] — 2026-10-23
 
 The review findings filed against 0.3.1 by the C#/.NET SDK's maintainer

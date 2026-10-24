@@ -2,8 +2,9 @@
 //!
 //! Invoked as `dpm codegen-rust` (dpm resolves subcommands to `dpm-<name>`
 //! binaries, like git/cargo) or standalone. The pipeline itself lives in the
-//! `canton-codegen` library, so a build script can call it directly the way
-//! `prost-build` is used, without depending on this CLI.
+//! `canton-codegen` library, so a tool or a CI step can call it without
+//! depending on this CLI. (Not a build script: the generated crate is a path
+//! dependency, and Cargo resolves those before any build script runs.)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
