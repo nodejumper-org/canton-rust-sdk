@@ -71,8 +71,6 @@ with the reason.
 - **No backports** to earlier minors before 1.0.
 - **No support for Canton versions older than the compatibility matrix lists,
   or for unreleased ones.**
-- **No date for 1.0.** It ships when the API has settled through the
-  independent security review and feedback from teams using the SDK.
 
 ## During and after the grant
 
