@@ -14,6 +14,9 @@ current release" always means one version of the whole family.
 
 ## What maintenance means here
 
+These are priorities, not deadlines. After the grant they apply on a
+best-effort basis (see [During and after the grant](#during-and-after-the-grant)).
+
 **Security issues come first.** Reports go through [SECURITY.md](SECURITY.md).
 A confirmed vulnerability is fixed in a patch release of the current minor
 before other work continues, and is credited in the release notes.
@@ -73,22 +76,30 @@ with the reason.
 
 ## During and after the grant
 
-While the Canton Dev Fund grant runs, maintenance is part of the funded work.
+**During the grant,** maintenance as described above is part of the funded
+work, through the end of the funded milestones.
 
-After the grant, Nodejumper keeps maintaining the SDK on the terms above:
-- security fixes;
-- critical bug fixes;
-- compatibility releases for new Canton versions;
-- issue triage.
+**After the grant,** the SDK stays open source, and Nodejumper continues to
+look after it on a **best-effort basis**, as capacity allows. Security reports
+and critical bugs come first, then compatibility with new Canton releases and
+issue triage. Best effort means there are no committed response times,
+release dates or support windows.
 
-**Extended maintenance is planned as a separate maintenance and support
-proposal to the Canton Dev Fund.** That covers committed response times, a
-scheduled release cadence, longer support for earlier versions, and new
-features. If it is agreed, its terms will be published here.
+**Sustained maintenance needs dedicated funding.** Keeping a family of 31
+crates in step with Canton's release cadence is continuous work: re-vendoring
+the Ledger API and Daml-LF schemas, regenerating the token-standard bindings,
+and re-running the live suites against each new release. It is therefore
+planned as a **separate maintenance and support proposal** to the Canton Dev
+Fund. That proposal covers:
+- committed response times;
+- a compatible release for each Canton release;
+- longer support for earlier versions;
+- continued feature work.
 
-If maintenance ever stops, this file and the README will say so plainly,
-rather than letting the repository go quiet. We will also help hand the crates
-over to a maintainer willing to take them on.
+Once it is agreed, its terms will be published here and will replace the
+best-effort terms above.
+
+If maintenance ever winds down, this file and the README will say so.
 
 ## Getting help
 
