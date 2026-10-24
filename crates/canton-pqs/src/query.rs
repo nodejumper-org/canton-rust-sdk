@@ -454,9 +454,10 @@ fn default_from(source: Source) -> &'static str {
 /// — and that is what PQS stores. A caller who writes `Predicate::eq("count",
 /// 5)` means the row whose payload holds `"5"`, so a JSON number is bound in
 /// its string form; comparing a `jsonb` number against a `jsonb` string would
-/// match nothing, silently. `Numeric` equality is still better asked with
-/// [`compare`](Predicate::compare) and [`Op::Eq`], which casts both sides and
-/// so treats `1.0` and `1.0000000000` as the same amount.
+/// match nothing, silently. That equality is on the stored text, so `"1.0"` and
+/// `"1.0000000000"` differ: for `Numeric` equality across scales, bound the
+/// value with [`compare`](Predicate::compare) and [`Op::Ge`] plus [`Op::Le`],
+/// the ordered operators, which cast both sides to `numeric`.
 fn as_stored(value: serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Number(n) => serde_json::Value::String(n.to_string()),
