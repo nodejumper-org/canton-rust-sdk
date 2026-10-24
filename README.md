@@ -4,6 +4,8 @@ A production-grade, async **Rust SDK for the [Canton Network](https://www.canton
 
 Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary) and JSON (HTTP + WebSocket), with correct change-ID de-duplication, command recovery, resilient/resumable streaming, TLS/mTLS on every transport, JWT/OIDC auth, and built-in telemetry.
 
+> **Docs:** guides at <https://nodejumper-org.github.io/canton-rust-sdk/>, API reference on [docs.rs](https://docs.rs/canton).
+>
 > **Status:** 0.3.2 is on crates.io: the Ledger API client, the type-safe DAR codegen, the token standard in both versions (CIP-56 and CIP-0112), interactive submission with a pluggable `Signer`, and a typed PQS client. Everything here is verified against a Canton **3.5.7** participant — hermetic tests plus the live suites (submit, streaming, recovery, TLS/mTLS, auth, external signing, PQS against **Scribe 3.5.4**), an end-to-end typed loop over gRPC and JSON, and the five token-standard examples against a live registry — and the token-standard examples were also run on the Canton Network DevNet (Canton 3.5.17 and 3.6.3), with the output on record under [`docs/verification/`](docs/verification/token-standard-live-runs.md). CI holds the whole workspace to `-D warnings` on every feature combination.
 
 ## Crates
@@ -53,7 +55,7 @@ crates release in **lockstep** — mix only equal versions
 |---|---|---|
 | `ws` | `canton-ledger` | WebSocket streaming for the JSON transport (`ws_updates`, `ws_active_contracts`, `ws_completions`, `ws_updates_resumable`), TLS-aware. |
 | `otel` | `canton-core`, `canton-ledger` | OTLP span export (`telemetry::otel::otlp_tracer`) and automatic W3C trace-context injection into outgoing gRPC metadata + JSON headers. |
-| `ed25519` | `canton-signer` | The in-memory Ed25519 key (`Ed25519Key`), on `ring`. **On by default via the facade.** An HSM/KMS deployment that must not link `ring` or an in-memory private key takes `canton = { default-features = false }` and implements `Signer` itself; the trait, the wire types and their validation are unconditional. |
+| `ed25519` | `canton-signer` | The in-memory Ed25519 key (`Ed25519Key`), on `ring`. **On by default via the facade.** An HSM/KMS deployment that must not hold a private key in process memory takes `canton = { default-features = false }` and implements `Signer` itself (`ring` stays in the tree either way: the TLS stack uses it); the trait, the wire types and their validation are unconditional. |
 | `tls` | `canton-pqs` | Connecting to a PQS store over TLS (`PqsClient::connect_tls`), with the platform's root certificates. |
 
 The `canton` facade forwards all of them — the PQS one as `pqs-tls`, since the facade's own namespace has to say which crate a `tls` belongs to: `canton = { version = "0.3", features = ["ws", "otel", "pqs-tls"] }`. `ed25519` is on by default, so turning it off is `default-features = false`.
@@ -448,8 +450,10 @@ suite have since landed on top of that.
 
 ## Contributing & security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
-[SECURITY.md](SECURITY.md) for private vulnerability reporting. Notable
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow,
+[SECURITY.md](SECURITY.md) for private vulnerability reporting, and
+[MAINTENANCE.md](MAINTENANCE.md) for how the SDK is maintained and what is
+promised. Notable
 changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgements

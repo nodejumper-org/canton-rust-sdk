@@ -1,0 +1,23 @@
+[book]
+title = "Canton Rust SDK"
+description = "A Rust SDK for the Canton Network: Ledger API client, typed codegen from DARs, the token standard, external signing and PQS."
+authors = ["Nodejumper"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "build"
+create-missing = false
+
+[output.html]
+site-url = "/canton-rust-sdk/"
+git-repository-url = "https://github.com/nodejumper-org/canton-rust-sdk"
+edit-url-template = "https://github.com/nodejumper-org/canton-rust-sdk/edit/main/book/{path}"
+no-section-label = true
+
+[output.html.search]
+enable = true
+
+[output.html.fold]
+enable = true
+level = 1
