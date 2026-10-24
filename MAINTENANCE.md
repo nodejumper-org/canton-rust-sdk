@@ -74,30 +74,11 @@ with the reason.
 
 ## During and after the grant
 
-**During the grant,** maintenance as described above is part of the funded
-work, through the end of the funded milestones.
-
-**After the grant,** the SDK stays open source, and Nodejumper continues to
-look after it on a **best-effort basis**, as capacity allows. Security reports
-and critical bugs come first, then compatibility with new Canton releases and
-issue triage. Best effort means there are no committed response times,
-release dates or support windows.
-
-**Sustained maintenance needs dedicated funding.** Keeping a family of 31
-crates in step with Canton's release cadence is continuous work: re-vendoring
-the Ledger API and Daml-LF schemas, regenerating the token-standard bindings,
-and re-running the live suites against each new release. It is therefore
-planned as a **separate maintenance and support proposal** to the Canton Dev
-Fund. That proposal covers:
-- committed response times;
-- a compatible release for each Canton release;
-- longer support for earlier versions;
-- continued feature work.
-
-Once it is agreed, its terms will be published here and will replace the
-best-effort terms above.
-
-If maintenance ever winds down, this file and the README will say so.
+While the Canton Dev Fund grant runs, maintenance is part of the funded work.
+After it, the SDK stays open source and is maintained on a best-effort basis,
+with no committed response times, release dates or support windows. Extended
+maintenance may be funded separately; if it is, its terms will be published
+here.
 
 ## Getting help
 
