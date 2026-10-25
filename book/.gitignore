@@ -1,0 +1,4 @@
+/build/
+# Copied from the repository by tools/docs-site/sync.py at build time.
+/src/reference/
+/src/project/

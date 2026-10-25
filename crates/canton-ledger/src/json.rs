@@ -807,7 +807,8 @@ impl JsonClient {
     /// update meets first. Both are set from this value, so a frame is capped
     /// only by what the caller asked for.
     ///
-    /// Does not affect the HTTP (`POST`) lane, which has no ceiling to raise.
+    /// The HTTP lane reads response bodies under the same ceiling, so this is
+    /// also the largest JSON response a request accepts.
     ///
     /// [`Config::with_max_decoding_message_size`]: canton_core::Config::with_max_decoding_message_size
     #[must_use]

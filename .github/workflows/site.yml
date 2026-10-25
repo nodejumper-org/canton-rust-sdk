@@ -1,0 +1,81 @@
+name: Docs site
+
+# Builds the mdBook under book/ on every pull request, and publishes it to
+# GitHub Pages from main. The repository's Pages source must be set to
+# "GitHub Actions" (Settings > Pages) for the deploy job to have a site to
+# publish to. The reference pages are copied in from docs/, the
+# changelog and the project files by tools/docs-site/sync.py, so the site and
+# the repository cannot drift apart.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MDBOOK_VERSION: 0.5.4
+  # sha256 of mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz on the mdBook
+  # release page. A release asset can be replaced; the checksum cannot.
+  MDBOOK_SHA256: 3f28de05dafca9d0f2eab99c662116b0e37b89b1d96a08f8f430b9eeae958cd7
+
+jobs:
+  build:
+    name: Build the docs site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+
+      - name: Install mdBook
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/mdbook.tgz" \
+            "https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${MDBOOK_SHA256}  $RUNNER_TEMP/mdbook.tgz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/mdbook.tgz" -C "$RUNNER_TEMP/bin" mdbook
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Copy the repository's documents into the site
+        run: python3 tools/docs-site/sync.py
+
+      # mdBook logs a missing include as an error and still exits 0, so the log
+      # is the signal: a clean build prints INFO lines only.
+      - name: Build
+        run: |
+          set -o pipefail
+          mdbook build book 2>&1 | tee "$RUNNER_TEMP/mdbook.log"
+          if grep -E '\b(ERROR|WARN)\b' "$RUNNER_TEMP/mdbook.log"; then exit 1; fi
+
+      - name: Point the copied pages' edit links at their sources
+        run: python3 tools/docs-site/sync.py --after-build
+
+      - name: No link inside the site points at nothing
+        run: python3 tools/docs-site/check_links.py book/build
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with: { path: book/build }
+
+  deploy:
+    name: Publish to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

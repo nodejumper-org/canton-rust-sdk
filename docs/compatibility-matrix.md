@@ -91,9 +91,10 @@ Which standard each crate targets, crate by crate:
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | V1 and V2 — Amulet implements both | the Splice application packages, referencing the crates above rather than copying them |
 | `canton-token` | V1 (`canton_token::*`) and V2 (`canton_token::v2`) | the workflows |
 
-**Verified against two live registries** — the Splice scan of a cn-quickstart
-LocalNet (Splice 0.6.11), and the public Scan of the Canton Network **DevNet**
-(Splice 0.8.1). The instrument on both is **Amulet (Canton Coin)**, which
+**Verified against live registries** — the Splice scan of a cn-quickstart
+LocalNet (Splice 0.6.11), the Scan of a Canton Builder Tool LocalNet (the
+three-participant settlement), and the public Scan of the Canton Network
+**DevNet** (Splice 0.8.1). The instrument on both is **Amulet (Canton Coin)**, which
 declares both standards (`splice-api-token-transfer-instruction-v1` and
 `-v2`). That is a V2 implementation, exercised as one. The registry's OpenAPI
 documents at 0.8.1 differ from the vendored 0.6.11 copies by one additive
@@ -119,17 +120,19 @@ network, which is the target that exists.
 | V2 event parsing (`events::holdings_changes`) on a committed transaction | one holdings change: 1 spent, 2 produced, 2 legs | two holdings changes: 1 spent / 1 produced, 0 spent / 1 produced |
 | V2 **allocation**, three distinct parties (sender / receiver / executor) | allocated at offset 67693, 6 events, 3 contracts created | allocated at offset 3316319, executor the validator's party |
 | V2 allocation **withdrawn** by the sender | — | withdrawn at offset 3316364; the reserved coin released |
-| V2 allocation **settled** by its executor (`settle_batch`) | — | settled at offset 3317221 through Amulet's settlement factory; a one-sided leg was refused first, as the standard requires |
+| V2 allocation **settled** by its executor (`settle_batch`) | settled by a third party on a three-participant LocalNet (Canton Builder Tool, 2026-10-13): sender, receiver and executor each on its own participant | settled at offset 3317221 through Amulet's settlement factory; a one-sided leg was refused first, as the standard requires |
 
-Both runs are kept verbatim, with their environment and commands, in
+The runs are kept verbatim, with their environment and commands, in
 [`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md);
 the DevNet update ids were read back from the participant by id after the run.
 
 The allocation is the half that needs more than two parties: the sender
 reserves holdings for a settlement a third party — the executor — completes
 later, which is what delivery-versus-payment is built from. On the LocalNet
-the three roles are three parties and settling was left to the executor's own
-process; on DevNet, where one token was held, the settlement was run with the
+the three roles are three parties on three participants, each submitting with
+its own participant's token, and the executor settled both sides of the leg as
+one batch ([the run of 2026-10-13](verification/token-standard-live-runs.md#v2-settlement-between-three-parties-on-three-participants-2026-10-13));
+on DevNet, where one token was held, the settlement was run with the
 sender as executor and both sides of the leg in one allocation, after the
 settlement factory had refused a one-sided leg. Both are on record.
 
@@ -176,7 +179,7 @@ each file name ends with the package id that hashes its bytes.
 
 The `LocalNet` workflow sets `CANTON_TEST_REQUIRE_LIVE`, so a suite that cannot
 reach its environment **fails rather than skips**, and it asserts each suite's
-exact passed count and zero ignored tests: ledger 36, interactive 3, admin 5,
+exact passed count and zero ignored tests: ledger 39, interactive 5, admin 5,
 PQS 9, token 5. One PQS test skips without that guard when the store holds no
 Amulet, so the workflow also requires the line that test prints when it
 compares. Outside CI, a suite gated on an environment variable skips when the
