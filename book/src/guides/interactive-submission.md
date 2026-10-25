@@ -65,9 +65,11 @@ hint and `user_id` the ledger user that will submit:
 {{#include ../../../crates/canton-ledger/tests/interactive_live.rs:181:211}}
 ```
 
-- Both calls go to the Ledger API port, and allocating needs a token whose user
-  has `ParticipantAdmin` (the live test makes both calls as that admin). A
-  LocalNet without authentication needs nothing beyond the endpoint.
+- Both calls go to the Ledger API port. The live test makes both calls with a
+  token whose user has `ParticipantAdmin`. The pinned Ledger API contract also
+  authorizes `AllocateExternalParty` for an identity-provider admin, or for a
+  token whose own user is the `user_id` passed. A LocalNet without
+  authentication needs nothing beyond the endpoint.
 - `user_id` gets `act_as` rights on the new party; an empty string grants none.
   Canton derives the ledger user from the token's `sub`, which in a
   client-credentials flow is a service-account id, not the OIDC client id.

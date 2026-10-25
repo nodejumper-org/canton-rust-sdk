@@ -10,7 +10,9 @@ therefore resolved against the file's place in the repository and rewritten to
 the copied page when that file is part of the site, or to the file on GitHub
 when it is not (source files, test fixtures, workflow files).
 
-Usage: tools/docs-site/sync.py   (from anywhere; writes book/src/{reference,project})
+Usage:
+  tools/docs-site/sync.py                  before `mdbook build`: writes book/src/{reference,project}
+  tools/docs-site/sync.py --after-build    after it: points the copied pages' "edit" links at their sources
 """
 
 from __future__ import annotations
@@ -62,6 +64,8 @@ def rewrite(target: str, source: str, page: str) -> str:
         return posixpath.relpath(PAGES[resolved], posixpath.dirname(page)) + anchor
     if resolved.startswith(".."):
         raise SystemExit(f"{source}: link {target!r} leaves the repository")
+    if not (ROOT / resolved).exists():
+        raise SystemExit(f"{source}: link {target!r} points at nothing")
     kind = "tree" if (ROOT / resolved).is_dir() else "blob"
     return f"{GITHUB}/{kind}/main/{resolved}{anchor}"
 
@@ -72,7 +76,26 @@ def convert(source: str, page: str) -> str:
     return REFERENCE.sub(lambda m: m[1] + rewrite(m[2], source, page), text)
 
 
+def fix_edit_links() -> None:
+    """A copied page is not in the repository at book/src/<page>, so mdBook's
+    edit link for it would open a 404. Point it at the file it was copied from."""
+    build = ROOT / "book" / "build"
+    for source, page in PAGES.items():
+        html = build / Path(page).with_suffix(".html")
+        if html.name == "README.html":
+            html = html.with_name("index.html")
+        text = html.read_text(encoding="utf-8")
+        old = f"{GITHUB}/edit/main/book/src/{page}"
+        if old not in text:
+            raise SystemExit(f"{html.relative_to(ROOT)}: no edit link {old}")
+        html.write_text(text.replace(old, f"{GITHUB}/edit/main/{source}"), encoding="utf-8")
+    print(f"pointed {len(PAGES)} edit links at their sources")
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--after-build"]:
+        fix_edit_links()
+        return 0
     for generated in ("reference", "project"):
         shutil.rmtree(SRC / generated, ignore_errors=True)
     for source, page in PAGES.items():

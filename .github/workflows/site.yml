@@ -1,7 +1,9 @@
 name: Docs site
 
 # Builds the mdBook under book/ on every pull request, and publishes it to
-# GitHub Pages from main. The reference pages are copied in from docs/, the
+# GitHub Pages from main. The repository's Pages source must be set to
+# "GitHub Actions" (Settings > Pages) for the deploy job to have a site to
+# publish to. The reference pages are copied in from docs/, the
 # changelog and the project files by tools/docs-site/sync.py, so the site and
 # the repository cannot drift apart.
 
@@ -45,8 +47,16 @@ jobs:
       - name: Copy the repository's documents into the site
         run: python3 tools/docs-site/sync.py
 
+      # mdBook logs a missing include as an error and still exits 0, so the log
+      # is the signal: a clean build prints INFO lines only.
       - name: Build
-        run: mdbook build book
+        run: |
+          set -o pipefail
+          mdbook build book 2>&1 | tee "$RUNNER_TEMP/mdbook.log"
+          if grep -E '\b(ERROR|WARN)\b' "$RUNNER_TEMP/mdbook.log"; then exit 1; fi
+
+      - name: Point the copied pages' edit links at their sources
+        run: python3 tools/docs-site/sync.py --after-build
 
       - name: No link inside the site points at nothing
         run: python3 tools/docs-site/check_links.py book/build

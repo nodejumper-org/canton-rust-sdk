@@ -16,7 +16,9 @@ use std::fmt::Write as _;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Op {
-    /// JSON equality — exact, and correct for every JSON type.
+    /// JSON equality, with no numeric cast. Through [`Predicate::compare`] a
+    /// number never matches the string PQS stores, so use [`Predicate::eq`]
+    /// (which converts it) or [`Op::Ge`] plus [`Op::Le`].
     Eq,
     /// JSON inequality.
     NotEq,
@@ -75,9 +77,11 @@ enum Target {
 impl Predicate {
     /// A field of the payload equals `value`.
     ///
-    /// The comparison is JSON equality, so it is exact for every type: a
-    /// `Numeric` that LF-JSON carries as `"10.0"` matches `"10.0"` and not
-    /// `10.0`, which is the distinction the encoding makes on purpose.
+    /// The comparison is on the stored JSON: a number is bound as the string
+    /// LF-JSON stores, so `eq("count", 5)` matches `"5"`. A `Numeric` keeps its
+    /// scale, so `"1.0"` and `"1.0000000000"` differ; for numeric equality,
+    /// bound the field with [`compare`](Self::compare) and [`Op::Ge`] plus
+    /// [`Op::Le`].
     pub fn eq(path: impl IntoPath, value: impl Into<serde_json::Value>) -> Self {
         Self {
             target: Target::Payload(path.into_path()),

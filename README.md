@@ -452,8 +452,8 @@ suite have since landed on top of that.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow,
 [SECURITY.md](SECURITY.md) for private vulnerability reporting, and
-[MAINTENANCE.md](MAINTENANCE.md) for how the SDK is maintained and what is
-promised. Notable
+[MAINTENANCE.md](MAINTENANCE.md) for how the SDK is maintained, what that
+covers and what it does not. Notable
 changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgements

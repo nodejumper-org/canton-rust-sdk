@@ -9,8 +9,10 @@ a public issue or pull request.
 - Include: affected crate(s) and version/commit, a description, reproduction
   steps or a proof of concept, and the impact as you assess it.
 
-You will receive an acknowledgement within **5 business days**. We will work
-with you on triage, a fix, and coordinated disclosure; please give us a
+While the Canton Dev Fund grant runs, you will receive an acknowledgement
+within **5 business days**; after it, reports are handled on a best-effort
+basis (see [MAINTENANCE.md](MAINTENANCE.md)). We will work with you on triage,
+a fix, and coordinated disclosure; please give us a
 reasonable window to release a fix before any public disclosure. Credit is
 given in the release notes unless you prefer otherwise.
 

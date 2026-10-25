@@ -28,9 +28,9 @@ canton-pqs    = { workspace = true }
 # is the only place users have to think about.
 # On by default, so `cargo add canton` is unchanged. An HSM/KMS deployment that
 # must not hold a private key in process memory takes `default-features = false`
-# to drop the in-memory key type (`ring` itself stays: the TLS stack uses it) — which did nothing at all before, because three
-# crates in the tree pinned the signer's default and feature unification is
-# additive.
+# to drop the in-memory key type; `ring` itself stays, because the TLS stack
+# uses it. That switch did nothing at all before, because three crates in the
+# tree pinned the signer's default and feature unification is additive.
 default = ["ed25519"]
 ed25519 = ["canton-signer/ed25519", "canton-ledger/ed25519", "canton-admin/ed25519"]
 ws   = ["canton-ledger/ws"]

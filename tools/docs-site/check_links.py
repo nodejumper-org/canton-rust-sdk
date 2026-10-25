@@ -24,6 +24,9 @@ class Page(HTMLParser):
         super().__init__()
         self.links: list[str] = []
         self.ids: set[str] = set()
+        self.code_depth = 0
+        self.code_text: list[str] = []
+        self.empty_code_blocks = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         for name, value in attrs:
@@ -33,11 +36,25 @@ class Page(HTMLParser):
                 self.ids.add(value)
             elif (tag, name) in {("a", "href"), ("img", "src"), ("script", "src"), ("link", "href")}:
                 self.links.append(value)
+        if tag == "pre":
+            self.code_depth += 1
+            self.code_text = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "pre" and self.code_depth:
+            self.code_depth -= 1
+            if not "".join(self.code_text).strip():
+                self.empty_code_blocks += 1
+
+    def handle_data(self, data: str) -> None:
+        if self.code_depth:
+            self.code_text.append(data)
 
 
 def parse(path: Path) -> Page:
     page = Page()
-    page.feed(path.read_text(encoding="utf-8", errors="replace"))
+    page.text = path.read_text(encoding="utf-8", errors="replace")
+    page.feed(page.text)
     return page
 
 
@@ -48,14 +65,25 @@ def main(root: Path) -> int:
         # mdBook's own print page and 404 page link relative to the site root.
         if path.name in {"print.html", "404.html"}:
             continue
+        where = path.relative_to(root)
+        # mdBook leaves a directive it could not resolve in the output as text,
+        # and an include whose line range runs past the file renders empty.
+        if "{{#" in page.text:
+            errors.append(f"{where}: an mdBook directive was left unresolved")
+        if page.empty_code_blocks:
+            errors.append(f"{where}: {page.empty_code_blocks} empty code block(s)")
         for link in page.links:
             parts = urlsplit(link)
             if parts.scheme or parts.netloc or link.startswith(("mailto:", "javascript:")):
                 continue
             target = path if not parts.path else (path.parent / unquote(parts.path)).resolve()
+            # The site is served from this directory alone: a path that climbs
+            # out of it may exist in a checkout and still 404 when published.
+            if not target.is_relative_to(root):
+                errors.append(f"{where}: {link} -> outside the site")
+                continue
             if target.is_dir():
                 target = target / "index.html"
-            where = path.relative_to(root)
             if not target.exists():
                 errors.append(f"{where}: {link} -> no such file")
                 continue

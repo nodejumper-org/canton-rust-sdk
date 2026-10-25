@@ -91,9 +91,10 @@ Which standard each crate targets, crate by crate:
 | `canton-splice-amulet`, `canton-splice-wallet`, `canton-splice-wallet-payments` | V1 and V2 — Amulet implements both | the Splice application packages, referencing the crates above rather than copying them |
 | `canton-token` | V1 (`canton_token::*`) and V2 (`canton_token::v2`) | the workflows |
 
-**Verified against two live registries** — the Splice scan of a cn-quickstart
-LocalNet (Splice 0.6.11), and the public Scan of the Canton Network **DevNet**
-(Splice 0.8.1). The instrument on both is **Amulet (Canton Coin)**, which
+**Verified against live registries** — the Splice scan of a cn-quickstart
+LocalNet (Splice 0.6.11), the Scan of a Canton Builder Tool LocalNet (the
+three-participant settlement), and the public Scan of the Canton Network
+**DevNet** (Splice 0.8.1). The instrument on both is **Amulet (Canton Coin)**, which
 declares both standards (`splice-api-token-transfer-instruction-v1` and
 `-v2`). That is a V2 implementation, exercised as one. The registry's OpenAPI
 documents at 0.8.1 differ from the vendored 0.6.11 copies by one additive
@@ -121,7 +122,7 @@ network, which is the target that exists.
 | V2 allocation **withdrawn** by the sender | — | withdrawn at offset 3316364; the reserved coin released |
 | V2 allocation **settled** by its executor (`settle_batch`) | settled by a third party on a three-participant LocalNet (Canton Builder Tool, 2026-10-13): sender, receiver and executor each on its own participant | settled at offset 3317221 through Amulet's settlement factory; a one-sided leg was refused first, as the standard requires |
 
-Both runs are kept verbatim, with their environment and commands, in
+The runs are kept verbatim, with their environment and commands, in
 [`docs/verification/token-standard-live-runs.md`](verification/token-standard-live-runs.md);
 the DevNet update ids were read back from the participant by id after the run.
 

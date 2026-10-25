@@ -26,7 +26,8 @@ Both take the shared [`Config`](https://docs.rs/canton-core/latest/canton_core/c
 |---|---|
 | `current_user`, `current_user_rights`, `acting_parties`, `participant_id` | any authenticated user |
 | `list_packages`, `get_package`, `get_package_status` | any authenticated user (the live tests run `list_packages` and `get_package_status` with an ordinary token; `get_package` runs in the `fetch_packages` example) |
-| `allocate_party`, `list_known_parties`, `list_known_parties_page`, `get_parties` | `ParticipantAdmin` |
+| `allocate_party`, `list_known_parties`, `list_known_parties_page` | `ParticipantAdmin` |
+| `get_parties` | `ParticipantAdmin` or identity-provider admin for any party; a plain user only for parties it can act or read as |
 | `generate_external_party_topology`, `allocate_external_party` | `ParticipantAdmin` (how the live tests run them) |
 | `get_user` / `list_user_rights` for another user's id | `ParticipantAdmin` or identity-provider admin. An empty id means your own user, which any token may read. |
 | every `TopologyClient` call | whatever the admin API is configured to require. It is unauthenticated on LocalNet. Elsewhere, set a token with `Config::with_oidc` or `Config::with_token`. |
@@ -258,7 +259,10 @@ The PQS and token-registry clients do not.
   call counts as one request.
 - A stream counts as one request when it opens. Its errors are counted as they
   arrive, so a subscription that fails ten minutes in still shows up in
-  `canton_client_errors_total`.
+  `canton_client_errors_total`. The WebSocket resumable streams
+  (`ws_updates_resumable`, `ws_active_contracts_resumable`) are the exception:
+  they count no requests, and a failed reconnect handshake is not counted as an
+  error, so leave them out of a requests − errors calculation.
 - Structured events go with the spans: `rpc completed` and `stream ended` at
   `debug`, `rpc failed` and `stream failed` at `warn`, with the error and
   `retriable`. All of them have the target `canton_core::telemetry`, so a

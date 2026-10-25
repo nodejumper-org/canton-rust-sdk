@@ -80,6 +80,10 @@ with "no matching package" if it is not there yet).
   frozen into each published crate's page at publish time, so a stale line there
   is not fixable until the next release:
   `grep -nE "unreleased|this branch|0\.[0-9]+\.[0-9]+" README.md`
+- `book/src`, the docs site's own pages: every place that names a version, such
+  as the `--version` in the codegen guide's `cargo install` lines:
+  `git grep -nE "0\.[0-9]+\.[0-9]+" -- book/src` (`reference/` and `project/`
+  there are generated from the files above and not tracked)
 - The tree is clean and tagged `v<version>`
 
 ## After publishing

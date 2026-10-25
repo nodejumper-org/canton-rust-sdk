@@ -298,8 +298,9 @@ says whether trying again can help:
 - For a gRPC `Status` or a JSON `Http` error, Canton's
   [`ErrorCategory`](https://docs.rs/canton-core/latest/canton_core/enum.ErrorCategory.html)
   decides. Without a category, the gRPC codes `Unavailable`,
-  `DeadlineExceeded`, `ResourceExhausted` and `Aborted` are retriable, and so
-  are HTTP 408, 429 and 5xx.
+  `DeadlineExceeded`, `ResourceExhausted` and `Aborted` are retriable, as is a
+  call whose connection dropped mid-flight (an `Unknown` or `Internal` status
+  that tonic built from a transport error), and so are HTTP 408, 429 and 5xx.
 - Nothing else is retriable, including `Auth`, `InvalidRequest`,
   `CommandRejected`, `Json`, `Payload`, not-found and already-exists.
 

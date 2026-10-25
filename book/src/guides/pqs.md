@@ -4,7 +4,8 @@
 client for the Daml **Participant Query Store**. You name a template by its
 generated Rust type, add predicates, and get rows back as the same generated
 payload type the Ledger API path gives you. The common reads need no SQL, and
-nothing you pass is ever spliced into a statement.
+the values and field paths you pass to a `Query` are bound as parameters, never
+spliced into the statement (`Sql::raw`, below, runs its text as given).
 
 ## What PQS is
 

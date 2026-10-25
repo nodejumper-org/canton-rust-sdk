@@ -4,7 +4,8 @@ An async Rust SDK for the [Canton Network](https://www.canton.network/) Ledger
 API. It covers:
 
 - **gRPC and JSON transports.** It talks Ledger API v2 over gRPC and over JSON
-  (HTTP and WebSocket), with the same operations on both.
+  (HTTP and WebSocket), with the same core operations on both. Interactive
+  submission, health checks and explicit paging are gRPC-only.
 - **Type-safe codegen from DARs.** Daml templates become Rust types.
 - **The token standard,** CIP-56 and CIP-0112.
 - **Interactive submission** with a pluggable signer.
@@ -30,7 +31,7 @@ one version. The crates behind it can also be used one at a time:
 | [`canton-codegen-cli`](https://crates.io/crates/canton-codegen-cli) | `dpm-codegen-rust`: turns a DAR into a typed bindings crate. |
 | [`canton-token`](https://docs.rs/canton-token) | Token-standard workflows over the registry API: transfers, allocations, settlement. |
 | [`canton-signer`](https://docs.rs/canton-signer) | The `Signer` trait for external signing, with an Ed25519 implementation. |
-| [`canton-admin`](https://docs.rs/canton-admin) | Parties, packages, users and topology over the admin API. |
+| [`canton-admin`](https://docs.rs/canton-admin) | Parties, packages and users over the Ledger API's admin services, and topology reads over the Canton admin API. |
 | [`canton-pqs`](https://docs.rs/canton-pqs) | Typed queries against a PQS (Scribe) store. |
 | `canton-splice-*` | Pre-built bindings for the Splice and token-standard DARs. |
 
@@ -49,15 +50,15 @@ The full list, including the internal crates, is in the
   [Interactive submission and external signing](guides/interactive-submission.md).
 - Which Canton, Daml-LF and Rust versions are supported:
   [the compatibility matrix](reference/compatibility-matrix.md).
-- How the SDK is maintained and what is promised:
+- How the SDK is maintained, what that covers and what it does not:
   [Maintenance](project/maintenance.md).
 
 The API reference for every crate is on [docs.rs](api-reference.md).
 
 ## Status
 
-The current release is **0.3.2**. Before 1.0, breaking changes go into a new
-minor version and are listed in the [changelog](project/changelog.md). The
+Releases are on [crates.io](https://crates.io/crates/canton). Before 1.0,
+breaking changes go into a new minor version and are listed in the [changelog](project/changelog.md). The
 changes already decided for 1.0 are recorded in
 [ADR-0010](reference/adr/0010-api-decisions-deferred-to-1.0.md).
 

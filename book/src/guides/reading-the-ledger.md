@@ -206,14 +206,13 @@ this excerpt from
 both reads return the same single transaction:
 
 ```rust,ignore
-{{#include ../../../crates/canton-ledger/tests/live.rs:1084:1100}}
+{{#include ../../../crates/canton-ledger/tests/live.rs:1084:1109}}
 ```
 
-At 1.0 the typed reads take the plain names (`updates`, `updates_with`,
-`updates_resumable`, the point reads) and the proto- and JSON-returning reads
-move to `*_raw`
-([ADR-0010 §4](../reference/adr/0010-api-decisions-deferred-to-1.0.md)), so
-new code written against the typed reads only has renames ahead of it.
+[ADR-0010 §4](../reference/adr/0010-api-decisions-deferred-to-1.0.md) records
+the plan for 1.0: the typed reads take the plain names (`updates`,
+`updates_with`, `updates_resumable`, the point reads), and the proto- and
+JSON-returning reads move to `*_raw`.
 
 ## Resumable streams
 

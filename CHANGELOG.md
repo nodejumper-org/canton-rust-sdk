@@ -21,14 +21,18 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 - **`MAINTENANCE.md`**: what is maintained, in what order (security fixes,
   then critical bugs, then new Canton releases), how releases are made, and
   what is not promised.
+- **`SECURITY.md`**: a report is acknowledged within five business days while
+  the Canton Dev Fund grant runs (was three), and on a best-effort basis after
+  it.
 - Corrected while writing the guides:
   - turning off the facade's default features drops the in-memory key type,
     not `ring`, which the TLS stack uses;
   - codegen runs ahead of time, not from a build script;
   - `JsonClient::with_max_decoding_message_size` also caps HTTP response
     bodies;
-  - PQS `Op::Eq` compares the stored text, so numeric equality across scales
-    needs `Op::Ge` plus `Op::Le`;
+  - PQS `Predicate::eq` compares the stored text, and `compare` with `Op::Eq`
+    does no numeric cast (only the ordered operators do), so numeric equality
+    across scales needs `Op::Ge` plus `Op::Le`;
   - the compatibility matrix's live-test counts and its LocalNet settlement
     row were stale.
 
