@@ -9,6 +9,18 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [Unreleased]
 
+### Changed — behaviour
+
+- **Prepare now checks the command id and acting parties in the response.**
+  The participant dedups on the command id in the prepared transaction's
+  `submitter_info`, not the one in the execute request. When the two differed,
+  `Prepared::change_id` named a command that was never filed, and
+  `await_completion` waited for a completion that never arrives. The hash check
+  did not catch it. A participant that changes the command id and hashes the
+  changed metadata still passes. `Prepared::from_response` now compares both
+  against the request and refuses a mismatch as `Error::UnexpectedResponse`.
+  Acting parties are compared as a set.
+
 ### Documentation
 
 - **A documentation site**, built from `book/` with mdBook and published to
