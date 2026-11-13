@@ -25,7 +25,7 @@ use canton_proto::com::daml::ledger::api::v2 as api;
 use canton_proto::com::daml::ledger::api::v2::interactive as ipb;
 use canton_proto::com::daml::ledger::api::v2::interactive::transaction::v1 as node;
 use sha2::{Digest as _, Sha256};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// `HashPurpose.PreparedSubmission`.
 const PURPOSE_PREPARED_SUBMISSION: u32 = 48;
@@ -201,14 +201,6 @@ impl Builder {
     fn hash(&mut self, value: &Hash) -> &mut Self {
         self.digest.update(value);
         self
-    }
-
-    fn strings(&mut self, values: &[String]) -> Result<&mut Self, HashingError> {
-        self.count(values.len())?;
-        for value in values {
-            self.string(value)?;
-        }
-        Ok(self)
     }
 
     /// `addStringSet`: sorted, unique, counted.
@@ -689,7 +681,7 @@ fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, Hashi
     if scheme == Scheme::V2 {
         b.byte(METADATA_ENCODING_V1);
     }
-    b.strings(&submitter.act_as)?
+    b.string_set(&submitter.act_as)?
         .string(&submitter.command_id)?
         .string(&metadata.transaction_uuid)?
         .int(
@@ -710,13 +702,20 @@ fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, Hashi
             }
         }
     }
-    b.unsigned_long(metadata.preparation_time)?
-        .count(metadata.input_contracts.len())?;
+    // Canton hashes the disclosed contracts as a map keyed by contract id.
+    // A repeated id keeps only its last entry.
+    let mut inputs: BTreeMap<&str, (u64, &node::Create)> = BTreeMap::new();
     for input in &metadata.input_contracts {
         let Some(ipb::metadata::input_contract::Contract::V1(create)) = &input.contract else {
             return Err(err("an input contract that is not a v1 create"));
         };
-        b.unsigned_long(input.created_at)?;
+        inputs.insert(&create.contract_id, (input.created_at, create));
+    }
+
+    b.unsigned_long(metadata.preparation_time)?
+        .count(inputs.len())?;
+    for (created_at, create) in inputs.into_values() {
+        b.unsigned_long(created_at)?;
         let contract_hash = hash_create(create, None, scheme)?;
         b.hash(&contract_hash);
     }
