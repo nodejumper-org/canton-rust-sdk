@@ -1027,6 +1027,80 @@ mod tests {
         );
     }
 
+    /// Canton hashes `actAs` as a `SortedSet`. It hashes the disclosed
+    /// contracts as a `SortedMap` keyed by contract id. Order and repetition
+    /// are not part of the hash under either scheme.
+    #[test]
+    fn metadata_field_order_and_repetition_do_not_change_the_hash() {
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let expected = hash_metadata(&metadata(), scheme).unwrap();
+
+            let mut reversed_parties = metadata();
+            let submitter = reversed_parties.submitter_info.as_mut().unwrap();
+            submitter.act_as.reverse();
+            assert_eq!(
+                hash_metadata(&reversed_parties, scheme).unwrap(),
+                expected,
+                "{scheme:?}: the acting parties are hashed as a set"
+            );
+
+            let mut repeated_party = metadata();
+            let submitter = repeated_party.submitter_info.as_mut().unwrap();
+            submitter.act_as.push("alice".to_string());
+            assert_eq!(
+                hash_metadata(&repeated_party, scheme).unwrap(),
+                expected,
+                "{scheme:?}: a set holds each party once"
+            );
+
+            let mut reversed_contracts = metadata();
+            reversed_contracts.input_contracts.reverse();
+            assert_eq!(
+                hash_metadata(&reversed_contracts, scheme).unwrap(),
+                expected,
+                "{scheme:?}: the disclosed contracts are hashed as a map keyed by contract id"
+            );
+
+            let mut repeated_contract = metadata();
+            let first = repeated_contract.input_contracts[0].clone();
+            repeated_contract.input_contracts.push(first);
+            assert_eq!(
+                hash_metadata(&repeated_contract, scheme).unwrap(),
+                expected,
+                "{scheme:?}: a map holds each contract id once"
+            );
+        }
+    }
+
+    /// A repeated contract id keeps the last entry. Canton's `.toMap` does the
+    /// same.
+    #[test]
+    fn a_repeated_contract_id_keeps_the_last_entry() {
+        // The same id twice, with different created_at. First-wins and
+        // last-wins produce different hashes.
+        let mut repeated = metadata();
+        let mut later = repeated.input_contracts[0].clone();
+        later.created_at = 999_999;
+        repeated.input_contracts.push(later.clone());
+
+        // The same metadata with only the later entry.
+        let mut last_only = metadata();
+        last_only.input_contracts[0] = later;
+
+        for scheme in [Scheme::V2, Scheme::V3] {
+            assert_eq!(
+                hash_metadata(&repeated, scheme).unwrap(),
+                hash_metadata(&last_only, scheme).unwrap(),
+                "{scheme:?}: the later entry is hashed"
+            );
+            assert_ne!(
+                hash_metadata(&repeated, scheme).unwrap(),
+                hash_metadata(&metadata(), scheme).unwrap(),
+                "{scheme:?}: the earlier entry is not hashed"
+            );
+        }
+    }
+
     #[test]
     fn canton_vectors_for_the_transaction_the_metadata_and_the_whole() {
         assert_eq!(
