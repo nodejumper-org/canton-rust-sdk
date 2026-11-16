@@ -341,6 +341,11 @@ impl Prepare {
     }
 }
 
+/// The acting parties as a set.
+fn party_set(parties: &[String]) -> std::collections::BTreeSet<&str> {
+    parties.iter().map(String::as_str).collect()
+}
+
 /// A `std::time::Duration` as protobuf carries one.
 ///
 /// Saturating rather than wrapping: a duration past `i64::MAX` seconds is a
@@ -494,6 +499,33 @@ impl Prepared {
                  signs it as returned"
             )));
         }
+        // Check the metadata names the command the caller asked for.
+        let submitter = transaction
+            .metadata
+            .as_ref()
+            .and_then(|metadata| metadata.submitter_info.as_ref())
+            .ok_or_else(|| {
+                Error::UnexpectedResponse(
+                    "prepare returned a transaction with no submitter info".to_string(),
+                )
+            })?;
+        if submitter.command_id != command_id {
+            return Err(Error::UnexpectedResponse(format!(
+                "prepare returned a transaction for command `{}` but `{command_id}` was \
+                 requested; refusing to sign it",
+                submitter.command_id
+            )));
+        }
+        // The participant returns the acting parties sorted.
+        if party_set(&submitter.act_as) != party_set(&act_as) {
+            return Err(Error::UnexpectedResponse(format!(
+                "prepare returned a transaction acting as [{}] but [{}] was requested; \
+                 refusing to sign it",
+                submitter.act_as.join(", "),
+                act_as.join(", ")
+            )));
+        }
+
         Ok(Self {
             transaction: response.prepared_transaction,
             hash: response.prepared_transaction_hash,
@@ -1255,6 +1287,96 @@ mod tests {
             matches!(abs_then_rel, Some(Time::MinLedgerTimeRel(_))),
             "rel was set last: {abs_then_rel:?}"
         );
+    }
+
+    /// A substituted command id still matches the hash.
+    #[test]
+    fn a_substituted_command_id_is_refused() {
+        let act_as = vec!["alice".to_string()];
+        let (transaction, hash) = hashable(&act_as, "the-id-the-participant-used");
+        let error = Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
+                hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                hashing_details: None,
+                cost_estimation: None,
+            },
+            Some(ipb::HashingSchemeVersion::V2),
+            false,
+            act_as,
+            Vec::new(),
+            "the-id-the-caller-asked-for".to_string(),
+            Some("user-1".to_string()),
+        )
+        .expect_err("a command id that was not requested");
+
+        assert!(
+            matches!(error, Error::UnexpectedResponse(_)),
+            "the substitution is the participant's mistake: {error}"
+        );
+        let message = error.to_string();
+        assert!(message.contains("the-id-the-participant-used"), "{message}");
+        assert!(message.contains("the-id-the-caller-asked-for"), "{message}");
+    }
+
+    /// The same check for the acting parties, in both directions: a party
+    /// that was not requested, and a requested party that is missing.
+    #[test]
+    fn substituted_acting_parties_are_refused() {
+        for (signed, requested) in [
+            (vec!["alice", "bob"], vec!["alice"]),
+            (vec!["alice"], vec!["alice", "bob"]),
+        ] {
+            let signed: Vec<String> = signed.iter().map(ToString::to_string).collect();
+            let (transaction, hash) = hashable(&signed, "command-1");
+            let error = Prepared::from_response(
+                ipb::PrepareSubmissionResponse {
+                    prepared_transaction: Some(transaction),
+                    prepared_transaction_hash: hash,
+                    hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                    hashing_details: None,
+                    cost_estimation: None,
+                },
+                Some(ipb::HashingSchemeVersion::V2),
+                false,
+                requested.iter().map(ToString::to_string).collect(),
+                Vec::new(),
+                "command-1".to_string(),
+                Some("user-1".to_string()),
+            )
+            .expect_err("the parties differ from the request");
+
+            assert!(
+                matches!(error, Error::UnexpectedResponse(_)),
+                "the mismatch is the participant's mistake: {error}"
+            );
+            assert!(error.to_string().contains("bob"), "{error}");
+        }
+    }
+
+    /// A request that listed the parties in another order is the same
+    /// request.
+    #[test]
+    fn acting_parties_in_another_order_are_the_same_request() {
+        let signed = vec!["alice".to_string(), "bob".to_string()];
+        let (transaction, hash) = hashable(&signed, "command-1");
+        Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
+                hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                hashing_details: None,
+                cost_estimation: None,
+            },
+            Some(ipb::HashingSchemeVersion::V2),
+            false,
+            vec!["bob".to_string(), "alice".to_string()],
+            Vec::new(),
+            "command-1".to_string(),
+            Some("user-1".to_string()),
+        )
+        .expect("the same two parties, listed the other way round");
     }
 
     /// The change ID is `(user_id, act_as, command_id)`. If the command id did
