@@ -9,6 +9,19 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [Unreleased]
 
+### Changed — behaviour
+
+- **An unreachable token endpoint is no longer reported as a credential
+  rejection.** `Error::Auth`'s doc says a token-transport failure surfaces as
+  `Error::Connection` or `Error::Http`. The comment above the token fetch says
+  the same. The fetch returned `Error::Auth` anyway, and an operator reading
+  "authentication failed" might rotate a working secret. An unreachable
+  endpoint is now `Error::Connection`, a TLS certificate that cannot be
+  verified is `Error::InvalidRequest`, a request that cannot be built is
+  `Error::InvalidRequest`, and a deadline is `Error::Timeout`. A 401 or 403
+  stays `Error::Auth`. This matches what `canton-token`'s registry client
+  already does with the same faults.
+
 ### Documentation
 
 - **A documentation site**, built from `book/` with mdBook and published to
@@ -35,6 +48,7 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
     across scales needs `Op::Ge` plus `Op::Le`;
   - the compatibility matrix's live-test counts and its LocalNet settlement
     row were stale.
+
 
 ## [0.3.2] — 2026-10-23
 
