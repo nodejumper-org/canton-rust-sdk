@@ -175,6 +175,14 @@ patch: `cargo update` brings them to every project on `0.3`.
   are now keyed by contract id. The hashes in Canton's own vectors are
   unchanged because their inputs are already sorted.
 
+- The lockfile, which `canton-codegen-cli` installs with under `--locked`,
+  moves past the RustSec advisories published since 0.3.2: pulldown-cmark
+  0.13.6 (RUSTSEC-2026-0414) and url 2.5.9 (RUSTSEC-2026-0592). Three more
+  against zip (RUSTSEC-2026-0429, -0545, -0548) are fixed only in zip 9 and
+  concern what `canton-lf` does not use: `extract()`, AES entries (zip is
+  built with `deflate` alone) and `ZipStreamReader`. Moving to zip 9 changes
+  a public error type and waits for 0.4, as before.
+
 ### Documentation
 
 - **Scan and the validator's scan-proxy**: a guide page for the new client.
