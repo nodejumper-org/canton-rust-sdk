@@ -1,0 +1,5 @@
+# The panic-related lints in `[workspace.lints.clippy]` are about code that
+# runs on a participant's or a caller's input. A test indexes a fixture it
+# built and panics to fail.
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests            = true

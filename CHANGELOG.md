@@ -9,11 +9,12 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
 
 ## [0.3.3] — 2026-11-26
 
-The findings filed against 0.3.2 by Silvana (#18–#22) and by Rumble Fish
-(#26), fixed, and the three pull requests from Equilibrium's review of 0.3.2
-(#23–#25), merged. One more fix came out of running them: external-party
-onboarding did not work at all against a participant on protocol version 37,
-which is what the Canton Network DevNet runs now.
+The findings filed against 0.3.2 by Silvana (#18–#22, and the rest of the
+review they came from) and by Rumble Fish (#26), fixed, and the three pull
+requests from Equilibrium's review of 0.3.2 (#23–#25), merged. One more fix
+came out of running them: external-party onboarding did not work at all
+against a participant on protocol version 37, which is what the Canton
+Network DevNet runs now.
 
 The behaviour changes are listed first because they can turn a call that
 succeeded into one that is refused. Each refuses what should not have been
@@ -43,8 +44,11 @@ patch: `cargo update` brings them to every project on `0.3`.
   - the party is hosted by **one** participant, with confirmation permission,
     a threshold of one, and not in an onboarding state;
   - the party's **signing keys** are the caller's key alone, with a threshold
-    of one. Keys are compared by spec and key material, since Canton returns
-    an Ed25519 key as DER also when it was sent raw;
+    of one, registered for the three uses Canton gives an external party's
+    key. Keys are compared by spec and key material, since Canton returns an
+    Ed25519 key as DER also when it was sent raw;
+  - the transaction has **serial 1**, a party's first hosting, as Canton
+    generates it and requires it again when the transaction is submitted;
   - the transaction carries **nothing this build does not read**: it must
     re-encode to the bytes that will be signed, so a field a later Canton adds
     is refused rather than signed for unseen.
@@ -52,7 +56,9 @@ patch: `cargo update` brings them to every project on `0.3`.
   Anything else is `Error::UnexpectedResponse`. The three-transaction reply of
   Canton before 3.4.9 is refused; the supported range starts at 3.5. A public
   key whose fingerprint cannot be computed (an Ed25519 key that is not 32
-  bytes) is `Error::InvalidRequest`.
+  bytes) is `Error::InvalidRequest`. So is a signature that names another key
+  than the one the onboarding registers, which `allocate_external_party` now
+  refuses before sending.
 - **A max record time is signed for, or refused** (#26, reported by Rumble
   Fish). `Prepare::with_max_record_time` promises that past the deadline the
   participant refuses the transaction. That holds only if the signature covers
@@ -119,14 +125,41 @@ patch: `cargo update` brings them to every project on `0.3`.
   and `with_token_source`, which takes a `canton_auth::TokenProvider`. The
   registry client can now use the registry routes a validator serves under
   `/api/validator/v0/scan-proxy`, which authenticate.
-- `ExternalPartyTopology::hosting_participant()`: the participant the
-  onboarding transaction names as the party's host, for a caller that knows
-  its participant's id and wants to compare before signing.
+- **Onboarding in two sittings** (requested by Silvana). When the signature
+  comes later (a wallet approval, a signing queue, a restart in between), the
+  topology is stored, and what was stored is input again when it is read
+  back. `ExternalPartyTopology::from_parts(party_id, transactions, key,
+  expected)` rebuilds it and runs every check
+  `generate_external_party_topology` ran, recomputing the fingerprint and the
+  multi-hash rather than reading them back.
+  `AdminClient::allocate_external_party_with_signature` takes the signature
+  that was made in between.
+- **The host can be held to a participant**: `ExpectedHosting::participant(uid)`
+  with `AdminClient::generate_external_party_topology_with` and with
+  `from_parts`. The SDK knows the endpoint it called, not which participant
+  answers there, so which participant hosts the party can be checked only
+  against an id the caller supplies. `ExternalPartyTopology::hosting_participant()`
+  reports the host either way.
+- `PublicKey::fingerprint()` and `PublicKey::is_same_key()` in `canton-signer`:
+  Canton's fingerprint of a key, computed from the key, and a comparison of two
+  keys whichever format each is written in.
 - A live test that commits a transaction with a max record time, and the
   Scan live suite (`canton-token`'s `scan_live`), which the LocalNet workflow
   now runs.
 - A CI check, in a crate of its own outside the workspace, that builds with
   both rustls crypto providers and none installed (#20).
+- **Lints against panics on input** (suggested by Silvana), on for the whole
+  workspace: `clippy::panic`, `unreachable`, `todo`, `unimplemented`,
+  `indexing_slicing` and `string_slice`, and `arithmetic_side_effects` in the
+  two modules that read a participant's bytes before signing (the hasher and
+  the onboarding check). The two dozen sites they flagged outside tests are
+  rewritten with checked access.
+- Mutation tests for the hasher and for the onboarding check: tens of
+  thousands of overwritten, cut and extended inputs from a fixed generator,
+  none of which may panic, stall, or in the onboarding check's case pass.
+  The first run of the onboarding one found the serial and the key's uses
+  unread. `fuzz/` holds `cargo-fuzz` targets for the same two, for Daml value
+  decoding and for DAR reading.
 
 ### Fixed
 
@@ -153,6 +186,11 @@ patch: `cargo update` brings them to every project on `0.3`.
   prepare response could hold a runtime worker that way. Each node is now
   hashed once per transaction, which changes no hash, and a node that is its
   own descendant is refused.
+- **A retry or reconnect delay could overflow and panic.** `Duration * u32`
+  panics when the product does not fit. The retry backoff doubled that way and
+  the resumable streams multiplied their step by the reconnect count, on both
+  transports, so a `RetryConfig` with a very large backoff, which is how "no
+  cap" tends to be written, brought the caller's task down. Both saturate now.
 - **TLS setup panicked in an application with two rustls crypto providers**
   (#20, reported by Silvana). `canton-pqs` (`tls`) and `canton-ledger` (`ws`,
   when no TLS configuration was given) built their rustls configuration with

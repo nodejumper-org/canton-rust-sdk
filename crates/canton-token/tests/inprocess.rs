@@ -9,7 +9,13 @@
 //!
 //! Hand-rolled HTTP rather than a server framework: one request, one response,
 //! and no dependency the published crate does not already carry.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::string_slice
+)]
 
 use std::sync::{Arc, Mutex};
 

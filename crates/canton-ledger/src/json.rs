@@ -696,7 +696,7 @@ fn upgrade_base_url_for_tls(base_url: &str) -> String {
         .get(..7)
         .is_some_and(|s| s.eq_ignore_ascii_case("http://"))
     {
-        format!("https://{}", &base_url[7..])
+        format!("https://{}", base_url.get(7..).unwrap_or_default())
     } else {
         base_url.to_string()
     }
@@ -1392,7 +1392,7 @@ impl JsonClient {
             let request = crate::request::ActiveContractsRequest::new(parties, 0);
             let body = json!({
                 "contractId": contract_id.into(),
-                "eventFormat": request.json_body()["eventFormat"],
+                "eventFormat": request.json_body().get("eventFormat"),
             });
             self.post("/v2/events/events-by-contract-id", &body).await
         })
@@ -1456,7 +1456,7 @@ impl JsonClient {
         telemetry::instrument("update_by_offset", TRANSPORT_JSON, async {
             let body = json!({
                 "offset": offset,
-                "updateFormat": format.json_body()["updateFormat"],
+                "updateFormat": format.json_body().get("updateFormat"),
             });
             crate::client::found(self.post("/v2/updates/update-by-offset", &body).await)
         })
@@ -1496,7 +1496,7 @@ impl JsonClient {
         telemetry::instrument("update_by_id", TRANSPORT_JSON, async {
             let body = json!({
                 "updateId": update_id,
-                "updateFormat": format.json_body()["updateFormat"],
+                "updateFormat": format.json_body().get("updateFormat"),
             });
             crate::client::found(self.post("/v2/updates/update-by-id", &body).await)
         })
@@ -1871,7 +1871,11 @@ impl JsonClient {
             loop {
                 let mut request = active_contracts_request(&parties, active_at_offset);
                 if let Some(token) = &token {
-                    request["streamContinuationToken"] = Value::String(token.clone());
+                    crate::request::set(
+                        &mut request,
+                        "streamContinuationToken",
+                        Value::String(token.clone()),
+                    );
                 }
                 let transport = crate::ws::WsTransport {
                     base_url: &base_url,
@@ -1935,7 +1939,7 @@ impl JsonClient {
                     yield Err(cause);
                     return;
                 }
-                tokio::time::sleep(backoff_unit * reconnects).await;
+                tokio::time::sleep(crate::client::reconnect_delay(backoff_unit, reconnects)).await;
             }
         }
     }
@@ -2024,7 +2028,7 @@ impl JsonClient {
                     ))));
                     return;
                 }
-                tokio::time::sleep(backoff_unit * reconnects).await;
+                tokio::time::sleep(crate::client::reconnect_delay(backoff_unit, reconnects)).await;
             }
         }
     }

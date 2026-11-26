@@ -1,0 +1,55 @@
+# Fuzz targets for the code that reads bytes a participant or a registry
+# chose (`cargo install cargo-fuzz`, then `cargo +nightly fuzz run <target>`
+# from the repository root).
+#
+# Not a workspace member: cargo-fuzz builds with a nightly toolchain and
+# sanitizer flags, and the workspace builds on stable at the declared MSRV.
+[workspace]
+
+[package]
+name    = "canton-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+prost         = "0.14"
+serde_json    = "1"
+canton-ledger = { path = "../crates/canton-ledger" }
+canton-admin  = { path = "../crates/canton-admin" }
+canton-signer = { path = "../crates/canton-signer", default-features = false }
+canton-daml   = { path = "../crates/canton-daml" }
+canton-lf     = { path = "../crates/canton-lf" }
+
+[[bin]]
+name  = "prepared_transaction_hash"
+path  = "fuzz_targets/prepared_transaction_hash.rs"
+test  = false
+doc   = false
+bench = false
+
+[[bin]]
+name  = "onboarding_topology"
+path  = "fuzz_targets/onboarding_topology.rs"
+test  = false
+doc   = false
+bench = false
+
+[[bin]]
+name  = "daml_value"
+path  = "fuzz_targets/daml_value.rs"
+test  = false
+doc   = false
+bench = false
+
+[[bin]]
+name  = "dar"
+path  = "fuzz_targets/dar.rs"
+test  = false
+doc   = false
+bench = false

@@ -27,7 +27,8 @@
 //! - the party is **hosted** by one participant, with confirmation permission
 //!   and a threshold of one;
 //! - the party's **signing keys** are the caller's key alone, with a
-//!   threshold of one;
+//!   threshold of one, registered for the uses an external party's key has;
+//! - the transaction is the party's **first** hosting: serial 1;
 //! - the transaction holds **nothing this build does not read**: it must
 //!   re-encode to the bytes that would be signed.
 //!
@@ -43,6 +44,10 @@
 //!
 //! [`generate_external_party_topology`]: crate::AdminClient::generate_external_party_topology
 //! [`allocate_external_party`]: crate::AdminClient::allocate_external_party
+
+// This module runs on bytes a participant chose, before anything is signed.
+// Arithmetic that could overflow or wrap on them has to say what it does then.
+#![warn(clippy::arithmetic_side_effects)]
 
 use canton_proto::com::daml::ledger::api::v2::admin as pb;
 use canton_proto::com::digitalasset::canton::crypto::v30 as crypto;
@@ -135,26 +140,23 @@ const HASH_PURPOSE_TOPOLOGY_TRANSACTION_SIGNATURE: u32 = 11;
 /// Canton's `HashPurpose.MultiTopologyTransaction`: the purpose the hash over
 /// a set of transactions is built under, which is what one signature covers.
 const HASH_PURPOSE_MULTI_TOPOLOGY_TRANSACTION: u32 = 55;
-/// Canton's `HashPurpose.PublicKeyFingerprint`: the purpose a key is hashed
-/// under to give its fingerprint.
-const HASH_PURPOSE_PUBLIC_KEY_FINGERPRINT: u32 = 12;
 /// A Canton hash on the wire is a multihash: SHA-256's code and length, then
 /// the digest.
 const MULTIHASH_SHA256_PREFIX: [u8; 2] = [0x12, 0x20];
-/// An Ed25519 key is 32 bytes.
-const ED25519_KEY_LEN: usize = 32;
-/// The DER `SubjectPublicKeyInfo` of an Ed25519 key is these twelve bytes and
-/// then the key (RFC 8410 §4). DER gives a value one encoding, so nothing else
-/// is one.
-const ED25519_SPKI_PREFIX: [u8; 12] = [
-    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+/// What Canton registers an external party's key for, in ascending order of
+/// `SigningKeyUsage`: the party's namespace, signing its transactions, and
+/// proving it owns the key.
+const EXTERNAL_PARTY_KEY_USAGE: [i32; 3] = [
+    crypto::SigningKeyUsage::Namespace as i32,
+    crypto::SigningKeyUsage::Protocol as i32,
+    crypto::SigningKeyUsage::ProofOfOwnership as i32,
 ];
 /// `SIGNING_KEY_SPEC_ML_DSA_65` in Canton's `crypto.proto`. The enum vendored
 /// here (Canton 3.5.7) predates it.
 const SIGNING_KEY_SPEC_ML_DSA_65: i32 = 5;
 
 fn evidence(digest: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(MULTIHASH_SHA256_PREFIX.len() + digest.len());
+    let mut out = Vec::with_capacity(MULTIHASH_SHA256_PREFIX.len().saturating_add(digest.len()));
     out.extend_from_slice(&MULTIHASH_SHA256_PREFIX);
     out.extend_from_slice(digest);
     out
@@ -193,93 +195,73 @@ pub(crate) fn multi_hash(transactions: &[Vec<u8>]) -> Vec<u8> {
     evidence(&digest.finalize())
 }
 
-/// What a signing key is, whatever format it travels in: its spec, and the
-/// bytes Canton fingerprints it over.
-///
-/// A key is not compared by its bytes as sent. Canton stores an Ed25519 key
-/// as a DER `SubjectPublicKeyInfo` also when it was handed over raw, and
-/// `canton_signer::Ed25519Key` hands it over raw, so the reply spells the
-/// caller's own key differently from the request. For Ed25519 the bytes are
-/// the 32-byte key itself in either format, which keeps the fingerprint what
-/// it was before Canton changed the stored format; for every other spec they
-/// are the DER `SubjectPublicKeyInfo`.
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct KeyIdentity<'a> {
-    spec: i32,
-    material: &'a [u8],
+/// A signing key from a topology transaction, as the type the caller's key
+/// has, so the two can be compared as keys
+/// ([`PublicKey::is_same_key`]) rather than as bytes: Canton stores an
+/// Ed25519 key as a DER `SubjectPublicKeyInfo` also when it was handed over
+/// raw, and `canton_signer::Ed25519Key` hands it over raw. `None` for a spec
+/// or a format this build does not know.
+fn registered_key(key: &crypto::SigningPublicKey) -> Option<PublicKey> {
+    use canton_signer::{KeyFormat, KeySpec};
+    let spec = match key.key_spec {
+        spec if spec == crypto::SigningKeySpec::EcCurve25519 as i32 => KeySpec::EcCurve25519,
+        spec if spec == crypto::SigningKeySpec::EcP256 as i32 => KeySpec::EcP256,
+        spec if spec == crypto::SigningKeySpec::EcP384 as i32 => KeySpec::EcP384,
+        spec if spec == crypto::SigningKeySpec::EcSecp256k1 as i32 => KeySpec::EcSecp256k1,
+        SIGNING_KEY_SPEC_ML_DSA_65 => KeySpec::MlDsa65,
+        _ => return None,
+    };
+    let format = match key.format {
+        format if format == crypto::CryptoKeyFormat::Raw as i32 => KeyFormat::Raw,
+        format if format == crypto::CryptoKeyFormat::DerX509SubjectPublicKeyInfo as i32 => {
+            KeyFormat::DerX509SubjectPublicKeyInfo
+        }
+        _ => return None,
+    };
+    Some(PublicKey::new(format, key.public_key.clone(), spec))
 }
 
-impl<'a> KeyIdentity<'a> {
-    /// `None` for a key this build cannot place: an unknown format, an
-    /// Ed25519 key of the wrong length, another spec that is not DER.
-    fn new(spec: i32, format: i32, bytes: &'a [u8]) -> Option<Self> {
-        let raw = format == crypto::CryptoKeyFormat::Raw as i32;
-        let spki = format == crypto::CryptoKeyFormat::DerX509SubjectPublicKeyInfo as i32;
-        let material = if spec == crypto::SigningKeySpec::EcCurve25519 as i32 {
-            let key = if raw {
-                bytes
-            } else if spki {
-                bytes.strip_prefix(&ED25519_SPKI_PREFIX)?
-            } else {
-                return None;
-            };
-            (key.len() == ED25519_KEY_LEN).then_some(key)?
-        } else if spki && !bytes.is_empty() {
-            bytes
-        } else {
-            return None;
-        };
-        Some(Self { spec, material })
+/// Which participant the caller expects to host the party.
+///
+/// The onboarding transaction names one host, and the checks require it to be
+/// a single participant with confirmation permission. Which participant it is
+/// the SDK cannot check by itself: it knows the endpoint it called, not which
+/// participant answers there, and asking that participant for its own id is
+/// asking the party being checked. A caller that knows its participant's id,
+/// from its configuration, can have the host held to it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ExpectedHosting {
+    participant: Option<String>,
+}
+
+impl ExpectedHosting {
+    /// One confirming host, whichever participant it is. This is what
+    /// [`generate_external_party_topology`] checks.
+    ///
+    /// [`generate_external_party_topology`]: crate::AdminClient::generate_external_party_topology
+    #[must_use]
+    pub fn any_participant() -> Self {
+        Self::default()
     }
 
-    /// The identity of the key the caller is registering.
-    fn of(key: &'a PublicKey) -> canton_core::Result<Self> {
-        let spec = match key.spec() {
-            canton_signer::KeySpec::EcCurve25519 => crypto::SigningKeySpec::EcCurve25519 as i32,
-            canton_signer::KeySpec::EcP256 => crypto::SigningKeySpec::EcP256 as i32,
-            canton_signer::KeySpec::EcP384 => crypto::SigningKeySpec::EcP384 as i32,
-            canton_signer::KeySpec::EcSecp256k1 => crypto::SigningKeySpec::EcSecp256k1 as i32,
-            canton_signer::KeySpec::MlDsa65 => SIGNING_KEY_SPEC_ML_DSA_65,
-            other => {
-                return Err(canton_core::Error::InvalidRequest(format!(
-                    "this build cannot compute the fingerprint of a {other:?} key, so it could \
-                     not check the participant's onboarding transaction against it"
-                )));
-            }
-        };
-        let format = match key.format() {
-            canton_signer::KeyFormat::Raw => crypto::CryptoKeyFormat::Raw,
-            canton_signer::KeyFormat::DerX509SubjectPublicKeyInfo => {
-                crypto::CryptoKeyFormat::DerX509SubjectPublicKeyInfo
-            }
-            other => {
-                return Err(canton_core::Error::InvalidRequest(format!(
-                    "this build cannot compute the fingerprint of a key in {other:?} format"
-                )));
-            }
-        };
-        Self::new(spec, format as i32, key.data()).ok_or_else(|| {
-            canton_core::Error::InvalidRequest(format!(
-                "the public key is not a {:?} key in {:?} format: an Ed25519 key is 32 bytes raw \
-                 or its 44-byte DER SubjectPublicKeyInfo, and any other key is DER",
-                key.spec(),
-                key.format()
-            ))
-        })
-    }
-
-    /// The key's fingerprint, as Canton's `Fingerprint.create` computes it:
-    /// `SHA-256(purpose ‖ key)` as a multihash, in lower-case hex.
-    fn fingerprint(&self) -> String {
-        use std::fmt::Write as _;
-        let mut digest = Sha256::new();
-        digest.update(HASH_PURPOSE_PUBLIC_KEY_FINGERPRINT.to_be_bytes());
-        digest.update(self.material);
-        let mut text = String::with_capacity(68);
-        for byte in evidence(&digest.finalize()) {
-            let _ = write!(text, "{byte:02x}");
+    /// One confirming host, and it is this participant.
+    ///
+    /// `participant_uid` is the participant's unique id,
+    /// `<name>::<namespace>`. The member form with its `PAR::` prefix is
+    /// taken too.
+    #[must_use]
+    pub fn participant(participant_uid: impl Into<String>) -> Self {
+        Self {
+            participant: Some(participant_uid.into()),
         }
-        text
+    }
+
+    /// Whether `participant_uid`, the host a transaction names, is the one
+    /// expected.
+    fn is_met_by(&self, participant_uid: &str) -> bool {
+        self.participant.as_deref().is_none_or(|expected| {
+            expected.strip_prefix("PAR::").unwrap_or(expected) == participant_uid
+        })
     }
 }
 
@@ -294,6 +276,7 @@ fn refuse(what: impl std::fmt::Display) -> canton_core::Error {
 /// checked.
 struct Onboarding {
     operation: i32,
+    serial: u32,
     /// `None` when the mapping is not the party's hosting.
     hosting: Option<Hosting>,
 }
@@ -335,6 +318,7 @@ impl From<topo::TopologyTransaction> for Onboarding {
         };
         Self {
             operation: transaction.operation,
+            serial: transaction.serial,
             hosting,
         }
     }
@@ -361,6 +345,7 @@ impl From<v31::TopologyTransaction> for Onboarding {
             });
         Self {
             operation: transaction.operation,
+            serial: transaction.serial,
             hosting,
         }
     }
@@ -412,17 +397,27 @@ fn decode_transaction(serialized: &[u8]) -> canton_core::Result<Onboarding> {
 }
 
 /// What the onboarding transaction may say, and nothing else: `party_id`
-/// hosted for confirmation by one participant, and signing with `key` alone.
-/// Returns that participant's UID.
+/// hosted for confirmation by one participant, the expected one where the
+/// caller named it, and signing with `key` alone. Returns that participant's
+/// UID.
 fn check_transaction(
     transaction: Onboarding,
     party_id: &str,
-    key: KeyIdentity<'_>,
+    key: &PublicKey,
+    expected: &ExpectedHosting,
 ) -> canton_core::Result<String> {
     if transaction.operation != topo::enums::TopologyChangeOp::AddReplace as i32 {
         return Err(refuse(format!(
             "a transaction with operation {} rather than an addition",
             transaction.operation
+        )));
+    }
+    // A party's first hosting has serial 1, which is what Canton generates
+    // and what it requires again when the transaction is submitted.
+    if transaction.serial != 1 {
+        return Err(refuse(format!(
+            "a transaction with serial {}, where a party's first hosting has serial 1",
+            transaction.serial
         )));
     }
     let hosting = transaction.hosting.ok_or_else(|| {
@@ -465,6 +460,13 @@ fn check_transaction(
     if host.participant_uid.is_empty() {
         return Err(refuse("a hosting participant without an id"));
     }
+    if !expected.is_met_by(&host.participant_uid) {
+        return Err(refuse(format!(
+            "the party hosted by participant `{}`, where `{}` was expected",
+            host.participant_uid,
+            expected.participant.as_deref().unwrap_or_default()
+        )));
+    }
 
     // The caller's key and no other. Any key listed here can submit as the
     // party.
@@ -484,14 +486,23 @@ fn check_transaction(
             signing.keys.len()
         )));
     };
-    let registered = KeyIdentity::new(
-        registered.key_spec,
-        registered.format,
-        &registered.public_key,
-    );
-    if registered != Some(key) {
+    if !registered_key(registered).is_some_and(|registered| registered.is_same_key(key)) {
         return Err(refuse(
             "a signing key for the party other than the one being registered",
+        ));
+    }
+    // The rest of what the key's entry says, so that nothing in the bytes
+    // being signed is left unread: the uses Canton registers an external
+    // party's key for, and nothing in the field Canton no longer writes.
+    let mut usage = registered.usage.clone();
+    usage.sort_unstable();
+    usage.dedup();
+    #[allow(deprecated)]
+    let scheme = registered.scheme;
+    if usage != EXTERNAL_PARTY_KEY_USAGE || scheme != 0 {
+        return Err(refuse(
+            "the party's key registered for uses other than the three an external party's key \
+             has (namespace, protocol, proof of ownership)",
         ));
     }
     Ok(host.participant_uid.clone())
@@ -520,18 +531,18 @@ impl ExternalPartyTopology {
         response: pb::GenerateExternalPartyTopologyResponse,
         party_hint: &str,
         public_key: &PublicKey,
+        expected: &ExpectedHosting,
     ) -> canton_core::Result<Self> {
-        let key = KeyIdentity::of(public_key)?;
+        // The fingerprint is the key's, so it is computed from the key the
+        // caller holds. Compared with the one in the reply instead, a
+        // participant could name a key of its own, put the party in that
+        // key's namespace, and have both agree with each other.
+        let fingerprint = public_key.fingerprint()?;
         if response.multi_hash.is_empty() {
             return Err(canton_core::Error::UnexpectedResponse(
                 "the participant returned no multi-hash to sign".to_string(),
             ));
         }
-        // The fingerprint is the key's, so it is computed from the key the
-        // caller holds. Compared with the one in the reply instead, a
-        // participant could name a key of its own, put the party in that
-        // key's namespace, and have both agree with each other.
-        let fingerprint = key.fingerprint();
         if response.public_key_fingerprint != fingerprint {
             return Err(canton_core::Error::UnexpectedResponse(format!(
                 "the participant returned the fingerprint `{}` for a key whose fingerprint is \
@@ -550,12 +561,90 @@ impl ExternalPartyTopology {
                 response.party_id
             )));
         }
-        let serialized = match response.topology_transactions.as_slice() {
+        // The signature will cover `multi_hash`, so what the hash covers is
+        // what the key authorizes. Recomputed from the transaction the caller
+        // can read, and that transaction read: a participant that hashed
+        // something else, or put a mapping of its own into this one (a second
+        // host, a second signing key), is not signed for.
+        let topology = Self::checked(
+            party_id,
+            fingerprint,
+            response.topology_transactions,
+            public_key,
+            expected,
+        )?;
+        if topology.multi_hash != response.multi_hash {
+            return Err(canton_core::Error::UnexpectedResponse(
+                "the participant's multi-hash is not the hash of the onboarding transaction \
+                 it returned; refusing to sign it"
+                    .to_string(),
+            ));
+        }
+        Ok(topology)
+    }
+
+    /// Rebuild a topology that was stored between
+    /// [`generate_external_party_topology`] and [`allocate_external_party`],
+    /// running every check the first of them ran.
+    ///
+    /// When the signature comes later (a user approving in a wallet, an HSM
+    /// queue, a restart in between) the topology has to be kept somewhere,
+    /// and what was kept is input again by the time it is read back. Store
+    /// [`party_id`](Self::party_id) and [`transactions`](Self::transactions),
+    /// and pass them here with the key and the host that were expected. The
+    /// fingerprint and the multi-hash are recomputed, never read back, so
+    /// what gets signed is the hash of the transaction that was checked.
+    ///
+    /// [`generate_external_party_topology`]: crate::AdminClient::generate_external_party_topology
+    /// [`allocate_external_party`]: crate::AdminClient::allocate_external_party
+    ///
+    /// # Errors
+    /// [`canton_core::Error::InvalidRequest`] if `public_key` is not a key its
+    /// fingerprint can be computed for, and
+    /// [`canton_core::Error::UnexpectedResponse`], as from
+    /// `generate_external_party_topology`, if the party is not
+    /// `<hint>::<the key's fingerprint>` or the transactions are anything but
+    /// the onboarding of that key on the expected host.
+    pub fn from_parts(
+        party_id: &str,
+        transactions: Vec<Vec<u8>>,
+        public_key: &PublicKey,
+        expected: &ExpectedHosting,
+    ) -> canton_core::Result<Self> {
+        let fingerprint = public_key.fingerprint()?;
+        match party_id.split_once("::") {
+            Some((hint, namespace)) if !hint.is_empty() && namespace == fingerprint => {}
+            _ => {
+                return Err(canton_core::Error::UnexpectedResponse(format!(
+                    "`{party_id}` is not a party of the key being registered, whose parties are \
+                     `<hint>::{fingerprint}` — nothing this caller holds could sign as it"
+                )));
+            }
+        }
+        Self::checked(
+            party_id.to_string(),
+            fingerprint,
+            transactions,
+            public_key,
+            expected,
+        )
+    }
+
+    /// The topology for `party_id`, if `transactions` are its onboarding and
+    /// nothing else, with the multi-hash computed from them.
+    fn checked(
+        party_id: String,
+        fingerprint: String,
+        transactions: Vec<Vec<u8>>,
+        public_key: &PublicKey,
+        expected: &ExpectedHosting,
+    ) -> canton_core::Result<Self> {
+        let serialized = match transactions.as_slice() {
             [serialized] => serialized,
             [] => {
                 return Err(canton_core::Error::UnexpectedResponse(
-                    "the participant returned no onboarding transaction, so there would be \
-                     nothing to submit and the multi-hash would cover nothing"
+                    "there is no onboarding transaction, so there would be nothing to submit \
+                     and the multi-hash would cover nothing"
                         .to_string(),
                 ));
             }
@@ -567,27 +656,14 @@ impl ExternalPartyTopology {
                 )));
             }
         };
-        // The signature will cover `multi_hash`, so what the hash covers is
-        // what the key authorizes. Recomputed from the transaction the caller
-        // can read, and that transaction read: a participant that hashed
-        // something else, or put a mapping of its own into this one (a second
-        // host, a second signing key), is not signed for.
-        let recomputed = multi_hash(&response.topology_transactions);
-        if recomputed != response.multi_hash {
-            return Err(canton_core::Error::UnexpectedResponse(
-                "the participant's multi-hash is not the hash of the onboarding transaction \
-                 it returned; refusing to sign it"
-                    .to_string(),
-            ));
-        }
         let transaction = decode_transaction(serialized)?;
-        let hosting_participant = check_transaction(transaction, &party_id, key)?;
+        let hosting_participant = check_transaction(transaction, &party_id, public_key, expected)?;
         Ok(Self {
             party_id,
             public_key_fingerprint: fingerprint,
             hosting_participant,
-            transactions: response.topology_transactions,
-            multi_hash: response.multi_hash,
+            multi_hash: multi_hash(&transactions),
+            transactions,
         })
     }
 
@@ -616,8 +692,8 @@ impl ExternalPartyTopology {
     ///
     /// From an honest participant this is the participant that was asked. The
     /// SDK cannot tell: it knows the endpoint it called, not which participant
-    /// answers there. A caller that knows its participant's id can compare
-    /// before signing.
+    /// answers there. A caller that knows its participant's id can have it
+    /// checked, with [`ExpectedHosting::participant`].
     #[must_use]
     pub fn hosting_participant(&self) -> &str {
         &self.hosting_participant
@@ -643,11 +719,16 @@ impl ExternalPartyTopology {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, deprecated)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::arithmetic_side_effects,
+    deprecated
+)]
 mod tests {
     use super::{
-        ED25519_SPKI_PREFIX, ExternalPartyTopology, KeyIdentity, TOPOLOGY_FORMAT_30,
-        TOPOLOGY_FORMAT_31, UntypedVersionedMessage, multi_hash, v31,
+        ExpectedHosting, ExternalPartyTopology, TOPOLOGY_FORMAT_30, TOPOLOGY_FORMAT_31,
+        UntypedVersionedMessage, multi_hash, v31,
     };
     use canton_proto::com::daml::ledger::api::v2::admin as pb;
     use canton_proto::com::digitalasset::canton::crypto::v30 as crypto;
@@ -669,6 +750,10 @@ mod tests {
         "1220035a791d845bbb8195615e7eccd7a57c2ec4075c2e88695f194bab4e0194a889";
     /// A key that is not the caller's.
     const OTHER_KEY: [u8; 32] = [9; 32];
+    /// What precedes an Ed25519 key in its DER `SubjectPublicKeyInfo`.
+    const ED25519_SPKI_PREFIX: [u8; 12] = [
+        0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+    ];
     const HINT: &str = "alice";
     const HOST: &str = "participant1::1220cc";
     /// `PartyToParticipant`'s tag in `TopologyMapping`'s oneof, in both formats.
@@ -901,8 +986,13 @@ mod tests {
     }
 
     fn refused(response: pb::GenerateExternalPartyTopologyResponse) -> String {
-        let error =
-            ExternalPartyTopology::from_response(response, HINT, &raw_key()).expect_err("refused");
+        let error = ExternalPartyTopology::from_response(
+            response,
+            HINT,
+            &raw_key(),
+            &ExpectedHosting::default(),
+        )
+        .expect_err("refused");
         assert!(
             matches!(error, canton_core::Error::UnexpectedResponse(_)),
             "{error:?}"
@@ -917,8 +1007,13 @@ mod tests {
     fn an_honest_reply_is_accepted_in_either_format_for_a_raw_key_and_a_der_one() {
         for format in FORMATS {
             for key in [raw_key(), der_key()] {
-                let topology = ExternalPartyTopology::from_response(honest(format), HINT, &key)
-                    .expect("the honest reply");
+                let topology = ExternalPartyTopology::from_response(
+                    honest(format),
+                    HINT,
+                    &key,
+                    &ExpectedHosting::default(),
+                )
+                .expect("the honest reply");
                 assert_eq!(topology.party_id(), party());
                 assert_eq!(topology.public_key_fingerprint(), FINGERPRINT);
                 assert_eq!(topology.hosting_participant(), HOST);
@@ -937,7 +1032,7 @@ mod tests {
         use std::fmt::Write as _;
 
         for key in [raw_key(), der_key()] {
-            assert_eq!(KeyIdentity::of(&key).unwrap().fingerprint(), FINGERPRINT);
+            assert_eq!(key.fingerprint().unwrap(), FINGERPRINT);
         }
 
         let der = vec![0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86];
@@ -953,7 +1048,7 @@ mod tests {
         for byte in digest.finalize() {
             write!(expected, "{byte:02x}").unwrap();
         }
-        assert_eq!(KeyIdentity::of(&p256).unwrap().fingerprint(), expected);
+        assert_eq!(p256.fingerprint().unwrap(), expected);
     }
 
     /// A key the fingerprint cannot be computed for is the caller's mistake,
@@ -969,9 +1064,13 @@ mod tests {
             ),
             PublicKey::new(KeyFormat::Raw, vec![7; 65], KeySpec::EcP256),
         ] {
-            let error =
-                ExternalPartyTopology::from_response(honest(TOPOLOGY_FORMAT_30), HINT, &key)
-                    .expect_err("a malformed key");
+            let error = ExternalPartyTopology::from_response(
+                honest(TOPOLOGY_FORMAT_30),
+                HINT,
+                &key,
+                &ExpectedHosting::default(),
+            )
+            .expect_err("a malformed key");
             assert!(
                 matches!(error, canton_core::Error::InvalidRequest(_)),
                 "{error:?}"
@@ -1017,7 +1116,7 @@ mod tests {
     #[test]
     fn a_fingerprint_that_is_not_this_keys_is_refused_though_the_reply_agrees_with_itself() {
         let other = PublicKey::new(KeyFormat::Raw, OTHER_KEY.to_vec(), KeySpec::EcCurve25519);
-        let other_fingerprint = KeyIdentity::of(&other).unwrap().fingerprint();
+        let other_fingerprint = other.fingerprint().unwrap();
         let other_party = format!("{HINT}::{other_fingerprint}");
         for format in FORMATS {
             let mut hosting = Hosting::honest();
@@ -1029,8 +1128,13 @@ mod tests {
                 vec![hosting.added(format)],
             );
             // It is a reply this SDK accepts for the key it is about.
-            ExternalPartyTopology::from_response(consistent.clone(), HINT, &other)
-                .expect("consistent, for the other key");
+            ExternalPartyTopology::from_response(
+                consistent.clone(),
+                HINT,
+                &other,
+                &ExpectedHosting::default(),
+            )
+            .expect("consistent, for the other key");
 
             let message = refused(consistent);
             assert!(
@@ -1104,6 +1208,71 @@ mod tests {
         }
     }
 
+    /// Every field of the transaction is read. The serial is 1, as Canton
+    /// generates it and requires it again at submission, and the key is
+    /// registered for exactly the uses an external party's key has.
+    #[test]
+    fn a_serial_or_a_key_usage_canton_does_not_generate_is_refused() {
+        for format in FORMATS {
+            for serial in [0, 2, 7] {
+                // Operation 1, then the serial, then the honest mapping.
+                let honest = Hosting::honest().transaction(format, TopologyChangeOp::AddReplace);
+                assert_eq!(&honest[..4], [0x08, 0x01, 0x10, 0x01]);
+                let mut bytes = if serial == 0 {
+                    vec![0x08, 0x01]
+                } else {
+                    vec![0x08, 0x01, 0x10, serial]
+                };
+                bytes.extend_from_slice(&honest[4..]);
+                let message = refused(carrying(vec![envelope(format, bytes)]));
+                assert!(message.contains("serial"), "{serial}: {message}");
+            }
+
+            let usages: [&[crypto::SigningKeyUsage]; 4] = [
+                &[],
+                &[crypto::SigningKeyUsage::Protocol],
+                &[
+                    crypto::SigningKeyUsage::Namespace,
+                    crypto::SigningKeyUsage::Protocol,
+                ],
+                &[
+                    crypto::SigningKeyUsage::Namespace,
+                    crypto::SigningKeyUsage::Protocol,
+                    crypto::SigningKeyUsage::ProofOfOwnership,
+                    crypto::SigningKeyUsage::SequencerAuthentication,
+                ],
+            ];
+            for usage in usages {
+                let message = refused(hosting_with(format, |hosting| {
+                    hosting.signing_keys.as_mut().unwrap().keys[0].usage =
+                        usage.iter().map(|usage| *usage as i32).collect();
+                }));
+                assert!(
+                    message.contains("registered for uses"),
+                    "{usage:?}: {message}"
+                );
+            }
+            let message = refused(hosting_with(format, |hosting| {
+                hosting.signing_keys.as_mut().unwrap().keys[0].scheme = 1;
+            }));
+            assert!(message.contains("registered for uses"), "{message}");
+
+            // The same three uses in another order are the same uses.
+            let reordered = hosting_with(format, |hosting| {
+                hosting.signing_keys.as_mut().unwrap().keys[0]
+                    .usage
+                    .reverse();
+            });
+            ExternalPartyTopology::from_response(
+                reordered,
+                HINT,
+                &raw_key(),
+                &ExpectedHosting::default(),
+            )
+            .expect("the same uses");
+        }
+    }
+
     /// The caller's key is recognized by its spec and its bytes, in the raw
     /// form or the DER one, and in nothing else.
     #[test]
@@ -1132,7 +1301,13 @@ mod tests {
                 key.format = crypto::CryptoKeyFormat::Raw as i32;
                 key.public_key = KEY.to_vec();
             });
-            ExternalPartyTopology::from_response(raw, HINT, &der_key()).expect("the same key, raw");
+            ExternalPartyTopology::from_response(
+                raw,
+                HINT,
+                &der_key(),
+                &ExpectedHosting::default(),
+            )
+            .expect("the same key, raw");
         }
     }
 
@@ -1416,6 +1591,216 @@ mod tests {
                 "{message}"
             );
         }
+    }
+
+    /// The SDK cannot know which participant answers at the endpoint it
+    /// called, so the host is held to a participant only when the caller
+    /// names one.
+    #[test]
+    fn the_host_is_held_to_the_participant_the_caller_expects() {
+        for format in FORMATS {
+            for expected in [
+                ExpectedHosting::any_participant(),
+                ExpectedHosting::participant(HOST),
+                ExpectedHosting::participant(format!("PAR::{HOST}")),
+            ] {
+                let topology = ExternalPartyTopology::from_response(
+                    honest(format),
+                    HINT,
+                    &raw_key(),
+                    &expected,
+                )
+                .expect("the expected host");
+                assert_eq!(topology.hosting_participant(), HOST);
+            }
+
+            for elsewhere in ["participant2::1220cc", "participant1::1220dd", "PAR::", ""] {
+                let error = ExternalPartyTopology::from_response(
+                    honest(format),
+                    HINT,
+                    &raw_key(),
+                    &ExpectedHosting::participant(elsewhere),
+                )
+                .expect_err("hosted by another participant than expected");
+                assert!(
+                    matches!(error, canton_core::Error::UnexpectedResponse(_)),
+                    "{error:?}"
+                );
+                let message = error.to_string();
+                assert!(
+                    message.contains(HOST) && message.contains("was expected"),
+                    "{message}"
+                );
+            }
+        }
+    }
+
+    /// A topology kept between generating it and allocating it is input
+    /// again when it is read back. Rebuilding it runs the same checks, and
+    /// computes the hash to sign from the transaction that passed them.
+    #[test]
+    fn a_stored_topology_is_checked_again_when_it_is_rebuilt() {
+        for format in FORMATS {
+            let generated = ExternalPartyTopology::from_response(
+                honest(format),
+                HINT,
+                &raw_key(),
+                &ExpectedHosting::participant(HOST),
+            )
+            .expect("the honest reply");
+            let (party_id, transactions) = (
+                generated.party_id().to_string(),
+                generated.transactions().to_vec(),
+            );
+
+            for key in [raw_key(), der_key()] {
+                let rebuilt = ExternalPartyTopology::from_parts(
+                    &party_id,
+                    transactions.clone(),
+                    &key,
+                    &ExpectedHosting::participant(HOST),
+                )
+                .expect("what was stored, unchanged");
+                assert_eq!(rebuilt.party_id(), generated.party_id());
+                assert_eq!(rebuilt.public_key_fingerprint(), FINGERPRINT);
+                assert_eq!(rebuilt.hosting_participant(), HOST);
+                assert_eq!(rebuilt.multi_hash(), generated.multi_hash());
+                assert_eq!(rebuilt.transactions(), generated.transactions());
+            }
+
+            let refused = |party_id: &str,
+                           transactions: Vec<Vec<u8>>,
+                           key: &PublicKey,
+                           expected: &ExpectedHosting| {
+                let error =
+                    ExternalPartyTopology::from_parts(party_id, transactions, key, expected)
+                        .expect_err("not what was generated");
+                assert!(
+                    matches!(error, canton_core::Error::UnexpectedResponse(_)),
+                    "{error:?}"
+                );
+                error.to_string()
+            };
+            let any = ExpectedHosting::any_participant();
+            let other = PublicKey::new(KeyFormat::Raw, OTHER_KEY.to_vec(), KeySpec::EcCurve25519);
+
+            // Tampered transactions: a second signing key, a second host.
+            let mut tampered = Hosting::honest();
+            tampered
+                .signing_keys
+                .as_mut()
+                .unwrap()
+                .keys
+                .push(canton_key(&OTHER_KEY));
+            let message = refused(&party_id, vec![tampered.added(format)], &raw_key(), &any);
+            assert!(message.contains("2 signing keys"), "{message}");
+            let mut tampered = Hosting::honest();
+            tampered.hosts.push(host("attacker::1220ee", Confirmation));
+            let message = refused(&party_id, vec![tampered.added(format)], &raw_key(), &any);
+            assert!(message.contains("hosted by 2 participants"), "{message}");
+            let mut bytes = transactions[0].clone();
+            bytes.extend_from_slice(&UNKNOWN_FIELD);
+            assert!(refused(&party_id, vec![bytes], &raw_key(), &any).contains("does not read"));
+            assert!(refused(&party_id, Vec::new(), &raw_key(), &any).contains("no onboarding"));
+
+            // A different key, a different party id, a different host.
+            let message = refused(&party_id, transactions.clone(), &other, &any);
+            assert!(message.contains("not a party of the key"), "{message}");
+            for party in [
+                format!("mallory::{FINGERPRINT}"),
+                format!("{HINT}::1220ff"),
+                format!("::{FINGERPRINT}"),
+                HINT.to_string(),
+            ] {
+                let message = refused(&party, transactions.clone(), &raw_key(), &any);
+                assert!(
+                    message.contains("mallory") || message.contains("not a party of the key"),
+                    "{party}: {message}"
+                );
+            }
+            let message = refused(
+                &party_id,
+                transactions.clone(),
+                &raw_key(),
+                &ExpectedHosting::participant("participant2::1220cc"),
+            );
+            assert!(message.contains("was expected"), "{message}");
+        }
+
+        // A key that is not one is the caller's mistake here too.
+        let malformed = PublicKey::new(KeyFormat::Raw, vec![7; 31], KeySpec::EcCurve25519);
+        let error = ExternalPartyTopology::from_parts(
+            &party(),
+            vec![Hosting::honest().added(TOPOLOGY_FORMAT_31)],
+            &malformed,
+            &ExpectedHosting::any_participant(),
+        )
+        .expect_err("a malformed key");
+        assert!(
+            matches!(error, canton_core::Error::InvalidRequest(_)),
+            "{error:?}"
+        );
+    }
+
+    /// No input makes the check panic or run away: it is the first thing to
+    /// see bytes a participant chose. Each round takes the honest transaction
+    /// and overwrites, cuts or extends it at a position a fixed generator
+    /// picks, so a failure reproduces.
+    #[test]
+    fn no_mutation_of_an_onboarding_transaction_panics_the_check() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let mut accepted = 0;
+        for format in FORMATS {
+            let honest = Hosting::honest().added(format);
+            for round in 0..4000 {
+                let mut bytes = honest.clone();
+                match round % 4 {
+                    0 => {
+                        let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                        bytes[at] = next().to_le_bytes()[0];
+                    }
+                    1 => bytes.truncate(usize::try_from(next()).unwrap_or(0) % bytes.len()),
+                    2 => {
+                        let extra = usize::try_from(next()).unwrap_or(0) % 16;
+                        bytes
+                            .extend(std::iter::repeat_with(|| next().to_le_bytes()[0]).take(extra));
+                    }
+                    _ => {
+                        let length = usize::try_from(next()).unwrap_or(0) % 64;
+                        bytes = std::iter::repeat_with(|| next().to_le_bytes()[0])
+                            .take(length)
+                            .collect();
+                    }
+                }
+                let unchanged = bytes == honest;
+                let outcome = ExternalPartyTopology::from_parts(
+                    &party(),
+                    vec![bytes],
+                    &raw_key(),
+                    &ExpectedHosting::participant(HOST),
+                );
+                // Whatever still passes is the honest transaction itself:
+                // every byte of it is either checked or refused as unread.
+                if outcome.is_ok() {
+                    assert!(
+                        unchanged,
+                        "format {format}, round {round}: a mutation passed"
+                    );
+                    accepted += 1;
+                }
+            }
+        }
+        // Rounds that happened to write a byte back unchanged.
+        assert!(
+            accepted < 200,
+            "{accepted} mutations left the bytes as they were"
+        );
     }
 
     #[test]

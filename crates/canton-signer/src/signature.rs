@@ -107,13 +107,114 @@ impl PublicKey {
     pub fn spec(&self) -> KeySpec {
         self.spec
     }
+
+    /// The key's fingerprint: what Canton addresses the key by, what a
+    /// signature carries in `signed_by`, and the namespace of an external
+    /// party registered with it.
+    ///
+    /// It is Canton's `Fingerprint.create`: `SHA-256` over hash purpose 12
+    /// and the key, as a multihash in lower-case hex (`1220…`). For Ed25519
+    /// the key hashed is the 32 bytes themselves whether they were given raw
+    /// or inside a DER `SubjectPublicKeyInfo`, which is what kept the
+    /// fingerprint the same when Canton changed the format it stores. For
+    /// every other key it is the DER.
+    ///
+    /// A participant reports the same value from
+    /// `GenerateExternalPartyTopology`. Computing it here is what lets a
+    /// caller check that reply against the key it holds, instead of taking
+    /// the participant's word for which key was registered.
+    ///
+    /// # Errors
+    /// [`canton_core::Error::InvalidRequest`] if the bytes cannot be this
+    /// kind of key in this format: an Ed25519 key that is not 32 bytes raw or
+    /// its 44-byte DER, or any other key that is not DER.
+    pub fn fingerprint(&self) -> canton_core::Result<String> {
+        use sha2::{Digest as _, Sha256};
+        use std::fmt::Write as _;
+
+        let mut digest = Sha256::new();
+        digest.update(HASH_PURPOSE_PUBLIC_KEY_FINGERPRINT.to_be_bytes());
+        digest.update(self.fingerprinted()?);
+        // A multihash: SHA-256's code and length, then the digest.
+        let mut text = String::with_capacity(68);
+        text.push_str("1220");
+        for byte in digest.finalize() {
+            let _ = write!(text, "{byte:02x}");
+        }
+        Ok(text)
+    }
+
+    /// Whether `other` is this key, whichever format each is written in.
+    ///
+    /// Not a comparison of the bytes as given: Canton returns an Ed25519 key
+    /// as DER also when it was handed over raw, so the same key comes back
+    /// spelled differently. `false` as well when either is not a well-formed
+    /// key of its kind.
+    #[must_use]
+    pub fn is_same_key(&self, other: &Self) -> bool {
+        self.spec == other.spec
+            && matches!(
+                (self.fingerprinted(), other.fingerprinted()),
+                (Ok(mine), Ok(theirs)) if mine == theirs
+            )
+    }
+
+    /// The bytes Canton hashes to fingerprint this key.
+    fn fingerprinted(&self) -> canton_core::Result<&[u8]> {
+        let malformed = || {
+            canton_core::Error::InvalidRequest(format!(
+                "the public key is not a {:?} key in {:?} format: an Ed25519 key is 32 bytes raw \
+                 or its 44-byte DER SubjectPublicKeyInfo, and any other key is DER",
+                self.spec, self.format
+            ))
+        };
+        match (self.spec, self.format) {
+            (KeySpec::EcCurve25519, KeyFormat::Raw) => Some(self.data.as_slice()),
+            (KeySpec::EcCurve25519, KeyFormat::DerX509SubjectPublicKeyInfo) => {
+                self.data.strip_prefix(&ED25519_SPKI_PREFIX)
+            }
+            _ => None,
+        }
+        .map_or_else(
+            || {
+                let der = self.spec != KeySpec::EcCurve25519
+                    && self.format == KeyFormat::DerX509SubjectPublicKeyInfo
+                    && !self.data.is_empty();
+                if der {
+                    Ok(self.data.as_slice())
+                } else {
+                    Err(malformed())
+                }
+            },
+            |key| {
+                if key.len() == ED25519_KEY_LEN {
+                    Ok(key)
+                } else {
+                    Err(malformed())
+                }
+            },
+        )
+    }
 }
+
+/// Canton's `HashPurpose.PublicKeyFingerprint`: the purpose a key is hashed
+/// under to give its fingerprint.
+const HASH_PURPOSE_PUBLIC_KEY_FINGERPRINT: u32 = 12;
+/// An Ed25519 key is 32 bytes.
+const ED25519_KEY_LEN: usize = 32;
+/// The DER `SubjectPublicKeyInfo` of an Ed25519 key is these twelve bytes and
+/// then the key (RFC 8410 §4). DER gives a value one encoding, so nothing else
+/// is one.
+const ED25519_SPKI_PREFIX: [u8; 12] = [
+    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+];
 
 /// A signature over a hash the participant produced.
 ///
-/// `signed_by` is the **fingerprint** Canton addresses the key by. This crate
-/// does not compute it: `GenerateExternalPartyTopology` is where a caller gets
-/// it. Sending any other value fails verification, which is why
+/// `signed_by` is the **fingerprint** Canton addresses the key by:
+/// [`PublicKey::fingerprint`], which a participant also reports from
+/// `GenerateExternalPartyTopology`. Sending any other value fails
+/// verification, which is why
 /// [`Ed25519Key`](crate::Ed25519Key) cannot become a [`Signer`](crate::Signer)
 /// until it has one.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -395,6 +496,94 @@ mod tests {
         assert_eq!(wire.key_data, vec![3; 32]);
         assert_ne!(wire.format, 0, "key format left unset");
         assert_ne!(wire.key_spec, 0, "key spec left unset");
+    }
+
+    /// The public key of RFC 8032 §7.1 TEST 1.
+    const RFC8032_KEY: [u8; 32] = [
+        0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07,
+        0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07,
+        0x51, 0x1a,
+    ];
+
+    fn spki(key: &[u8]) -> Vec<u8> {
+        [ED25519_SPKI_PREFIX.as_slice(), key].concat()
+    }
+
+    /// Canton's fingerprint of an Ed25519 key is over the 32-byte key whether
+    /// it travels raw or as DER. Hashing the 44 DER bytes instead gives a
+    /// different, wrong value, which is the mistake the vector guards.
+    #[test]
+    fn the_fingerprint_is_cantons_and_the_same_for_a_raw_and_a_der_key() {
+        let raw = PublicKey::new(KeyFormat::Raw, RFC8032_KEY.to_vec(), KeySpec::EcCurve25519);
+        let der = PublicKey::new(
+            KeyFormat::DerX509SubjectPublicKeyInfo,
+            spki(&RFC8032_KEY),
+            KeySpec::EcCurve25519,
+        );
+        let expected = "1220035a791d845bbb8195615e7eccd7a57c2ec4075c2e88695f194bab4e0194a889";
+        assert_eq!(raw.fingerprint().expect("a key"), expected);
+        assert_eq!(der.fingerprint().expect("a key"), expected);
+        assert_ne!(
+            expected,
+            "122018fc888ae0867a7e145e6d2c63a1ed565fdbce15f58949c24d452e5e1fb09abd"
+        );
+        assert!(raw.is_same_key(&der) && der.is_same_key(&raw));
+
+        // Any other key is fingerprinted over its DER as given.
+        let p256 = PublicKey::new(
+            KeyFormat::DerX509SubjectPublicKeyInfo,
+            spki(&RFC8032_KEY),
+            KeySpec::EcP256,
+        );
+        assert_eq!(
+            p256.fingerprint().expect("a key"),
+            "122018fc888ae0867a7e145e6d2c63a1ed565fdbce15f58949c24d452e5e1fb09abd"
+        );
+        assert!(!p256.is_same_key(&der), "the same bytes under another spec");
+    }
+
+    #[test]
+    fn a_key_that_is_not_what_it_says_has_no_fingerprint_and_equals_nothing() {
+        let good = PublicKey::new(KeyFormat::Raw, RFC8032_KEY.to_vec(), KeySpec::EcCurve25519);
+        let mut longer = spki(&RFC8032_KEY);
+        longer.push(0);
+        let mut other_prefix = spki(&RFC8032_KEY);
+        other_prefix[8] ^= 1;
+        for key in [
+            PublicKey::new(KeyFormat::Raw, vec![7; 31], KeySpec::EcCurve25519),
+            PublicKey::new(KeyFormat::Raw, vec![7; 33], KeySpec::EcCurve25519),
+            PublicKey::new(
+                KeyFormat::DerX509SubjectPublicKeyInfo,
+                RFC8032_KEY.to_vec(),
+                KeySpec::EcCurve25519,
+            ),
+            PublicKey::new(
+                KeyFormat::DerX509SubjectPublicKeyInfo,
+                longer,
+                KeySpec::EcCurve25519,
+            ),
+            PublicKey::new(
+                KeyFormat::DerX509SubjectPublicKeyInfo,
+                other_prefix,
+                KeySpec::EcCurve25519,
+            ),
+            PublicKey::new(KeyFormat::Raw, vec![7; 65], KeySpec::EcP256),
+            PublicKey::new(
+                KeyFormat::DerX509SubjectPublicKeyInfo,
+                Vec::new(),
+                KeySpec::EcP384,
+            ),
+        ] {
+            let error = key.fingerprint().expect_err("a malformed key");
+            assert!(
+                matches!(error, canton_core::Error::InvalidRequest(_)),
+                "{error:?}"
+            );
+            assert!(!key.is_same_key(&good) && !good.is_same_key(&key));
+            assert!(!key.is_same_key(&key), "a malformed key is not even itself");
+        }
+        let other = PublicKey::new(KeyFormat::Raw, vec![9; 32], KeySpec::EcCurve25519);
+        assert!(!good.is_same_key(&other));
     }
 
     /// A signature that cannot be what it claims never reaches the wire: the

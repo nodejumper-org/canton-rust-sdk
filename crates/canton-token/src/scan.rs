@@ -1396,13 +1396,17 @@ impl ScanClient {
             "page_size": page_size(request.page_size)?,
         });
         if let Some(after) = &request.after {
-            body["after"] = Value::from(after.as_str());
+            set(&mut body, "after", Value::from(after.as_str()));
         }
         if !request.parties.is_empty() {
-            body["party_ids"] = Value::from(request.parties.clone());
+            set(&mut body, "party_ids", Value::from(request.parties.clone()));
         }
         if !request.templates.is_empty() {
-            body["templates"] = Value::from(request.templates.clone());
+            set(
+                &mut body,
+                "templates",
+                Value::from(request.templates.clone()),
+            );
         }
         self.post(self.url("v2", &["state", "acs"])?, &body).await
     }
@@ -1423,7 +1427,7 @@ impl ScanClient {
             "owner_party_ids": request.owners("a holdings read")?,
         });
         if let Some(after) = &request.after {
-            body["after"] = Value::from(after.as_str());
+            set(&mut body, "after", Value::from(after.as_str()));
         }
         self.post(self.url("v2", &["holdings", "state"])?, &body)
             .await
@@ -1544,13 +1548,22 @@ fn page_size(page_size: u32) -> Result<u32> {
     Ok(page_size)
 }
 
+/// Set a field of a JSON object built on the line above. `object[key] = …`
+/// does the same and panics when `object` is not an object.
+fn set(object: &mut Value, key: &str, value: Value) {
+    if let Some(fields) = object.as_object_mut() {
+        fields.insert(key.to_string(), value);
+    }
+}
+
 /// The body of a history read: where to read on from, and how much.
 fn history_request(after: Option<&HistoryPosition>, size: u32) -> Result<Value> {
     let mut body = serde_json::json!({ "page_size": page_size(size)? });
     if let Some(after) = after {
-        body["after"] = serde_json::to_value(after).map_err(|e| {
+        let after = serde_json::to_value(after).map_err(|e| {
             Error::InvalidRequest(format!("a history position that is not JSON: {e}"))
         })?;
+        set(&mut body, "after", after);
     }
     Ok(body)
 }

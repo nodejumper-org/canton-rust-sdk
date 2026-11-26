@@ -10,7 +10,7 @@
 //! Each test builds the preset, carries its settings onto a local capture
 //! server (a preset's own `https://` host cannot be pointed at one), and reads
 //! the request off the socket.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

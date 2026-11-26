@@ -53,7 +53,7 @@ pub use canton_core::{
 };
 pub use canton_proto::com::daml::ledger::api::v2::PackageStatus;
 pub use client::AdminClient;
-pub use external_party::ExternalPartyTopology;
+pub use external_party::{ExpectedHosting, ExternalPartyTopology};
 pub use topology::{Entry, Store, TopologyClient};
 
 /// Generated Ledger API admin protobuf types (party & user management).

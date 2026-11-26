@@ -1425,7 +1425,7 @@ impl CantonClient {
                             yield Err(err);
                             return;
                         }
-                        tokio::time::sleep(backoff_unit * reconnects).await;
+                        tokio::time::sleep(reconnect_delay(backoff_unit, reconnects)).await;
                     }
                     Err(err) => {
                         yield Err(err);
@@ -1680,7 +1680,7 @@ impl CantonClient {
                     yield Err(cause);
                     return;
                 }
-                tokio::time::sleep(backoff_unit * reconnects).await;
+                tokio::time::sleep(reconnect_delay(backoff_unit, reconnects)).await;
             }
         }
     }
@@ -1727,11 +1727,37 @@ fn present_update(response: pb::GetUpdateResponse) -> Result<pb::get_update_resp
     })
 }
 
+/// How long a resumable stream waits before its `reconnects`-th reconnect:
+/// the step times the count.
+///
+/// Saturating, because `Duration * u32` panics when the product does not fit.
+/// The step and the budget both come from the caller's `RetryConfig`, so only
+/// an extreme configuration gets there, and it should wait a long time rather
+/// than bring the stream's task down.
+pub(crate) fn reconnect_delay(backoff_unit: Duration, reconnects: u32) -> Duration {
+    backoff_unit.saturating_mul(reconnects)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::CantonClient;
+    use super::{CantonClient, reconnect_delay};
     use crate::Config;
     use canton_core::Error;
+    use std::time::Duration;
+
+    /// The delay grows with each reconnect, and a step too large to multiply
+    /// is a long wait, not a panic.
+    #[test]
+    fn the_reconnect_delay_grows_and_never_overflows() {
+        let step = Duration::from_millis(250);
+        assert_eq!(reconnect_delay(step, 1), step);
+        assert_eq!(reconnect_delay(step, 4), Duration::from_secs(1));
+        assert_eq!(reconnect_delay(Duration::MAX, 2), Duration::MAX);
+        assert_eq!(
+            reconnect_delay(Duration::from_secs(u64::MAX / 2), u32::MAX),
+            Duration::MAX
+        );
+    }
 
     // Compile-time guarantee that the client is Send + Sync, so consumers can
     // share it across tasks and `tokio::spawn` work that holds it. (The streaming

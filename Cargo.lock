@@ -367,6 +367,7 @@ dependencies = [
  "http",
  "opentelemetry",
  "opentelemetry_sdk",
+ "prost 0.14.4",
  "prost-types",
  "rcgen",
  "reqwest",
@@ -467,6 +468,7 @@ dependencies = [
  "canton-core",
  "canton-proto",
  "ring",
+ "sha2 0.10.9",
  "tokio",
 ]
 

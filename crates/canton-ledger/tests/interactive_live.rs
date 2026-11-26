@@ -440,6 +440,109 @@ async fn external_commands__a_max_record_time_is_prepared_and_committed_under_v3
     assert_ne!(transaction.update_id, "");
 }
 
+/// Onboarding in two sittings, as a wallet approval or a signing queue makes
+/// it: the topology is stored after it is generated, rebuilt later, checked
+/// again, and allocated with a signature that was made in between. The key is
+/// handed over as an HSM exports it, DER, and the host is held to the
+/// participant this caller configured.
+#[tokio::test]
+async fn signing__a_stored_topology_is_rebuilt_and_allocated_with_a_signature_made_later() {
+    use canton_admin::{ExpectedHosting, ExternalPartyTopology};
+    use canton_signer::{KeyFormat, KeySpec, PublicKey};
+
+    let (Some(admin), Some(ledger)) = (admin_client().await, ledger_client()) else {
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, the admin credentials)"
+        );
+        return;
+    };
+    let as_ledger_user = AdminClient::connect_lazy(match ledger_oidc() {
+        Some(oidc) => canton_admin::Config::new(endpoint().expect("an endpoint"))
+            .with_oidc(TokenProvider::new(oidc)),
+        None if unauthenticated() => canton_admin::Config::new(endpoint().expect("an endpoint")),
+        None => canton_admin::Config::new(endpoint().expect("an endpoint"))
+            .with_token(canton_core::localnet::token(None).expect("a LocalNet token")),
+    })
+    .expect("an admin client under the ledger user's token");
+    let user_id = ledger_user_id(&as_ledger_user).await;
+    let synchronizer = ledger
+        .connected_synchronizers("")
+        .await
+        .expect("the participant lists its synchronizers")
+        .first()
+        .expect("the participant is connected to at least one synchronizer")
+        .synchronizer_id
+        .clone();
+    // What a caller has in its configuration: the participant it onboards with.
+    let participant = admin
+        .participant_id()
+        .await
+        .expect("the participant names itself");
+    let expected = ExpectedHosting::participant(participant.clone());
+
+    let key = Ed25519Key::generate().expect("a random source");
+    let raw = key.public_key();
+    let der = PublicKey::new(
+        KeyFormat::DerX509SubjectPublicKeyInfo,
+        [
+            &[
+                0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+            ][..],
+            raw.data(),
+        ]
+        .concat(),
+        KeySpec::EcCurve25519,
+    );
+
+    // First sitting: generate, and keep what a caller stores.
+    let generated = admin
+        .generate_external_party_topology_with(&synchronizer, "rust-sdk-stored", &der, &expected)
+        .await
+        .expect("the participant describes the onboarding of a DER key on itself");
+    assert_eq!(
+        generated.public_key_fingerprint(),
+        raw.fingerprint().expect("an Ed25519 key"),
+        "the fingerprint is the key's, whichever format it travels in"
+    );
+    assert!(
+        participant.ends_with(generated.hosting_participant()),
+        "{participant} hosts the party, named as {}",
+        generated.hosting_participant()
+    );
+    let stored_party = generated.party_id().to_string();
+    let stored_transactions = generated.transactions().to_vec();
+    let hash_to_sign = generated.multi_hash().to_vec();
+    drop(generated);
+
+    // In between: the signature is made somewhere else, over the hash.
+    let signer = key.into_signer(raw.fingerprint().expect("an Ed25519 key"));
+    let signature = signer.sign(&hash_to_sign).await.expect("the key signs");
+
+    // Second sitting: what was stored is input again.
+    let elsewhere = ExternalPartyTopology::from_parts(
+        &stored_party,
+        stored_transactions.clone(),
+        &raw,
+        &ExpectedHosting::participant("another-participant::1220ffff"),
+    )
+    .expect_err("the stored transaction hosts the party on this participant, not another");
+    assert!(
+        matches!(elsewhere, canton_core::Error::UnexpectedResponse(_)),
+        "{elsewhere:?}"
+    );
+    let rebuilt =
+        ExternalPartyTopology::from_parts(&stored_party, stored_transactions, &raw, &expected)
+            .expect("what was stored is the onboarding that was generated");
+    assert_eq!(rebuilt.multi_hash(), hash_to_sign.as_slice());
+
+    let party = admin
+        .allocate_external_party_with_signature(&synchronizer, &rebuilt, &signature, &user_id)
+        .await
+        .expect("the participant accepts the rebuilt onboarding and the earlier signature");
+    assert_eq!(party, stored_party);
+    println!("allocated {party} from a stored topology, hosted by {participant}");
+}
+
 /// Prepare, sign and commit `command` as `party` under hashing scheme V3,
 /// returning the prepared transaction it was signed over.
 async fn commit_under_v3(

@@ -2,7 +2,7 @@
 //! request carries the client secret, and following a 3xx would replay it at
 //! the redirect's address), and a body is read only up to a cap.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

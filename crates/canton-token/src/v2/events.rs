@@ -239,7 +239,7 @@ mod tests {
     fn the_interface_is_recognised_wherever_the_event_reports_it() {
         let mut event = exercised("EventLog_HoldingsChange", None);
         let Some(pb::event::Event::Exercised(ref mut ex)) = event.event else {
-            unreachable!("built as an exercise")
+            panic!("built as an exercise")
         };
         ex.implemented_interfaces = vec![interface_id()];
 
@@ -251,7 +251,7 @@ mod tests {
     fn an_argument_that_does_not_decode_is_reported_rather_than_dropped() {
         let mut event = exercised("EventLog_HoldingsChange", Some(interface_id()));
         let Some(pb::event::Event::Exercised(ref mut ex)) = event.event else {
-            unreachable!("built as an exercise")
+            panic!("built as an exercise")
         };
         ex.choice_argument = Some(rt::ToValue::to_value(&"not a record".to_string()));
 

@@ -936,7 +936,7 @@ pub(crate) fn truncate(body: &str) -> String {
         .take_while(|i| *i <= LIMIT)
         .last()
         .unwrap_or(0);
-    format!("{}…", &body[..cut])
+    format!("{}…", body.get(..cut).unwrap_or(body))
 }
 
 #[cfg(test)]

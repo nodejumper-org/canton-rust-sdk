@@ -412,7 +412,7 @@ unauthenticated). The run on record, update ids included, is in
 # external signing: on an unauthenticated LocalNet nothing beyond the endpoint;
 # cn-quickstart also wants the ParticipantAdmin client
 export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=…
-cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 6 tests, one of them a refusal
+cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 7 tests, one of them a refusal
 
 # PQS: a Scribe store following the participant — this compose runs one
 # (add SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=… where the participant wants a token)

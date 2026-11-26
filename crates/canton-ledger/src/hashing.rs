@@ -21,6 +21,10 @@
 //! only be hashed under V3. The test module carries Canton's own vectors for
 //! each node kind, the transaction, the metadata and the whole, under both.
 
+// This module runs on bytes a participant chose, before anything is signed.
+// Arithmetic that could overflow or wrap on them has to say what it does then.
+#![warn(clippy::arithmetic_side_effects)]
+
 use canton_proto::com::daml::ledger::api::v2 as api;
 use canton_proto::com::daml::ledger::api::v2::interactive as ipb;
 use canton_proto::com::daml::ledger::api::v2::interactive::transaction::v1 as node;
@@ -339,7 +343,7 @@ impl Builder {
                 self.byte(9);
                 match &opt.value {
                     Some(inner) => {
-                        self.byte(1).value(inner, depth + 1)?;
+                        self.byte(1).value(inner, depth.saturating_add(1))?;
                     }
                     None => {
                         self.byte(0);
@@ -349,7 +353,7 @@ impl Builder {
             Sum::List(list) => {
                 self.byte(10).count(list.elements.len())?;
                 for element in &list.elements {
-                    self.value(element, depth + 1)?;
+                    self.value(element, depth.saturating_add(1))?;
                 }
             }
             Sum::TextMap(map) => {
@@ -358,7 +362,7 @@ impl Builder {
                     self.string(&entry.key)?;
                     self.value(
                         required(entry.value.as_ref(), "a text-map entry without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -374,7 +378,7 @@ impl Builder {
                     }
                     self.value(
                         required(field.value.as_ref(), "a record field without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -384,7 +388,7 @@ impl Builder {
                     .string(&variant.constructor)?
                     .value(
                         required(variant.value.as_ref(), "a variant without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
             }
             Sum::Enum(e) => {
@@ -397,11 +401,11 @@ impl Builder {
                 for entry in &map.entries {
                     self.value(
                         required(entry.key.as_ref(), "a map entry without a key")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                     self.value(
                         required(entry.value.as_ref(), "a map entry without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -424,6 +428,10 @@ fn required<'a, T>(value: Option<&'a T>, what: &str) -> Result<&'a T, HashingErr
 /// an id Canton would refuse must not hash as if it were one it accepts.
 /// Decoded byte by byte, since a participant's reply is not known to be ASCII.
 fn decode_hex(text: &str) -> Result<Vec<u8>, HashingError> {
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "each arm subtracts the low end of the range it matched"
+    )]
     fn nibble(digit: u8) -> Option<u8> {
         match digit {
             b'0'..=b'9' => Some(digit - b'0'),
@@ -677,7 +685,7 @@ impl<'a> Tree<'a> {
                 }
                 b.count(exercise.children.len())?;
                 for child in &exercise.children {
-                    let child_hash = self.hash_node(child, depth + 1)?;
+                    let child_hash = self.hash_node(child, depth.saturating_add(1))?;
                     b.hash(&child_hash);
                 }
                 Ok(b.finish())
@@ -686,7 +694,7 @@ impl<'a> Tree<'a> {
                 let mut b = Builder::for_node(self.scheme);
                 b.byte(ROLLBACK_TAG).count(rollback.children.len())?;
                 for child in &rollback.children {
-                    let child_hash = self.hash_node(child, depth + 1)?;
+                    let child_hash = self.hash_node(child, depth.saturating_add(1))?;
                     b.hash(&child_hash);
                 }
                 Ok(b.finish())
@@ -868,7 +876,11 @@ pub fn hash_prepared_transaction(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::arithmetic_side_effects
+)]
 mod tests {
     //! Canton's own vectors (`protocol/hash/v2/` and `v3/`, `NodeHashTest.scala`
     //! and `MetadataHashTest.scala`, Canton 3.5.17), rebuilt as the API protos a
@@ -1055,7 +1067,7 @@ mod tests {
         for entry in &tx.nodes {
             let Some(ipb::daml_transaction::node::VersionedNode::V1(node)) = &entry.versioned_node
             else {
-                unreachable!()
+                panic!("the fixture holds v1 nodes only")
             };
             nodes.insert(entry.node_id.as_str(), node);
         }
@@ -1482,7 +1494,7 @@ mod tests {
             .map(|input| {
                 let Some(ipb::metadata::input_contract::Contract::V1(create)) = &input.contract
                 else {
-                    unreachable!()
+                    panic!("the fixture holds v1 nodes only")
                 };
                 to_hex(&hash_create(create, None, Scheme::V3).unwrap())
             })
@@ -1567,6 +1579,93 @@ mod tests {
         let error =
             hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::V2).unwrap_err();
         assert!(error.to_string().contains("max record time"), "{error}");
+    }
+
+    /// No input makes the hasher panic or run away: it is the first thing to
+    /// read bytes a participant chose, and it runs before anything is signed.
+    /// Each round takes Canton's own prepared transactions and overwrites,
+    /// cuts or extends their bytes, or takes bytes with no structure at all,
+    /// at positions a fixed generator picks, so a failure reproduces. What
+    /// still decodes is hashed under both schemes; the outcome may be an
+    /// error, and must be an answer.
+    #[test]
+    fn no_mutation_of_a_prepared_transaction_panics_or_stalls_the_hasher() {
+        use prost::Message as _;
+
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let seeds = [
+            ipb::PreparedTransaction {
+                transaction: Some(transaction()),
+                metadata: Some(metadata()),
+            }
+            .encode_to_vec(),
+            ipb::PreparedTransaction {
+                transaction: Some(transaction_v3()),
+                metadata: Some(metadata_v3()),
+            }
+            .encode_to_vec(),
+            ipb::PreparedTransaction {
+                transaction: Some(chain(40, 2)),
+                metadata: Some(metadata()),
+            }
+            .encode_to_vec(),
+        ];
+        let started = std::time::Instant::now();
+        let (mut decoded, mut hashed) = (0u32, 0u32);
+        for round in 0..30_000usize {
+            let mut bytes = seeds[round % seeds.len()].clone();
+            match (round / seeds.len()) % 5 {
+                0 => {
+                    let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                    bytes[at] = next().to_le_bytes()[0];
+                }
+                1 => {
+                    // Several bytes at once, which is how a length or a node
+                    // id comes to name something else.
+                    for _ in 0..4 {
+                        let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                        bytes[at] = next().to_le_bytes()[0];
+                    }
+                }
+                2 => bytes.truncate(usize::try_from(next()).unwrap_or(0) % bytes.len()),
+                3 => {
+                    let extra = usize::try_from(next()).unwrap_or(0) % 32;
+                    bytes.extend(std::iter::repeat_with(|| next().to_le_bytes()[0]).take(extra));
+                }
+                _ => {
+                    let length = usize::try_from(next()).unwrap_or(0) % 256;
+                    bytes = std::iter::repeat_with(|| next().to_le_bytes()[0])
+                        .take(length)
+                        .collect();
+                }
+            }
+            let Ok(prepared) = ipb::PreparedTransaction::decode(bytes.as_slice()) else {
+                continue;
+            };
+            decoded += 1;
+            for scheme in [ipb::HashingSchemeVersion::V2, ipb::HashingSchemeVersion::V3] {
+                if hash_prepared_transaction(&prepared, scheme).is_ok() {
+                    hashed += 1;
+                }
+            }
+        }
+        // The rounds are worth something only if many of them get as far as
+        // the hasher, and some all the way through it.
+        assert!(decoded > 1_000, "only {decoded} mutations still decoded");
+        assert!(hashed > 100, "only {hashed} mutations still hashed");
+        // Milliseconds each; one input that doubled the work per node would
+        // not come back at all.
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(60),
+            "{:?} for 30000 small inputs",
+            started.elapsed()
+        );
     }
 
     #[test]

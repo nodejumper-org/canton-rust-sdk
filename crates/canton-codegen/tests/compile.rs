@@ -3,7 +3,12 @@
 //! Gated on `CODEGEN_COMPILE_TEST` because it spawns `cargo` (slow); the
 //! in-crate tests cover the fast path. This is the test that catches
 //! *compilability*, not just `syn::parse` validity.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::too_many_lines)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::too_many_lines,
+    clippy::indexing_slicing
+)]
 
 use std::fs;
 use std::process::Command;

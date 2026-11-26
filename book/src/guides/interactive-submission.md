@@ -86,10 +86,22 @@ hint and `user_id` the ledger user that will submit:
   - it carries nothing this build does not read.
 
   Anything else is refused as `Error::UnexpectedResponse`, and so is an
-  allocation of any party other than the one signed for.
-  `ExternalPartyTopology::hosting_participant()` names the host, for a caller
-  that knows its participant's id and wants to compare. Canton before 3.4.9
+  allocation of any party other than the one signed for. Canton before 3.4.9
   answered with three transactions; that reply is refused.
+- Which participant the host is cannot be checked without being told: the SDK
+  knows the endpoint it called, not which participant answers there.
+  `generate_external_party_topology_with(…, &ExpectedHosting::participant(uid))`
+  holds the host to the participant in your configuration, and
+  `ExternalPartyTopology::hosting_participant()` reports it either way.
+- When the signature comes later (a wallet approval, a signing queue, a
+  restart in between), store `party_id()` and `transactions()`, and rebuild
+  the topology with
+  `ExternalPartyTopology::from_parts(party_id, transactions, &key, &expected)`.
+  It runs the same checks again and recomputes the hash to sign, so what was
+  stored is trusted no more than the participant's reply was.
+  `allocate_external_party_with_signature` then takes the signature that was
+  made in between. `PublicKey::fingerprint()` gives the key's fingerprint
+  without asking a participant.
 - `allocate_external_party` is not retried: the request has no idempotency key.
   If the response is lost, look the party up with `AdminClient::get_parties`
   before trying again.
@@ -347,7 +359,8 @@ example.
 The live suite
 [`interactive_live.rs`](https://github.com/nodejumper-org/canton-rust-sdk/blob/main/crates/canton-ledger/tests/interactive_live.rs)
 runs this page against a real participant: it onboards a party, runs the round
-trip under V2 and V3, commits a transaction with a max record time, creates a
+trip under V2 and V3, commits a transaction with a max record time, onboards
+a second party from a stored topology with a signature made later, creates a
 keyed contract and exercises it by key under V3, and checks that a signature
 from the wrong key is rejected.
 

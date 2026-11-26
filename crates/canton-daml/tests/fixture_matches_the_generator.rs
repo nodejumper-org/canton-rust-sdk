@@ -16,7 +16,13 @@
 //!
 //! There is no dependency cycle. `canton-codegen` depends on `canton-lf` and
 //! never on this crate, and a dev-dependency reaches no consumer.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::string_slice
+)]
 
 use canton_codegen::{generate_crate, lower_dar};
 use canton_lf::Dar;

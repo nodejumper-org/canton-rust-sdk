@@ -14,7 +14,7 @@
 //! CANTON_SCAN_PROXY_URL=https://validator.example/api/validator CANTON_TOKEN=… \
 //!   cargo test -p canton-token --test scan_live -- --nocapture
 //! ```
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
 
 /// A skipped test and a passing test are the same line in cargo's output. Set
 /// `CANTON_TEST_REQUIRE_LIVE=1`, as any run that claims to have exercised a

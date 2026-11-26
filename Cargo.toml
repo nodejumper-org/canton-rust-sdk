@@ -107,6 +107,17 @@ rust_2018_idioms              = { level = "warn", priority = -1 }
 pedantic                = { level = "warn", priority = -1 }
 unwrap_used             = "warn"
 expect_used             = "warn"
+# Nothing outside tests may panic on what a participant, a registry or a
+# caller's configuration hands it: no panic macro, no indexing or slicing that
+# can run off the end or split a character. A site that cannot fail is written
+# with `get` anyway, or carries an `#[allow]` saying why. `clippy.toml` lets
+# test code index and panic.
+panic                   = "warn"
+unreachable             = "warn"
+todo                    = "warn"
+unimplemented           = "warn"
+indexing_slicing        = "warn"
+string_slice            = "warn"
 module_name_repetitions = "allow"
 missing_errors_doc      = "allow"
 # Purely stylistic: flags proper/product names (LocalNet, Keycloak, OAuth2, …)

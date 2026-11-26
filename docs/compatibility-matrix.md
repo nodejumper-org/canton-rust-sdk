@@ -37,7 +37,7 @@ participant; CI runs them against LocalNet in the `LocalNet` workflow, nightly a
 |---|---|
 | Ledger API | **v2** |
 | Canton | **3.5.7** — the release the `.proto` files are vendored from |
-| Verified against | a Canton 3.5.7 participant (LocalNet): submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party, including contract keys under hashing scheme V3. A Canton **3.5.17** and, since 0.3.2, **3.6.3** participant on the Canton Network **DevNet**: the token-standard workflows, the ledger live suite, interactive submission under V2 and V3, JSON package and party reads, PQS over TLS, gRPC over TLS with a Keycloak token. Since 0.3.3, a Canton **3.7.3** participant on DevNet at protocol version 37: the interactive submission suite, with external-party onboarding in topology format 31 and a signed max record time, and the registry suite |
+| Verified against | a Canton 3.5.7 participant (LocalNet): submission, streaming, recovery, TLS/mTLS, auth, typed end-to-end on both transports, and interactive submission with an externally-signed party, including contract keys under hashing scheme V3. A Canton **3.5.17** and, since 0.3.2, **3.6.3** participant on the Canton Network **DevNet**: the token-standard workflows, the ledger live suite, interactive submission under V2 and V3, JSON package and party reads, PQS over TLS, gRPC over TLS with a Keycloak token. Since 0.3.3, a Canton **3.7.3** participant on DevNet at protocol version 37: the interactive submission suite, with external-party onboarding in topology format 31 (also from a stored topology, with a DER key and the host held to the participant) and a signed max record time, and the registry suite |
 | Run in CI | the `LocalNet` workflow boots [canton-localnet](https://github.com/peacefulstudio/canton-localnet) v0.8.4-3, which vendors **Splice 0.8.4**, and runs the live suites against it nightly and on demand. The Canton participant is the one that Splice release ships; the workflow does not pin it, and the 3.5.7 row above is the developer-run verification |
 
 Moving the supported Canton range re-vendors the protos in a new SDK minor. See
@@ -180,7 +180,7 @@ each file name ends with the package id that hashes its bytes.
 
 The `LocalNet` workflow sets `CANTON_TEST_REQUIRE_LIVE`, so a suite that cannot
 reach its environment **fails rather than skips**, and it asserts each suite's
-exact passed count and zero ignored tests: ledger 39, interactive 6, admin 5,
+exact passed count and zero ignored tests: ledger 39, interactive 7, admin 5,
 PQS 9, token 5, Scan 4 (the scan-proxy test is left out by name, since the
 workflow fetches no token for the validator's API). One PQS test skips without that guard when the store holds no
 Amulet, so the workflow also requires the line that test prints when it

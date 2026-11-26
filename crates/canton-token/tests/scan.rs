@@ -5,7 +5,12 @@
 //! nowhere. The stub records what it was asked: the method, the path, the
 //! token and the body, which is the half Splice's specification is precise
 //! about.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::string_slice
+)]
 
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
