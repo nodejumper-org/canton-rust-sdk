@@ -120,7 +120,7 @@ several. Add commands with `add_command` / `add_commands`, built with
 | `with_user_id`, `with_read_as`, `with_synchronizer_id` | As on an ordinary submission. |
 | `with_disclosed_contracts` | Explicitly disclosed contracts. A token-standard [`TokenCommand`](https://docs.rs/canton-token/latest/canton_token/transfer/struct.TokenCommand.html) builds the whole `Prepare`, disclosures included, with `into_prepare(party)`; see [The token standard](token-standard.md). |
 | `with_min_ledger_time_abs`, `with_min_ledger_time_rel` | Lower bound for ledger time. Exclusive; the later call wins. |
-| `with_max_record_time` | The record time after which the participant refuses the prepared transaction. |
+| `with_max_record_time` | The record time after which the participant refuses the prepared transaction. Only hashing scheme V3 signs it, so setting it prepares under V3. |
 | `with_hashing_scheme_version`, `trust_participant_hash`, `with_verbose_hashing` | See [Hashing schemes](#hashing-schemes-and-the-hash-check). |
 | `with_package_id_selection_preference`, `with_prefetch_contract_keys`, `with_taps_max_passes`, `without_traffic_cost_estimation` | The remaining `PrepareSubmissionRequest` fields. |
 
@@ -158,7 +158,12 @@ tolerance of the ledger time assigned at preparation, usually about a minute.
 One that does not is bounded by the preparation-time skew, on the order of
 hours, so hold a `Prepared` across a long signing ceremony only on purpose.
 Past `with_max_record_time` the participant is certain to refuse it, which is
-what makes preparing the same intent again safe.
+what makes preparing the same intent again safe. That holds because the
+signature covers the deadline, and only hashing scheme V3 hashes it: under V2
+an executing participant can change or drop it and the signature still
+verifies. So a `Prepare` with a max record time asks for V3 unless you chose a
+scheme, and one that sets a max record time and chooses V2 is refused as
+`Error::InvalidRequest` before anything is sent.
 
 ## Several acting parties
 
@@ -194,14 +199,15 @@ take the hash from the response: it recomputes it from the returned
 transaction and refuses a response whose hash differs (V2 since 0.3.1, V3 since
 0.3.2; see the [changelog](../project/changelog.md)).
 
-`Prepare` asks for hashing scheme V2 explicitly instead of leaving the choice
-to the participant. The scheme is echoed in the response and sent back with
+`Prepare` asks for a hashing scheme explicitly instead of leaving the choice
+to the participant: V2, or V3 when a max record time is set. The scheme is
+echoed in the response and sent back with
 the signature, so the participant verifies under the scheme it hashed with.
 
 | Scheme | What the SDK does | Use it for |
 |---|---|---|
-| V2 | The default. Recomputes the hash and refuses a mismatch. | Transactions without contract keys. |
-| V3 | Recomputes the hash and refuses a mismatch. | Transactions that use contract keys, which V2 cannot hash. |
+| V2 | The default without a max record time. Recomputes the hash and refuses a mismatch. | Transactions without contract keys and without a max record time. |
+| V3 | The default with a max record time. Recomputes the hash and refuses a mismatch. | Transactions that use contract keys or set a max record time, neither of which V2 hashes. |
 | Any other (V4 is development-protocol-only) | Refuses the response unless you set `Prepare::trust_participant_hash()`. | Only with a preparing participant you trust. |
 
 Ask for V3 with
@@ -341,8 +347,9 @@ example.
 The live suite
 [`interactive_live.rs`](https://github.com/nodejumper-org/canton-rust-sdk/blob/main/crates/canton-ledger/tests/interactive_live.rs)
 runs this page against a real participant: it onboards a party, runs the round
-trip under V2 and V3, creates a keyed contract and exercises it by key under
-V3, and checks that a signature from the wrong key is rejected.
+trip under V2 and V3, commits a transaction with a max record time, creates a
+keyed contract and exercises it by key under V3, and checks that a signature
+from the wrong key is rejected.
 
 ```sh
 # unauthenticated LocalNet

@@ -88,10 +88,8 @@ impl Prepare {
             min_ledger_time_rel: None,
             verbose_hashing: false,
             max_record_time: None,
-            // Asked for explicitly rather than left to the participant: the
-            // scheme decides what the signature covers, and `Prepared` refuses
-            // a response hashed under one the caller did not ask for.
-            hashing_scheme_version: Some(ipb::HashingSchemeVersion::V2 as i32),
+            // Not chosen yet. One is always sent, see `hashing_scheme`.
+            hashing_scheme_version: None,
             taps_max_passes: None,
             // The participant estimates by default; only an explicit opt-out
             // is sent, so leaving this alone changes nothing.
@@ -214,15 +212,26 @@ impl Prepare {
     /// what makes preparing a fresh transaction for the same intent safe again:
     /// without a bound, "it might still commit" and "prepare another" are both
     /// true at once.
+    ///
+    /// The bound holds because the signature covers it, and only hashing
+    /// scheme `V3` signs it. Under `V2` it is not part of the hash, so an
+    /// executing participant can change or drop it and the signature still
+    /// verifies. A request with a bound is therefore prepared under `V3`
+    /// unless a scheme was chosen with
+    /// [`with_hashing_scheme_version`](Self::with_hashing_scheme_version), and
+    /// one that sets a bound and chooses `V2` is refused as
+    /// [`Error::InvalidRequest`] before it is sent.
     #[must_use]
     pub fn with_max_record_time(mut self, time: prost_types::Timestamp) -> Self {
         self.max_record_time = Some(time);
         self
     }
 
-    /// Choose the hashing scheme. Defaults to `V2`, which this SDK asks for
-    /// explicitly rather than leaving to the participant; a transaction that
-    /// uses contract keys needs `V3`.
+    /// Choose the hashing scheme. Defaults to `V2`, or to `V3` when a
+    /// [max record time](Self::with_max_record_time) is set, since `V2` does
+    /// not sign one. Either way the SDK asks for a scheme explicitly rather
+    /// than leaving it to the participant. A transaction that uses contract
+    /// keys needs `V3`.
     ///
     /// The scheme decides what the hash covers, so it is echoed in the response
     /// and sent back with the signature — the participant must verify under the
@@ -298,8 +307,42 @@ impl Prepare {
     /// The hashing scheme this request asks for, if any, so the response can
     /// be held to it.
     pub(crate) fn requested_hashing_scheme(&self) -> Option<ipb::HashingSchemeVersion> {
+        ipb::HashingSchemeVersion::try_from(self.hashing_scheme()).ok()
+    }
+
+    /// The scheme the request asks for: the one that was chosen, else `V3`
+    /// when there is a max record time for the signature to cover, else `V2`.
+    ///
+    /// Always one or the other, never left to the participant: the scheme
+    /// decides what the signature covers, and `Prepared` refuses a response
+    /// hashed under one the caller did not ask for.
+    fn hashing_scheme(&self) -> i32 {
         self.hashing_scheme_version
-            .and_then(|v| ipb::HashingSchemeVersion::try_from(v).ok())
+            .unwrap_or(if self.max_record_time.is_some() {
+                ipb::HashingSchemeVersion::V3 as i32
+            } else {
+                ipb::HashingSchemeVersion::V2 as i32
+            })
+    }
+
+    /// Refuse a request the participant could not hold to what it says.
+    ///
+    /// A max record time under `V2` is one: `V2` does not hash it, so the
+    /// caller would sign a transaction whose deadline the executing
+    /// participant is free to move.
+    pub(crate) fn check(&self) -> Result<()> {
+        if self.max_record_time.is_some()
+            && self.hashing_scheme() == ipb::HashingSchemeVersion::V2 as i32
+        {
+            return Err(Error::InvalidRequest(
+                "a max record time is covered by the signature only under hashing scheme V3: \
+                 under V2 the executing participant can change or drop it. Prepare under V3 \
+                 (leave the scheme unset, or with_hashing_scheme_version(V3)), or set no max \
+                 record time"
+                    .to_string(),
+            ));
+        }
+        Ok(())
     }
 
     /// Whether the caller accepted an unchecked hash for a scheme the SDK
@@ -309,6 +352,7 @@ impl Prepare {
     }
 
     pub(crate) fn into_request(self) -> (String, Option<String>, ipb::PrepareSubmissionRequest) {
+        let hashing_scheme_version = Some(self.hashing_scheme());
         let command_id = self
             .command_id
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -327,7 +371,7 @@ impl Prepare {
             verbose_hashing: self.verbose_hashing,
             prefetch_contract_keys: self.prefetch_contract_keys,
             max_record_time: self.max_record_time,
-            hashing_scheme_version: self.hashing_scheme_version,
+            hashing_scheme_version,
             taps_max_passes: self.taps_max_passes,
             estimate_traffic_cost: (!self.estimate_traffic_cost).then_some(
                 ipb::CostEstimationHints {
@@ -1534,6 +1578,82 @@ mod tests {
         assert_eq!(
             wire.hashing_scheme_version,
             ipb::HashingSchemeVersion::V2 as i32
+        );
+    }
+
+    /// A max record time is a promise only if the signature covers it, and
+    /// only V3 hashes it. So a request with one asks for V3 unless a scheme
+    /// was chosen, and one that chooses V2 is refused before it is sent.
+    #[test]
+    fn a_max_record_time_is_prepared_under_v3_and_refused_under_a_chosen_v2() {
+        let scheme = |prepare: Prepare| {
+            prepare.check().expect("a request that can be sent");
+            assert_eq!(
+                prepare
+                    .requested_hashing_scheme()
+                    .map(|scheme| scheme as i32),
+                prepare.clone().into_request().2.hashing_scheme_version,
+                "the response is held to the scheme that was sent"
+            );
+            prepare.into_request().2.hashing_scheme_version
+        };
+        let deadline = prost_types::Timestamp {
+            seconds: 1_900_000_000,
+            nanos: 0,
+        };
+        let v2 = Some(ipb::HashingSchemeVersion::V2 as i32);
+        let v3 = Some(ipb::HashingSchemeVersion::V3 as i32);
+
+        // Without a deadline the default stays V2, and a choice is kept.
+        assert_eq!(scheme(Prepare::new("alice")), v2);
+        assert_eq!(
+            scheme(
+                Prepare::new("alice").with_hashing_scheme_version(ipb::HashingSchemeVersion::V3)
+            ),
+            v3
+        );
+        assert_eq!(
+            scheme(
+                Prepare::new("alice").with_hashing_scheme_version(ipb::HashingSchemeVersion::V2)
+            ),
+            v2
+        );
+
+        // With one, V3, whichever of the two is set first.
+        assert_eq!(
+            scheme(Prepare::new("alice").with_max_record_time(deadline)),
+            v3
+        );
+        assert_eq!(
+            scheme(
+                Prepare::new("alice")
+                    .with_hashing_scheme_version(ipb::HashingSchemeVersion::V3)
+                    .with_max_record_time(deadline)
+            ),
+            v3
+        );
+
+        // A deadline under a chosen V2 would be signed for without being
+        // covered, in either order of setting them.
+        for prepare in [
+            Prepare::new("alice")
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V2),
+            Prepare::new("alice")
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V2)
+                .with_max_record_time(deadline),
+        ] {
+            let error = prepare.check().expect_err("a deadline V2 does not sign");
+            assert!(matches!(error, Error::InvalidRequest(_)), "{error:?}");
+            assert!(error.to_string().contains("V3"), "{error}");
+        }
+
+        // A scheme this SDK cannot recompute is the caller's to judge.
+        scheme(
+            Prepare::new("alice")
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V4)
+                .trust_participant_hash(),
         );
     }
 

@@ -586,6 +586,7 @@ impl CantonClient {
         // Built once, outside the instrumented future, so retries reuse one
         // command id — the change ID stays stable and the submission remains
         // de-duplication-safe across attempts, exactly as `submit` does.
+        prepare.check()?;
         let act_as = prepare.act_as().to_vec();
         // Carried through: the Ledger API's default event format for
         // `…_and_wait_for_transaction` covers `act_as` *and* `read_as`, so

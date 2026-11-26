@@ -778,14 +778,22 @@ fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, Hashi
         let contract_hash = hash_create(create, None, scheme)?;
         b.hash(&contract_hash);
     }
-    if scheme == Scheme::V3 {
-        match metadata.max_record_time {
-            Some(micros) => {
-                b.byte(1).unsigned_long(micros)?;
-            }
-            None => {
-                b.byte(0);
-            }
+    match (scheme, metadata.max_record_time) {
+        (Scheme::V3, Some(micros)) => {
+            b.byte(1).unsigned_long(micros)?;
+        }
+        (Scheme::V3, None) => {
+            b.byte(0);
+        }
+        (Scheme::V2, None) => {}
+        // V2 has no encoding for it, so the hash would be the same with the
+        // deadline moved or removed: signing it would not sign the deadline.
+        (Scheme::V2, Some(_)) => {
+            return Err(err(
+                "the transaction has a max record time, which hashing scheme V2 does not cover: \
+                 an executing participant could change or drop it and the signature would \
+                 still verify; prepare it under V3",
+            ));
         }
     }
     Ok(b.finish())
@@ -817,7 +825,8 @@ fn hash_prepared(
 ///
 /// # Errors
 /// [`HashingError`] if the transaction is not something the V2 scheme
-/// covers (a contract key, a node at a newer LF serialization version), or is
+/// covers (a contract key, a node at a newer LF serialization version, a max
+/// record time), or is
 /// not self-consistent (a node missing, a seed missing, a contract id that is
 /// not hex).
 pub fn hash_prepared_transaction_v2(
@@ -1519,6 +1528,45 @@ mod tests {
         let v2 = hash_prepared_transaction_v2(&prepared).unwrap();
         let v3 = hash_prepared_transaction_v3(&prepared).unwrap();
         assert_ne!(v2, v3);
+    }
+
+    /// V2 has no encoding for the max record time, so under V2 the hash is the
+    /// same with the deadline as prepared, moved, or removed. Signing that
+    /// hash would not sign the deadline, so a transaction that has one is
+    /// refused under V2 rather than hashed as if it had none. V3 covers it.
+    #[test]
+    fn a_max_record_time_is_signed_under_v3_and_refused_under_v2() {
+        let mut with_deadline = metadata();
+        with_deadline.max_record_time = Some(2_592_000_000_000);
+        let error = hash_metadata(&with_deadline, Scheme::V2).unwrap_err();
+        assert!(
+            error.to_string().contains("max record time") && error.to_string().contains("V3"),
+            "{error}"
+        );
+        // Without one, V2 hashes as it always did.
+        hash_metadata(&metadata(), Scheme::V2).unwrap();
+
+        // Under V3 the deadline is part of what is signed: as prepared,
+        // moved and removed are three hashes.
+        let as_prepared = hash_metadata(&metadata_v3(), Scheme::V3).unwrap();
+        let mut moved = metadata_v3();
+        moved.max_record_time = Some(2_592_000_000_000 + 365 * 24 * 3600 * 1_000_000);
+        let mut removed = metadata_v3();
+        removed.max_record_time = None;
+        let moved = hash_metadata(&moved, Scheme::V3).unwrap();
+        let removed = hash_metadata(&removed, Scheme::V3).unwrap();
+        assert_ne!(as_prepared, moved);
+        assert_ne!(as_prepared, removed);
+        assert_ne!(moved, removed);
+
+        // And through the whole prepared transaction, as a caller hashes it.
+        let prepared = ipb::PreparedTransaction {
+            transaction: Some(transaction()),
+            metadata: Some(with_deadline),
+        };
+        let error =
+            hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::V2).unwrap_err();
+        assert!(error.to_string().contains("max record time"), "{error}");
     }
 
     #[test]

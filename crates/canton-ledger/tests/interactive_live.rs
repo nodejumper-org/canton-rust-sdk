@@ -373,6 +373,73 @@ async fn external_commands__prepare_sign_execute_commits_under_hashing_scheme_v3
     assert_ne!(transaction.events, [] as [canton_ledger::proto::Event; 0]);
 }
 
+/// A deadline the signature covers. Setting a max record time prepares under
+/// V3 without being asked, since V2 does not hash one, and the participant's
+/// hash includes it: the SDK's recomputation agreeing is what lets the
+/// prepare return at all.
+#[tokio::test]
+async fn external_commands__a_max_record_time_is_prepared_and_committed_under_v3() {
+    use canton_ledger::proto::interactive::HashingSchemeVersion;
+
+    let Some(ledger) = ledger_client() else {
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET)"
+        );
+        return;
+    };
+    let Some((party, signer)) = external_party("rust-sdk-deadline").await else {
+        skip!("the participant refused or lacks the admin right to onboard an external party");
+        return;
+    };
+    let in_ten_minutes = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("a clock after 1970")
+        .as_secs()
+        + 600;
+    let deadline = prost_types::Timestamp {
+        seconds: i64::try_from(in_ten_minutes).expect("a time this century"),
+        nanos: 0,
+    };
+
+    let prepared = ledger
+        .prepare_submission(
+            Prepare::new(&party)
+                .add_command(a_command_only_the_party_signs(&party))
+                .with_max_record_time(deadline),
+        )
+        .await
+        .expect("the participant prepares under V3 and its hash, deadline included, matches");
+    assert_eq!(prepared.hashing_scheme_version(), HashingSchemeVersion::V3);
+
+    // The same request under a chosen V2 never reaches the participant.
+    let refused = ledger
+        .prepare_submission(
+            Prepare::new(&party)
+                .add_command(a_command_only_the_party_signs(&party))
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(HashingSchemeVersion::V2),
+        )
+        .await
+        .expect_err("V2 does not sign a deadline");
+    assert!(
+        matches!(refused, canton_core::Error::InvalidRequest(_)),
+        "{refused:?}"
+    );
+
+    let executable = prepared
+        .sign_with(&signer)
+        .await
+        .expect("the in-memory key signs");
+    let transaction = Box::pin(ledger.execute_submission_and_wait_for_transaction(executable))
+        .await
+        .expect("the participant accepts the signature and commits before the deadline");
+    println!(
+        "committed with a signed deadline: {} at offset {}",
+        transaction.update_id, transaction.offset
+    );
+    assert_ne!(transaction.update_id, "");
+}
+
 /// Prepare, sign and commit `command` as `party` under hashing scheme V3,
 /// returning the prepared transaction it was signed over.
 async fn commit_under_v3(
