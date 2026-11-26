@@ -119,6 +119,11 @@ patch: `cargo update` brings them to every project on `0.3`.
     and nothing through a validator.
   - The same hardening as the registry client: no redirects, a bounded reply,
     percent-encoded path segments, a 30-second deadline.
+  - Written against the documents of Splice 0.10.3. `dso()` asks `/v1/dso`,
+    which is 0.10's, and falls back to the `/v0/dso` every release serves.
+    The two snapshot page reads (`acs_snapshot`, `holdings_state`) need
+    Splice 0.8.4, where their paths appeared. The rest is served back to
+    Splice 0.6.
   - Not included: comparing several Scans' answers. A Scan asked directly is
     one Super Validator's word; the scan-proxy is the route that compares.
 - **Bearer tokens for `RegistryClient` and `ScanClient`** (#21): `with_token`

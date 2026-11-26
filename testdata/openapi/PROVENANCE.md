@@ -40,11 +40,15 @@ repository, vendored for the same reason.
 | `scan.yaml` | `apps/scan/src/main/openapi/scan.yaml` |
 | `scan-proxy.yaml` | `apps/validator/src/main/openapi/scan-proxy.yaml` |
 
-**Pinned revision:** commit `dbcb0c14ca62278ad2ea39ce590da248bf1a85b2`
-(2026-11-09), the revision the request for the client was written against
-(issue #21). Fetched 2026-11-26. `scan-proxy.yaml` refers to schemas in
+**Pinned revision:** git tag `0.10.3`, the latest Splice release when the
+client was written. Fetched 2026-11-26. `scan-proxy.yaml` refers to schemas in
 `scan.yaml` and in `apps/common/src/main/openapi/`, which are not vendored: the
 tests read the paths and their HTTP methods, not the schemas.
+
+Splice moved some of these paths between releases, and the client says which
+it needs: `/v1/dso` is 0.10's (the client falls back to `/v0/dso`, which every
+release serves), and `/v2/state/acs` and `/v2/holdings/state` are 0.8.4's (an
+older Scan has no equivalent the client speaks).
 
 To bump: refetch both at the new revision, update this section, and run
 `cargo test -p canton-token --test scan`, which checks every path and method

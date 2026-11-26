@@ -35,6 +35,16 @@
 //! [`disclosed`](ContractWithState::disclosed), which is what a submission
 //! attaches.
 //!
+//! # Splice versions
+//!
+//! Written against the documents of Splice 0.10.3. Two things differ on an
+//! older Scan or validator: [`dso`](ScanClient::dso) falls back to the
+//! `/v0/dso` every release serves, and the two snapshot page reads
+//! ([`acs_snapshot`](ScanClient::acs_snapshot),
+//! [`holdings_state`](ScanClient::holdings_state)) need Splice 0.8.4, which
+//! is where their `/v2` paths appeared. Everything else is served back to
+//! Splice 0.6.
+//!
 //! # Stability
 //!
 //! Splice tags each Scan endpoint `external` or `internal`. The external ones
@@ -972,10 +982,17 @@ impl ScanClient {
     /// The DSO: its party, its voting threshold, and the contracts that hold
     /// its rules.
     ///
+    /// Asked at `/v1/dso`, which Splice 0.10 added. A Scan or a validator
+    /// older than that answers `404` there and serves `/v0/dso`, which
+    /// carries the same contracts, so that is asked next.
+    ///
     /// # Errors
     /// As [`dso_party_id`](Self::dso_party_id).
     pub async fn dso(&self) -> Result<DsoInfo> {
-        self.get(self.url("v1", &["dso"])?).await
+        match self.get(self.url("v1", &["dso"])?).await {
+            Err(Error::Http { status: 404, .. }) => self.get(self.url("v0", &["dso"])?).await,
+            answer => answer,
+        }
     }
 
     /// Every Super Validator's Scan, per synchronizer.
@@ -1384,6 +1401,9 @@ impl ScanClient {
 
     /// A page of a snapshot of the active contracts.
     ///
+    /// Splice 0.8.4 and later: an older Scan has no `/v2/state/acs` and
+    /// answers `404`.
+    ///
     /// # Errors
     /// As [`scans`](Self::scans), and [`Error::InvalidRequest`] for a page
     /// size Scan does not allow.
@@ -1412,7 +1432,8 @@ impl ScanClient {
     }
 
     /// A page of the Amulet and locked Amulet contracts the request's parties
-    /// owned at a snapshot.
+    /// owned at a snapshot. Splice 0.8.4 and later, as
+    /// [`acs_snapshot`](Self::acs_snapshot).
     ///
     /// # Errors
     /// As [`acs_snapshot`](Self::acs_snapshot), and

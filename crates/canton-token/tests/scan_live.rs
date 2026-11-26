@@ -264,11 +264,38 @@ async fn the_latest_snapshot_can_be_read() {
     let (migration_id, record_time) = latest.expect("a Scan that has taken a snapshot");
     println!("latest snapshot: migration {migration_id} at {record_time}");
 
-    let request = SnapshotRequest::at(migration_id, record_time.clone()).with_page_size(5);
-    let page = client
-        .acs_snapshot(&request)
+    // What the DSO held at it. The summary is served by every Splice release.
+    let dso_party = client.dso_party_id().await.expect("the DSO party");
+    let owners = SnapshotRequest::at(migration_id, record_time.clone())
+        .with_page_size(5)
+        .for_parties([dso_party.clone()]);
+    let summary = client
+        .holdings_summary(&owners)
         .await
-        .expect("a page of the snapshot");
+        .expect("the DSO's totals");
+    assert_eq!(summary.migration_id, migration_id);
+    let later = client
+        .holdings_summary(
+            &SnapshotRequest::at(migration_id, before)
+                .at_or_before()
+                .for_parties([dso_party.clone()]),
+        )
+        .await
+        .expect("the totals at or before a later time");
+    assert_eq!(later.record_time, summary.record_time);
+    println!("{dso_party}: {} summary row(s)", summary.summaries.len());
+
+    // The page reads are Splice 0.8.4's.
+    let request = SnapshotRequest::at(migration_id, record_time).with_page_size(5);
+    let page = match client.acs_snapshot(&request).await {
+        Err(canton_core::Error::Http { status: 404, .. }) => {
+            skip!(
+                "this Scan predates /v2/state/acs (Splice 0.8.4), so the snapshot pages cannot be read"
+            );
+            return;
+        }
+        page => page.expect("a page of the snapshot"),
+    };
     assert_eq!(page.migration_id, migration_id);
     assert_eq!(page.created_events.len(), 5);
     let token = page
@@ -294,24 +321,15 @@ async fn the_latest_snapshot_can_be_read() {
         .expect("the snapshot at or before a later time");
     assert_eq!(found.record_time, page.record_time);
 
-    let dso_party = client.dso_party_id().await.expect("the DSO party");
-    let owners = SnapshotRequest::at(migration_id, record_time)
-        .with_page_size(5)
-        .for_parties([dso_party.clone()]);
     let holdings = client
         .holdings_state(&owners)
         .await
         .expect("the DSO's holdings");
-    let summary = client
-        .holdings_summary(&owners)
-        .await
-        .expect("the DSO's totals");
     println!(
-        "{dso_party} held {} contracts on the page, {} summary row(s)",
-        holdings.created_events.len(),
-        summary.summaries.len()
+        "{dso_party} held {} contracts on the first page",
+        holdings.created_events.len()
     );
-    assert_eq!(summary.migration_id, migration_id);
+    assert_eq!(holdings.migration_id, migration_id);
 }
 
 /// The rest of the external reads a Scan serves.

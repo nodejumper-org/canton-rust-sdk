@@ -46,6 +46,12 @@ bound the size of a reply, and percent-encode every path segment. What Scan
 answers goes into commands you sign, so it has to come from the Scan you
 named.
 
+The client is written against the documents of Splice 0.10.3. On an older
+Scan or validator two things differ: `dso()` falls back from `/v1/dso`, which
+0.10 added, to the `/v0/dso` every release serves, and the two snapshot page
+reads (`acs_snapshot`, `holdings_state`) need Splice 0.8.4, where their paths
+appeared. Everything else is served back to Splice 0.6.
+
 ## Contracts to disclose
 
 ```rust,ignore
@@ -142,6 +148,9 @@ CANTON_SCAN_PROXY_URL=https://validator.example/api/validator CANTON_TOKEN=… \
   cargo test -p canton-token --test scan_live -- --nocapture
 ```
 
-A Super Validator's Scan on DevNet, TestNet and MainNet answers only to
-addresses the Super Validators have allow-listed, which a validator's address
-is.
+A Super Validator's Scan on DevNet, TestNet and MainNet answers `/api/scan`
+only to addresses the Super Validators have allow-listed, which a validator's
+address is. A LocalNet's Scan answers anyone: a Splice LocalNet or Canton
+Builder Tool publishes it at `http://scan.localhost:4000/api/scan`, and a
+validator's API is on its own port (`http://localhost:3903/api/validator` for
+Canton Builder Tool's app-provider, with `canton builder token` as the token).

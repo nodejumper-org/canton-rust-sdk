@@ -810,10 +810,11 @@ What the output below shows, beyond the unit tests:
 - A `wss` stream with default TLS settings completes its handshake in a
   process where rustls itself cannot choose a crypto provider.
 
-Not shown: the Scan client against a Scan. A Super Validator's Scan on DevNet
-answers `/api/scan` only to allow-listed addresses, and the machine this ran
-on is not one; the registry routes on the same host are open. The Scan route
-runs against LocalNet in the `LocalNet` workflow.
+Not shown on DevNet: the Scan client against a Scan. A Super Validator's Scan
+on DevNet answers `/api/scan` only to allow-listed addresses, and the machine
+this ran on is not one; the registry routes on the same host are open. The
+Scan client ran against a LocalNet instead, on both of its routes: see the
+next section.
 
 ```text
 ### release-check at 0.3.3 2026-11-26T14:31:31Z
@@ -843,4 +844,41 @@ The interactive-submission live suite against the same participant, the same
 day (`cargo test -p canton-ledger --features ws --test interactive_live`): 7
 passed, the keyed-contract test skipping for want of its DAR on this
 participant.
+
+## The same day, against a LocalNet: Canton 3.5.7, Splice 0.6.11
+
+Canton Builder Tool's LocalNet, the app-provider validator, with the token
+`canton builder token --validator app-provider` prints. This is the Canton
+release the protos are vendored from, and its topology transactions are in
+format 30. The Super Validator's Scan was reached on its own port, and the
+scan-proxy on the validator's.
+
+| Suite | Result |
+|---|---|
+| `canton-ledger` `live` | 39 passed; one of them skips, wanting an OIDC issuer this LocalNet does not have |
+| `canton-ledger` `interactive_live` | 7 passed, the keyed-contract test included |
+| `canton-admin` `live` | 5 passed |
+| `canton-token` `live` (the registry) | 5 passed |
+| `canton-token` `scan_live` | 5 passed, on a Scan and through the validator's scan-proxy; the snapshot pages skip, since `/v2/state/acs` is Splice 0.8.4's |
+
+```text
+test signing__an_external_party_is_onboarded_by_signing_its_own_topology ... allocated external party rust-sdk-onboard::1220078c3740eaf7877ce66463b95ec565fa85bb06a1520c2e82799efd769565dcee
+test signing__a_stored_topology_is_rebuilt_and_allocated_with_a_signature_made_later ... allocated rust-sdk-stored::1220e8d8f7ce2c19afe579ab56163a9eafb79423c0c48936eaa03993a88b0205e6ae from a stored topology, hosted by participant::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+test external_commands__a_max_record_time_is_prepared_and_committed_under_v3 ... committed with a signed deadline: 1220e503b433fd2e2be44fa74ddee6690669829bcc6e7cba9771e253847d4c1a0340 at offset 82644
+test external_commands__a_keyed_contract_is_created_and_exercised_by_key_under_v3 ... committed under V3: 122005c7b5edb14bc111d63dcf4e94e3ea27d1ddd50d12358b62f59f11d5df3efee1 at offset 82765
+
+test a_validators_scan_proxy_publishes_the_same_contracts ... DSO DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad: 3 open rounds up to 2214, using 2213
+test scan_publishes_the_contracts_an_application_discloses ... DSO DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad: 3 open rounds up to 2214, using 2213
+test scan_lists_its_peers_its_closed_rounds_and_a_members_traffic ... traffic: consumed 229970 of a limit of 2400000, purchased 2400000
+test the_update_history_pages_forward ... 5 of the first 5 updates are transactions; history starts at HistoryPosition { migration_id: 0, record_time: "2026-09-22T09:50:52.471555Z" }
+test the_latest_snapshot_can_be_read ... latest snapshot: migration 0 at 2026-11-26T15:00:00Z
+```
+
+Three rounds were open and the newest, 2214, had not reached its opening
+time: the client took 2213, the highest that had.
+
+On DevNet the `canton-ledger` `live` suite passed 39 as well, read as the
+validator operator's party, and the registry suite 5. The `canton-admin`
+suite's party listing pages through every party the participant knows, which
+on DevNet does not finish in minutes; its other four tests passed.
 

@@ -326,6 +326,60 @@ async fn every_scan_proxy_path_and_method_is_the_one_splice_publishes() {
     );
 }
 
+/// `/v1/dso` is Splice 0.10's. A Scan or a validator older than that answers
+/// 404 there, as plain text, and serves the same contracts at `/v0/dso`.
+#[tokio::test]
+async fn the_dso_is_read_from_an_older_scan_too() {
+    let dso = json!({
+        "sv_user": "sv",
+        "sv_party_id": "sv::1220",
+        "dso_party_id": "DSO::1220",
+        "voting_threshold": 1,
+        "latest_mining_round": with_state("00round"),
+        "amulet_rules": with_state("00rules"),
+        "dso_rules": with_state("00dso"),
+        "sv_node_states": [with_state("00sv1")],
+    });
+    let not_found = (
+        404,
+        "The requested resource could not be found: http://splice:5012/api/scan/v1/dso".to_string(),
+    );
+    for through_validator in [false, true] {
+        let (base, asked) = stub(vec![not_found.clone(), ok(&dso)]).await;
+        let client = if through_validator {
+            validator(&base)
+        } else {
+            scan(&base)
+        };
+        let info = client.dso().await.expect("the DSO, from the older path");
+        assert_eq!(info.dso_party_id, "DSO::1220");
+        assert_eq!(info.amulet_rules.contract.contract_id, "00rules");
+        let asked = asked.lock().expect("lock").clone();
+        let paths: Vec<&str> = asked.iter().map(|request| request.path.as_str()).collect();
+        if through_validator {
+            assert_eq!(
+                paths,
+                [
+                    "/api/validator/v1/scan-proxy/dso",
+                    "/api/validator/v0/scan-proxy/dso"
+                ]
+            );
+        } else {
+            assert_eq!(paths, ["/api/scan/v1/dso", "/api/scan/v0/dso"]);
+        }
+    }
+    // Both spellings are ones Splice publishes.
+    assert!(published("scan.yaml").contains_key("/v0/dso"));
+    assert!(published("scan-proxy.yaml").contains_key("/v0/scan-proxy/dso"));
+
+    // Any other failure of the newer path is that failure, not a reason to
+    // ask again.
+    let (base, asked) = stub(vec![(503, "upstream connect error".to_string())]).await;
+    let error = scan(&base).dso().await.expect_err("a failing Scan");
+    assert!(error.is_retriable(), "{error:?}");
+    assert_eq!(asked.lock().expect("lock").len(), 1);
+}
+
 /// The reads a validator does not proxy say so, and say where to ask.
 #[tokio::test]
 async fn what_a_validator_does_not_proxy_is_refused_before_it_is_sent() {
