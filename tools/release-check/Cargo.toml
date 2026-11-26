@@ -1,0 +1,32 @@
+# A consumer of the SDK, outside its workspace: what an application gets from
+# `cargo add canton`, pointed at this tree before it is published. It runs the
+# areas a release changed through the public API against a live participant,
+# and it is rewritten for each release: this one is 0.3.3's.
+#
+#   CANTON_TEST_ENDPOINT=…  CANTON_TEST_JSON_ENDPOINT=…  CANTON_TEST_TOKEN_URL=…
+#   CANTON_TEST_ADMIN_CLIENT_ID=…  CANTON_TEST_ADMIN_CLIENT_SECRET=…
+#   CANTON_TOKEN_REGISTRY_URL=…
+#   cargo run --manifest-path tools/release-check/Cargo.toml
+#
+# Not a workspace member: it enables a second rustls crypto provider on
+# purpose (#20), which inside the workspace would unify into every crate.
+[workspace]
+
+[package]
+name    = "release-check"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[dependencies]
+canton = { path = "../../crates/canton", features = ["ws", "pqs-tls"] }
+# Both rustls crypto providers and none installed, as an application ends up
+# with when another dependency takes rustls's defaults.
+rustls       = { version = "0.23", default-features = false, features = ["std", "tls12", "ring", "aws-lc-rs"] }
+tokio        = { version = "1", features = ["full"] }
+tonic        = { version = "0.14", features = ["transport", "tls-ring", "tls-native-roots"] }
+tonic-prost  = "0.14"
+prost        = "0.14"
+prost-types  = "0.14"
+uuid         = { version = "1", features = ["v4"] }

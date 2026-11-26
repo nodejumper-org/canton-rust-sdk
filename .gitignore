@@ -32,6 +32,8 @@ Thumbs.db
 # The both-providers TLS check is its own crate outside the workspace.
 /tools/tls-providers/target/
 /tools/tls-providers/Cargo.lock
+/tools/release-check/target/
+/tools/release-check/Cargo.lock
 
 # cargo-fuzz output.
 /fuzz/target/

@@ -74,6 +74,14 @@ with "no matching package" if it is not there yet).
   `CANTON_TEST_REQUIRE_LIVE=1 cargo test -p canton-ledger --features ws --test live`
   and the same for `-p canton-admin`
 - The reference app end to end on both transports: `cargo run -p canton-sample`
+- The release check, where the release changes what the SDK does with a
+  participant's or a registry's answer: rewrite
+  [`tools/release-check`](tools/release-check) for the areas that changed and
+  run it against a live participant
+  (`cargo run --manifest-path tools/release-check/Cargo.toml`). It is a
+  consumer crate outside the workspace, so it sees the public API and nothing
+  else. Its output goes on record under `docs/verification/`.
+- The both-providers TLS check: `cargo test --manifest-path tools/tls-providers/Cargo.toml`
 - `CHANGELOG.md`: turn `— unreleased` into the date
 - `README.md`: **every** place that names a version — the status line, the
   compatibility table, and any "unreleased"/"this branch" wording. The README is
