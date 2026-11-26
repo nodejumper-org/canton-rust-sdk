@@ -172,6 +172,16 @@ jobs:
           cargo test -p canton-signer --no-default-features
           cargo test -p canton-pqs --no-default-features
 
+      # The other direction: a feature the application adds. `aws-lc-rs` is a
+      # rustls default feature, so an application gets it from any dependency
+      # that takes rustls's defaults, next to the `ring` this SDK asks for.
+      # With both compiled in and none installed,
+      # `rustls::ClientConfig::builder()` panics, and no workspace build can
+      # show it: the workspace enables only `ring`. So the check is a crate of
+      # its own, outside the workspace, that enables both (#20).
+      - name: TLS setup does not depend on the rustls providers an application compiles in
+        run: cargo test --manifest-path tools/tls-providers/Cargo.toml
+
   deny:
     runs-on: ubuntu-latest
     steps:

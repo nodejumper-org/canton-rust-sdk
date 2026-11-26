@@ -28,3 +28,7 @@ Thumbs.db
 # scala-cli build caches (tools/lf-oracle).
 .bsp/
 .scala-build/
+
+# The both-providers TLS check is its own crate outside the workspace.
+/tools/tls-providers/target/
+/tools/tls-providers/Cargo.lock
