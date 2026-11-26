@@ -42,15 +42,15 @@ takes two calls with a signature in between:
 1. `generate_external_party_topology(synchronizer, party_hint, &public_key)`
    returns an
    [`ExternalPartyTopology`](https://docs.rs/canton-admin/latest/canton_admin/struct.ExternalPartyTopology.html):
-   the party id the participant would assign, the **fingerprint** it computed
-   for the key, the onboarding topology transactions, and one multi-hash over
-   all of them. Nothing is submitted yet.
+   the party id the participant would assign, the **fingerprint** of the key,
+   the onboarding topology transaction, and the multi-hash to sign. Nothing is
+   submitted yet.
 2. `allocate_external_party(synchronizer, &topology, &signer, user_id)` signs
-   the multi-hash and submits the transactions with the signature. It returns
+   the multi-hash and submits the transaction with the signature. It returns
    the party id once the allocation has reached the synchronizer, so the party
    is usable straight away.
 
-Canton computes the fingerprint, and every signature carries it in
+Canton addresses a key by its fingerprint, and every signature carries it in
 `signed_by`, so an `Ed25519Key` cannot sign for the ledger until
 [`into_signer(fingerprint)`](https://docs.rs/canton-signer/latest/canton_signer/struct.Ed25519Key.html#method.into_signer)
 turns it into an
@@ -74,12 +74,22 @@ hint and `user_id` the ledger user that will submit:
   Canton derives the ledger user from the token's `sub`, which in a
   client-credentials flow is a service-account id, not the OIDC client id.
   `AdminClient::current_user()` under the submitting user's token returns it.
-- The SDK reads the onboarding set before it signs for it. It recomputes the
-  multi-hash and decodes each transaction, and accepts only the key's own
-  namespace delegation, a mapping of the party to that one key, and hosting
-  with confirmation or observation permission. It also refuses a party id whose
-  namespace is not the key's fingerprint, and an allocation of any party other
-  than the one signed for.
+- The SDK reads the participant's reply before it signs for it, and accepts
+  only what Canton generates for this request:
+  - the fingerprint is the one the SDK computes from the key, and the party is
+    `<hint>::<that fingerprint>`;
+  - there is one transaction, and the multi-hash is its hash;
+  - it hosts the party on one participant, with confirmation permission and a
+    threshold of one;
+  - the party's signing keys are the caller's key alone, with a threshold of
+    one;
+  - it carries nothing this build does not read.
+
+  Anything else is refused as `Error::UnexpectedResponse`, and so is an
+  allocation of any party other than the one signed for.
+  `ExternalPartyTopology::hosting_participant()` names the host, for a caller
+  that knows its participant's id and wants to compare. Canton before 3.4.9
+  answered with three transactions; that reply is refused.
 - `allocate_external_party` is not retried: the request has no idempotency key.
   If the response is lost, look the party up with `AdminClient::get_parties`
   before trying again.

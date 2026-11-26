@@ -111,10 +111,9 @@ impl PublicKey {
 
 /// A signature over a hash the participant produced.
 ///
-/// `signed_by` is the **fingerprint** the participant assigned to the key, not
-/// anything derivable from the key material here: Canton computes it, and
-/// `GenerateExternalPartyTopology` is where a caller learns it. Sending a
-/// fingerprint Canton did not issue fails verification, which is why
+/// `signed_by` is the **fingerprint** Canton addresses the key by. This crate
+/// does not compute it: `GenerateExternalPartyTopology` is where a caller gets
+/// it. Sending any other value fails verification, which is why
 /// [`Ed25519Key`](crate::Ed25519Key) cannot become a [`Signer`](crate::Signer)
 /// until it has one.
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -124,19 +124,25 @@ impl AdminClient {
     /// Ask the participant what allocating an external party for `public_key`
     /// would look like, without allocating it.
     ///
-    /// The first half of external-party onboarding. The participant computes
-    /// the key's fingerprint and the party id derived from it, builds the
-    /// onboarding topology transactions, and returns one hash over them. None
-    /// of it is submitted: that is [`allocate_external_party`], after the key
-    /// has signed the hash.
+    /// The first half of external-party onboarding. The participant derives
+    /// the party id from the key's fingerprint, builds the onboarding topology
+    /// transaction, and returns the hash to sign. None of it is submitted:
+    /// that is [`allocate_external_party`], after the key has signed the hash.
+    ///
+    /// The reply is checked before it is returned, since the signature will
+    /// authorize whatever it contains: the fingerprint must be the one this
+    /// SDK computes from `public_key`, the party `<party_hint>::<fingerprint>`,
+    /// and the one transaction a hosting of that party by one confirming
+    /// participant with `public_key` as its only signing key. See
+    /// [`ExternalPartyTopology`](crate::ExternalPartyTopology).
     ///
     /// [`allocate_external_party`]: Self::allocate_external_party
     ///
     /// # Errors
-    /// Returns an [`Error`] if the RPC fails, or [`Error::UnexpectedResponse`]
-    /// if the participant answers without a hash to sign or without the
-    /// fingerprint — either of which would leave the caller unable to sign as
-    /// this party at all.
+    /// Returns an [`Error`] if the RPC fails; [`Error::InvalidRequest`] if
+    /// `public_key` is not a key its fingerprint can be computed for; and
+    /// [`Error::UnexpectedResponse`] if the participant's reply is anything
+    /// but the onboarding of this key described above.
     pub async fn generate_external_party_topology(
         &self,
         synchronizer: &str,
@@ -165,7 +171,9 @@ impl AdminClient {
                         }
                     })
                     .await?;
-                crate::external_party::ExternalPartyTopology::from_response(response, public_key)
+                crate::external_party::ExternalPartyTopology::from_response(
+                    response, party_hint, public_key,
+                )
             },
         )
         .await

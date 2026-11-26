@@ -29,10 +29,10 @@ in-memory one returns a ready future.
 
 ## A key is not yet an identity
 
-Canton addresses a key by a **fingerprint it computes itself**, and every
-signature carries that fingerprint in `signed_by`. It is not derivable from key
-material: you learn it from `GenerateExternalPartyTopology`, which also returns
-the party id built from it.
+Canton addresses a key by a **fingerprint**, its own hash of the key, and every
+signature carries that fingerprint in `signed_by`. This crate does not compute
+it: you get it from `GenerateExternalPartyTopology`, which also returns the
+party id built from it (`canton-admin` checks both against your key).
 
 So `Ed25519Key` holds key material and *cannot* sign for the ledger.
 `into_signer(fingerprint)` returns something that can. The order that enforces

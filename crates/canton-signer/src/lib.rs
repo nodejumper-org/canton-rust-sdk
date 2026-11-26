@@ -22,11 +22,12 @@
 //!
 //! # A key is not yet an identity
 //!
-//! Canton addresses a key by a **fingerprint** it computes itself, and a
-//! signature carries that fingerprint in `signed_by`. It is not derivable from
-//! the key material here; a caller learns it from
-//! `GenerateExternalPartyTopology`, which also yields the party id built from
-//! it. So [`Ed25519Key`] holds key material and cannot sign for the ledger:
+//! Canton addresses a key by a **fingerprint**, its own hash of the key, and a
+//! signature carries that fingerprint in `signed_by`. This crate does not
+//! compute it; a caller gets it from `GenerateExternalPartyTopology`, which
+//! also yields the party id built from it (and where `canton-admin` checks
+//! both against the key). So [`Ed25519Key`] holds key material and cannot sign
+//! for the ledger:
 //! [`Ed25519Key::into_signer`] takes the fingerprint and returns something that
 //! can. That ordering is the real one — you cannot sign as a party before the
 //! participant has told you which party you are.
