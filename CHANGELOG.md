@@ -7,11 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [Unreleased]
+## [0.3.3] — 2026-11-26
+
+The findings filed against 0.3.2 by Silvana (#18–#22) and by Rumble Fish
+(#26), fixed, and the three pull requests from Equilibrium's review of 0.3.2
+(#23–#25), merged. One more fix came out of running them: external-party
+onboarding did not work at all against a participant on protocol version 37,
+which is what the Canton Network DevNet runs now.
+
+The behaviour changes are listed first because they can turn a call that
+succeeded into one that is refused. Each refuses what should not have been
+accepted or signed for, and the public API only grows, so they ship as a
+patch: `cargo update` brings them to every project on `0.3`.
 
 ### Changed — behaviour
 
-- **Prepare now checks the command id and acting parties in the response.**
+- **An external-party onboarding reply is accepted only if it is the
+  onboarding of the caller's own key** (#22, reported by Silvana).
+  `AdminClient::generate_external_party_topology` returns a hash the caller
+  signs, and the signature authorizes whatever the participant's reply
+  contains. The reply was checked too loosely for the single
+  `PartyToParticipant` transaction that Canton 3.4.9 and later send: an extra
+  signing key, an extra hosting participant, or a party in a namespace the
+  participant chose all passed. A participant, or anything able to alter its
+  reply, could add a key that submits as the party or a host that receives its
+  transactions, and the allocation looked normal to the caller. The reply is
+  now held to what Canton generates for the request this SDK sends:
+  - the key's **fingerprint** is computed from the caller's key
+    (`SHA-256` over purpose 12 and the key, as Canton's `Fingerprint.create`
+    does; for Ed25519 over the 32-byte key whether it was given raw or as
+    DER), not taken from the reply, and the party must be
+    `<hint>::<that fingerprint>`;
+  - there is exactly **one** transaction, adding one `PartyToParticipant`
+    mapping for that party;
+  - the party is hosted by **one** participant, with confirmation permission,
+    a threshold of one, and not in an onboarding state;
+  - the party's **signing keys** are the caller's key alone, with a threshold
+    of one. Keys are compared by spec and key material, since Canton returns
+    an Ed25519 key as DER also when it was sent raw;
+  - the transaction carries **nothing this build does not read**: it must
+    re-encode to the bytes that will be signed, so a field a later Canton adds
+    is refused rather than signed for unseen.
+
+  Anything else is `Error::UnexpectedResponse`. The three-transaction reply of
+  Canton before 3.4.9 is refused; the supported range starts at 3.5. A public
+  key whose fingerprint cannot be computed (an Ed25519 key that is not 32
+  bytes) is `Error::InvalidRequest`.
+- **A max record time is signed for, or refused** (#26, reported by Rumble
+  Fish). `Prepare::with_max_record_time` promises that past the deadline the
+  participant refuses the transaction. That holds only if the signature covers
+  the deadline, and hashing scheme V2, the default, does not hash it: an
+  executing participant can move or drop it and the signature still verifies.
+  A `Prepare` with a max record time now asks for V3, which hashes it, unless
+  a scheme was chosen. One that sets a max record time and chooses V2 is
+  refused as `Error::InvalidRequest` before it is sent, and
+  `hashing::hash_prepared_transaction` refuses a V2 transaction that carries
+  one, as Digital Asset's own hashing library does. Without a max record time
+  nothing changes.
+- **Prepare now checks the command id and acting parties in the response**
+  (#24, contributed by Equilibrium).
   The participant dedups on the command id in the prepared transaction's
   `submitter_info`, not the one in the execute request. When the two differed,
   `Prepared::change_id` named a command that was never filed, and
@@ -20,20 +74,110 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   changed metadata still passes. `Prepared::from_response` now compares both
   against the request and refuses a mismatch as `Error::UnexpectedResponse`.
   Acting parties are compared as a set.
-
 - **An unreachable token endpoint is no longer reported as a credential
-  rejection.** `Error::Auth`'s doc says a token-transport failure surfaces as
-  `Error::Connection` or `Error::Http`. The comment above the token fetch says
-  the same. The fetch returned `Error::Auth` anyway, and an operator reading
+  rejection** (#25, contributed by Equilibrium). `Error::Auth`'s doc says a
+  token-transport failure surfaces as `Error::Connection` or `Error::Http`.
+  The comment above the token fetch says the same. The fetch returned `Error::Auth` anyway, and an operator reading
   "authentication failed" might rotate a working secret. An unreachable
   endpoint is now `Error::Connection`, a TLS certificate that cannot be
   verified is `Error::InvalidRequest`, a request that cannot be built is
   `Error::InvalidRequest`, and a deadline is `Error::Timeout`. A 401 or 403
   stays `Error::Auth`. This matches what `canton-token`'s registry client
   already does with the same faults.
+- **A contract id must be lower-case hex** (#18). See Fixed.
+
+### Added
+
+- **A client for Splice Scan and a validator's scan-proxy** (#21, requested
+  by Silvana): `canton_token::scan::ScanClient`, `canton::token::scan` through
+  the facade.
+  - `ScanClient::new` asks a Scan at `<scan>/api/scan`;
+    `ScanClient::through_validator` asks a validator's scan-proxy at
+    `<validator>/api/validator`, which answers from several Super Validators'
+    Scans. The reads the proxy does not serve are refused before they are
+    sent.
+  - Contracts ready to disclose: `amulet_rules()`,
+    `latest_open_mining_round()` (the highest-numbered round whose opening
+    time has passed, as Splice's `selectLatestOpenMiningRound` picks, not the
+    lowest, which is archived next), `featured_app_right(provider)` and
+    `transfer_preapproval_by_party(party)`, with `disclosed()` for gRPC and
+    `disclosed_json()` for the JSON Ledger API.
+  - The external API: `dso()`, `dso_party_id()`, `scans()`,
+    `open_and_issuing_mining_rounds()`, `closed_rounds()`,
+    `member_traffic_status()`, `updates()` and `update()`, `events()`,
+    `acs_snapshot_timestamp()`, `acs_snapshot()`, `holdings_state()`,
+    `holdings_summary()`, and the name service. `get_json` and `post_json`
+    reach the rest.
+  - Three of those calls reach endpoints Splice tags `internal` when asked of
+    a Scan directly. They need `ScanClient::with_internal_endpoints()` there,
+    and nothing through a validator.
+  - The same hardening as the registry client: no redirects, a bounded reply,
+    percent-encoded path segments, a 30-second deadline.
+  - Not included: comparing several Scans' answers. A Scan asked directly is
+    one Super Validator's word; the scan-proxy is the route that compares.
+- **Bearer tokens for `RegistryClient` and `ScanClient`** (#21): `with_token`
+  and `with_token_source`, which takes a `canton_auth::TokenProvider`. The
+  registry client can now use the registry routes a validator serves under
+  `/api/validator/v0/scan-proxy`, which authenticate.
+- `ExternalPartyTopology::hosting_participant()`: the participant the
+  onboarding transaction names as the party's host, for a caller that knows
+  its participant's id and wants to compare before signing.
+- A live test that commits a transaction with a max record time, and the
+  Scan live suite (`canton-token`'s `scan_live`), which the LocalNet workflow
+  now runs.
+- A CI check, in a crate of its own outside the workspace, that builds with
+  both rustls crypto providers and none installed (#20).
+
+### Fixed
+
+- **External-party onboarding failed against a participant on protocol
+  version 37.** From protocol version 37 (Canton 3.7) a topology transaction
+  is written in a newer format, in which a hosting participant carries a state
+  instead of an onboarding flag and the party's signing keys are a different
+  field. The SDK decoded every onboarding transaction in the older format, so
+  `generate_external_party_topology` returned `Error::UnexpectedResponse`
+  ("does not decode") on such a participant, which the Canton Network DevNet
+  is as of Canton 3.7.3. Both formats are now read, by the format the
+  transaction names, and a format this build does not know is refused.
+- **A contract id that is not ASCII panicked the hash check** (#18, reported
+  by Silvana). The id was sliced two bytes at a time, and a multi-byte
+  character fell across a slice, so a prepare response with such a contract id
+  panicked `prepare_submission` and the public `hashing` functions instead of
+  returning an error. The id is now decoded byte by byte. It is also held to
+  what Canton accepts, lower-case base16: an id written with upper-case digits
+  or a leading `+` used to decode and is now refused.
+- **Hashing a prepared transaction could take exponential time** (#19,
+  reported by Silvana). A node listed by two parents was hashed once per
+  listing, so a transaction whose nodes each list the next one twice cost two
+  to the power of its depth: seconds at 23 levels, and no end at 60. A crafted
+  prepare response could hold a runtime worker that way. Each node is now
+  hashed once per transaction, which changes no hash, and a node that is its
+  own descendant is refused.
+- **TLS setup panicked in an application with two rustls crypto providers**
+  (#20, reported by Silvana). `canton-pqs` (`tls`) and `canton-ledger` (`ws`,
+  when no TLS configuration was given) built their rustls configuration with
+  `ClientConfig::builder()`, which panics when both `ring` and `aws-lc-rs` are
+  compiled in and the application installed neither. The SDK enables only
+  `ring`, but `aws-lc-rs` is a rustls default feature, so another dependency
+  of the application can add it. Both now name the provider: the one the
+  application installed for the process when there is one, as the gRPC and
+  HTTP transports already do, and `ring` otherwise. A `wss` stream always gets
+  the SDK's own connector, with the platform's root certificates.
+- **The metadata hash depended on the order two fields arrived in** (#23,
+  contributed by Equilibrium). Canton
+  hashes the acting parties as a `SortedSet`. It hashes the disclosed contracts
+  as a `SortedMap` keyed by contract id. Order and repetition are not part of
+  the hash. `hash_metadata` took both in wire order. The hashes still matched
+  because `PreparedTransactionEncoder` sorts both before sending. The proto
+  does not require that sort. A participant that skips it makes the SDK
+  compute a different hash. The SDK then refuses to sign a valid transaction.
+  The acting parties are now sorted and deduplicated. The disclosed contracts
+  are now keyed by contract id. The hashes in Canton's own vectors are
+  unchanged because their inputs are already sorted.
 
 ### Documentation
 
+- **Scan and the validator's scan-proxy**: a guide page for the new client.
 - **A documentation site**, built from `book/` with mdBook and published to
   GitHub Pages: guides for getting started, local development, reading the
   ledger, codegen, the token standard, interactive submission, PQS, and the
@@ -58,19 +202,6 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
     across scales needs `Op::Ge` plus `Op::Le`;
   - the compatibility matrix's live-test counts and its LocalNet settlement
     row were stale.
-
-### Fixed
-
-- **The metadata hash depended on the order two fields arrived in.** Canton
-  hashes the acting parties as a `SortedSet`. It hashes the disclosed contracts
-  as a `SortedMap` keyed by contract id. Order and repetition are not part of
-  the hash. `hash_metadata` took both in wire order. The hashes still matched
-  because `PreparedTransactionEncoder` sorts both before sending. The proto
-  does not require that sort. A participant that skips it makes the SDK
-  compute a different hash. The SDK then refuses to sign a valid transaction.
-  The acting parties are now sorted and deduplicated. The disclosed contracts
-  are now keyed by contract id. The hashes in Canton's own vectors are
-  unchanged because their inputs are already sorted.
 
 ## [0.3.2] — 2026-10-23
 

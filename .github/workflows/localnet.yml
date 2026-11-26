@@ -41,6 +41,7 @@ jobs:
           cargo test --no-run --all-features -p canton-admin --test live
           cargo test --no-run --all-features -p canton-pqs --test live
           cargo test --no-run --all-features -p canton-token --test live
+          cargo test --no-run --all-features -p canton-token --test scan_live
 
       - name: Boot LocalNet with validator a and PQS
         uses: peacefulstudio/canton-localnet@1cf682aae212d4e2fefb882bcf9c97ea95036a59 # v0.8.4-3
@@ -74,6 +75,7 @@ jobs:
             put CANTON_TEST_ADMIN_ENDPOINT "$(export_of ADMIN_GRPC_URL)"
             put CANTON_TEST_PARTY "$(export_of PARTY)"
             put CANTON_TOKEN_REGISTRY_URL "${CANTON_LOCALNET_SCAN_URL}"
+            put CANTON_SCAN_URL "${CANTON_LOCALNET_SCAN_URL%/}/api/scan"
             put CANTON_PQS_URL "host=$(export_of PQS_HOST) port=$(export_of PQS_PORT) user=$(export_of PQS_USER) password=$(export_of PQS_PASSWORD) dbname=$(export_of PQS_DATABASE)"
           } >> "$GITHUB_ENV"
 
@@ -133,7 +135,7 @@ jobs:
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger live test(s) were ignored"; exit 1; }
 
-      - name: Run canton-ledger interactive submission suite, expecting 5 passed and 0 ignored
+      - name: Run canton-ledger interactive submission suite, expecting 6 passed and 0 ignored
         env:
           CANTON_TEST_REQUIRE_LIVE: "1"
         run: |
@@ -143,8 +145,8 @@ jobs:
                    /tmp/canton-ledger-interactive_live.log)
           ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
-          [ "$ran" -eq 5 ] || {
-            echo "::error::canton-ledger interactive_live ran $ran tests, expected 5"; exit 1; }
+          [ "$ran" -eq 6 ] || {
+            echo "::error::canton-ledger interactive_live ran $ran tests, expected 6"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-ledger interactive_live test(s) were ignored"; exit 1; }
 
@@ -194,6 +196,26 @@ jobs:
             echo "::error::canton-token live ran $ran tests, expected 5"; exit 1; }
           [ "$skipped" -eq 0 ] || {
             echo "::error::$skipped canton-token live test(s) were ignored"; exit 1; }
+
+      # The Scan client against the Super Validator's Scan. The scan-proxy
+      # route is left out by name: it needs the validator API's own token,
+      # which this workflow does not fetch, and with the live suites' skips
+      # made fatal an unconfigured test fails rather than passing unseen.
+      - name: Run canton-token Scan live suite, expecting 4 passed and 0 ignored
+        env:
+          CANTON_TEST_REQUIRE_LIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo test --all-features -p canton-token --test scan_live -- --nocapture \
+            --skip a_validators_scan_proxy_publishes_the_same_contracts | tee /tmp/canton-token-scan_live.log
+          result=$(grep -oE 'test result: ok\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored' \
+                   /tmp/canton-token-scan_live.log)
+          ran=$(echo "$result" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          skipped=$(echo "$result" | grep -oE '[0-9]+ ignored' | grep -oE '[0-9]+')
+          [ "$ran" -eq 4 ] || {
+            echo "::error::canton-token scan_live ran $ran tests, expected 4"; exit 1; }
+          [ "$skipped" -eq 0 ] || {
+            echo "::error::$skipped canton-token scan_live test(s) were ignored"; exit 1; }
 
       - name: Tear down LocalNet
         if: always()

@@ -19,7 +19,7 @@ If the DARs you need are Splice's, skip generation and use the
 ## Install the generator
 
 ```sh
-cargo install canton-codegen-cli --version 0.3.2 --locked
+cargo install canton-codegen-cli --version 0.3.3 --locked
 dpm-codegen-rust --version
 ```
 
@@ -102,7 +102,7 @@ To keep the committed crate in step with the DAR, regenerate in CI and fail
 when anything changed:
 
 ```sh
-cargo install canton-codegen-cli --version 0.3.2 --locked
+cargo install canton-codegen-cli --version 0.3.3 --locked
 dpm-codegen-rust --dar dars/my-app-0.1.0.dar --out my-app-bindings --name my-app-bindings
 git diff --exit-code my-app-bindings
 ```
