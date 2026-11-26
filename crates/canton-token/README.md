@@ -41,6 +41,22 @@ tests pin), and
 the method names follow their `operationId`s so the two can be read side by
 side.
 
+## Scan and the validator's scan-proxy
+
+`canton_token::scan::ScanClient` is a typed client for Splice Scan, asked
+directly (`ScanClient::new`, at `<scan>/api/scan`) or through a validator's
+scan-proxy (`ScanClient::through_validator`, at `<validator>/api/validator`,
+with a token). It returns the contracts an application discloses to use Amulet
+(the `AmuletRules`, the open mining round, a provider's `FeaturedAppRight`)
+ready to attach to a submission, and reads the DSO, a member's traffic, the
+update history, the snapshots of the active contracts and the name service.
+Paths and payloads come from Splice's `scan.yaml` and `scan-proxy.yaml`,
+vendored under `testdata/openapi/`.
+
+`RegistryClient` and `ScanClient` both take a bearer token (`with_token`,
+`with_token_source`), never follow a redirect, bound the size of a reply and
+percent-encode every path segment.
+
 ## The encoding that makes this work
 
 The standard specifies that a factory's `choiceArguments` are encoded "using the

@@ -15,7 +15,7 @@
 //! A client cannot assemble that itself — the contracts are the registry's own
 //! and usually invisible to the submitting party.
 
-use canton_core::{Error, Result};
+use canton_core::{Auth, Error, Result, TokenSource};
 use serde::{Deserialize, Serialize};
 
 use crate::context::{ChoiceContext, ChoiceContextRequest, WireChoiceContext};
@@ -31,6 +31,7 @@ const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 pub struct RegistryClient {
     base: reqwest::Url,
     http: reqwest::Client,
+    auth: Auth,
 }
 
 /// What a registry says about itself.
@@ -230,7 +231,41 @@ impl RegistryClient {
         let base = reqwest::Url::parse(&normalised).map_err(|e| {
             Error::InvalidRequest(format!("`{base_url}` is not a registry URL: {e}"))
         })?;
-        Ok(Self { base, http })
+        Ok(Self {
+            base,
+            http,
+            auth: Auth::None,
+        })
+    }
+
+    /// Send a bearer token with every request.
+    ///
+    /// A registry answers without one. A validator's scan-proxy, which serves
+    /// the Amulet registry under `/api/validator/v0/scan-proxy`, does not: it
+    /// authenticates every route.
+    #[must_use]
+    pub fn with_token(mut self, token: impl Into<String>) -> Self {
+        self.auth = Auth::Static(token.into());
+        self
+    }
+
+    /// Send a bearer token from a source that refreshes it, such as
+    /// `canton_auth::TokenProvider`. See [`with_token`](Self::with_token).
+    #[must_use]
+    pub fn with_token_source(mut self, source: impl TokenSource + 'static) -> Self {
+        self.auth = Auth::Dynamic(std::sync::Arc::new(source));
+        self
+    }
+
+    /// `request` with the bearer token, when one is configured.
+    async fn authorized(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<reqwest::RequestBuilder> {
+        Ok(match self.auth.bearer().await? {
+            Some(token) => request.bearer_auth(token),
+            None => request,
+        })
     }
 
     /// Build a URL from path segments.
@@ -303,8 +338,8 @@ impl RegistryClient {
     pub async fn instrument(&self, instrument_id: &str) -> Result<Option<Instrument>> {
         let url = self.url(&["registry", "metadata", "v1", "instruments", instrument_id])?;
         let response = self
-            .http
-            .get(url.clone())
+            .authorized(self.http.get(url.clone()))
+            .await?
             .send()
             .await
             .map_err(|e| connection(&e))?;
@@ -595,8 +630,8 @@ impl RegistryClient {
         choice_arguments: &serde_json::Value,
     ) -> Result<T> {
         let response = self
-            .http
-            .post(url.clone())
+            .authorized(self.http.post(url.clone()))
+            .await?
             .json(&GetFactoryRequest {
                 choice_arguments,
                 // The debug fields are explicitly untrustworthy unless the
@@ -616,8 +651,8 @@ impl RegistryClient {
         request: &ChoiceContextRequest,
     ) -> Result<ChoiceContext> {
         let response = self
-            .http
-            .post(url.clone())
+            .authorized(self.http.post(url.clone()))
+            .await?
             .json(request)
             .send()
             .await
@@ -628,8 +663,8 @@ impl RegistryClient {
 
     async fn get<T: serde::de::DeserializeOwned>(&self, url: reqwest::Url) -> Result<T> {
         let response = self
-            .http
-            .get(url.clone())
+            .authorized(self.http.get(url.clone()))
+            .await?
             .send()
             .await
             .map_err(|e| connection(&e))?;
@@ -687,9 +722,12 @@ impl RegistryClient {
 }
 
 #[derive(Deserialize)]
-struct ErrorResponse {
-    error: String,
+pub(crate) struct ErrorResponse {
+    pub(crate) error: String,
 }
+
+/// How the registry is named in an error.
+const REGISTRY: &str = "the registry";
 
 /// Turn a transport failure into an error a caller can act on.
 ///
@@ -707,36 +745,51 @@ struct ErrorResponse {
 /// contracts' `createdEventBlob`s, so it is kilobytes to a few megabytes;
 /// nothing the standard defines is larger, and a registry (or whatever answers
 /// in its place) does not get to size the client's memory.
-const MAX_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
+pub(crate) const MAX_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
 /// How much of an error body is kept for the message.
-const ERROR_BODY_CAP: usize = 64 * 1024;
+pub(crate) const ERROR_BODY_CAP: usize = 64 * 1024;
 
 /// Read a response body, refusing one that declares or grows past `cap`.
 /// `reqwest`'s `text()` reads to the end whatever the size; this reads chunk
 /// by chunk, so the bound holds for a chunked stream without `Content-Length`.
-async fn read_body(mut response: reqwest::Response, cap: usize, url: &str) -> Result<String> {
+async fn read_body(response: reqwest::Response, cap: usize, url: &str) -> Result<String> {
+    read_body_from(response, cap, url, REGISTRY).await
+}
+
+/// [`read_body`] for any service this crate talks to; `who` names it in the
+/// errors ("the registry", "Scan").
+pub(crate) async fn read_body_from(
+    mut response: reqwest::Response,
+    cap: usize,
+    url: &str,
+    who: &str,
+) -> Result<String> {
     if let Some(declared) = response
         .content_length()
         .filter(|declared| usize::try_from(*declared).map_or(true, |n| n > cap))
     {
         {
             return Err(Error::UnexpectedResponse(format!(
-                "{url}: the registry answered with a {declared}-byte body, above the {cap}-byte limit"
+                "{url}: {who} answered with a {declared}-byte body, above the {cap}-byte limit"
             )));
         }
     }
     let mut buffer: Vec<u8> = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|e| connection(&e))? {
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| transport_error(&e, who))?
+    {
         if buffer.len() + chunk.len() > cap {
             return Err(Error::UnexpectedResponse(format!(
-                "{url}: the registry answered with a body above the {cap}-byte limit"
+                "{url}: {who} answered with a body above the {cap}-byte limit"
             )));
         }
         buffer.extend_from_slice(&chunk);
     }
     String::from_utf8(buffer).map_err(|e| {
         Error::UnexpectedResponse(format!(
-            "{url}: the registry answered with a body that is not UTF-8: {e}"
+            "{url}: {who} answered with a body that is not UTF-8: {e}"
         ))
     })
 }
@@ -744,6 +797,12 @@ async fn read_body(mut response: reqwest::Response, cap: usize, url: &str) -> Re
 /// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
 /// [`Error::InvalidRequest`], which is not retriable.
 fn connection(e: &reqwest::Error) -> Error {
+    transport_error(e, REGISTRY)
+}
+
+/// [`connection`] for any service this crate talks to; `who` names it in the
+/// error ("the registry", "Scan").
+pub(crate) fn transport_error(e: &reqwest::Error, who: &str) -> Error {
     let kind = if e.is_timeout() {
         Transport::Timeout
     } else if e.is_builder() {
@@ -755,7 +814,7 @@ fn connection(e: &reqwest::Error) -> Error {
     } else {
         Transport::Connect
     };
-    classify_transport(kind, &canton_core::chain(e))
+    classify_transport(kind, &canton_core::chain(e), who)
 }
 
 /// What `reqwest` says about a failure, by type, in the order the verdict
@@ -771,20 +830,16 @@ enum Transport {
     Connect,
 }
 
-fn classify_transport(kind: Transport, detail: &str) -> Error {
+fn classify_transport(kind: Transport, detail: &str, who: &str) -> Error {
     match kind {
         // The 30s default this client sets. Retriable, and `Error::Timeout`
         // says why without the caller reading the message.
         Transport::Timeout => return Error::Timeout,
         Transport::Builder | Transport::Redirect => {
-            return Error::InvalidRequest(format!(
-                "the registry request could not be made: {detail}"
-            ));
+            return Error::InvalidRequest(format!("{who} request could not be made: {detail}"));
         }
         Transport::Decode => {
-            return Error::UnexpectedResponse(format!(
-                "the registry's reply could not be read: {detail}"
-            ));
+            return Error::UnexpectedResponse(format!("{who}'s reply could not be read: {detail}"));
         }
         Transport::Connect => {}
     }
@@ -796,10 +851,10 @@ fn classify_transport(kind: Transport, detail: &str) -> Error {
     let lower = detail.to_ascii_lowercase();
     if lower.contains("certificate") || lower.contains("tls handshake") {
         return Error::InvalidRequest(format!(
-            "the registry's TLS certificate could not be verified: {detail}"
+            "{who}'s TLS certificate could not be verified: {detail}"
         ));
     }
-    Error::Connection(format!("cannot reach the registry: {detail}"))
+    Error::Connection(format!("cannot reach {who}: {detail}"))
 }
 
 /// The choices a transfer instruction offers, as the registry paths name them.
@@ -870,7 +925,7 @@ impl AllocationChoice {
 
 /// A body excerpt short enough for an error message. An HTML error page is
 /// otherwise long enough to bury the sentence that names the problem.
-fn truncate(body: &str) -> String {
+pub(crate) fn truncate(body: &str) -> String {
     const LIMIT: usize = 200;
     if body.len() <= LIMIT {
         return body.to_string();
@@ -1084,7 +1139,7 @@ mod tests {
             "error sending request: tls handshake eof",
             "CERTIFICATE verify failed",
         ] {
-            let error = classify_transport(Transport::Connect, detail);
+            let error = classify_transport(Transport::Connect, detail, REGISTRY);
             assert!(
                 matches!(error, Error::InvalidRequest(_)),
                 "{detail}: {error:?}"
@@ -1092,7 +1147,11 @@ mod tests {
             assert!(!error.is_retriable(), "{detail}");
             assert!(error.to_string().contains("TLS certificate"), "{error}");
         }
-        let refused = classify_transport(Transport::Connect, "connection refused (os error 61)");
+        let refused = classify_transport(
+            Transport::Connect,
+            "connection refused (os error 61)",
+            REGISTRY,
+        );
         assert!(matches!(refused, Error::Connection(_)), "{refused:?}");
         assert!(refused.is_retriable());
         assert!(
@@ -1109,18 +1168,19 @@ mod tests {
         let timeout = classify_transport(
             Transport::Timeout,
             "certificate", // would otherwise be read as permanent
+            REGISTRY,
         );
         assert!(matches!(timeout, Error::Timeout), "{timeout:?}");
 
         for kind in [Transport::Builder, Transport::Redirect] {
-            let error = classify_transport(kind, "x");
+            let error = classify_transport(kind, "x", REGISTRY);
             assert!(
                 matches!(&error, Error::InvalidRequest(m) if m.contains("could not be made")),
                 "{kind:?}: {error:?}"
             );
         }
 
-        let decode = classify_transport(Transport::Decode, "x");
+        let decode = classify_transport(Transport::Decode, "x", REGISTRY);
         assert!(matches!(decode, Error::UnexpectedResponse(_)), "{decode:?}");
     }
 

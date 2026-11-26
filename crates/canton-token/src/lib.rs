@@ -20,6 +20,14 @@
 //!
 //! The registry's API is off-ledger HTTP, specified by the token standard's
 //! OpenAPI documents.
+//!
+//! # Scan
+//!
+//! The registry for Amulet is the network's Scan, and Scan publishes more
+//! than the registry routes: the DSO's contracts an application discloses,
+//! traffic balances, the update history, snapshots. [`scan::ScanClient`] is a
+//! typed client for that, asked of a Scan directly or through a validator's
+//! scan-proxy.
 
 #![forbid(unsafe_code)]
 
@@ -27,6 +35,7 @@ pub mod allocation;
 mod context;
 pub mod holdings;
 mod registry;
+pub mod scan;
 pub mod transfer;
 pub mod v2;
 
@@ -35,6 +44,7 @@ pub use registry::{
     AllocationChoice, AllocationInstructionChoice, FactoryWithContext, Instrument, RegistryClient,
     RegistryInfo, TransferInstructionChoice, TransferKind,
 };
+pub use scan::ScanClient;
 /// The V1 (CIP-56) workflow, re-exported at the root because it is the one most
 /// networks run today. The V2 (CIP-0112) workflow keeps the same names and so
 /// stays behind [`v2`] — `token::transfer` and `token::v2::transfer` are

@@ -44,6 +44,12 @@ registry's answer goes into commands you sign. To supply your own
 `reqwest::Client` (proxy, TLS roots), use `RegistryClient::with_http_client`
 and configure that client with `reqwest::redirect::Policy::none()`.
 
+A registry answers without authentication. A validator's scan-proxy, which
+serves the Amulet registry under `<validator>/api/validator/v0/scan-proxy`,
+authenticates every route: give the client a token with `with_token`, or a
+`canton_auth::TokenProvider` with `with_token_source`. The rest of what Scan
+publishes is on its own page, [Scan and the validator's scan-proxy](scan.md).
+
 `info()` returns a
 [`RegistryInfo`](https://docs.rs/canton-token/latest/canton_token/struct.RegistryInfo.html)
 with `admin_id` (the party that administers the instruments) and
