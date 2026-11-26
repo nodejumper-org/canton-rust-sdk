@@ -550,31 +550,80 @@ fn hash_query_by_key(query: &node::QueryByKey, scheme: Scheme) -> Result<Hash, H
     Ok(b.finish())
 }
 
+/// Where the walk over a transaction's nodes stands on one of them.
+enum Visit {
+    /// Being hashed: its children are still being walked.
+    Open,
+    Done(Hash),
+}
+
 struct Tree<'a> {
     nodes: HashMap<&'a str, &'a node::Node>,
     seeds: HashMap<i32, Hash>,
     scheme: Scheme,
+    visited: HashMap<&'a str, Visit>,
 }
 
-impl Tree<'_> {
-    fn seed(&self, node_id: &str) -> Option<&Hash> {
+impl<'a> Tree<'a> {
+    fn new(
+        nodes: HashMap<&'a str, &'a node::Node>,
+        seeds: HashMap<i32, Hash>,
+        scheme: Scheme,
+    ) -> Self {
+        Self {
+            nodes,
+            seeds,
+            scheme,
+            visited: HashMap::new(),
+        }
+    }
+
+    fn seed(&self, node_id: &str) -> Option<Hash> {
         node_id
             .parse::<i32>()
             .ok()
             .and_then(|id| self.seeds.get(&id))
+            .copied()
     }
 
-    fn hash_node(&self, node_id: &str, depth: usize) -> Result<Hash, HashingError> {
+    /// A node's hash, computed once for the transaction however many times
+    /// the node is listed. It depends on the node's content, its seed and its
+    /// children's hashes, none of which change with where the node is listed,
+    /// so the second listing gets the first one's answer. Without that, a
+    /// transaction whose nodes each list the next one twice costs two to the
+    /// power of its depth, and [`MAX_DEPTH`] bounds the depth, not the visits.
+    fn hash_node(&mut self, node_id: &'a str, depth: usize) -> Result<Hash, HashingError> {
         if depth > MAX_DEPTH {
             return Err(err(
                 "a transaction nested deeper than a participant prepares",
             ));
         }
-        let node = self.nodes.get(node_id).ok_or_else(|| {
+        match self.visited.get(node_id) {
+            Some(Visit::Done(hash)) => return Ok(*hash),
+            Some(Visit::Open) => {
+                return Err(err(format!(
+                    "node `{node_id}` is its own descendant, which no node of a transaction is"
+                )));
+            }
+            None => {}
+        }
+        let node = *self.nodes.get(node_id).ok_or_else(|| {
             err(format!(
                 "the transaction refers to node `{node_id}`, which it does not contain"
             ))
         })?;
+        self.visited.insert(node_id, Visit::Open);
+        let hash = self.hash_unvisited(node_id, node, depth)?;
+        self.visited.insert(node_id, Visit::Done(hash));
+        Ok(hash)
+    }
+
+    fn hash_unvisited(
+        &mut self,
+        node_id: &'a str,
+        node: &'a node::Node,
+        depth: usize,
+    ) -> Result<Hash, HashingError> {
         match node
             .node_type
             .as_ref()
@@ -584,7 +633,7 @@ impl Tree<'_> {
                 let seed = self
                     .seed(node_id)
                     .ok_or_else(|| err(format!("no node seed for create node `{node_id}`")))?;
-                hash_create(create, Some(seed), self.scheme)
+                hash_create(create, Some(&seed), self.scheme)
             }
             node::node::NodeType::Fetch(fetch) => hash_fetch(fetch, self.scheme),
             node::node::NodeType::Exercise(exercise) => {
@@ -601,7 +650,7 @@ impl Tree<'_> {
                 let mut b = Builder::for_node(self.scheme);
                 b.string(&exercise.lf_version)?
                     .byte(EXERCISE_TAG)
-                    .hash(seed)
+                    .hash(&seed)
                     .contract_id(&exercise.contract_id)?
                     .string(&exercise.package_name)?
                     .identifier(required(
@@ -679,11 +728,7 @@ fn hash_transaction(
             .map_err(|_| err(format!("the seed of node {} is not 32 bytes", seed.node_id)))?;
         seeds.insert(seed.node_id, bytes);
     }
-    let tree = Tree {
-        nodes,
-        seeds,
-        scheme,
-    };
+    let mut tree = Tree::new(nodes, seeds, scheme);
     let mut b = Builder::with_purpose();
     b.string(&transaction.version)?
         .count(transaction.roots.len())?;
@@ -1011,11 +1056,7 @@ mod tests {
             .iter()
             .map(|s| (s.node_id, s.seed.as_slice().try_into().unwrap()))
             .collect();
-        Tree {
-            nodes,
-            seeds,
-            scheme,
-        }
+        Tree::new(nodes, seeds, scheme)
     }
 
     #[test]
@@ -1030,7 +1071,7 @@ mod tests {
             "c962c6098394f3d11cd6f0c795de9517d32a8e3e1979cec76cd2f66254efc610"
         );
         let tx = transaction();
-        let tree = tree(&tx, Scheme::V2);
+        let mut tree = tree(&tx, Scheme::V2);
         assert_eq!(
             to_hex(&tree.hash_node("2", 0).unwrap()),
             "070970eb4b2de72561dafb67017ca33850650a8103e5134e16044ba78991f48c"
@@ -1151,7 +1192,91 @@ mod tests {
         tx.nodes = vec![wrap("2", node::node::NodeType::Exercise(exercise(&["2"])))];
         tx.roots = strings(&["2"]);
         let error = hash_transaction(&tx, Scheme::V2).unwrap_err();
-        assert!(error.to_string().contains("deeper"), "{error}");
+        assert!(error.to_string().contains("own descendant"), "{error}");
+
+        // The same through a second node, and under a rollback.
+        let mut tx = transaction();
+        tx.nodes = vec![
+            wrap("2", node::node::NodeType::Exercise(exercise(&["3"]))),
+            wrap("3", rollback(&["2"])),
+        ];
+        tx.roots = strings(&["2"]);
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let error = hash_transaction(&tx, scheme).unwrap_err();
+            assert!(error.to_string().contains("own descendant"), "{error}");
+        }
+    }
+
+    fn rollback(children: &[&str]) -> node::node::NodeType {
+        node::node::NodeType::Rollback(node::Rollback {
+            children: strings(children),
+        })
+    }
+
+    /// A chain of rollback nodes over one fetch, each node listing the next
+    /// one `listings` times.
+    fn chain(levels: usize, listings: usize) -> ipb::DamlTransaction {
+        let mut nodes = vec![wrap("0", node::node::NodeType::Fetch(fetch()))];
+        for level in 1..=levels {
+            let child = (level - 1).to_string();
+            let children = vec![child.as_str(); listings];
+            nodes.push(wrap(&level.to_string(), rollback(&children)));
+        }
+        ipb::DamlTransaction {
+            version: "2.1".to_string(),
+            roots: vec![levels.to_string()],
+            nodes,
+            node_seeds: Vec::new(),
+        }
+    }
+
+    /// A node listed more than once is hashed once. Each node here lists the
+    /// next one twice, so hashing every listing would take 2^200 node hashes
+    /// and this test would not return; `MAX_DEPTH` does not help, since the
+    /// chain is shallower than it. The answer is the one hashing every listing
+    /// gives, which the loop below builds from the leaf upwards.
+    #[test]
+    fn a_node_listed_more_than_once_is_hashed_once() {
+        const LEVELS: usize = 200;
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let tx = chain(LEVELS, 2);
+            let mut expected = hash_fetch(&fetch(), scheme).unwrap();
+            for _ in 0..LEVELS {
+                let mut b = Builder::for_node(scheme);
+                b.byte(ROLLBACK_TAG).count(2).unwrap();
+                b.hash(&expected).hash(&expected);
+                expected = b.finish();
+            }
+            let root = LEVELS.to_string();
+            let mut tree = tree(&tx, scheme);
+            assert_eq!(
+                to_hex(&tree.hash_node(&root, 0).unwrap()),
+                to_hex(&expected),
+                "{scheme:?}"
+            );
+            hash_transaction(&tx, scheme).unwrap();
+        }
+    }
+
+    /// A node listed twice hashes as it does listed once: Canton's own vector
+    /// has `create` and `fetch` both as roots' descendants and under the
+    /// exercise, and a second listing in one node changes that node's hash
+    /// only by the repeated child hash.
+    #[test]
+    fn a_repeated_listing_reuses_the_hash_and_does_not_change_it() {
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let once = chain(1, 1);
+            let twice = chain(1, 2);
+            let leaf = hash_fetch(&fetch(), scheme).unwrap();
+            let mut tree_once = tree(&once, scheme);
+            let mut tree_twice = tree(&twice, scheme);
+            assert_eq!(tree_once.hash_node("0", 0).unwrap(), leaf);
+            assert_eq!(tree_twice.hash_node("0", 0).unwrap(), leaf);
+            assert_ne!(
+                tree_once.hash_node("1", 0).unwrap(),
+                tree_twice.hash_node("1", 0).unwrap()
+            );
+        }
     }
 
     // V3: the same nodes as V2, at LF serialization version `2` and carrying a
@@ -1250,7 +1375,7 @@ mod tests {
             "20437df1980bb7d4d94ad53181dc6005bae37b5990719070c48a3960e8dda3a4"
         );
         let tx = transaction_v3();
-        let tree = tree(&tx, Scheme::V3);
+        let mut tree = tree(&tx, Scheme::V3);
         assert_eq!(
             to_hex(&tree.hash_node("2", 0).unwrap()),
             "516c4689acabf9d1f0087a02a7dafad884d9080c48112a57a6d20b9f72d4b697"
