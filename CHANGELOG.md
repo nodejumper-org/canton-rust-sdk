@@ -36,6 +36,19 @@ are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs
   - the compatibility matrix's live-test counts and its LocalNet settlement
     row were stale.
 
+### Fixed
+
+- **The metadata hash depended on the order two fields arrived in.** Canton
+  hashes the acting parties as a `SortedSet`. It hashes the disclosed contracts
+  as a `SortedMap` keyed by contract id. Order and repetition are not part of
+  the hash. `hash_metadata` took both in wire order. The hashes still matched
+  because `PreparedTransactionEncoder` sorts both before sending. The proto
+  does not require that sort. A participant that skips it makes the SDK
+  compute a different hash. The SDK then refuses to sign a valid transaction.
+  The acting parties are now sorted and deduplicated. The disclosed contracts
+  are now keyed by contract id. The hashes in Canton's own vectors are
+  unchanged because their inputs are already sorted.
+
 ## [0.3.2] — 2026-10-23
 
 The review findings filed against 0.3.1 by the C#/.NET SDK's maintainer
