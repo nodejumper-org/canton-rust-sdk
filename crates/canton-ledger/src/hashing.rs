@@ -427,15 +427,29 @@ fn required<'a, T>(value: Option<&'a T>, what: &str) -> Result<&'a T, HashingErr
     value.ok_or_else(|| err(what))
 }
 
+/// A contract id as bytes. Canton reads one as lower-case base16 and nothing
+/// else (`HexString` in daml-lf's `IdString`), so nothing else decodes here:
+/// an id Canton would refuse must not hash as if it were one it accepts.
+/// Decoded byte by byte, since a participant's reply is not known to be ASCII.
 fn decode_hex(text: &str) -> Result<Vec<u8>, HashingError> {
-    if !text.len().is_multiple_of(2) {
+    fn nibble(digit: u8) -> Option<u8> {
+        match digit {
+            b'0'..=b'9' => Some(digit - b'0'),
+            b'a'..=b'f' => Some(digit - b'a' + 10),
+            _ => None,
+        }
+    }
+    let (pairs, rest) = text.as_bytes().as_chunks::<2>();
+    if !rest.is_empty() {
         return Err(err(format!("`{text}` is not a contract id (odd length)")));
     }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| {
-            u8::from_str_radix(&text[i..i + 2], 16)
-                .map_err(|_| err(format!("`{text}` is not a contract id (not hex)")))
+    pairs
+        .iter()
+        .map(|[high, low]| match (nibble(*high), nibble(*low)) {
+            (Some(high), Some(low)) => Ok(high << 4 | low),
+            _ => Err(err(format!(
+                "`{text}` is not a contract id (not lower-case hex)"
+            ))),
         })
         .collect()
 }
@@ -1095,8 +1109,40 @@ mod tests {
             hash_fetch(&fetch, Scheme::V2)
                 .unwrap_err()
                 .to_string()
-                .contains("not hex")
+                .contains("not lower-case hex")
         );
+    }
+
+    /// A contract id is whatever the participant sent, so it is decoded as
+    /// bytes: one that is not ASCII is refused rather than sliced at an offset
+    /// that falls inside a character. And only what Canton decodes is a
+    /// contract id: lower-case base16, with no sign and no upper case.
+    #[test]
+    fn a_contract_id_that_is_not_lower_case_hex_is_refused_without_panicking() {
+        for id in ["aéb", "0é0", "é", "+f", "-1", "AB", "aB", "0x", " 0", "0g"] {
+            let message = decode_hex(id).expect_err(id).to_string();
+            assert!(message.contains("not lower-case hex"), "{id}: {message}");
+        }
+        for id in ["abc", "0", "éa"] {
+            let message = decode_hex(id).expect_err(id).to_string();
+            assert!(message.contains("odd length"), "{id}: {message}");
+        }
+        assert_eq!(decode_hex("").unwrap(), Vec::<u8>::new());
+        assert_eq!(
+            decode_hex("00ff10ab9c").unwrap(),
+            [0x00, 0xff, 0x10, 0xab, 0x9c]
+        );
+
+        // And through the nodes that carry one: the fetch, and the whole
+        // prepared transaction a participant returns.
+        let mut fetch = fetch();
+        fetch.contract_id = "aéb".to_string();
+        assert!(hash_fetch(&fetch, Scheme::V2).is_err());
+        let mut tx = transaction();
+        tx.nodes[1] = wrap("1", node::node::NodeType::Fetch(fetch));
+        for scheme in [Scheme::V2, Scheme::V3] {
+            assert!(hash_transaction(&tx, scheme).is_err(), "{scheme:?}");
+        }
     }
 
     #[test]
