@@ -10,7 +10,12 @@
 //!
 //! So the assertions here are about what goes out on the wire, not only what
 //! comes back.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::string_slice
+)]
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

@@ -15,7 +15,7 @@
 //! implementation and by the live suites; restating that here would produce a
 //! second copy to rot. What these prove is that the capability is reachable,
 //! typed as the standard describes, and behaves correctly at its boundary.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::string_slice)]
 // Capability ids carry `__` between the standard's section and the capability
 // within it, which is the delimiter `completeness.rs` and any external harness
 // split on. See `crates/canton-ledger/tests/interactive_live.rs` for the same

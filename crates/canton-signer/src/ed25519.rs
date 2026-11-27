@@ -20,7 +20,7 @@ const SEED_LEN: usize = 32;
 ///
 /// It can produce its public key — which is what
 /// `GenerateExternalPartyTopology` needs — but it cannot sign for the ledger,
-/// because a ledger signature carries a fingerprint only Canton issues. Call
+/// because a ledger signature carries the key's fingerprint. Call
 /// [`into_signer`](Self::into_signer) with that fingerprint to get something
 /// that can.
 pub struct Ed25519Key {
@@ -113,10 +113,13 @@ impl Ed25519Key {
     /// Pair this key with the fingerprint Canton assigned it, giving a
     /// [`Signer`].
     ///
-    /// The fingerprint comes from `GenerateExternalPartyTopology`'s
-    /// `public_key_fingerprint`, alongside the party id built from it. It is
-    /// not computed here: Canton's fingerprint is its own hash of the key, and
-    /// a value this crate invented would be one the participant rejects.
+    /// The fingerprint is the one a participant reports from
+    /// `GenerateExternalPartyTopology`, alongside the party id built from it,
+    /// and the one [`PublicKey::fingerprint`] computes for
+    /// [`public_key`](Self::public_key): the two are the same value, and
+    /// `canton-admin` refuses a participant's reply where they are not.
+    ///
+    /// [`PublicKey::fingerprint`]: crate::PublicKey::fingerprint
     #[must_use]
     pub fn into_signer(self, fingerprint: impl Into<String>) -> Ed25519Signer {
         Ed25519Signer {

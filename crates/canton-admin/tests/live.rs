@@ -13,7 +13,7 @@
 //! CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=… \
 //!   cargo test -p canton-admin --test live -- --nocapture
 //! ```
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::string_slice)]
 
 use canton_admin::{AdminClient, Config, Store, TopologyClient};
 use canton_auth::{OidcConfig, TokenProvider};

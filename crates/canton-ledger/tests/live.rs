@@ -16,7 +16,12 @@
 //! CANTON_TEST_PARTY='…::1220…' CANTON_TEST_LICENSING_PKG='#quickstart-licensing' \
 //!   cargo test -p canton-ledger --test live -- --nocapture
 //! ```
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::large_futures)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::large_futures,
+    clippy::string_slice
+)]
 
 use canton_auth::{OidcConfig, TokenProvider};
 use canton_ledger::{

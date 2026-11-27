@@ -164,7 +164,7 @@ request are listed in [Contributing](project/contributing.md).
 
 ### Live suites
 
-Five test targets talk to real services. Each test skips when the variables it
+Six test targets talk to real services. Each test skips when the variables it
 needs are unset, which is why the commands above stay green on a machine with no
 node.
 
@@ -175,6 +175,7 @@ node.
 | Admin API | `cargo test -p canton-admin --all-features --test live` | a participant, and its admin port for topology reads |
 | PQS | `cargo test -p canton-pqs --all-features --test live` | a Scribe store following the participant |
 | Token standard | `cargo test -p canton-token --all-features --test live` | a token-standard registry (a Splice Scan) |
+| Scan | `cargo test -p canton-token --all-features --test scan_live` | a Splice Scan (`CANTON_SCAN_URL`, ending in `/api/scan`), or a validator's scan-proxy with a token (`CANTON_SCAN_PROXY_URL`, `CANTON_TOKEN`) |
 
 Add `-- --nocapture` to see what each test reports, including why it skipped.
 
@@ -321,7 +322,7 @@ JVM reader and needs `scala-cli` on `PATH`). The committed
 ## The nightly LocalNet workflow
 
 [`.github/workflows/localnet.yml`](https://github.com/nodejumper-org/canton-rust-sdk/blob/main/.github/workflows/localnet.yml)
-runs all five live suites against a disposable LocalNet every night at 03:00
+runs all six live suites against a disposable LocalNet every night at 03:00
 UTC, on manual dispatch, and on pull requests that change the workflow or
 `testdata/live/`. In order, it:
 
@@ -330,7 +331,8 @@ UTC, on manual dispatch, and on pull requests that change the workflow or
    [canton-localnet](https://github.com/peacefulstudio/canton-localnet) action
    pinned to a commit.
 3. Maps the action's `CANTON_LOCALNET_*` exports to the `CANTON_TEST_*`,
-   `CANTON_PQS_URL` and `CANTON_TOKEN_REGISTRY_URL` names above. A missing
+   `CANTON_PQS_URL`, `CANTON_TOKEN_REGISTRY_URL` and `CANTON_SCAN_URL` names
+   above. A missing
    export fails this step, instead of reaching a suite as an empty value.
 4. Checks the licensing and contract-keys DARs against their `.sha256` files and
    uploads both over the JSON API. It then confirms the participant holds the

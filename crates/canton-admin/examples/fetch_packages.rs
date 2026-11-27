@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(canton_lf::DecodeError::UnsupportedMinor { minor, supported }) => {
                 eprintln!(
                     "skipping {}: Daml-LF 2.{minor} (this build reads {supported})",
-                    &id[..16]
+                    id.get(..16).unwrap_or(&id)
                 );
                 continue;
             }
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "{name:<45} {version:<8} {:>7} bytes  {}",
             archive.len(),
-            &id[..16]
+            id.get(..16).unwrap_or(&id)
         );
         written += 1;
         total += archive.len();

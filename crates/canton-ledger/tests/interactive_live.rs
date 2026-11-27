@@ -373,6 +373,173 @@ async fn external_commands__prepare_sign_execute_commits_under_hashing_scheme_v3
     assert_ne!(transaction.events, [] as [canton_ledger::proto::Event; 0]);
 }
 
+/// A deadline the signature covers. Setting a max record time prepares under
+/// V3 without being asked, since V2 does not hash one, and the participant's
+/// hash includes it: the SDK's recomputation agreeing is what lets the
+/// prepare return at all.
+#[tokio::test]
+async fn external_commands__a_max_record_time_is_prepared_and_committed_under_v3() {
+    use canton_ledger::proto::interactive::HashingSchemeVersion;
+
+    let Some(ledger) = ledger_client() else {
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, CANTON_TEST_TOKEN_URL/CLIENT_ID/CLIENT_SECRET)"
+        );
+        return;
+    };
+    let Some((party, signer)) = external_party("rust-sdk-deadline").await else {
+        skip!("the participant refused or lacks the admin right to onboard an external party");
+        return;
+    };
+    let in_ten_minutes = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("a clock after 1970")
+        .as_secs()
+        + 600;
+    // Nanoseconds a ledger time does not have, as a `SystemTime` on Linux
+    // gives: the request goes out rounded down to the microsecond, and the
+    // participant's prepared transaction has to carry exactly that.
+    let deadline = prost_types::Timestamp {
+        seconds: i64::try_from(in_ten_minutes).expect("a time this century"),
+        nanos: 123_456_789,
+    };
+
+    let prepared = ledger
+        .prepare_submission(
+            Prepare::new(&party)
+                .add_command(a_command_only_the_party_signs(&party))
+                .with_max_record_time(deadline),
+        )
+        .await
+        .expect("the participant prepares under V3 and its hash, deadline included, matches");
+    assert_eq!(prepared.hashing_scheme_version(), HashingSchemeVersion::V3);
+
+    // The same request under a chosen V2 never reaches the participant.
+    let refused = ledger
+        .prepare_submission(
+            Prepare::new(&party)
+                .add_command(a_command_only_the_party_signs(&party))
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(HashingSchemeVersion::V2),
+        )
+        .await
+        .expect_err("V2 does not sign a deadline");
+    assert!(
+        matches!(refused, canton_core::Error::InvalidRequest(_)),
+        "{refused:?}"
+    );
+
+    let executable = prepared
+        .sign_with(&signer)
+        .await
+        .expect("the in-memory key signs");
+    let transaction = Box::pin(ledger.execute_submission_and_wait_for_transaction(executable))
+        .await
+        .expect("the participant accepts the signature and commits before the deadline");
+    println!(
+        "committed with a signed deadline: {} at offset {}",
+        transaction.update_id, transaction.offset
+    );
+    assert_ne!(transaction.update_id, "");
+}
+
+/// Onboarding in two sittings, as a wallet approval or a signing queue makes
+/// it: the topology is stored after it is generated, rebuilt later, checked
+/// again, and allocated with a signature that was made in between. The key is
+/// handed over as an HSM exports it, DER, and the host is held to the
+/// participant this caller configured.
+#[tokio::test]
+async fn signing__a_stored_topology_is_rebuilt_and_allocated_with_a_signature_made_later() {
+    use canton_admin::{ExpectedHosting, ExternalPartyTopology};
+    use canton_signer::{KeyFormat, KeySpec, PublicKey};
+
+    let (Some(admin), Some(ledger)) = (admin_client().await, ledger_client()) else {
+        skip!(
+            "set CANTON_TEST_ENDPOINT (and, where the participant authenticates, the admin credentials)"
+        );
+        return;
+    };
+    let as_ledger_user = AdminClient::connect_lazy(match ledger_oidc() {
+        Some(oidc) => canton_admin::Config::new(endpoint().expect("an endpoint"))
+            .with_oidc(TokenProvider::new(oidc)),
+        None if unauthenticated() => canton_admin::Config::new(endpoint().expect("an endpoint")),
+        None => canton_admin::Config::new(endpoint().expect("an endpoint"))
+            .with_token(canton_core::localnet::token(None).expect("a LocalNet token")),
+    })
+    .expect("an admin client under the ledger user's token");
+    let user_id = ledger_user_id(&as_ledger_user).await;
+    let synchronizer = ledger
+        .connected_synchronizers("")
+        .await
+        .expect("the participant lists its synchronizers")
+        .first()
+        .expect("the participant is connected to at least one synchronizer")
+        .synchronizer_id
+        .clone();
+    // What a caller has in its configuration: the participant it onboards with.
+    let participant = admin
+        .participant_id()
+        .await
+        .expect("the participant names itself");
+    let expected = ExpectedHosting::participant(participant.clone());
+
+    let key = Ed25519Key::generate().expect("a random source");
+    let raw = key.public_key();
+    let der = PublicKey::new(
+        KeyFormat::DerX509SubjectPublicKeyInfo,
+        [
+            &[
+                0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+            ][..],
+            raw.data(),
+        ]
+        .concat(),
+        KeySpec::EcCurve25519,
+    );
+
+    // First sitting: generate, and keep what a caller stores.
+    let generated = admin
+        .generate_external_party_topology_with(&synchronizer, "rust-sdk-stored", &der, &expected)
+        .await
+        .expect("the participant describes the onboarding of a DER key on itself");
+    assert!(
+        participant.ends_with(generated.hosting_participant()),
+        "{participant} hosts the party, named as {}",
+        generated.hosting_participant()
+    );
+    let stored_party = generated.party_id().to_string();
+    let stored_transactions = generated.transactions().to_vec();
+    let hash_to_sign = generated.multi_hash().to_vec();
+    drop(generated);
+
+    // In between: the signature is made somewhere else, over the hash.
+    let signer = key.into_signer(raw.fingerprint().expect("an Ed25519 key"));
+    let signature = signer.sign(&hash_to_sign).await.expect("the key signs");
+
+    // Second sitting: what was stored is input again.
+    let elsewhere = ExternalPartyTopology::from_parts(
+        &stored_party,
+        stored_transactions.clone(),
+        &raw,
+        &ExpectedHosting::participant("another-participant::1220ffff"),
+    )
+    .expect_err("the stored transaction hosts the party on this participant, not another");
+    assert!(
+        matches!(elsewhere, canton_core::Error::UnexpectedResponse(_)),
+        "{elsewhere:?}"
+    );
+    let rebuilt =
+        ExternalPartyTopology::from_parts(&stored_party, stored_transactions, &raw, &expected)
+            .expect("what was stored is the onboarding that was generated");
+
+    let party = admin
+        .allocate_external_party_with_signature(&synchronizer, &rebuilt, &signature, &user_id)
+        .await
+        .expect("the participant accepts the rebuilt onboarding and the earlier signature");
+    assert_eq!(party, stored_party);
+    println!("allocated {party} from a stored topology, hosted by {participant}");
+}
+
 /// Prepare, sign and commit `command` as `party` under hashing scheme V3,
 /// returning the prepared transaction it was signed over.
 async fn commit_under_v3(

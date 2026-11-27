@@ -332,22 +332,26 @@ impl UpdatesRequest {
             }
         });
         if self.include_reassignments {
-            update_format["includeReassignments"] = event_format();
+            set(&mut update_format, "includeReassignments", event_format());
         }
         if self.include_topology_events {
-            update_format["includeTopologyEvents"] = serde_json::json!({
-                "includeParticipantAuthorizationEvents": { "parties": self.parties }
-            });
+            set(
+                &mut update_format,
+                "includeTopologyEvents",
+                serde_json::json!({
+                    "includeParticipantAuthorizationEvents": { "parties": self.parties }
+                }),
+            );
         }
         let mut body = serde_json::json!({
             "beginExclusive": self.begin_exclusive,
             "updateFormat": update_format,
         });
         if let Some(end) = self.end_inclusive {
-            body["endInclusive"] = serde_json::json!(end);
+            set(&mut body, "endInclusive", serde_json::json!(end));
         }
         if self.descending {
-            body["descendingOrder"] = serde_json::json!(true);
+            set(&mut body, "descendingOrder", serde_json::json!(true));
         }
         body
     }
@@ -572,7 +576,7 @@ impl CompletionsRequest {
             "beginExclusive": self.begin_exclusive,
         });
         if let Some(user_id) = &self.user_id {
-            body["userId"] = serde_json::json!(user_id);
+            set(&mut body, "userId", serde_json::json!(user_id));
         }
         body
     }
@@ -683,7 +687,11 @@ fn event_format_json(
         .collect();
     let mut format = json!({ "filtersByParty": filters_by_party, "verbose": verbose });
     if any_party {
-        format["filtersForAnyParty"] = json!({ "cumulative": cumulative });
+        set(
+            &mut format,
+            "filtersForAnyParty",
+            json!({ "cumulative": cumulative }),
+        );
     }
     format
 }
@@ -707,6 +715,17 @@ fn parse_identifier(id: &str) -> Result<pb::Identifier> {
             "malformed identifier `{id}`: expected `package:Module:Entity` \
              (package id, or `#package-name`)"
         ))),
+    }
+}
+
+/// Set a field of a JSON object.
+///
+/// `object[key] = value` does the same and panics when `object` is not an
+/// object. Every caller builds the object on the line above, so this never
+/// meets anything else, and does nothing if it ever did.
+pub(crate) fn set(object: &mut serde_json::Value, key: &str, value: serde_json::Value) {
+    if let Some(fields) = object.as_object_mut() {
+        fields.insert(key.to_string(), value);
     }
 }
 

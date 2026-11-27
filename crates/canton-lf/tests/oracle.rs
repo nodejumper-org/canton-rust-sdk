@@ -19,7 +19,7 @@
 //!   cargo test -p canton-lf --test oracle -- --nocapture
 //! ```
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use canton_lf::pb::daml_lf_2::r#type::Sum;
 use canton_lf::pb::daml_lf_2::{

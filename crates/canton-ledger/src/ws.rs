@@ -19,53 +19,79 @@ use tokio_tungstenite::tungstenite::http::Uri;
 /// The subprotocol Canton requires on the JSON-API WebSocket handshake.
 const WS_SUBPROTOCOL: &str = "daml.ws.auth";
 
+/// The rustls crypto provider a `wss` handshake runs on: the one the
+/// application installed for the process, and `ring` when it installed none.
+///
+/// Named explicitly because `rustls::ClientConfig::builder()` cannot be relied
+/// on to pick one. It reads the provider off rustls's own crate features, and
+/// panics when both `ring` and `aws-lc-rs` are compiled in and none is
+/// installed. This SDK enables only `ring`, but `aws-lc-rs` is a rustls
+/// default feature, so any other dependency of the application can add it.
+fn crypto_provider() -> std::sync::Arc<rustls::crypto::CryptoProvider> {
+    rustls::crypto::CryptoProvider::get_default()
+        .cloned()
+        .unwrap_or_else(|| std::sync::Arc::new(rustls::crypto::ring::default_provider()))
+}
+
 /// Build the TLS connector for the WS handshake from the shared [`TlsConfig`]:
 /// a custom CA (server-side TLS against a private/self-signed server) and/or a
-/// client identity (mutual TLS). `None` config keeps tungstenite's default
-/// (native roots for `wss`).
-pub(crate) fn build_connector(tls: Option<&TlsConfig>) -> Result<Option<Connector>> {
+/// client identity (mutual TLS), and the platform's native roots when no CA is
+/// given.
+///
+/// `secure` says the URL is `wss`. A `wss` handshake always gets a connector,
+/// also when the caller configured no TLS: left without one, tungstenite
+/// builds its own with `rustls::ClientConfig::builder()`, which panics in a
+/// process that has two rustls crypto providers compiled in and none
+/// installed (see [`crypto_provider`]). Only a plain `ws` URL with no TLS
+/// configured gets `None`, since there is no TLS to set up.
+pub(crate) fn build_connector(tls: Option<&TlsConfig>, secure: bool) -> Result<Option<Connector>> {
     use rustls_pki_types::pem::PemObject as _;
     use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 
-    let Some(tls) = tls else { return Ok(None) };
+    if tls.is_none() && !secure {
+        return Ok(None);
+    }
+    let ca = tls.and_then(|tls| tls.ca_certificate_pem.as_ref());
+    let identity = tls.and_then(|tls| tls.client_identity_pem.as_ref());
 
     // Root store: the custom CA when given, else the platform's native roots.
     let mut roots = rustls::RootCertStore::empty();
-    match &tls.ca_certificate_pem {
-        Some(ca) => {
-            for cert in CertificateDer::pem_slice_iter(ca) {
-                let cert = cert
-                    .map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
-                roots
-                    .add(cert)
-                    .map_err(|e| Error::InvalidRequest(format!("rejected CA certificate: {e}")))?;
-            }
-            if roots.is_empty() {
-                return Err(Error::InvalidRequest(
-                    "the CA PEM contained no certificates".to_string(),
-                ));
-            }
+    if let Some(ca) = ca {
+        for cert in CertificateDer::pem_slice_iter(ca) {
+            let cert =
+                cert.map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
+            roots
+                .add(cert)
+                .map_err(|e| Error::InvalidRequest(format!("rejected CA certificate: {e}")))?;
         }
-        None => {
-            // Best-effort like tungstenite's own default: unloadable
-            // individual certs are skipped.
-            for cert in rustls_native_certs::load_native_certs().certs {
-                let _ = roots.add(cert);
-            }
+        if roots.is_empty() {
+            return Err(Error::InvalidRequest(
+                "the CA PEM contained no certificates".to_string(),
+            ));
+        }
+    } else {
+        // Best-effort like tungstenite's own default: unloadable individual
+        // certs are skipped.
+        for cert in rustls_native_certs::load_native_certs().certs {
+            let _ = roots.add(cert);
+        }
+        // With none at all every handshake would fail as an unknown issuer,
+        // which names the server for what is missing here.
+        if roots.is_empty() {
+            return Err(Error::InvalidRequest(
+                "no native root certificates were found, so a wss connection could not be \
+                 verified; give a CA with TlsConfig::with_ca_certificate"
+                    .to_string(),
+            ));
         }
     }
 
-    // Pin the ring provider explicitly: several rustls crypto backends may be
-    // enabled across the dependency graph, which would make the implicit
-    // default ambiguous.
-    let builder = rustls::ClientConfig::builder_with_provider(
-        rustls::crypto::ring::default_provider().into(),
-    )
-    .with_safe_default_protocol_versions()
-    .map_err(|e| Error::InvalidRequest(format!("tls protocol setup failed: {e}")))?
-    .with_root_certificates(roots);
+    let builder = rustls::ClientConfig::builder_with_provider(crypto_provider())
+        .with_safe_default_protocol_versions()
+        .map_err(|e| Error::InvalidRequest(format!("tls protocol setup failed: {e}")))?
+        .with_root_certificates(roots);
 
-    let config = match &tls.client_identity_pem {
+    let config = match identity {
         Some((cert_pem, key_pem)) => {
             let certs = CertificateDer::pem_slice_iter(cert_pem)
                 .collect::<std::result::Result<Vec<_>, _>>()
@@ -266,7 +292,7 @@ pub(crate) async fn subscribe(
         .max_message_size(Some(max_decoding_message_size))
         .max_frame_size(Some(max_decoding_message_size));
 
-    let connector = build_connector(tls)?;
+    let connector = build_connector(tls, url.starts_with("wss://"))?;
     // The handshake is bounded for the same reason the HTTP lane's requests
     // are: a participant that accepts the socket and never completes the
     // upgrade would otherwise hold the caller's task open indefinitely, and
@@ -386,8 +412,21 @@ mod tests {
     #[test]
     #[allow(clippy::unwrap_used)]
     fn build_connector_honours_the_tls_config() {
-        // No TLS config → default connector (native roots), no error.
-        assert!(build_connector(None).unwrap().is_none());
+        // A plain `ws` URL and no TLS config: nothing to set up.
+        assert!(build_connector(None, false).unwrap().is_none());
+
+        // A `wss` URL and no TLS config: still this client's connector, over
+        // the native roots, and never tungstenite's own, which is built with
+        // `ClientConfig::builder()` and panics when the application compiles
+        // in two rustls crypto providers and installs neither. A host with no
+        // root certificates at all is told so instead.
+        match build_connector(None, true) {
+            Ok(connector) => assert!(matches!(connector, Some(Connector::Rustls(_)))),
+            Err(error) => assert!(
+                error.to_string().contains("no native root certificates"),
+                "{error:?}"
+            ),
+        }
 
         // Custom CA + client identity (mTLS) → a rustls connector.
         let ck = rcgen::generate_simple_self_signed(vec!["localhost".to_string()]).unwrap();
@@ -397,14 +436,14 @@ mod tests {
             .with_ca_certificate(cert_pem.clone())
             .with_client_identity(cert_pem, key_pem);
         assert!(matches!(
-            build_connector(Some(&tls)).unwrap(),
+            build_connector(Some(&tls), true).unwrap(),
             Some(Connector::Rustls(_))
         ));
 
         // A CA PEM with no certificates is rejected, not silently trusted.
         let empty_ca = TlsConfig::new().with_ca_certificate(b"not a pem".to_vec());
         assert!(matches!(
-            build_connector(Some(&empty_ca)),
+            build_connector(Some(&empty_ca), true),
             Err(Error::InvalidRequest(_))
         ));
 
@@ -413,7 +452,7 @@ mod tests {
         let bad_identity = TlsConfig::new()
             .with_client_identity(ck2.cert.pem().into_bytes(), b"not a key".to_vec());
         assert!(matches!(
-            build_connector(Some(&bad_identity)),
+            build_connector(Some(&bad_identity), true),
             Err(Error::InvalidRequest(_))
         ));
     }

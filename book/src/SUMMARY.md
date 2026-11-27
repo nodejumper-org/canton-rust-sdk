@@ -9,6 +9,7 @@
 - [Reading the ledger](guides/reading-the-ledger.md)
 - [Typed bindings from a DAR](guides/codegen.md)
 - [The token standard](guides/token-standard.md)
+- [Scan and the validator's scan-proxy](guides/scan.md)
 - [Interactive submission and external signing](guides/interactive-submission.md)
 - [Querying PQS](guides/pqs.md)
 - [Admin API and telemetry](guides/admin-and-telemetry.md)

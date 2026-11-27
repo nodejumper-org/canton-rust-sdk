@@ -6,7 +6,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 
 > **Docs:** guides at <https://nodejumper-org.github.io/canton-rust-sdk/>, API reference on [docs.rs](https://docs.rs/canton).
 >
-> **Status:** 0.3.2 is on crates.io: the Ledger API client, the type-safe DAR codegen, the token standard in both versions (CIP-56 and CIP-0112), interactive submission with a pluggable `Signer`, and a typed PQS client. Everything here is verified against a Canton **3.5.7** participant — hermetic tests plus the live suites (submit, streaming, recovery, TLS/mTLS, auth, external signing, PQS against **Scribe 3.5.4**), an end-to-end typed loop over gRPC and JSON, and the five token-standard examples against a live registry — and the token-standard examples were also run on the Canton Network DevNet (Canton 3.5.17 and 3.6.3), with the output on record under [`docs/verification/`](docs/verification/token-standard-live-runs.md). CI holds the whole workspace to `-D warnings` on every feature combination.
+> **Status:** 0.3.3 is on crates.io: the Ledger API client, the type-safe DAR codegen, the token standard in both versions (CIP-56 and CIP-0112), interactive submission with a pluggable `Signer`, a typed PQS client, and a client for Splice Scan. Everything here is verified against a Canton **3.5.7** participant — hermetic tests plus the live suites (submit, streaming, recovery, TLS/mTLS, auth, external signing, PQS against **Scribe 3.5.4**), an end-to-end typed loop over gRPC and JSON, and the five token-standard examples against a live registry — and the token-standard examples were also run on the Canton Network DevNet (Canton 3.5.17 and 3.6.3; interactive submission and the registry also on 3.7.3), with the output on record under [`docs/verification/`](docs/verification/token-standard-live-runs.md). CI holds the whole workspace to `-D warnings` on every feature combination.
 
 ## Crates
 
@@ -19,7 +19,7 @@ Built on `tonic`/`prost`/`tokio`. Talks the **Ledger API v2** over gRPC (primary
 | `canton-ledger` | The async Ledger API client, with the **same operations on both transports**. gRPC: `submit` / `submitAndWait` / `submitAndWaitForTransaction`, completions and change-ID recovery, ACS/update streaming (+ paging, reverse-order, event query, checkpoint-resumable), a lossless ACS read (`AcsEntry`, incomplete reassignments included), request builders (bounded/filtered/shaped streams, completion `user_id`), node health. JSON: the same submission set including fire-and-forget and recovery, event query, bounded reads, package and party management (`/v2/packages`, `/v2/parties`) for JSON-only deployments, and WebSocket streaming — updates, completions and a resumable ACS — behind the `ws` feature. |
 | `canton-admin` | Admin surface: party allocation/management, user self-inspect, packages read, and topology read (party→participant mappings, namespace delegations, vetted packages) over the Canton admin API. |
 | `canton-pqs` | Typed read client for the Participant Query Store (PQS/Scribe): typed predicates compiled to parameterized JSONB queries — no hand-written SQL on that path, and no interpolation of values or field paths anywhere. `Sql::raw` is the documented escape hatch for PQS functions the crate does not model; it still binds its parameters. |
-| `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. |
+| `canton-token` | Token-standard workflows: the registry's off-ledger API, choice contexts with their disclosed contracts, transfers and allocations. CIP-56 at the root, CIP-0112 under `v2` — same function names, so the path says which standard you meant. Workflow only — the types are generated, not re-declared. Also `scan`: a typed client for Splice Scan and a validator's scan-proxy. |
 | `canton-signer` | Pluggable transaction signing for interactive submission: an object-safe async `Signer` trait (HSM/KMS-compatible) plus an in-memory Ed25519 key behind a feature flag. |
 | `canton-daml` | The runtime under generated bindings: Daml primitive types (`Party`, `ContractId<T>`, `Numeric`, `Timestamp`, …), `Template`/`Interface`/`Choice` traits, command builders, and the JSON + gRPC value codecs. |
 | `canton-codegen` / `canton-codegen-cli` | DAR → typed Rust. The CLI (`dpm-codegen-rust`, also `dpm codegen-rust`) writes a complete crate from any DAR; the library is the IR + emitter behind it. |
@@ -412,7 +412,7 @@ unauthenticated). The run on record, update ids included, is in
 # external signing: on an unauthenticated LocalNet nothing beyond the endpoint;
 # cn-quickstart also wants the ParticipantAdmin client
 export CANTON_TEST_ADMIN_CLIENT_ID=app-provider-validator CANTON_TEST_ADMIN_CLIENT_SECRET=…
-cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 3 tests, one of them a refusal
+cargo test -p canton-ledger --all-features --test interactive_live -- --nocapture   # 7 tests, one of them a refusal
 
 # PQS: a Scribe store following the participant — this compose runs one
 # (add SCRIBE_SOURCE_LEDGER_AUTH=OAuth CANTON_TOKEN=… where the participant wants a token)
@@ -424,6 +424,10 @@ cargo test -p canton-pqs --all-features --test live -- --nocapture              
 # the registry, on its own
 export CANTON_TOKEN_REGISTRY_URL=http://scan.localhost:4000
 cargo test -p canton-token --test live -- --nocapture                                 # 5 tests against the registry
+
+# Scan, asked directly (a validator's scan-proxy: CANTON_SCAN_PROXY_URL and CANTON_TOKEN)
+export CANTON_SCAN_URL=http://scan.localhost:4000/api/scan
+cargo test -p canton-token --test scan_live -- --nocapture                            # 5 tests; the scan-proxy one skips without its URL
 ```
 
 CI enforces `rustfmt`, `clippy -D warnings` (all features), the full test suite on Linux/macOS/Windows, rustdoc `-D warnings`, `cargo-deny`, and the MSRV build.

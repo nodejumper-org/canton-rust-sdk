@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
         println!(
             "withdrawing {} (settlement {}): disclosing {} contract(s) the registry named",
-            &cid[..16],
+            cid.get(..16).unwrap_or(&cid),
             view.settlement.id,
             command.disclosed_contracts().len()
         );

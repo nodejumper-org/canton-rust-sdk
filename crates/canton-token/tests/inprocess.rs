@@ -9,7 +9,13 @@
 //!
 //! Hand-rolled HTTP rather than a server framework: one request, one response,
 //! and no dependency the published crate does not already carry.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::string_slice
+)]
 
 use std::sync::{Arc, Mutex};
 
@@ -1218,6 +1224,59 @@ async fn serve_once(status: u16, reason: &str, content_type: &str, body: &str) -
         socket.write_all(http.as_bytes()).await.expect("write");
     });
     format!("http://127.0.0.1:{port}")
+}
+
+/// Answer one request with `status` and a long body, ignoring a client that
+/// stops reading part way: it is meant to.
+async fn serve_long_error(status: u16, content_type: &'static str) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        let Ok((mut socket, _)) = listener.accept().await else {
+            return;
+        };
+        let mut chunk = [0u8; 4096];
+        let _ = socket.read(&mut chunk).await;
+        let body = "x".repeat(200 * 1024);
+        let http = format!(
+            "HTTP/1.1 {status} Error\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        );
+        let _ = socket.write_all(http.as_bytes()).await;
+    });
+    format!("http://127.0.0.1:{port}")
+}
+
+/// The status is what a caller acts on, so an error keeps it however long its
+/// body is: a gateway's error page above the 64 KiB kept for the message is
+/// cut, not refused for its size, which would hide a retriable 503, or a 404
+/// that is not the registry's own.
+#[tokio::test]
+async fn a_registry_error_with_a_long_body_keeps_its_status() {
+    let base = serve_long_error(503, "text/html").await;
+    let error = RegistryClient::new(&base)
+        .expect("client")
+        .info()
+        .await
+        .expect_err("a failing registry");
+    assert!(
+        matches!(error, canton_core::Error::Http { status: 503, .. }),
+        "{}",
+        &format!("{error:?}")[..80]
+    );
+    assert!(error.is_retriable());
+
+    let base = serve_long_error(404, "text/html").await;
+    let error = RegistryClient::new(&base)
+        .expect("client")
+        .instrument("Amulet")
+        .await
+        .expect_err("a 404 that is not the registry's own");
+    assert!(
+        matches!(error, canton_core::Error::Http { status: 404, .. }),
+        "{}",
+        &format!("{error:?}")[..80]
+    );
 }
 
 /// `instrument()` has three answers and they must stay distinct: issued,

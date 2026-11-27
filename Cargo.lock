@@ -223,7 +223,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "canton"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-admin",
  "canton-auth",
@@ -237,7 +237,7 @@ dependencies = [
 
 [[package]]
 name = "canton-admin"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-auth",
  "canton-core",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "canton-auth"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-core",
  "reqwest",
@@ -267,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "canton-codegen"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-lf",
  "heck",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "canton-codegen-cli"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-codegen",
  "thiserror 2.0.20",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "canton-conformance"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton",
  "canton-codegen",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "canton-core"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "async-stream",
  "futures-core",
@@ -332,7 +332,7 @@ dependencies = [
 
 [[package]]
 name = "canton-daml"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-codegen",
  "canton-core",
@@ -345,14 +345,14 @@ dependencies = [
 
 [[package]]
 name = "canton-daml-stdlib"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
 ]
 
 [[package]]
 name = "canton-ledger"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "async-stream",
  "base64",
@@ -367,6 +367,7 @@ dependencies = [
  "http",
  "opentelemetry",
  "opentelemetry_sdk",
+ "prost 0.14.4",
  "prost-types",
  "rcgen",
  "reqwest",
@@ -390,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "canton-lf"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "prost 0.14.4",
  "prost-build",
@@ -403,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "canton-pqs"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-core",
  "canton-daml",
@@ -422,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "canton-proto"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "prost 0.14.4",
  "prost-types",
@@ -437,7 +438,7 @@ dependencies = [
 
 [[package]]
 name = "canton-quickstart-licensing"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -449,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "canton-sample"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-ledger",
@@ -462,17 +463,18 @@ dependencies = [
 
 [[package]]
 name = "canton-signer"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-core",
  "canton-proto",
  "ring",
+ "sha2 0.10.9",
  "tokio",
 ]
 
 [[package]]
 name = "canton-splice-amulet"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -486,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-featured-app-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -494,7 +496,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-instruction-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -505,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-instruction-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -516,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-request-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -527,7 +529,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-request-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -537,7 +539,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -547,7 +549,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-allocation-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -557,7 +559,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-burn-mint-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -567,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-holding-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -576,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-holding-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -585,7 +587,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-metadata-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -593,7 +595,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-transfer-events-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -603,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-transfer-instruction-v1"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -613,7 +615,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-api-token-transfer-instruction-v2"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -623,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-wallet"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -639,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "canton-splice-wallet-payments"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "canton-daml",
  "canton-daml-stdlib",
@@ -654,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "canton-token"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "base64",
  "canton-auth",
@@ -980,9 +982,9 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
 ]
@@ -2054,9 +2056,9 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.13.4"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9f068eba8e7071c5f9511831b44f32c740d5adf574e990f946ddb53db2f314e"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
 dependencies = [
  "bitflags",
  "memchr",
@@ -3332,9 +3334,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "url"
-version = "2.5.8"
+version = "2.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+checksum = "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
 dependencies = [
  "form_urlencoded",
  "idna",

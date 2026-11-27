@@ -339,8 +339,10 @@ impl TokenProvider {
     /// Returns [`Error::Auth`] if the endpoint rejects the credentials
     /// (401/403, e.g. `invalid_client`); [`Error::Http`] for other non-success
     /// statuses (5xx/429 stay retriable); [`Error::Connection`] if the endpoint
-    /// is unreachable or the fetch times out; [`Error::Json`] if the response
-    /// cannot be parsed.
+    /// is unreachable; [`Error::Timeout`] if the fetch times out;
+    /// [`Error::InvalidRequest`] if the request cannot be built or the
+    /// endpoint's TLS certificate cannot be verified; [`Error::Json`] if the
+    /// response cannot be parsed.
     pub async fn token(&self) -> Result<String> {
         let mut guard = self.inner.cache.lock().await;
         if let Some(cached) = guard.as_ref()
@@ -382,26 +384,15 @@ impl TokenProvider {
             .post(&config.token_url)
             .timeout(FETCH_TIMEOUT)
             .form(&params);
-        // Union of both branches' improvements: main's credential placement
-        // (Okta's Basic vs the body), and this branch's transport-error
-        // classification — a certificate failure is a permanent Auth error,
-        // not a retriable Connection one.
+        // Okta takes the credentials as HTTP Basic. The other presets put
+        // them in the body.
         if config.client_auth == ClientAuth::Basic {
             request = request.basic_auth(&config.client_id, Some(&config.client_secret));
         }
-        let response = request.send().await.map_err(|e| {
-            let url = canton_core::redact_url(&config.token_url);
-            let detail = canton_core::chain(&e);
-            if e.is_timeout() {
-                return Error::Timeout;
-            }
-            if e.is_builder() || detail.to_ascii_lowercase().contains("certificate") {
-                return Error::Auth(format!(
-                    "the token endpoint {url} cannot be reached: {detail}"
-                ));
-            }
-            Error::Connection(format!("token request to {url} failed: {detail}"))
-        })?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| send_failure(e, &canton_core::redact_url(&config.token_url)))?;
 
         // A credential rejection (401/403, e.g. `invalid_client`) is a definite
         // auth failure; other non-success statuses keep their code so 5xx/429
@@ -439,6 +430,55 @@ impl TokenProvider {
     }
 }
 
+/// What `reqwest` says about a failed send, by type. Separated from the error
+/// so the verdict below can be tested on the strings it reads, which are the
+/// only place a TLS failure shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SendFailure {
+    Timeout,
+    Builder,
+    /// Everything else: the connection itself failed, and the chain says how.
+    Connect,
+}
+
+fn send_failure(e: reqwest::Error, url: &str) -> Error {
+    let kind = if e.is_timeout() {
+        SendFailure::Timeout
+    } else if e.is_builder() {
+        SendFailure::Builder
+    } else {
+        SendFailure::Connect
+    };
+    // Without the URL reqwest prints into its own message: the verdict below
+    // is read off the text, and a token URL with "certificate" in its host or
+    // path would otherwise decide it. `url` is the redacted form for the
+    // message.
+    classify_send(kind, url, &canton_core::chain(&e.without_url()))
+}
+
+fn classify_send(kind: SendFailure, url: &str, detail: &str) -> Error {
+    match kind {
+        SendFailure::Timeout => return Error::Timeout,
+        SendFailure::Builder => {
+            return Error::InvalidRequest(format!(
+                "the token request for {url} could not be built: {detail}"
+            ));
+        }
+        SendFailure::Connect => {}
+    }
+    // reqwest does not expose a typed TLS error. The chain is the only place
+    // a certificate failure shows. Only that: a handshake that ends early
+    // ("tls handshake eof") is the peer hanging up, which a restart or a
+    // rolling deploy does, and it passes.
+    let lower = detail.to_ascii_lowercase();
+    if lower.contains("certificate") {
+        return Error::InvalidRequest(format!(
+            "the token endpoint {url} has a TLS certificate that could not be verified: {detail}"
+        ));
+    }
+    Error::Connection(format!("token request to {url} failed: {detail}"))
+}
+
 /// A token response is a few kilobytes of JSON; anything larger is not one.
 const TOKEN_BODY_CAP: usize = 64 * 1024;
 /// How much of an error body is kept for the message.
@@ -460,9 +500,12 @@ async fn read_body(mut response: reqwest::Response, cap: usize) -> Result<String
     }
     let mut buffer: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|e| {
+        if e.is_timeout() {
+            return Error::Timeout;
+        }
         Error::Connection(format!(
             "reading token response failed: {}",
-            canton_core::chain(&e)
+            canton_core::chain(&e.without_url())
         ))
     })? {
         if buffer.len() + chunk.len() > cap {
@@ -494,6 +537,42 @@ mod tests {
 
     fn sample_config() -> OidcConfig {
         OidcConfig::new("http://idp.example/token", "my-client", "TOP-SECRET-VALUE")
+    }
+
+    /// A send that never got an answer is a transport fault, not a rejected
+    /// credential.
+    #[test]
+    fn a_failed_send_is_not_reported_as_a_credential_rejection() {
+        let url = "https://idp.example/token";
+
+        let tls = classify_send(
+            SendFailure::Connect,
+            url,
+            "invalid peer certificate: UnknownIssuer",
+        );
+        assert!(matches!(tls, Error::InvalidRequest(_)), "{tls:?}");
+        assert!(!tls.is_retriable(), "retrying cannot fix the certificate");
+
+        let refused = classify_send(
+            SendFailure::Connect,
+            url,
+            "connection refused (os error 61)",
+        );
+        assert!(matches!(refused, Error::Connection(_)), "{refused:?}");
+        assert!(refused.is_retriable(), "{refused}");
+
+        let builder = classify_send(SendFailure::Builder, url, "builder error");
+        assert!(matches!(builder, Error::InvalidRequest(_)), "{builder:?}");
+
+        // The peer hanging up in the middle of the handshake is not a verdict
+        // on its certificate: a load balancer restarting does it.
+        let hung_up = classify_send(
+            SendFailure::Connect,
+            url,
+            "client error (Connect): tls handshake eof",
+        );
+        assert!(matches!(hung_up, Error::Connection(_)), "{hung_up:?}");
+        assert!(hung_up.is_retriable(), "{hung_up}");
     }
 
     #[test]

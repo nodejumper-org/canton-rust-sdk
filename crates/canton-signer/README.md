@@ -29,15 +29,15 @@ in-memory one returns a ready future.
 
 ## A key is not yet an identity
 
-Canton addresses a key by a **fingerprint it computes itself**, and every
-signature carries that fingerprint in `signed_by`. It is not derivable from key
-material: you learn it from `GenerateExternalPartyTopology`, which also returns
-the party id built from it.
+Canton addresses a key by a **fingerprint**, its own hash of the key, and every
+signature carries that fingerprint in `signed_by`. `PublicKey::fingerprint()`
+computes it, and a participant reports the same value from
+`GenerateExternalPartyTopology`, with the party id built from it
+(`canton-admin` checks both against your key).
 
-So `Ed25519Key` holds key material and *cannot* sign for the ledger.
-`into_signer(fingerprint)` returns something that can. The order that enforces
-is the real one — you cannot sign as a party before the participant has told
-you which party you are:
+A signature has to carry that fingerprint, so `Ed25519Key` holds key material
+and *cannot* sign for the ledger. `into_signer(fingerprint)` returns something
+that can:
 
 ```rust,ignore
 let key = Ed25519Key::generate()?;

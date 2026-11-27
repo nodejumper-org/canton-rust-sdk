@@ -577,8 +577,15 @@ impl CantonClient {
     /// Retried like any other read: preparation commits nothing.
     ///
     /// # Errors
-    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
-    /// returns no hash — which would leave nothing to sign.
+    /// As any gRPC call, plus:
+    /// - [`Error::InvalidRequest`], before anything is sent, for a max record
+    ///   time under an explicitly chosen `V2`, or one that is not a whole
+    ///   number of microseconds;
+    /// - [`Error::UnexpectedResponse`], with nothing signed, if the
+    ///   participant returns no transaction or no hash; a hash under another
+    ///   scheme than was asked for, or that is not the hash of the
+    ///   transaction it returned; or a transaction for another command id,
+    ///   other acting parties or another max record time than requested.
     pub async fn prepare_submission(
         &self,
         prepare: crate::interactive::Prepare,
@@ -586,6 +593,7 @@ impl CantonClient {
         // Built once, outside the instrumented future, so retries reuse one
         // command id — the change ID stays stable and the submission remains
         // de-duplication-safe across attempts, exactly as `submit` does.
+        prepare.check()?;
         let act_as = prepare.act_as().to_vec();
         // Carried through: the Ledger API's default event format for
         // `…_and_wait_for_transaction` covers `act_as` *and* `read_as`, so
@@ -593,6 +601,7 @@ impl CantonClient {
         let read_as = prepare.read_as().to_vec();
         let requested_scheme = prepare.requested_hashing_scheme();
         let trust_participant_hash = prepare.trusts_participant_hash();
+        let max_record_time = prepare.requested_max_record_time()?;
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -615,6 +624,7 @@ impl CantonClient {
                 read_as,
                 command_id,
                 user_id,
+                max_record_time,
             )
         })
         .await
@@ -1424,7 +1434,7 @@ impl CantonClient {
                             yield Err(err);
                             return;
                         }
-                        tokio::time::sleep(backoff_unit * reconnects).await;
+                        tokio::time::sleep(reconnect_delay(backoff_unit, reconnects)).await;
                     }
                     Err(err) => {
                         yield Err(err);
@@ -1679,7 +1689,7 @@ impl CantonClient {
                     yield Err(cause);
                     return;
                 }
-                tokio::time::sleep(backoff_unit * reconnects).await;
+                tokio::time::sleep(reconnect_delay(backoff_unit, reconnects)).await;
             }
         }
     }
@@ -1726,11 +1736,37 @@ fn present_update(response: pb::GetUpdateResponse) -> Result<pb::get_update_resp
     })
 }
 
+/// How long a resumable stream waits before its `reconnects`-th reconnect:
+/// the step times the count.
+///
+/// Saturating, because `Duration * u32` panics when the product does not fit.
+/// The step and the budget both come from the caller's `RetryConfig`, so only
+/// an extreme configuration gets there, and it should wait a long time rather
+/// than bring the stream's task down.
+pub(crate) fn reconnect_delay(backoff_unit: Duration, reconnects: u32) -> Duration {
+    backoff_unit.saturating_mul(reconnects)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::CantonClient;
+    use super::{CantonClient, reconnect_delay};
     use crate::Config;
     use canton_core::Error;
+    use std::time::Duration;
+
+    /// The delay grows with each reconnect, and a step too large to multiply
+    /// is a long wait, not a panic.
+    #[test]
+    fn the_reconnect_delay_grows_and_never_overflows() {
+        let step = Duration::from_millis(250);
+        assert_eq!(reconnect_delay(step, 1), step);
+        assert_eq!(reconnect_delay(step, 4), Duration::from_secs(1));
+        assert_eq!(reconnect_delay(Duration::MAX, 2), Duration::MAX);
+        assert_eq!(
+            reconnect_delay(Duration::from_secs(u64::MAX / 2), u32::MAX),
+            Duration::MAX
+        );
+    }
 
     // Compile-time guarantee that the client is Send + Sync, so consumers can
     // share it across tasks and `tokio::spawn` work that holds it. (The streaming

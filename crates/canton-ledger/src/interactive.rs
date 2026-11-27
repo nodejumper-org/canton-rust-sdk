@@ -88,10 +88,8 @@ impl Prepare {
             min_ledger_time_rel: None,
             verbose_hashing: false,
             max_record_time: None,
-            // Asked for explicitly rather than left to the participant: the
-            // scheme decides what the signature covers, and `Prepared` refuses
-            // a response hashed under one the caller did not ask for.
-            hashing_scheme_version: Some(ipb::HashingSchemeVersion::V2 as i32),
+            // Not chosen yet. One is always sent, see `hashing_scheme`.
+            hashing_scheme_version: None,
             taps_max_passes: None,
             // The participant estimates by default; only an explicit opt-out
             // is sent, so leaving this alone changes nothing.
@@ -214,15 +212,34 @@ impl Prepare {
     /// what makes preparing a fresh transaction for the same intent safe again:
     /// without a bound, "it might still commit" and "prepare another" are both
     /// true at once.
+    ///
+    /// The bound holds because the signature covers it, and only hashing
+    /// scheme `V3` signs it. Under `V2` it is not part of the hash, so an
+    /// executing participant can change or drop it and the signature still
+    /// verifies. A request with a bound is therefore prepared under `V3`
+    /// unless a scheme was chosen with
+    /// [`with_hashing_scheme_version`](Self::with_hashing_scheme_version), and
+    /// one that sets a bound and chooses `V2` is refused as
+    /// [`Error::InvalidRequest`] before it is sent. The prepared transaction
+    /// must then carry exactly this bound: one that comes back without it, or
+    /// with another, is refused before anything is signed.
+    ///
+    /// `V3` needs a synchronizer at protocol version 35 or later (Canton
+    /// 3.5.1). On an older one the participant refuses the scheme, and a max
+    /// record time cannot be signed for at all. A ledger time is in whole
+    /// microseconds, so a finer one is rounded down to the microsecond before
+    /// it is sent, as Canton itself would round it.
     #[must_use]
     pub fn with_max_record_time(mut self, time: prost_types::Timestamp) -> Self {
         self.max_record_time = Some(time);
         self
     }
 
-    /// Choose the hashing scheme. Defaults to `V2`, which this SDK asks for
-    /// explicitly rather than leaving to the participant; a transaction that
-    /// uses contract keys needs `V3`.
+    /// Choose the hashing scheme. Defaults to `V2`, or to `V3` when a
+    /// [max record time](Self::with_max_record_time) is set, since `V2` does
+    /// not sign one. Either way the SDK asks for a scheme explicitly rather
+    /// than leaving it to the participant. A transaction that uses contract
+    /// keys needs `V3`.
     ///
     /// The scheme decides what the hash covers, so it is echoed in the response
     /// and sent back with the signature — the participant must verify under the
@@ -298,8 +315,75 @@ impl Prepare {
     /// The hashing scheme this request asks for, if any, so the response can
     /// be held to it.
     pub(crate) fn requested_hashing_scheme(&self) -> Option<ipb::HashingSchemeVersion> {
+        ipb::HashingSchemeVersion::try_from(self.hashing_scheme()).ok()
+    }
+
+    /// The scheme the request asks for: the one that was chosen, else `V3`
+    /// when there is a max record time for the signature to cover, else `V2`.
+    ///
+    /// Always one or the other, never left to the participant: the scheme
+    /// decides what the signature covers, and `Prepared` refuses a response
+    /// hashed under one the caller did not ask for.
+    fn hashing_scheme(&self) -> i32 {
         self.hashing_scheme_version
-            .and_then(|v| ipb::HashingSchemeVersion::try_from(v).ok())
+            .unwrap_or(if self.max_record_time.is_some() {
+                ipb::HashingSchemeVersion::V3 as i32
+            } else {
+                ipb::HashingSchemeVersion::V2 as i32
+            })
+    }
+
+    /// Refuse a request the participant could not hold to what it says.
+    ///
+    /// A max record time under `V2` is one: `V2` does not hash it, so the
+    /// caller would sign a transaction whose deadline the executing
+    /// participant is free to move.
+    pub(crate) fn check(&self) -> Result<()> {
+        self.requested_max_record_time()?;
+        if self.max_record_time.is_some()
+            && self.hashing_scheme() == ipb::HashingSchemeVersion::V2 as i32
+        {
+            return Err(Error::InvalidRequest(
+                "a max record time is covered by the signature only under hashing scheme V3: \
+                 under V2 the executing participant can change or drop it. Prepare under V3 \
+                 (leave the scheme unset, or with_hashing_scheme_version(V3)), or set no max \
+                 record time"
+                    .to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// The max record time this request asks for, in microseconds since the
+    /// epoch: the unit the prepared transaction's metadata carries it in, so
+    /// that the response can be held to it exactly.
+    ///
+    /// Rounded down to the microsecond, which is the finest a ledger time is
+    /// and what Canton does with a finer one. The request is sent rounded the
+    /// same way ([`into_request`](Self::into_request)), so the participant
+    /// has nothing to round and the two can be compared exactly.
+    pub(crate) fn requested_max_record_time(&self) -> Result<Option<u64>> {
+        let Some(time) = &self.max_record_time else {
+            return Ok(None);
+        };
+        let refuse = |why: &str| {
+            Error::InvalidRequest(format!(
+                "a max record time of {}s and {}ns {why}",
+                time.seconds, time.nanos
+            ))
+        };
+        if !(0..1_000_000_000).contains(&time.nanos) {
+            return Err(refuse(
+                "is not a timestamp: its nanoseconds are not within a second",
+            ));
+        }
+        let micros = u64::try_from(time.seconds)
+            .ok()
+            .and_then(|seconds| seconds.checked_mul(1_000_000))
+            .zip(u64::try_from(time.nanos / 1_000).ok())
+            .and_then(|(seconds, micros)| seconds.checked_add(micros))
+            .ok_or_else(|| refuse("is before 1970 or beyond what a ledger time can hold"))?;
+        Ok(Some(micros))
     }
 
     /// Whether the caller accepted an unchecked hash for a scheme the SDK
@@ -309,6 +393,7 @@ impl Prepare {
     }
 
     pub(crate) fn into_request(self) -> (String, Option<String>, ipb::PrepareSubmissionRequest) {
+        let hashing_scheme_version = Some(self.hashing_scheme());
         let command_id = self
             .command_id
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -326,8 +411,12 @@ impl Prepare {
             package_id_selection_preference: self.package_id_selection_preference,
             verbose_hashing: self.verbose_hashing,
             prefetch_contract_keys: self.prefetch_contract_keys,
-            max_record_time: self.max_record_time,
-            hashing_scheme_version: self.hashing_scheme_version,
+            // Whole microseconds, as `requested_max_record_time` counts it.
+            max_record_time: self.max_record_time.map(|time| prost_types::Timestamp {
+                seconds: time.seconds,
+                nanos: time.nanos.saturating_sub(time.nanos.rem_euclid(1_000)),
+            }),
+            hashing_scheme_version,
             taps_max_passes: self.taps_max_passes,
             estimate_traffic_cost: (!self.estimate_traffic_cost).then_some(
                 ipb::CostEstimationHints {
@@ -339,6 +428,73 @@ impl Prepare {
         };
         (command_id, user_id, request)
     }
+}
+
+/// The acting parties as a set.
+fn party_set(parties: &[String]) -> std::collections::BTreeSet<&str> {
+    parties.iter().map(String::as_str).collect()
+}
+
+/// Hold a prepared transaction to the request it answers: the command id,
+/// the acting parties and the max record time are the caller's to choose, and
+/// a hash that checks out says only that the participant hashed what it
+/// returned, not that it returned what was asked for.
+fn held_to_request(
+    transaction: &ipb::PreparedTransaction,
+    command_id: &str,
+    act_as: &[String],
+    max_record_time: Option<u64>,
+) -> Result<()> {
+    // Check the metadata names the command the caller asked for.
+    let submitter = transaction
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.submitter_info.as_ref())
+        .ok_or_else(|| {
+            Error::UnexpectedResponse(
+                "prepare returned a transaction with no submitter info".to_string(),
+            )
+        })?;
+    if submitter.command_id != command_id {
+        return Err(Error::UnexpectedResponse(format!(
+            "prepare returned a transaction for command `{}` but `{command_id}` was \
+             requested; refusing to sign it",
+            submitter.command_id
+        )));
+    }
+    // The participant returns the acting parties sorted.
+    if party_set(&submitter.act_as) != party_set(act_as) {
+        return Err(Error::UnexpectedResponse(format!(
+            "prepare returned a transaction acting as [{}] but [{}] was requested; \
+             refusing to sign it",
+            submitter.act_as.join(", "),
+            act_as.join(", ")
+        )));
+    }
+    // And carries the deadline that was asked for, or none where none
+    // was. The signature covers whatever max record time the transaction
+    // has, so the scheme hashing it is only half of the promise: a
+    // participant that prepared it without the deadline, or with a later
+    // one, and hashed that, would otherwise be signed for.
+    let returned = transaction
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.max_record_time);
+    if returned != max_record_time {
+        let describe = |time: Option<u64>| {
+            time.map_or_else(
+                || "no max record time".to_string(),
+                |micros| format!("a max record time of {micros} microseconds"),
+            )
+        };
+        return Err(Error::UnexpectedResponse(format!(
+            "prepare returned a transaction with {} but {} was requested; refusing to \
+             sign it",
+            describe(returned),
+            describe(max_record_time)
+        )));
+    }
+    Ok(())
 }
 
 /// A `std::time::Duration` as protobuf carries one.
@@ -411,6 +567,9 @@ pub struct Prepared {
 }
 
 impl Prepared {
+    /// `max_record_time` is the deadline the request asked for, in
+    /// microseconds since the epoch, or `None` if it asked for none.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_response(
         response: ipb::PrepareSubmissionResponse,
         requested_scheme: Option<ipb::HashingSchemeVersion>,
@@ -419,6 +578,7 @@ impl Prepared {
         read_as: Vec<String>,
         command_id: String,
         user_id: Option<String>,
+        max_record_time: Option<u64>,
     ) -> Result<Self> {
         // The transaction is what the proto marks `Required`, and it is where
         // the change ID lives — without it an execute request is invalid and
@@ -494,6 +654,8 @@ impl Prepared {
                  signs it as returned"
             )));
         }
+        held_to_request(transaction, &command_id, &act_as, max_record_time)?;
+
         Ok(Self {
             transaction: response.prepared_transaction,
             hash: response.prepared_transaction_hash,
@@ -948,6 +1110,7 @@ mod tests {
             Vec::new(),
             "command-1".to_string(),
             Some("user-1".to_string()),
+            None,
         )
         .expect("a response carrying a transaction and a hash")
     }
@@ -969,6 +1132,7 @@ mod tests {
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
+            None,
             None,
         )
         .expect_err("no hash");
@@ -995,6 +1159,7 @@ mod tests {
             vec!["alice".to_string()],
             Vec::new(),
             "c".to_string(),
+            None,
             None,
         )
         .expect_err("no transaction");
@@ -1023,6 +1188,7 @@ mod tests {
             vec!["alice".to_string()],
             Vec::new(),
             "command-1".to_string(),
+            None,
             None,
         )
         .expect_err("refused");
@@ -1092,6 +1258,7 @@ mod tests {
             vec!["alice".to_string()],
             Vec::new(),
             "command-1".to_string(),
+            None,
             None,
         )
     }
@@ -1257,6 +1424,228 @@ mod tests {
         );
     }
 
+    /// The deadline the caller asked for is the one that gets signed. A
+    /// participant that prepares the transaction without it, or with a later
+    /// one, and hashes what it prepared, has a hash that checks out: the
+    /// scheme covering the field does not make it the field that was asked
+    /// for. The same holds for a deadline nobody asked for.
+    #[test]
+    fn a_dropped_moved_or_added_max_record_time_is_refused() {
+        const ASKED: u64 = 1_900_000_000_000_000;
+        let act_as = vec!["alice".to_string()];
+        let response = |returned: Option<u64>| {
+            let (mut transaction, _) = hashable(&act_as, "command-1");
+            transaction
+                .metadata
+                .as_mut()
+                .expect("metadata")
+                .max_record_time = returned;
+            let hash = crate::hashing::hash_prepared_transaction(
+                &transaction,
+                ipb::HashingSchemeVersion::V3,
+            )
+            .expect("hashable under V3")
+            .to_vec();
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
+                hashing_scheme_version: ipb::HashingSchemeVersion::V3 as i32,
+                hashing_details: None,
+                cost_estimation: None,
+            }
+        };
+        let held_to = |returned: Option<u64>, asked: Option<u64>| {
+            Prepared::from_response(
+                response(returned),
+                Some(ipb::HashingSchemeVersion::V3),
+                false,
+                act_as.clone(),
+                Vec::new(),
+                "command-1".to_string(),
+                Some("user-1".to_string()),
+                asked,
+            )
+        };
+
+        held_to(Some(ASKED), Some(ASKED)).expect("the deadline that was asked for");
+        held_to(None, None).expect("no deadline, and none asked for");
+
+        for (what, returned, asked) in [
+            ("dropped", None, Some(ASKED)),
+            (
+                "moved a year on",
+                Some(ASKED + 31_536_000_000_000),
+                Some(ASKED),
+            ),
+            ("moved a microsecond", Some(ASKED + 1), Some(ASKED)),
+            ("added", Some(ASKED), None),
+        ] {
+            let error = held_to(returned, asked).expect_err(what);
+            assert!(
+                matches!(error, Error::UnexpectedResponse(_)),
+                "{what}: {error:?}"
+            );
+            assert!(
+                error.to_string().contains("max record time"),
+                "{what}: {error}"
+            );
+        }
+    }
+
+    /// The deadline is compared in microseconds. A finer one, which is what a
+    /// `SystemTime` gives on Linux, is rounded down to the microsecond in the
+    /// request and in the comparison alike; a timestamp that is not a time is
+    /// refused before it is sent.
+    #[test]
+    fn a_max_record_time_is_rounded_down_to_the_microsecond_or_refused_before_sending() {
+        let at = |seconds: i64, nanos: i32| {
+            Prepare::new("alice").with_max_record_time(prost_types::Timestamp { seconds, nanos })
+        };
+        assert_eq!(
+            at(1_900_000_000, 123_456_000)
+                .requested_max_record_time()
+                .expect("whole microseconds"),
+            Some(1_900_000_000_123_456)
+        );
+        assert_eq!(
+            at(0, 0).requested_max_record_time().expect("the epoch"),
+            Some(0)
+        );
+        assert_eq!(
+            Prepare::new("alice")
+                .requested_max_record_time()
+                .expect("no deadline"),
+            None
+        );
+        for (nanos, micros) in [
+            (1, 0),
+            (999, 0),
+            (123_456_789, 123_456),
+            (999_999_999, 999_999),
+        ] {
+            let prepare = at(1_900_000_000, nanos);
+            prepare
+                .check()
+                .expect("a deadline finer than a microsecond");
+            assert_eq!(
+                prepare.requested_max_record_time().expect("rounded down"),
+                Some(1_900_000_000_000_000 + micros)
+            );
+            let sent = prepare
+                .into_request()
+                .2
+                .max_record_time
+                .expect("the deadline is sent");
+            assert_eq!(
+                (sent.seconds, sent.nanos),
+                (1_900_000_000, i32::try_from(micros * 1_000).unwrap()),
+                "the request carries the deadline the response is held to"
+            );
+        }
+        for prepare in [
+            at(1_900_000_000, 1_000_000_000),
+            at(1_900_000_000, -1_000),
+            at(-1, 0),
+            at(i64::MAX, 0),
+        ] {
+            let error = prepare.check().expect_err("not a comparable deadline");
+            assert!(matches!(error, Error::InvalidRequest(_)), "{error:?}");
+        }
+    }
+
+    /// A substituted command id still matches the hash.
+    #[test]
+    fn a_substituted_command_id_is_refused() {
+        let act_as = vec!["alice".to_string()];
+        let (transaction, hash) = hashable(&act_as, "the-id-the-participant-used");
+        let error = Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
+                hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                hashing_details: None,
+                cost_estimation: None,
+            },
+            Some(ipb::HashingSchemeVersion::V2),
+            false,
+            act_as,
+            Vec::new(),
+            "the-id-the-caller-asked-for".to_string(),
+            Some("user-1".to_string()),
+            None,
+        )
+        .expect_err("a command id that was not requested");
+
+        assert!(
+            matches!(error, Error::UnexpectedResponse(_)),
+            "the substitution is the participant's mistake: {error}"
+        );
+        let message = error.to_string();
+        assert!(message.contains("the-id-the-participant-used"), "{message}");
+        assert!(message.contains("the-id-the-caller-asked-for"), "{message}");
+    }
+
+    /// The same check for the acting parties, in both directions: a party
+    /// that was not requested, and a requested party that is missing.
+    #[test]
+    fn substituted_acting_parties_are_refused() {
+        for (signed, requested) in [
+            (vec!["alice", "bob"], vec!["alice"]),
+            (vec!["alice"], vec!["alice", "bob"]),
+        ] {
+            let signed: Vec<String> = signed.iter().map(ToString::to_string).collect();
+            let (transaction, hash) = hashable(&signed, "command-1");
+            let error = Prepared::from_response(
+                ipb::PrepareSubmissionResponse {
+                    prepared_transaction: Some(transaction),
+                    prepared_transaction_hash: hash,
+                    hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                    hashing_details: None,
+                    cost_estimation: None,
+                },
+                Some(ipb::HashingSchemeVersion::V2),
+                false,
+                requested.iter().map(ToString::to_string).collect(),
+                Vec::new(),
+                "command-1".to_string(),
+                Some("user-1".to_string()),
+                None,
+            )
+            .expect_err("the parties differ from the request");
+
+            assert!(
+                matches!(error, Error::UnexpectedResponse(_)),
+                "the mismatch is the participant's mistake: {error}"
+            );
+            assert!(error.to_string().contains("bob"), "{error}");
+        }
+    }
+
+    /// A request that listed the parties in another order is the same
+    /// request.
+    #[test]
+    fn acting_parties_in_another_order_are_the_same_request() {
+        let signed = vec!["alice".to_string(), "bob".to_string()];
+        let (transaction, hash) = hashable(&signed, "command-1");
+        Prepared::from_response(
+            ipb::PrepareSubmissionResponse {
+                prepared_transaction: Some(transaction),
+                prepared_transaction_hash: hash,
+                hashing_scheme_version: ipb::HashingSchemeVersion::V2 as i32,
+                hashing_details: None,
+                cost_estimation: None,
+            },
+            Some(ipb::HashingSchemeVersion::V2),
+            false,
+            vec!["bob".to_string(), "alice".to_string()],
+            Vec::new(),
+            "command-1".to_string(),
+            Some("user-1".to_string()),
+            None,
+        )
+        .expect("the same two parties, listed the other way round");
+    }
+
     /// The change ID is `(user_id, act_as, command_id)`. If the command id did
     /// not survive preparation, executing twice would commit twice instead of
     /// being de-duplicated — the failure mode the id exists to prevent.
@@ -1415,6 +1804,82 @@ mod tests {
         );
     }
 
+    /// A max record time is a promise only if the signature covers it, and
+    /// only V3 hashes it. So a request with one asks for V3 unless a scheme
+    /// was chosen, and one that chooses V2 is refused before it is sent.
+    #[test]
+    fn a_max_record_time_is_prepared_under_v3_and_refused_under_a_chosen_v2() {
+        let scheme = |prepare: Prepare| {
+            prepare.check().expect("a request that can be sent");
+            assert_eq!(
+                prepare
+                    .requested_hashing_scheme()
+                    .map(|scheme| scheme as i32),
+                prepare.clone().into_request().2.hashing_scheme_version,
+                "the response is held to the scheme that was sent"
+            );
+            prepare.into_request().2.hashing_scheme_version
+        };
+        let deadline = prost_types::Timestamp {
+            seconds: 1_900_000_000,
+            nanos: 0,
+        };
+        let v2 = Some(ipb::HashingSchemeVersion::V2 as i32);
+        let v3 = Some(ipb::HashingSchemeVersion::V3 as i32);
+
+        // Without a deadline the default stays V2, and a choice is kept.
+        assert_eq!(scheme(Prepare::new("alice")), v2);
+        assert_eq!(
+            scheme(
+                Prepare::new("alice").with_hashing_scheme_version(ipb::HashingSchemeVersion::V3)
+            ),
+            v3
+        );
+        assert_eq!(
+            scheme(
+                Prepare::new("alice").with_hashing_scheme_version(ipb::HashingSchemeVersion::V2)
+            ),
+            v2
+        );
+
+        // With one, V3, whichever of the two is set first.
+        assert_eq!(
+            scheme(Prepare::new("alice").with_max_record_time(deadline)),
+            v3
+        );
+        assert_eq!(
+            scheme(
+                Prepare::new("alice")
+                    .with_hashing_scheme_version(ipb::HashingSchemeVersion::V3)
+                    .with_max_record_time(deadline)
+            ),
+            v3
+        );
+
+        // A deadline under a chosen V2 would be signed for without being
+        // covered, in either order of setting them.
+        for prepare in [
+            Prepare::new("alice")
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V2),
+            Prepare::new("alice")
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V2)
+                .with_max_record_time(deadline),
+        ] {
+            let error = prepare.check().expect_err("a deadline V2 does not sign");
+            assert!(matches!(error, Error::InvalidRequest(_)), "{error:?}");
+            assert!(error.to_string().contains("V3"), "{error}");
+        }
+
+        // A scheme this SDK cannot recompute is the caller's to judge.
+        scheme(
+            Prepare::new("alice")
+                .with_max_record_time(deadline)
+                .with_hashing_scheme_version(ipb::HashingSchemeVersion::V4)
+                .trust_participant_hash(),
+        );
+    }
+
     /// The hash the signer sees is the participant's, unmodified.
     #[tokio::test]
     async fn the_signer_is_handed_the_participants_hash() {
@@ -1500,6 +1965,7 @@ mod tests {
             vec!["carol".to_string()],
             "command-7".to_string(),
             Some("user-1".to_string()),
+            None,
         )
         .expect("a full response");
 

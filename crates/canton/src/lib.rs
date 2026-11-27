@@ -12,7 +12,7 @@
 //! | [`admin`] | `canton-admin` | Party management, user self-inspect, topology read |
 //! | [`daml`] | `canton-daml` | The runtime under generated bindings: Daml primitives, codecs, command builders |
 //! | [`signer`] | `canton-signer` | Pluggable signing for interactive submission — Ed25519 built in, HSM/KMS via the trait |
-//! | [`token`] | `canton-token` | Token-standard workflows: CIP-56 at the root, CIP-0112 under `token::v2` |
+//! | [`token`] | `canton-token` | Token-standard workflows: CIP-56 at the root, CIP-0112 under `token::v2`; the Scan client under `token::scan` |
 //! | [`pqs`] | `canton-pqs` | Typed reads from the Participant Query Store (`pqs-tls` for TLS) |
 //!
 //! The shared foundation (`canton-core`: [`Config`], [`Error`], TLS, retry)

@@ -159,9 +159,11 @@ options of `AllocateParty` are deliberately not wrapped; use the generated types
 ## External parties
 
 An external party's key stays outside the participant, so allocating one takes
-two calls with a signature in between. The participant computes the key's
-fingerprint, which means the signer cannot be built until the first call
-returns:
+two calls with a signature in between. The participant reports the key's
+fingerprint, and the SDK refuses its reply unless that is the one
+`PublicKey::fingerprint()` computes from the key. So the signer can be built
+from `topology.public_key_fingerprint()` after the first call, as here, or
+from `key.public_key().fingerprint()?` before it:
 
 ```rust,ignore
 use canton_signer::Ed25519Key;

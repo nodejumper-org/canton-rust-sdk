@@ -9,7 +9,8 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::large_futures,
-    clippy::result_large_err
+    clippy::result_large_err,
+    clippy::indexing_slicing
 )]
 
 use std::sync::atomic::{AtomicUsize, Ordering};

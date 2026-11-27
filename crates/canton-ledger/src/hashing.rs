@@ -21,11 +21,15 @@
 //! only be hashed under V3. The test module carries Canton's own vectors for
 //! each node kind, the transaction, the metadata and the whole, under both.
 
+// This module runs on bytes a participant chose, before anything is signed.
+// Arithmetic that could overflow or wrap on them has to say what it does then.
+#![warn(clippy::arithmetic_side_effects)]
+
 use canton_proto::com::daml::ledger::api::v2 as api;
 use canton_proto::com::daml::ledger::api::v2::interactive as ipb;
 use canton_proto::com::daml::ledger::api::v2::interactive::transaction::v1 as node;
 use sha2::{Digest as _, Sha256};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// `HashPurpose.PreparedSubmission`.
 const PURPOSE_PREPARED_SUBMISSION: u32 = 48;
@@ -203,14 +207,6 @@ impl Builder {
         self
     }
 
-    fn strings(&mut self, values: &[String]) -> Result<&mut Self, HashingError> {
-        self.count(values.len())?;
-        for value in values {
-            self.string(value)?;
-        }
-        Ok(self)
-    }
-
     /// `addStringSet`: sorted, unique, counted.
     fn string_set(&mut self, values: &[String]) -> Result<&mut Self, HashingError> {
         let mut sorted: Vec<&String> = values.iter().collect();
@@ -347,7 +343,7 @@ impl Builder {
                 self.byte(9);
                 match &opt.value {
                     Some(inner) => {
-                        self.byte(1).value(inner, depth + 1)?;
+                        self.byte(1).value(inner, depth.saturating_add(1))?;
                     }
                     None => {
                         self.byte(0);
@@ -357,7 +353,7 @@ impl Builder {
             Sum::List(list) => {
                 self.byte(10).count(list.elements.len())?;
                 for element in &list.elements {
-                    self.value(element, depth + 1)?;
+                    self.value(element, depth.saturating_add(1))?;
                 }
             }
             Sum::TextMap(map) => {
@@ -366,7 +362,7 @@ impl Builder {
                     self.string(&entry.key)?;
                     self.value(
                         required(entry.value.as_ref(), "a text-map entry without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -382,7 +378,7 @@ impl Builder {
                     }
                     self.value(
                         required(field.value.as_ref(), "a record field without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -392,7 +388,7 @@ impl Builder {
                     .string(&variant.constructor)?
                     .value(
                         required(variant.value.as_ref(), "a variant without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
             }
             Sum::Enum(e) => {
@@ -405,11 +401,11 @@ impl Builder {
                 for entry in &map.entries {
                     self.value(
                         required(entry.key.as_ref(), "a map entry without a key")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                     self.value(
                         required(entry.value.as_ref(), "a map entry without a value")?,
-                        depth + 1,
+                        depth.saturating_add(1),
                     )?;
                 }
             }
@@ -427,15 +423,33 @@ fn required<'a, T>(value: Option<&'a T>, what: &str) -> Result<&'a T, HashingErr
     value.ok_or_else(|| err(what))
 }
 
+/// A contract id as bytes. Canton reads one as lower-case base16 and nothing
+/// else (`HexString` in daml-lf's `IdString`), so nothing else decodes here:
+/// an id Canton would refuse must not hash as if it were one it accepts.
+/// Decoded byte by byte, since a participant's reply is not known to be ASCII.
 fn decode_hex(text: &str) -> Result<Vec<u8>, HashingError> {
-    if !text.len().is_multiple_of(2) {
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "each arm subtracts the low end of the range it matched"
+    )]
+    fn nibble(digit: u8) -> Option<u8> {
+        match digit {
+            b'0'..=b'9' => Some(digit - b'0'),
+            b'a'..=b'f' => Some(digit - b'a' + 10),
+            _ => None,
+        }
+    }
+    let (pairs, rest) = text.as_bytes().as_chunks::<2>();
+    if !rest.is_empty() {
         return Err(err(format!("`{text}` is not a contract id (odd length)")));
     }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| {
-            u8::from_str_radix(&text[i..i + 2], 16)
-                .map_err(|_| err(format!("`{text}` is not a contract id (not hex)")))
+    pairs
+        .iter()
+        .map(|[high, low]| match (nibble(*high), nibble(*low)) {
+            (Some(high), Some(low)) => Ok(high << 4 | low),
+            _ => Err(err(format!(
+                "`{text}` is not a contract id (not lower-case hex)"
+            ))),
         })
         .collect()
 }
@@ -536,31 +550,80 @@ fn hash_query_by_key(query: &node::QueryByKey, scheme: Scheme) -> Result<Hash, H
     Ok(b.finish())
 }
 
+/// Where the walk over a transaction's nodes stands on one of them.
+enum Visit {
+    /// Being hashed: its children are still being walked.
+    Open,
+    Done(Hash),
+}
+
 struct Tree<'a> {
     nodes: HashMap<&'a str, &'a node::Node>,
     seeds: HashMap<i32, Hash>,
     scheme: Scheme,
+    visited: HashMap<&'a str, Visit>,
 }
 
-impl Tree<'_> {
-    fn seed(&self, node_id: &str) -> Option<&Hash> {
+impl<'a> Tree<'a> {
+    fn new(
+        nodes: HashMap<&'a str, &'a node::Node>,
+        seeds: HashMap<i32, Hash>,
+        scheme: Scheme,
+    ) -> Self {
+        Self {
+            nodes,
+            seeds,
+            scheme,
+            visited: HashMap::new(),
+        }
+    }
+
+    fn seed(&self, node_id: &str) -> Option<Hash> {
         node_id
             .parse::<i32>()
             .ok()
             .and_then(|id| self.seeds.get(&id))
+            .copied()
     }
 
-    fn hash_node(&self, node_id: &str, depth: usize) -> Result<Hash, HashingError> {
+    /// A node's hash, computed once for the transaction however many times
+    /// the node is listed. It depends on the node's content, its seed and its
+    /// children's hashes, none of which change with where the node is listed,
+    /// so the second listing gets the first one's answer. Without that, a
+    /// transaction whose nodes each list the next one twice costs two to the
+    /// power of its depth, and [`MAX_DEPTH`] bounds the depth, not the visits.
+    fn hash_node(&mut self, node_id: &'a str, depth: usize) -> Result<Hash, HashingError> {
         if depth > MAX_DEPTH {
             return Err(err(
                 "a transaction nested deeper than a participant prepares",
             ));
         }
-        let node = self.nodes.get(node_id).ok_or_else(|| {
+        match self.visited.get(node_id) {
+            Some(Visit::Done(hash)) => return Ok(*hash),
+            Some(Visit::Open) => {
+                return Err(err(format!(
+                    "node `{node_id}` is its own descendant, which no node of a transaction is"
+                )));
+            }
+            None => {}
+        }
+        let node = *self.nodes.get(node_id).ok_or_else(|| {
             err(format!(
                 "the transaction refers to node `{node_id}`, which it does not contain"
             ))
         })?;
+        self.visited.insert(node_id, Visit::Open);
+        let hash = self.hash_unvisited(node_id, node, depth)?;
+        self.visited.insert(node_id, Visit::Done(hash));
+        Ok(hash)
+    }
+
+    fn hash_unvisited(
+        &mut self,
+        node_id: &'a str,
+        node: &'a node::Node,
+        depth: usize,
+    ) -> Result<Hash, HashingError> {
         match node
             .node_type
             .as_ref()
@@ -570,7 +633,7 @@ impl Tree<'_> {
                 let seed = self
                     .seed(node_id)
                     .ok_or_else(|| err(format!("no node seed for create node `{node_id}`")))?;
-                hash_create(create, Some(seed), self.scheme)
+                hash_create(create, Some(&seed), self.scheme)
             }
             node::node::NodeType::Fetch(fetch) => hash_fetch(fetch, self.scheme),
             node::node::NodeType::Exercise(exercise) => {
@@ -587,7 +650,7 @@ impl Tree<'_> {
                 let mut b = Builder::for_node(self.scheme);
                 b.string(&exercise.lf_version)?
                     .byte(EXERCISE_TAG)
-                    .hash(seed)
+                    .hash(&seed)
                     .contract_id(&exercise.contract_id)?
                     .string(&exercise.package_name)?
                     .identifier(required(
@@ -622,7 +685,7 @@ impl Tree<'_> {
                 }
                 b.count(exercise.children.len())?;
                 for child in &exercise.children {
-                    let child_hash = self.hash_node(child, depth + 1)?;
+                    let child_hash = self.hash_node(child, depth.saturating_add(1))?;
                     b.hash(&child_hash);
                 }
                 Ok(b.finish())
@@ -631,7 +694,7 @@ impl Tree<'_> {
                 let mut b = Builder::for_node(self.scheme);
                 b.byte(ROLLBACK_TAG).count(rollback.children.len())?;
                 for child in &rollback.children {
-                    let child_hash = self.hash_node(child, depth + 1)?;
+                    let child_hash = self.hash_node(child, depth.saturating_add(1))?;
                     b.hash(&child_hash);
                 }
                 Ok(b.finish())
@@ -665,11 +728,7 @@ fn hash_transaction(
             .map_err(|_| err(format!("the seed of node {} is not 32 bytes", seed.node_id)))?;
         seeds.insert(seed.node_id, bytes);
     }
-    let tree = Tree {
-        nodes,
-        seeds,
-        scheme,
-    };
+    let mut tree = Tree::new(nodes, seeds, scheme);
     let mut b = Builder::with_purpose();
     b.string(&transaction.version)?
         .count(transaction.roots.len())?;
@@ -689,7 +748,7 @@ fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, Hashi
     if scheme == Scheme::V2 {
         b.byte(METADATA_ENCODING_V1);
     }
-    b.strings(&submitter.act_as)?
+    b.string_set(&submitter.act_as)?
         .string(&submitter.command_id)?
         .string(&metadata.transaction_uuid)?
         .int(
@@ -710,24 +769,39 @@ fn hash_metadata(metadata: &ipb::Metadata, scheme: Scheme) -> Result<Hash, Hashi
             }
         }
     }
-    b.unsigned_long(metadata.preparation_time)?
-        .count(metadata.input_contracts.len())?;
+    // Canton hashes the disclosed contracts as a map keyed by contract id.
+    // A repeated id keeps only its last entry.
+    let mut inputs: BTreeMap<&str, (u64, &node::Create)> = BTreeMap::new();
     for input in &metadata.input_contracts {
         let Some(ipb::metadata::input_contract::Contract::V1(create)) = &input.contract else {
             return Err(err("an input contract that is not a v1 create"));
         };
-        b.unsigned_long(input.created_at)?;
+        inputs.insert(&create.contract_id, (input.created_at, create));
+    }
+
+    b.unsigned_long(metadata.preparation_time)?
+        .count(inputs.len())?;
+    for (created_at, create) in inputs.into_values() {
+        b.unsigned_long(created_at)?;
         let contract_hash = hash_create(create, None, scheme)?;
         b.hash(&contract_hash);
     }
-    if scheme == Scheme::V3 {
-        match metadata.max_record_time {
-            Some(micros) => {
-                b.byte(1).unsigned_long(micros)?;
-            }
-            None => {
-                b.byte(0);
-            }
+    match (scheme, metadata.max_record_time) {
+        (Scheme::V3, Some(micros)) => {
+            b.byte(1).unsigned_long(micros)?;
+        }
+        (Scheme::V3, None) => {
+            b.byte(0);
+        }
+        (Scheme::V2, None) => {}
+        // V2 has no encoding for it, so the hash would be the same with the
+        // deadline moved or removed: signing it would not sign the deadline.
+        (Scheme::V2, Some(_)) => {
+            return Err(err(
+                "the transaction has a max record time, which hashing scheme V2 does not cover: \
+                 an executing participant could change or drop it and the signature would \
+                 still verify; prepare it under V3",
+            ));
         }
     }
     Ok(b.finish())
@@ -759,7 +833,8 @@ fn hash_prepared(
 ///
 /// # Errors
 /// [`HashingError`] if the transaction is not something the V2 scheme
-/// covers (a contract key, a node at a newer LF serialization version), or is
+/// covers (a contract key, a node at a newer LF serialization version, a max
+/// record time), or is
 /// not self-consistent (a node missing, a seed missing, a contract id that is
 /// not hex).
 pub fn hash_prepared_transaction_v2(
@@ -801,7 +876,11 @@ pub fn hash_prepared_transaction(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::arithmetic_side_effects
+)]
 mod tests {
     //! Canton's own vectors (`protocol/hash/v2/` and `v3/`, `NodeHashTest.scala`
     //! and `MetadataHashTest.scala`, Canton 3.5.17), rebuilt as the API protos a
@@ -988,7 +1067,7 @@ mod tests {
         for entry in &tx.nodes {
             let Some(ipb::daml_transaction::node::VersionedNode::V1(node)) = &entry.versioned_node
             else {
-                unreachable!()
+                panic!("the fixture holds v1 nodes only")
             };
             nodes.insert(entry.node_id.as_str(), node);
         }
@@ -997,11 +1076,7 @@ mod tests {
             .iter()
             .map(|s| (s.node_id, s.seed.as_slice().try_into().unwrap()))
             .collect();
-        Tree {
-            nodes,
-            seeds,
-            scheme,
-        }
+        Tree::new(nodes, seeds, scheme)
     }
 
     #[test]
@@ -1016,7 +1091,7 @@ mod tests {
             "c962c6098394f3d11cd6f0c795de9517d32a8e3e1979cec76cd2f66254efc610"
         );
         let tx = transaction();
-        let tree = tree(&tx, Scheme::V2);
+        let mut tree = tree(&tx, Scheme::V2);
         assert_eq!(
             to_hex(&tree.hash_node("2", 0).unwrap()),
             "070970eb4b2de72561dafb67017ca33850650a8103e5134e16044ba78991f48c"
@@ -1025,6 +1100,80 @@ mod tests {
             to_hex(&tree.hash_node("3", 0).unwrap()),
             "7264d5da2fd714427453bedc0d1cdb21f52ac7aec8d4bb5ac0598d25c5fcaed9"
         );
+    }
+
+    /// Canton hashes `actAs` as a `SortedSet`. It hashes the disclosed
+    /// contracts as a `SortedMap` keyed by contract id. Order and repetition
+    /// are not part of the hash under either scheme.
+    #[test]
+    fn metadata_field_order_and_repetition_do_not_change_the_hash() {
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let expected = hash_metadata(&metadata(), scheme).unwrap();
+
+            let mut reversed_parties = metadata();
+            let submitter = reversed_parties.submitter_info.as_mut().unwrap();
+            submitter.act_as.reverse();
+            assert_eq!(
+                hash_metadata(&reversed_parties, scheme).unwrap(),
+                expected,
+                "{scheme:?}: the acting parties are hashed as a set"
+            );
+
+            let mut repeated_party = metadata();
+            let submitter = repeated_party.submitter_info.as_mut().unwrap();
+            submitter.act_as.push("alice".to_string());
+            assert_eq!(
+                hash_metadata(&repeated_party, scheme).unwrap(),
+                expected,
+                "{scheme:?}: a set holds each party once"
+            );
+
+            let mut reversed_contracts = metadata();
+            reversed_contracts.input_contracts.reverse();
+            assert_eq!(
+                hash_metadata(&reversed_contracts, scheme).unwrap(),
+                expected,
+                "{scheme:?}: the disclosed contracts are hashed as a map keyed by contract id"
+            );
+
+            let mut repeated_contract = metadata();
+            let first = repeated_contract.input_contracts[0].clone();
+            repeated_contract.input_contracts.push(first);
+            assert_eq!(
+                hash_metadata(&repeated_contract, scheme).unwrap(),
+                expected,
+                "{scheme:?}: a map holds each contract id once"
+            );
+        }
+    }
+
+    /// A repeated contract id keeps the last entry. Canton's `.toMap` does the
+    /// same.
+    #[test]
+    fn a_repeated_contract_id_keeps_the_last_entry() {
+        // The same id twice, with different created_at. First-wins and
+        // last-wins produce different hashes.
+        let mut repeated = metadata();
+        let mut later = repeated.input_contracts[0].clone();
+        later.created_at = 999_999;
+        repeated.input_contracts.push(later.clone());
+
+        // The same metadata with only the later entry.
+        let mut last_only = metadata();
+        last_only.input_contracts[0] = later;
+
+        for scheme in [Scheme::V2, Scheme::V3] {
+            assert_eq!(
+                hash_metadata(&repeated, scheme).unwrap(),
+                hash_metadata(&last_only, scheme).unwrap(),
+                "{scheme:?}: the later entry is hashed"
+            );
+            assert_ne!(
+                hash_metadata(&repeated, scheme).unwrap(),
+                hash_metadata(&metadata(), scheme).unwrap(),
+                "{scheme:?}: the earlier entry is not hashed"
+            );
+        }
     }
 
     #[test]
@@ -1095,8 +1244,40 @@ mod tests {
             hash_fetch(&fetch, Scheme::V2)
                 .unwrap_err()
                 .to_string()
-                .contains("not hex")
+                .contains("not lower-case hex")
         );
+    }
+
+    /// A contract id is whatever the participant sent, so it is decoded as
+    /// bytes: one that is not ASCII is refused rather than sliced at an offset
+    /// that falls inside a character. And only what Canton decodes is a
+    /// contract id: lower-case base16, with no sign and no upper case.
+    #[test]
+    fn a_contract_id_that_is_not_lower_case_hex_is_refused_without_panicking() {
+        for id in ["aéb", "0é0", "é", "+f", "-1", "AB", "aB", "0x", " 0", "0g"] {
+            let message = decode_hex(id).expect_err(id).to_string();
+            assert!(message.contains("not lower-case hex"), "{id}: {message}");
+        }
+        for id in ["abc", "0", "éa"] {
+            let message = decode_hex(id).expect_err(id).to_string();
+            assert!(message.contains("odd length"), "{id}: {message}");
+        }
+        assert_eq!(decode_hex("").unwrap(), Vec::<u8>::new());
+        assert_eq!(
+            decode_hex("00ff10ab9c").unwrap(),
+            [0x00, 0xff, 0x10, 0xab, 0x9c]
+        );
+
+        // And through the nodes that carry one: the fetch, and the whole
+        // prepared transaction a participant returns.
+        let mut fetch = fetch();
+        fetch.contract_id = "aéb".to_string();
+        assert!(hash_fetch(&fetch, Scheme::V2).is_err());
+        let mut tx = transaction();
+        tx.nodes[1] = wrap("1", node::node::NodeType::Fetch(fetch));
+        for scheme in [Scheme::V2, Scheme::V3] {
+            assert!(hash_transaction(&tx, scheme).is_err(), "{scheme:?}");
+        }
     }
 
     #[test]
@@ -1105,7 +1286,139 @@ mod tests {
         tx.nodes = vec![wrap("2", node::node::NodeType::Exercise(exercise(&["2"])))];
         tx.roots = strings(&["2"]);
         let error = hash_transaction(&tx, Scheme::V2).unwrap_err();
-        assert!(error.to_string().contains("deeper"), "{error}");
+        assert!(error.to_string().contains("own descendant"), "{error}");
+
+        // The same through a second node, and under a rollback.
+        let mut tx = transaction();
+        tx.nodes = vec![
+            wrap("2", node::node::NodeType::Exercise(exercise(&["3"]))),
+            wrap("3", rollback(&["2"])),
+        ];
+        tx.roots = strings(&["2"]);
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let error = hash_transaction(&tx, scheme).unwrap_err();
+            assert!(error.to_string().contains("own descendant"), "{error}");
+        }
+    }
+
+    fn rollback(children: &[&str]) -> node::node::NodeType {
+        node::node::NodeType::Rollback(node::Rollback {
+            children: strings(children),
+        })
+    }
+
+    /// A chain of rollback nodes over one fetch, each node listing the next
+    /// one `listings` times.
+    fn chain(levels: usize, listings: usize) -> ipb::DamlTransaction {
+        let mut nodes = vec![wrap("0", node::node::NodeType::Fetch(fetch()))];
+        for level in 1..=levels {
+            let child = (level - 1).to_string();
+            let children = vec![child.as_str(); listings];
+            nodes.push(wrap(&level.to_string(), rollback(&children)));
+        }
+        ipb::DamlTransaction {
+            version: "2.1".to_string(),
+            roots: vec![levels.to_string()],
+            nodes,
+            node_seeds: Vec::new(),
+        }
+    }
+
+    /// A chain of exercise nodes, each with the next as its only child, down
+    /// to a fetch: the deepest a tree of `levels` nodes can be, through the
+    /// node kind with the largest frame.
+    fn deep(levels: usize) -> ipb::DamlTransaction {
+        let mut nodes = vec![wrap("0", node::node::NodeType::Fetch(fetch()))];
+        let mut node_seeds = Vec::new();
+        for level in 1..=levels {
+            let child = (level - 1).to_string();
+            nodes.push(wrap(
+                &level.to_string(),
+                node::node::NodeType::Exercise(exercise(&[&child])),
+            ));
+            node_seeds.push(ipb::daml_transaction::NodeSeed {
+                node_id: i32::try_from(level).unwrap(),
+                seed: hex(EXERCISE_SEED),
+            });
+        }
+        ipb::DamlTransaction {
+            version: "2.1".to_string(),
+            roots: vec![levels.to_string()],
+            nodes,
+            node_seeds,
+        }
+    }
+
+    /// The depth limit still holds now that a self-reference is caught
+    /// before it: a transaction nested one level past it is refused, and one
+    /// exactly at it hashes. The walk over nodes is recursive, so the limit
+    /// also bounds the stack: nodes nested as deep as accepted have to fit the
+    /// stack of the thread an async runtime gives a task, two mebibytes, in an
+    /// unoptimized build, where frames are at their largest. An overflow
+    /// aborts the test binary rather than failing this test.
+    #[test]
+    fn the_deepest_transaction_is_hashed_on_a_small_stack_and_one_deeper_is_refused() {
+        let hashed = std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(|| {
+                for scheme in [Scheme::V2, Scheme::V3] {
+                    hash_transaction(&deep(MAX_DEPTH), scheme).unwrap();
+                    let error = hash_transaction(&deep(MAX_DEPTH + 1), scheme).unwrap_err();
+                    assert!(error.to_string().contains("deeper"), "{error}");
+                }
+            })
+            .unwrap()
+            .join();
+        assert!(hashed.is_ok(), "the hasher panicked on a deep transaction");
+    }
+
+    /// A node listed more than once is hashed once. Each node here lists the
+    /// next one twice, so hashing every listing would take 2^200 node hashes
+    /// and this test would not return; `MAX_DEPTH` does not help, since the
+    /// chain is shallower than it. The answer is the one hashing every listing
+    /// gives, which the loop below builds from the leaf upwards.
+    #[test]
+    fn a_node_listed_more_than_once_is_hashed_once() {
+        const LEVELS: usize = 200;
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let tx = chain(LEVELS, 2);
+            let mut expected = hash_fetch(&fetch(), scheme).unwrap();
+            for _ in 0..LEVELS {
+                let mut b = Builder::for_node(scheme);
+                b.byte(ROLLBACK_TAG).count(2).unwrap();
+                b.hash(&expected).hash(&expected);
+                expected = b.finish();
+            }
+            let root = LEVELS.to_string();
+            let mut tree = tree(&tx, scheme);
+            assert_eq!(
+                to_hex(&tree.hash_node(&root, 0).unwrap()),
+                to_hex(&expected),
+                "{scheme:?}"
+            );
+            hash_transaction(&tx, scheme).unwrap();
+        }
+    }
+
+    /// What a second listing changes and what it does not: the listed node's
+    /// own hash is the same wherever and however often it is listed, and the
+    /// node listing it twice hashes differently from one listing it once,
+    /// since it hashes each listing. The cache must keep both true.
+    #[test]
+    fn a_second_listing_changes_the_parents_hash_and_not_the_childs() {
+        for scheme in [Scheme::V2, Scheme::V3] {
+            let once = chain(1, 1);
+            let twice = chain(1, 2);
+            let leaf = hash_fetch(&fetch(), scheme).unwrap();
+            let mut tree_once = tree(&once, scheme);
+            let mut tree_twice = tree(&twice, scheme);
+            assert_eq!(tree_once.hash_node("0", 0).unwrap(), leaf);
+            assert_eq!(tree_twice.hash_node("0", 0).unwrap(), leaf);
+            assert_ne!(
+                tree_once.hash_node("1", 0).unwrap(),
+                tree_twice.hash_node("1", 0).unwrap()
+            );
+        }
     }
 
     // V3: the same nodes as V2, at LF serialization version `2` and carrying a
@@ -1204,7 +1517,7 @@ mod tests {
             "20437df1980bb7d4d94ad53181dc6005bae37b5990719070c48a3960e8dda3a4"
         );
         let tx = transaction_v3();
-        let tree = tree(&tx, Scheme::V3);
+        let mut tree = tree(&tx, Scheme::V3);
         assert_eq!(
             to_hex(&tree.hash_node("2", 0).unwrap()),
             "516c4689acabf9d1f0087a02a7dafad884d9080c48112a57a6d20b9f72d4b697"
@@ -1229,7 +1542,7 @@ mod tests {
             .map(|input| {
                 let Some(ipb::metadata::input_contract::Contract::V1(create)) = &input.contract
                 else {
-                    unreachable!()
+                    panic!("the fixture holds v1 nodes only")
                 };
                 to_hex(&hash_create(create, None, Scheme::V3).unwrap())
             })
@@ -1275,6 +1588,132 @@ mod tests {
         let v2 = hash_prepared_transaction_v2(&prepared).unwrap();
         let v3 = hash_prepared_transaction_v3(&prepared).unwrap();
         assert_ne!(v2, v3);
+    }
+
+    /// V2 has no encoding for the max record time, so under V2 the hash is the
+    /// same with the deadline as prepared, moved, or removed. Signing that
+    /// hash would not sign the deadline, so a transaction that has one is
+    /// refused under V2 rather than hashed as if it had none. V3 covers it.
+    #[test]
+    fn a_max_record_time_is_signed_under_v3_and_refused_under_v2() {
+        let mut with_deadline = metadata();
+        with_deadline.max_record_time = Some(2_592_000_000_000);
+        let error = hash_metadata(&with_deadline, Scheme::V2).unwrap_err();
+        assert!(
+            error.to_string().contains("max record time") && error.to_string().contains("V3"),
+            "{error}"
+        );
+        // Without one, V2 hashes as it always did.
+        hash_metadata(&metadata(), Scheme::V2).unwrap();
+
+        // Under V3 the deadline is part of what is signed: as prepared,
+        // moved and removed are three hashes.
+        let as_prepared = hash_metadata(&metadata_v3(), Scheme::V3).unwrap();
+        let mut moved = metadata_v3();
+        moved.max_record_time = Some(2_592_000_000_000 + 365 * 24 * 3600 * 1_000_000);
+        let mut removed = metadata_v3();
+        removed.max_record_time = None;
+        let moved = hash_metadata(&moved, Scheme::V3).unwrap();
+        let removed = hash_metadata(&removed, Scheme::V3).unwrap();
+        assert_ne!(as_prepared, moved);
+        assert_ne!(as_prepared, removed);
+        assert_ne!(moved, removed);
+
+        // And through the whole prepared transaction, as a caller hashes it.
+        let prepared = ipb::PreparedTransaction {
+            transaction: Some(transaction()),
+            metadata: Some(with_deadline),
+        };
+        let error =
+            hash_prepared_transaction(&prepared, ipb::HashingSchemeVersion::V2).unwrap_err();
+        assert!(error.to_string().contains("max record time"), "{error}");
+    }
+
+    /// No input makes the hasher panic or run away: it is the first thing to
+    /// read bytes a participant chose, and it runs before anything is signed.
+    /// Each round takes Canton's own prepared transactions and overwrites,
+    /// cuts or extends their bytes, or takes bytes with no structure at all,
+    /// at positions a fixed generator picks, so a failure reproduces. What
+    /// still decodes is hashed under both schemes; the outcome may be an
+    /// error, and must be an answer.
+    #[test]
+    fn no_mutation_of_a_prepared_transaction_panics_or_stalls_the_hasher() {
+        use prost::Message as _;
+
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let seeds = [
+            ipb::PreparedTransaction {
+                transaction: Some(transaction()),
+                metadata: Some(metadata()),
+            }
+            .encode_to_vec(),
+            ipb::PreparedTransaction {
+                transaction: Some(transaction_v3()),
+                metadata: Some(metadata_v3()),
+            }
+            .encode_to_vec(),
+            ipb::PreparedTransaction {
+                transaction: Some(chain(40, 2)),
+                metadata: Some(metadata()),
+            }
+            .encode_to_vec(),
+        ];
+        let started = std::time::Instant::now();
+        let (mut decoded, mut hashed) = (0u32, 0u32);
+        for round in 0..30_000usize {
+            let mut bytes = seeds[round % seeds.len()].clone();
+            match (round / seeds.len()) % 5 {
+                0 => {
+                    let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                    bytes[at] = next().to_le_bytes()[0];
+                }
+                1 => {
+                    // Several bytes at once, which is how a length or a node
+                    // id comes to name something else.
+                    for _ in 0..4 {
+                        let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                        bytes[at] = next().to_le_bytes()[0];
+                    }
+                }
+                2 => bytes.truncate(usize::try_from(next()).unwrap_or(0) % bytes.len()),
+                3 => {
+                    let extra = usize::try_from(next()).unwrap_or(0) % 32;
+                    bytes.extend(std::iter::repeat_with(|| next().to_le_bytes()[0]).take(extra));
+                }
+                _ => {
+                    let length = usize::try_from(next()).unwrap_or(0) % 256;
+                    bytes = std::iter::repeat_with(|| next().to_le_bytes()[0])
+                        .take(length)
+                        .collect();
+                }
+            }
+            let Ok(prepared) = ipb::PreparedTransaction::decode(bytes.as_slice()) else {
+                continue;
+            };
+            decoded += 1;
+            for scheme in [ipb::HashingSchemeVersion::V2, ipb::HashingSchemeVersion::V3] {
+                if hash_prepared_transaction(&prepared, scheme).is_ok() {
+                    hashed += 1;
+                }
+            }
+        }
+        // The rounds are worth something only if many of them get as far as
+        // the hasher, and some all the way through it.
+        assert!(decoded > 1_000, "only {decoded} mutations still decoded");
+        assert!(hashed > 100, "only {hashed} mutations still hashed");
+        // Milliseconds each; one input that doubled the work per node would
+        // not come back at all.
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(60),
+            "{:?} for 30000 small inputs",
+            started.elapsed()
+        );
     }
 
     #[test]

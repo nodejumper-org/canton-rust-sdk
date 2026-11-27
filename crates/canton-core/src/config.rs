@@ -177,22 +177,18 @@ fn build_tls(tls: Option<&TlsConfig>) -> ClientTlsConfig {
 /// path of *invalid* URIs, where a parser would have nothing to work with.
 #[must_use]
 pub fn redact_url(url: &str) -> std::borrow::Cow<'_, str> {
-    let Some(scheme_end) = url.find("://") else {
+    let Some((scheme, rest)) = url.split_once("://") else {
         return std::borrow::Cow::Borrowed(url);
     };
-    let authority_start = scheme_end + 3;
-    let authority_end = url[authority_start..]
-        .find(['/', '?', '#'])
-        .map_or(url.len(), |i| authority_start + i);
-    let authority = &url[authority_start..authority_end];
-    let Some(at) = authority.rfind('@') else {
+    // The authority ends at the first of these, or runs to the end.
+    let (authority, tail) = match rest.find(['/', '?', '#']) {
+        Some(end) => rest.split_at_checked(end).unwrap_or((rest, "")),
+        None => (rest, ""),
+    };
+    let Some((_userinfo, host)) = authority.rsplit_once('@') else {
         return std::borrow::Cow::Borrowed(url);
     };
-    std::borrow::Cow::Owned(format!(
-        "{}***{}",
-        &url[..authority_start],
-        &url[authority_start + at..]
-    ))
+    std::borrow::Cow::Owned(format!("{scheme}://***@{host}{tail}"))
 }
 
 /// Configuration for an SDK gRPC client (shared by `canton-ledger` and
@@ -397,7 +393,10 @@ fn resolve_endpoint(endpoint: &str, tls_configured: bool) -> (String, bool) {
         .is_some_and(|s| s.eq_ignore_ascii_case("http://"));
     let want_tls = tls_configured || is_https;
     if want_tls && is_http {
-        (format!("https://{}", &endpoint[7..]), true)
+        (
+            format!("https://{}", endpoint.get(7..).unwrap_or_default()),
+            true,
+        )
     } else {
         (endpoint.to_string(), want_tls)
     }

@@ -732,15 +732,13 @@ impl<K: PartialEq, V: PartialEq> PartialEq for GenMap<K, V> {
         }
         // O(n²), but a GenMap is a handful of entries and `K` is only
         // `PartialEq` — there is no ordering or hashing to exploit.
-        let mut matched = vec![false; other.0.len()];
+        let mut unmatched: Vec<&(K, V)> = other.0.iter().collect();
         self.0.iter().all(|entry| {
-            other
-                .0
+            unmatched
                 .iter()
-                .enumerate()
-                .position(|(index, candidate)| !matched[index] && candidate == entry)
+                .position(|candidate| *candidate == entry)
                 .is_some_and(|index| {
-                    matched[index] = true;
+                    unmatched.swap_remove(index);
                     true
                 })
         })

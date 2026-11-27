@@ -140,7 +140,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for (settlement_id, allocations) in batches {
-        let settlement = allocations[0].1.settlement.clone();
+        let Some((_, first)) = allocations.first() else {
+            continue;
+        };
+        let settlement = first.settlement.clone();
         // Both sides of a leg describe the same leg; the batch names it once.
         let mut by_id: BTreeMap<String, al::TransferLeg> = BTreeMap::new();
         for leg in allocations.iter().flat_map(|(_, v)| legs_of(v)) {

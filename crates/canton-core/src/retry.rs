@@ -131,12 +131,22 @@ where
                     None => with_jitter(delay),
                 };
                 tokio::time::sleep(delay).await;
-                backoff = (backoff * 2).min(config.max_backoff);
+                backoff = next_backoff(backoff, config.max_backoff);
                 attempt += 1;
             }
             Err(err) => return Err(err),
         }
     }
+}
+
+/// The backoff after `backoff`: twice it, up to `max`.
+///
+/// Saturating, because `Duration * u32` panics when the product does not fit:
+/// with a `max_backoff` near `Duration::MAX`, which is how "no cap" is
+/// written, the doubling would otherwise bring the caller's task down on the
+/// attempt where it overflowed.
+fn next_backoff(backoff: Duration, max: Duration) -> Duration {
+    backoff.saturating_mul(2).min(max)
 }
 
 /// Equal jitter (×0.5–1.5) on a backoff delay, so retries from many clients
@@ -164,6 +174,23 @@ mod tests {
     use super::*;
     use crate::Error;
     use std::cell::Cell;
+
+    /// The backoff doubles up to the cap, and a cap near the largest duration
+    /// (how "no cap" is written) does not make the doubling overflow.
+    #[test]
+    fn the_backoff_doubles_up_to_the_cap_and_never_overflows() {
+        let cap = Duration::from_millis(80);
+        assert_eq!(
+            next_backoff(Duration::from_millis(10), cap),
+            Duration::from_millis(20)
+        );
+        assert_eq!(next_backoff(Duration::from_millis(50), cap), cap);
+        assert_eq!(next_backoff(Duration::MAX, Duration::MAX), Duration::MAX);
+        assert_eq!(
+            next_backoff(Duration::from_secs(u64::MAX - 1), Duration::MAX),
+            Duration::MAX
+        );
+    }
 
     fn fast() -> RetryConfig {
         RetryConfig::default()

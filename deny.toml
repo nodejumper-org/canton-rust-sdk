@@ -5,10 +5,18 @@ version = 2
 # it reads each DAR entry into memory under a size cap. The fix is only in
 # zip 9, and `canton_lf::DarError::Zip` carries zip's error type, so the move
 # is a breaking change that waits for 0.4.
+#
+# The three added for 0.3.3 are outside what canton-lf calls in the same way:
+# it opens a `ZipArchive` and reads entries by index, never through
+# `extract()` or `ZipStreamReader`, and zip is built with `deflate` alone, so
+# the AES code is not compiled in (`cargo tree -e features -i zip`).
 ignore = [
     { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits; canton-lf never extracts" },
     { id = "RUSTSEC-2026-0368", reason = "zip extract() follows symlinks out of the destination; canton-lf never extracts" },
     { id = "RUSTSEC-2026-0369", reason = "zip stream extract() applies permissions through symlinks; canton-lf never extracts" },
+    { id = "RUSTSEC-2026-0429", reason = "zip extract() aborts on a symlink entry with a large declared size; canton-lf never extracts" },
+    { id = "RUSTSEC-2026-0545", reason = "zip AES entries are not authenticated when the data ends early; zip is built without `aes-crypto`" },
+    { id = "RUSTSEC-2026-0548", reason = "ZipStreamReader extracts under local-header names; canton-lf reads a ZipArchive by index and never streams" },
 ]
 
 [licenses]

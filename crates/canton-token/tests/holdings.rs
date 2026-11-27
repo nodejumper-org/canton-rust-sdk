@@ -5,7 +5,7 @@
 //! the views it decodes, and the lock it reads were checked nowhere CI can
 //! reach. The stub here answers what a participant answers and records what
 //! it was asked, so both halves are pinned.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};

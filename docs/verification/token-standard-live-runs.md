@@ -775,3 +775,116 @@ participants report the same record time at their own offsets.
 The sender ends 1 Amulet lower and the receiver, which held none, holds 1
 Amulet: the leg moved between two parties on two participants, settled by a
 third.
+
+# DevNet, 2026-11-27, at 0.3.3: the release's changes from a consumer crate
+
+0.3.3 changes what the SDK accepts from a participant before it signs, so the
+release was run as an application would use it:
+[`tools/release-check`](../../tools/release-check) is a crate outside the
+workspace that depends on `canton` and goes through each changed area by the
+public API. It builds with both rustls crypto providers and none installed.
+
+| | |
+|---|---|
+| Date | 2026-11-27 |
+| Network | Canton Network DevNet |
+| Participant | Canton **3.7.3**, protocol version 37, over TLS with a Keycloak token |
+| Topology format | 31 by default; 30 on request (`protocol_version = 36`) |
+| Registry | a Super Validator's Scan, registry routes |
+
+What the output below shows, beyond the unit tests:
+
+- The participant's own onboarding reply passes the strict check, for a raw
+  key and for the same key as DER, with the fingerprint computed locally and
+  the host held to the participant's id.
+- Each of the 259 bytes of that real transaction, changed by one bit, is
+  refused, as are an appended field, another key, another host, another party
+  and a second transaction.
+- The same participant, asked for the older format, returns a format-30
+  transaction that passes the same check, with the multi-hash it reported.
+- A topology stored and rebuilt is allocated with a signature made in
+  between.
+- A transaction with a max record time is prepared under V3 without being
+  asked and commits; the same request under a chosen V2 is refused before it
+  is sent.
+- A `wss` stream with default TLS settings completes its handshake in a
+  process where rustls itself cannot choose a crypto provider.
+
+Not shown on DevNet: the Scan client against a Scan. A Super Validator's Scan
+on DevNet answers `/api/scan` only to allow-listed addresses, and the machine
+this ran on is not one; the registry routes on the same host are open. The
+Scan client ran against a LocalNet instead, on both of its routes: see the
+next section.
+
+```text
+### release-check at 0.3.3 2026-11-27T10:13:28Z
+PASS  [hashing] #18 contract ids are decoded as bytes: 5 malformed contract ids refused under V2 and V3, a well-formed one hashed
+PASS  [hashing] #19 a shared node is hashed once: 60 doubled levels hashed twice in 2.9715ms; both cycles refused
+PASS  [hashing] #23 metadata is hashed as Canton orders it: act_as reversed and repeated give the same hash
+PASS  [hashing] #26 a max record time is covered or refused: refused under V2; as prepared, moved and removed are three hashes under V3
+PASS  [tls] #20 precondition: rustls cannot pick a provider in this process: ring and aws-lc-rs are both compiled in and none is installed
+PASS  [tls] #20 a wss stream with default TLS settings: the wss handshake with the DevNet JSON API completed
+PASS  [tls] #20 a PQS TLS connection: no panic; the connection failed as Error::Connection (retriable)
+PASS  [tls] #20 the SDK installed no process-wide provider: the default is still the application's to choose
+PASS  [auth] #25 token fetch failures keep their class: unreachable is a retriable Connection, a wrong secret is Auth, the right one gets a token
+PASS  [onboarding] reach the participant: Canton 3.7.3
+PASS  [onboarding] #22 a real reply passes the strict check, raw and DER key: topology format 31, fingerprint computed locally, host is this participant
+PASS  [onboarding] #22 a tampered real transaction never passes: each of 259 single-byte changes refused, and 6 other tamperings
+PASS  [onboarding] topology format 30, as Canton writes it: a format-30 transaction from the same participant passes, and the multi-hash matches
+PASS  [onboarding] a stored topology is rebuilt and allocated with a signature made later: allocated verify-657c67e5::12204456b1d…, topology format 31
+PASS  [submission] #24 a real prepare names the command and parties that were asked for: V2, committed at offset 5423566
+PASS  [submission] #26 a max record time is prepared and committed under V3: V3 without being asked, hash matched, committed at offset 5423569; V2 with a deadline refused before sending
+PASS  [scan] #21 the registry client still reads a live registry: the live registry names its admin party, and an unknown instrument is None
+PASS  [scan] #21 the Scan client against the configured Scan: NOT VERIFIED LIVE: this Scan answers 403 to this address (allow-list); the refusal is reported as Error::Http 403, not retried
+
+18 passed, 0 failed
+```
+
+The interactive-submission live suite against the same participant, the same
+day (`cargo test -p canton-ledger --features ws --test interactive_live`): 7
+passed, the keyed-contract test skipping for want of its DAR on this
+participant.
+
+## Against a LocalNet, 2026-11-26 and again the next day: Canton 3.5.7, Splice 0.6.11
+
+Canton Builder Tool's LocalNet, the app-provider validator, with the token
+`canton builder token --validator app-provider` prints. This is the Canton
+release the protos are vendored from, and its topology transactions are in
+format 30. The Super Validator's Scan was reached on its own port, and the
+scan-proxy on the validator's.
+
+| Suite | Result |
+|---|---|
+| `canton-ledger` `live` | 39 passed; one of them skips, wanting an OIDC issuer this LocalNet does not have |
+| `canton-ledger` `interactive_live` | 7 passed, the keyed-contract test included |
+| `canton-admin` `live` | 5 passed |
+| `canton-token` `live` (the registry) | 5 passed |
+| `canton-token` `scan_live` | 5 passed, on a Scan and through the validator's scan-proxy; the snapshot pages skip, since `/v2/state/acs` is Splice 0.7.5's |
+
+```text
+test signing__an_external_party_is_onboarded_by_signing_its_own_topology ... allocated external party rust-sdk-onboard::1220078c3740eaf7877ce66463b95ec565fa85bb06a1520c2e82799efd769565dcee
+test signing__a_stored_topology_is_rebuilt_and_allocated_with_a_signature_made_later ... allocated rust-sdk-stored::1220e8d8f7ce2c19afe579ab56163a9eafb79423c0c48936eaa03993a88b0205e6ae from a stored topology, hosted by participant::122050a3b417325869df2a2248607ef4d408abdd45da8d7c4e774f96c090e32cd11e
+test external_commands__a_max_record_time_is_prepared_and_committed_under_v3 ... committed with a signed deadline: 1220e503b433fd2e2be44fa74ddee6690669829bcc6e7cba9771e253847d4c1a0340 at offset 82644
+test external_commands__a_keyed_contract_is_created_and_exercised_by_key_under_v3 ... committed under V3: 122005c7b5edb14bc111d63dcf4e94e3ea27d1ddd50d12358b62f59f11d5df3efee1 at offset 82765
+
+test a_validators_scan_proxy_publishes_the_same_contracts ... DSO DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad: 3 open rounds up to 2214, using 2213
+test scan_publishes_the_contracts_an_application_discloses ... DSO DSO::1220da56976bc0f405bfffaf268f075cfb2d0d0224f2115b214a38cf03db1b2cedad: 3 open rounds up to 2214, using 2213
+test scan_lists_its_peers_its_closed_rounds_and_a_members_traffic ... traffic: consumed 229970 of a limit of 2400000, purchased 2400000
+test the_update_history_pages_forward ... 5 of the first 5 updates are transactions; history starts at HistoryPosition { migration_id: 0, record_time: "2026-09-22T09:50:52.471555Z" }
+test the_latest_snapshot_can_be_read ... latest snapshot: migration 0 at 2026-11-26T15:00:00Z
+```
+
+Three rounds were open and the newest, 2214, had not reached its opening
+time: the client took 2213, the highest that had.
+
+On DevNet the `canton-ledger` `live` suite passed 39 as well, read as the
+validator operator's party, and the registry suite 5. The `canton-admin`
+suite's party listing pages through every party the participant knows, which
+on DevNet does not finish in minutes; its other four tests passed.
+
+Not run against any live Scan: the two snapshot page reads, `/v2/state/acs`
+and `/v2/holdings/state`. This LocalNet predates them, DevNet's Scans answer
+only allow-listed addresses, and the LocalNet the `LocalNet` workflow boots has
+not taken a snapshot by the time the suite runs. They are held to Splice's
+documents by the stub tests only.
+

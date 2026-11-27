@@ -379,8 +379,14 @@ pub(crate) fn lower_crate_selecting(
             }),
             depth: std::cell::Cell::new(0),
         };
+        // `module_names` is built from this same list of packages, so it has
+        // a name for every id in it; a package without one is skipped rather
+        // than emitted under an empty name.
+        let Some(module_name) = module_names.get(id.as_str()) else {
+            continue;
+        };
         let mut package_module = PackageModule {
-            name: module_names[id.as_str()].clone(),
+            name: module_name.clone(),
             modules: Vec::new(),
         };
         // The same flattening applies to module names: `A.B` and `A_B` would

@@ -19,6 +19,9 @@ canton-core  = { workspace = true }
 # written once, here, rather than in each crate that submits. That is also what
 # lets a test assert the mirror enums map to the right proto variants.
 canton-proto = { workspace = true }
+# A key's fingerprint is a SHA-256 of it. Pure Rust, and already in the tree
+# of everything that depends on this crate.
+sha2 = { workspace = true }
 
 # The in-memory key. `ring` is already in this workspace's dependency tree
 # (rustls uses it), so the default implementation adds no second crypto stack.

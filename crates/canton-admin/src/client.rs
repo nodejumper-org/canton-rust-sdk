@@ -124,25 +124,64 @@ impl AdminClient {
     /// Ask the participant what allocating an external party for `public_key`
     /// would look like, without allocating it.
     ///
-    /// The first half of external-party onboarding. The participant computes
-    /// the key's fingerprint and the party id derived from it, builds the
-    /// onboarding topology transactions, and returns one hash over them. None
-    /// of it is submitted: that is [`allocate_external_party`], after the key
-    /// has signed the hash.
+    /// The first half of external-party onboarding. The participant derives
+    /// the party id from the key's fingerprint, builds the onboarding topology
+    /// transaction, and returns the hash to sign. None of it is submitted:
+    /// that is [`allocate_external_party`], after the key has signed the hash.
+    ///
+    /// The reply is checked before it is returned, since the signature will
+    /// authorize whatever it contains: the fingerprint must be the one this
+    /// SDK computes from `public_key`, the party `<party_hint>::<fingerprint>`,
+    /// and the one transaction a hosting of that party by one confirming
+    /// participant with `public_key` as its only signing key. See
+    /// [`ExternalPartyTopology`](crate::ExternalPartyTopology).
     ///
     /// [`allocate_external_party`]: Self::allocate_external_party
     ///
+    /// Which participant the host is cannot be checked without being told:
+    /// [`generate_external_party_topology_with`](Self::generate_external_party_topology_with)
+    /// takes the one the caller expects.
+    ///
     /// # Errors
-    /// Returns an [`Error`] if the RPC fails, or [`Error::UnexpectedResponse`]
-    /// if the participant answers without a hash to sign or without the
-    /// fingerprint — either of which would leave the caller unable to sign as
-    /// this party at all.
+    /// Returns an [`Error`] if the RPC fails; [`Error::InvalidRequest`] if
+    /// `public_key` is not a key its fingerprint can be computed for; and
+    /// [`Error::UnexpectedResponse`] if the participant's reply is anything
+    /// but the onboarding of this key described above.
     pub async fn generate_external_party_topology(
         &self,
         synchronizer: &str,
         party_hint: &str,
         public_key: &canton_signer::PublicKey,
     ) -> Result<crate::external_party::ExternalPartyTopology> {
+        self.generate_external_party_topology_with(
+            synchronizer,
+            party_hint,
+            public_key,
+            &crate::ExpectedHosting::any_participant(),
+        )
+        .await
+    }
+
+    /// [`generate_external_party_topology`](Self::generate_external_party_topology),
+    /// with the host the party is expected to have.
+    ///
+    /// [`ExpectedHosting::participant`](crate::ExpectedHosting::participant)
+    /// names the participant the caller means to onboard with, from its own
+    /// configuration. A reply that hosts the party anywhere else is refused.
+    ///
+    /// # Errors
+    /// As [`generate_external_party_topology`](Self::generate_external_party_topology).
+    pub async fn generate_external_party_topology_with(
+        &self,
+        synchronizer: &str,
+        party_hint: &str,
+        public_key: &canton_signer::PublicKey,
+        expected: &crate::ExpectedHosting,
+    ) -> Result<crate::external_party::ExternalPartyTopology> {
+        // Before the participant is asked: a key this SDK cannot fingerprint
+        // is the caller's mistake, and it should hear so from here rather
+        // than as whatever the participant makes of the key.
+        public_key.fingerprint()?;
         let request = pb::GenerateExternalPartyTopologyRequest {
             synchronizer: synchronizer.to_string(),
             party_hint: party_hint.to_string(),
@@ -165,7 +204,9 @@ impl AdminClient {
                         }
                     })
                     .await?;
-                crate::external_party::ExternalPartyTopology::from_response(response, public_key)
+                crate::external_party::ExternalPartyTopology::from_response(
+                    response, party_hint, public_key, expected,
+                )
             },
         )
         .await
@@ -186,9 +227,10 @@ impl AdminClient {
     /// the synchronizer, so the party is usable when it returns.
     ///
     /// # Errors
-    /// Returns an [`Error`] if signing fails or the RPC does. A signature made
-    /// by a key other than the one in the topology is rejected by the
-    /// participant, not here.
+    /// Returns an [`Error`] if signing fails or the RPC does, and
+    /// [`Error::InvalidRequest`] if the signature names a key other than the
+    /// one the topology registers. A signature that names the right key and
+    /// was made by another is rejected by the participant, not here.
     pub async fn allocate_external_party(
         &self,
         synchronizer: &str,
@@ -197,6 +239,36 @@ impl AdminClient {
         user_id: &str,
     ) -> Result<String> {
         let signature = signer.sign(topology.multi_hash()).await?;
+        self.allocate_external_party_with_signature(synchronizer, topology, &signature, user_id)
+            .await
+    }
+
+    /// [`allocate_external_party`](Self::allocate_external_party) with a
+    /// signature that already exists.
+    ///
+    /// For when signing is not a call this process can make: the hash went to
+    /// a wallet or a signing queue and the signature came back later. The
+    /// signature is over
+    /// [`multi_hash`](crate::external_party::ExternalPartyTopology::multi_hash).
+    /// A topology kept in between is rebuilt, and checked again, with
+    /// [`ExternalPartyTopology::from_parts`](crate::external_party::ExternalPartyTopology::from_parts).
+    ///
+    /// # Errors
+    /// As [`allocate_external_party`](Self::allocate_external_party).
+    pub async fn allocate_external_party_with_signature(
+        &self,
+        synchronizer: &str,
+        topology: &crate::external_party::ExternalPartyTopology,
+        signature: &canton_signer::Signature,
+        user_id: &str,
+    ) -> Result<String> {
+        if signature.signed_by() != topology.public_key_fingerprint() {
+            return Err(Error::InvalidRequest(format!(
+                "the signature is by key `{}`, where the onboarding registers key `{}`",
+                signature.signed_by(),
+                topology.public_key_fingerprint()
+            )));
+        }
         let request = pb::AllocateExternalPartyRequest {
             synchronizer: synchronizer.to_string(),
             onboarding_transactions: topology
@@ -211,7 +283,7 @@ impl AdminClient {
                     },
                 )
                 .collect(),
-            multi_hash_signatures: vec![(&signature).into()],
+            multi_hash_signatures: vec![signature.into()],
             identity_provider_id: String::new(),
             // The party is not usable until it is on the synchronizer, and a
             // caller that just allocated it is about to use it.

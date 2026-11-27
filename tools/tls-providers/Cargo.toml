@@ -1,0 +1,22 @@
+# Checks that the SDK's TLS setup does not depend on which rustls crypto
+# providers the application compiles in (#20).
+#
+# Deliberately not a workspace member. It enables `aws-lc-rs` next to the
+# `ring` the SDK uses, which is the build the check is about, and inside the
+# workspace that feature would unify into every other crate's test build.
+[workspace]
+
+[package]
+name    = "tls-providers"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[dev-dependencies]
+canton-ledger = { path = "../../crates/canton-ledger", features = ["ws"] }
+canton-pqs    = { path = "../../crates/canton-pqs", features = ["tls"] }
+# Both providers, as an application gets when one dependency takes rustls's
+# defaults (`aws-lc-rs`) and another asks for `ring`.
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring", "aws-lc-rs"] }
+tokio  = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }

@@ -152,7 +152,17 @@ impl PqsClient {
             ));
         }
         roots.add_parsable_certificates(native.certs);
-        let client_config = rustls::ClientConfig::builder()
+        // The provider is named, not left to `ClientConfig::builder()`, which
+        // reads it off rustls's own crate features and panics when both `ring`
+        // and `aws-lc-rs` are compiled in and the application installed
+        // neither. This crate enables only `ring`, but `aws-lc-rs` is a rustls
+        // default feature, so another dependency of the application can add it.
+        let provider = rustls::crypto::CryptoProvider::get_default()
+            .cloned()
+            .unwrap_or_else(|| Arc::new(rustls::crypto::ring::default_provider()));
+        let client_config = rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .map_err(|e| Error::InvalidRequest(format!("tls protocol setup failed: {e}")))?
             .with_root_certificates(roots)
             .with_no_client_auth();
         Self::establish(config, Tls::Rustls(Arc::new(client_config)), timeout).await

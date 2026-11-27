@@ -172,6 +172,16 @@ jobs:
           cargo test -p canton-signer --no-default-features
           cargo test -p canton-pqs --no-default-features
 
+      # The other direction: a feature the application adds. `aws-lc-rs` is a
+      # rustls default feature, so an application gets it from any dependency
+      # that takes rustls's defaults, next to the `ring` this SDK asks for.
+      # With both compiled in and none installed,
+      # `rustls::ClientConfig::builder()` panics, and no workspace build can
+      # show it: the workspace enables only `ring`. So the check is a crate of
+      # its own, outside the workspace, that enables both (#20).
+      - name: TLS setup does not depend on the rustls providers an application compiles in
+        run: cargo test --manifest-path tools/tls-providers/Cargo.toml
+
   deny:
     runs-on: ubuntu-latest
     steps:
@@ -446,15 +456,12 @@ jobs:
           # list in the release after it first publishes — the M2 crates below
           # did so at 0.2.0. `canton-proto` stays out: its generated types are
           # exempt from the stability promise (ADR-0002). `canton-lf` and
-          # `canton-codegen` are out until 0.3.2 is the baseline: 0.3.1 of both
-          # no longer builds from a fresh resolve (zip 2.6, see `latest-deps`),
-          # so the tool cannot build the baseline to compare against. Their
-          # public API is unchanged since 0.3.1 (only a private function and a
-          # test moved). Both return then, `canton-lf` with `pb` outside the
-          # comparison, since 0.3.1 hid that generated module. `canton-codegen-cli`
-          # is binary-only, so there is no API to compare.
+          # `canton-codegen` were out while the baseline was 0.3.1, which no
+          # longer builds from a fresh resolve (zip 2.6, see `latest-deps`);
+          # 0.3.2 builds, and both are compared against it again.
+          # `canton-codegen-cli` is binary-only, so there is no API to compare.
           package: >-
             canton-core, canton-auth, canton-ledger, canton-admin, canton,
-            canton-daml,
+            canton-daml, canton-lf, canton-codegen,
             canton-splice-amulet, canton-splice-wallet, canton-splice-wallet-payments
           feature-group: all-features
