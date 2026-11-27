@@ -1351,10 +1351,11 @@ mod tests {
 
     /// The depth limit still holds now that a self-reference is caught
     /// before it: a transaction nested one level past it is refused, and one
-    /// exactly at it hashes. The walk is recursive, so the limit is also what
-    /// bounds the stack, and the deepest accepted transaction has to fit the
-    /// stack of the thread an async runtime gives a task: two mebibytes, in
-    /// an unoptimized build, where frames are at their largest.
+    /// exactly at it hashes. The walk over nodes is recursive, so the limit
+    /// also bounds the stack: nodes nested as deep as accepted have to fit the
+    /// stack of the thread an async runtime gives a task, two mebibytes, in an
+    /// unoptimized build, where frames are at their largest. An overflow
+    /// aborts the test binary rather than failing this test.
     #[test]
     fn the_deepest_transaction_is_hashed_on_a_small_stack_and_one_deeper_is_refused() {
         let hashed = std::thread::Builder::new()
@@ -1368,7 +1369,7 @@ mod tests {
             })
             .unwrap()
             .join();
-        assert!(hashed.is_ok(), "the walk overflowed a two-mebibyte stack");
+        assert!(hashed.is_ok(), "the hasher panicked on a deep transaction");
     }
 
     /// A node listed more than once is hashed once. Each node here lists the

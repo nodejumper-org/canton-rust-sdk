@@ -164,7 +164,7 @@ request are listed in [Contributing](project/contributing.md).
 
 ### Live suites
 
-Five test targets talk to real services. Each test skips when the variables it
+Six test targets talk to real services. Each test skips when the variables it
 needs are unset, which is why the commands above stay green on a machine with no
 node.
 

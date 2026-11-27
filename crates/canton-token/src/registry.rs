@@ -839,10 +839,18 @@ pub(crate) fn transport_error(e: reqwest::Error, who: &str) -> Error {
     } else {
         Transport::Connect
     };
-    // Without the URL reqwest prints into its own message: the verdict is
-    // read off the text, and a URL with "certificate" in its host or path
-    // would otherwise decide it.
-    classify_transport(kind, &canton_core::chain(&e.without_url()), who)
+    // The URL goes into the message, redacted, and not into the text the
+    // verdict is read off: a host or path with "certificate" in it would
+    // otherwise decide it.
+    let at = e
+        .url()
+        .map(|url| canton_core::redact_url(url.as_str()).into_owned());
+    classify_transport(
+        kind,
+        &canton_core::chain(&e.without_url()),
+        who,
+        at.as_deref(),
+    )
 }
 
 /// What `reqwest` says about a failure, by type, in the order the verdict
@@ -858,16 +866,21 @@ enum Transport {
     Connect,
 }
 
-fn classify_transport(kind: Transport, detail: &str, who: &str) -> Error {
+/// The verdict on a transport failure, read off `detail`, which carries no
+/// URL. `at` is the request's URL, redacted, for the message only.
+fn classify_transport(kind: Transport, detail: &str, who: &str, at: Option<&str>) -> Error {
+    let at = at.map(|url| format!(" ({url})")).unwrap_or_default();
     match kind {
         // The 30s default this client sets. Retriable, and `Error::Timeout`
         // says why without the caller reading the message.
         Transport::Timeout => return Error::Timeout,
         Transport::Builder | Transport::Redirect => {
-            return Error::InvalidRequest(format!("{who} request could not be made: {detail}"));
+            return Error::InvalidRequest(format!("{who} request could not be made{at}: {detail}"));
         }
         Transport::Decode => {
-            return Error::UnexpectedResponse(format!("{who}'s reply could not be read: {detail}"));
+            return Error::UnexpectedResponse(format!(
+                "{who}'s reply could not be read{at}: {detail}"
+            ));
         }
         Transport::Connect => {}
     }
@@ -879,10 +892,10 @@ fn classify_transport(kind: Transport, detail: &str, who: &str) -> Error {
     let lower = detail.to_ascii_lowercase();
     if lower.contains("certificate") {
         return Error::InvalidRequest(format!(
-            "{who}'s TLS certificate could not be verified: {detail}"
+            "{who}'s TLS certificate could not be verified{at}: {detail}"
         ));
     }
-    Error::Connection(format!("cannot reach {who}: {detail}"))
+    Error::Connection(format!("cannot reach {who}{at}: {detail}"))
 }
 
 /// The choices a transfer instruction offers, as the registry paths name them.
@@ -1167,6 +1180,7 @@ mod tests {
             Transport::Connect,
             "client error (Connect): tls handshake eof",
             REGISTRY,
+            None,
         );
         assert!(matches!(hung_up, Error::Connection(_)), "{hung_up:?}");
         assert!(hung_up.is_retriable(), "{hung_up}");
@@ -1175,7 +1189,7 @@ mod tests {
             "error sending request: invalid peer certificate: UnknownIssuer",
             "CERTIFICATE verify failed",
         ] {
-            let error = classify_transport(Transport::Connect, detail, REGISTRY);
+            let error = classify_transport(Transport::Connect, detail, REGISTRY, None);
             assert!(
                 matches!(error, Error::InvalidRequest(_)),
                 "{detail}: {error:?}"
@@ -1187,6 +1201,7 @@ mod tests {
             Transport::Connect,
             "connection refused (os error 61)",
             REGISTRY,
+            None,
         );
         assert!(matches!(refused, Error::Connection(_)), "{refused:?}");
         assert!(refused.is_retriable());
@@ -1205,19 +1220,41 @@ mod tests {
             Transport::Timeout,
             "certificate", // would otherwise be read as permanent
             REGISTRY,
+            None,
         );
         assert!(matches!(timeout, Error::Timeout), "{timeout:?}");
 
         for kind in [Transport::Builder, Transport::Redirect] {
-            let error = classify_transport(kind, "x", REGISTRY);
+            let error = classify_transport(kind, "x", REGISTRY, None);
             assert!(
                 matches!(&error, Error::InvalidRequest(m) if m.contains("could not be made")),
                 "{kind:?}: {error:?}"
             );
         }
 
-        let decode = classify_transport(Transport::Decode, "x", REGISTRY);
+        let decode = classify_transport(Transport::Decode, "x", REGISTRY, None);
         assert!(matches!(decode, Error::UnexpectedResponse(_)), "{decode:?}");
+    }
+
+    /// A real failed request: reqwest prints the URL into its own message,
+    /// and "certificate" there is not a certificate failure. The URL is in
+    /// the message, redacted, for the reader.
+    #[tokio::test]
+    async fn a_refused_connection_is_retriable_whatever_the_url_spells() {
+        let failed = reqwest::Client::new()
+            .get("http://user:secret@127.0.0.1:1/certificate-service/registry/metadata/v1/info")
+            .send()
+            .await
+            .expect_err("nothing listens there");
+        let error = transport_error(failed, REGISTRY);
+        assert!(matches!(error, Error::Connection(_)), "{error:?}");
+        assert!(error.is_retriable(), "{error}");
+        let message = error.to_string();
+        assert!(
+            message.contains("127.0.0.1:1/certificate-service"),
+            "{message}"
+        );
+        assert!(!message.contains("secret"), "{message}");
     }
 
     /// The excerpt boundary: exactly the limit is left alone, one byte over is

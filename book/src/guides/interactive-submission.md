@@ -177,8 +177,8 @@ verifies. So a `Prepare` with a max record time asks for V3 unless you chose a
 scheme, and one that sets a max record time and chooses V2 is refused as
 `Error::InvalidRequest` before anything is sent. The prepared transaction must
 then carry exactly that deadline, or it is refused before anything is signed.
-V3 needs a synchronizer at protocol version 35 (Canton 3.5.1), and the time is
-in whole microseconds.
+V3 needs a synchronizer at protocol version 35 (Canton 3.5.1). A deadline finer
+than a microsecond is rounded down to one, as Canton would round it.
 
 ## Several acting parties
 

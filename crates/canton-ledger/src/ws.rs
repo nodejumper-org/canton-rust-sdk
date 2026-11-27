@@ -418,11 +418,15 @@ mod tests {
         // A `wss` URL and no TLS config: still this client's connector, over
         // the native roots, and never tungstenite's own, which is built with
         // `ClientConfig::builder()` and panics when the application compiles
-        // in two rustls crypto providers and installs neither.
-        assert!(matches!(
-            build_connector(None, true).unwrap(),
-            Some(Connector::Rustls(_))
-        ));
+        // in two rustls crypto providers and installs neither. A host with no
+        // root certificates at all is told so instead.
+        match build_connector(None, true) {
+            Ok(connector) => assert!(matches!(connector, Some(Connector::Rustls(_)))),
+            Err(error) => assert!(
+                error.to_string().contains("no native root certificates"),
+                "{error:?}"
+            ),
+        }
 
         // Custom CA + client identity (mTLS) → a rustls connector.
         let ck = rcgen::generate_simple_self_signed(vec!["localhost".to_string()]).unwrap();

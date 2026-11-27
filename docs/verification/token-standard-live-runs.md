@@ -817,9 +817,9 @@ Scan client ran against a LocalNet instead, on both of its routes: see the
 next section.
 
 ```text
-### release-check at 0.3.3 2026-11-27T08:42:00Z
+### release-check at 0.3.3 2026-11-27T10:13:28Z
 PASS  [hashing] #18 contract ids are decoded as bytes: 5 malformed contract ids refused under V2 and V3, a well-formed one hashed
-PASS  [hashing] #19 a shared node is hashed once: 60 doubled levels hashed twice in 3.176ms; both cycles refused
+PASS  [hashing] #19 a shared node is hashed once: 60 doubled levels hashed twice in 2.9715ms; both cycles refused
 PASS  [hashing] #23 metadata is hashed as Canton orders it: act_as reversed and repeated give the same hash
 PASS  [hashing] #26 a max record time is covered or refused: refused under V2; as prepared, moved and removed are three hashes under V3
 PASS  [tls] #20 precondition: rustls cannot pick a provider in this process: ring and aws-lc-rs are both compiled in and none is installed
@@ -831,9 +831,9 @@ PASS  [onboarding] reach the participant: Canton 3.7.3
 PASS  [onboarding] #22 a real reply passes the strict check, raw and DER key: topology format 31, fingerprint computed locally, host is this participant
 PASS  [onboarding] #22 a tampered real transaction never passes: each of 259 single-byte changes refused, and 6 other tamperings
 PASS  [onboarding] topology format 30, as Canton writes it: a format-30 transaction from the same participant passes, and the multi-hash matches
-PASS  [onboarding] a stored topology is rebuilt and allocated with a signature made later: allocated verify-f5b70a1d::12207755acc…, topology format 31
-PASS  [submission] #24 a real prepare names the command and parties that were asked for: V2, committed at offset 5423011
-PASS  [submission] #26 a max record time is prepared and committed under V3: V3 without being asked, hash matched, committed at offset 5423014; V2 with a deadline refused before sending
+PASS  [onboarding] a stored topology is rebuilt and allocated with a signature made later: allocated verify-657c67e5::12204456b1d…, topology format 31
+PASS  [submission] #24 a real prepare names the command and parties that were asked for: V2, committed at offset 5423566
+PASS  [submission] #26 a max record time is prepared and committed under V3: V3 without being asked, hash matched, committed at offset 5423569; V2 with a deadline refused before sending
 PASS  [scan] #21 the registry client still reads a live registry: the live registry names its admin party, and an unknown instrument is None
 PASS  [scan] #21 the Scan client against the configured Scan: NOT VERIFIED LIVE: this Scan answers 403 to this address (allow-list); the refusal is reported as Error::Http 403, not retried
 

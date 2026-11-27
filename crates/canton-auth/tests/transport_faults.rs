@@ -33,8 +33,19 @@ async fn a_peer_that_hangs_up_during_the_tls_handshake_is_retriable() {
         .await
         .expect("a local port");
     let port = listener.local_addr().expect("the local address").port();
+    // Read the ClientHello before hanging up, so that nothing unread is left
+    // and the close is a FIN rather than a reset: the client then sees the
+    // handshake end early, which is the case being tested, and not a reset,
+    // which was a retriable connection error all along.
     tokio::spawn(async move {
-        while let Ok((socket, _)) = listener.accept().await {
+        use tokio::io::AsyncReadExt as _;
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let mut header = [0u8; 5];
+            if socket.read_exact(&mut header).await.is_ok() {
+                let length = usize::from(u16::from_be_bytes([header[3], header[4]]));
+                let mut record = vec![0u8; length];
+                let _ = socket.read_exact(&mut record).await;
+            }
             drop(socket);
         }
     });
@@ -47,4 +58,8 @@ async fn a_peer_that_hangs_up_during_the_tls_handshake_is_retriable() {
     let error = provider.token().await.expect_err("the peer hung up");
     assert!(matches!(error, Error::Connection(_)), "{error:?}");
     assert!(error.is_retriable(), "{error}");
+    assert!(
+        error.to_string().contains("handshake"),
+        "the handshake path was not reached: {error}"
+    );
 }

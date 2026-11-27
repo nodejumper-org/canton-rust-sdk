@@ -1676,6 +1676,42 @@ mod tests {
         }
     }
 
+    /// A signature that names another key than the one the onboarding
+    /// registers is refused before anything is sent: the participant would
+    /// refuse it too, but only after the request had left.
+    #[tokio::test]
+    async fn a_signature_by_another_key_is_refused_before_allocation() {
+        use canton_signer::{Signature, SignatureFormat, SigningAlgorithm};
+
+        let topology = ExternalPartyTopology::from_parts(
+            &party(),
+            vec![Hosting::honest().added(TOPOLOGY_FORMAT_31)],
+            &raw_key(),
+            &ExpectedHosting::any_participant(),
+        )
+        .expect("the honest transaction");
+        // Nothing listens there: a request that went out would fail as a
+        // connection error, not as the refusal asserted below.
+        let admin = crate::AdminClient::connect_lazy(crate::Config::new("http://127.0.0.1:1"))
+            .expect("a lazy client");
+        let other = Signature::new(
+            SignatureFormat::Concat,
+            vec![7; 64],
+            "1220deadbeef",
+            SigningAlgorithm::Ed25519,
+        )
+        .expect("a well-formed signature");
+        let error = admin
+            .allocate_external_party_with_signature("synchronizer::1220", &topology, &other, "")
+            .await
+            .expect_err("a signature by another key");
+        assert!(
+            matches!(error, canton_core::Error::InvalidRequest(_)),
+            "{error:?}"
+        );
+        assert!(error.to_string().contains(FINGERPRINT), "{error}");
+    }
+
     /// A topology kept between generating it and allocating it is input
     /// again when it is read back. Rebuilding it runs the same checks, and
     /// computes the hash to sign from the transaction that passed them.
@@ -1797,6 +1833,7 @@ mod tests {
             state
         };
         let mut accepted = 0;
+        let mut reached = 0;
         for format in FORMATS {
             let honest = Hosting::honest().added(format);
             for round in 0..4000 {
@@ -1820,6 +1857,9 @@ mod tests {
                     }
                 }
                 let unchanged = bytes == honest;
+                if super::decode_transaction(&bytes).is_ok() {
+                    reached += 1;
+                }
                 let outcome = ExternalPartyTopology::from_parts(
                     &party(),
                     vec![bytes],
@@ -1837,10 +1877,16 @@ mod tests {
                 }
             }
         }
-        // Rounds that happened to write a byte back unchanged.
+        // Worth something only if many rounds get past decoding to the
+        // checks themselves: the single-byte overwrites, nearly all of which
+        // land inside a field.
+        assert!(reached > 500, "only {reached} rounds reached the checks");
+        // Rounds that left the bytes as they were: mostly an extension by no
+        // bytes, a few a byte overwritten with itself. They pass, and nothing
+        // else did.
         assert!(
             accepted < 200,
-            "{accepted} mutations left the bytes as they were"
+            "{accepted} rounds left the bytes as they were"
         );
     }
 

@@ -72,9 +72,10 @@ patch: `cargo update` brings them to every project on `0.3`.
   must then carry exactly the deadline that was asked for: one that comes back
   without it, with another, or with one nobody asked for is refused as
   `Error::UnexpectedResponse` before anything is signed, since hashing the
-  field is no use if the participant chose its value. The deadline is in whole
-  microseconds, the finest a ledger time is; a finer one is refused before
-  sending. V3 needs a synchronizer at protocol version 35 (Canton 3.5.1), so
+  field is no use if the participant chose its value. A deadline finer than a
+  microsecond, which is what a `SystemTime` gives on Linux, is rounded down to
+  the microsecond before it is sent, as Canton would round it. V3 needs a
+  synchronizer at protocol version 35 (Canton 3.5.1), so
   on an older one a max record time cannot be used. Without a max record time
   nothing changes.
 - **Prepare now checks the command id and acting parties in the response**
@@ -84,7 +85,7 @@ patch: `cargo update` brings them to every project on `0.3`.
   `Prepared::change_id` named a command that was never filed, and
   `await_completion` waited for a completion that never arrives. The hash check
   did not catch it. A participant that changes the command id and hashes the
-  changed metadata still passes. `Prepared::from_response` now compares both
+  changed metadata still passes. `prepare_submission` now compares both
   against the request and refuses a mismatch as `Error::UnexpectedResponse`.
   Acting parties are compared as a set.
 - **A token fetch that fails in transport is no longer reported as a
@@ -102,7 +103,7 @@ patch: `cargo update` brings them to every project on `0.3`.
   `Error::Connection`, not a certificate failure (the registry client
   reported it as permanent), and the request URL is no longer part of the
   text that is read, so a URL with "certificate" in it does not decide the
-  verdict.
+  verdict. The URL is still in the message, redacted.
 - **A contract id must be lower-case hex** (#18). See Fixed.
 
 ### Added
@@ -118,9 +119,10 @@ patch: `cargo update` brings them to every project on `0.3`.
   - Contracts ready to disclose: `amulet_rules()`,
     `latest_open_mining_round()` (the highest-numbered round whose opening
     time has passed, as Splice's `selectLatestOpenMiningRound` picks, not the
-    lowest, which is archived next), `featured_app_right(provider)` and
-    `transfer_preapproval_by_party(party)`, with `disclosed()` for gRPC and
-    `disclosed_json()` for the JSON Ledger API.
+    lowest, which is archived next) and `transfer_preapproval_by_party(party)`,
+    with `disclosed()` for gRPC and `disclosed_json()` for the JSON Ledger
+    API; and `featured_app_right(provider)`, whose contract comes without a
+    synchronizer and is disclosed with `disclosed(synchronizer_id)`.
   - The external API: `dso()`, `dso_party_id()`, `scans()`,
     `open_and_issuing_mining_rounds()`, `closed_rounds()`,
     `member_traffic_status()`, `updates()` and `update()`, `events()`,
@@ -238,7 +240,7 @@ patch: `cargo update` brings them to every project on `0.3`.
   contributed by Equilibrium). Canton
   hashes the acting parties as a `SortedSet`. It hashes the disclosed contracts
   as a `SortedMap` keyed by contract id. Order and repetition are not part of
-  the hash. `hash_metadata` took both in wire order. The hashes still matched
+  the hash. The hashing functions took both in wire order. The hashes still matched
   because `PreparedTransactionEncoder` sorts both before sending. The proto
   does not require that sort. A participant that skips it makes the SDK
   compute a different hash. The SDK then refuses to sign a valid transaction.

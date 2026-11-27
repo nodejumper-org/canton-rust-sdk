@@ -378,7 +378,7 @@ async fn scan_lists_its_peers_its_closed_rounds_and_a_members_traffic() {
             "traffic: consumed {} of a limit of {}, purchased {}",
             traffic.total_consumed, traffic.total_limit, traffic.total_purchased
         );
-        assert!(traffic.total_consumed <= traffic.total_limit.max(traffic.total_consumed));
+        assert!(traffic.total_consumed >= 0 && traffic.total_limit >= 0);
         assert!(traffic.total_purchased >= 0);
     }
 }

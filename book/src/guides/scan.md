@@ -102,7 +102,8 @@ asks the internal endpoint instead, whose reply is the one contract.
 
 ## Traffic, history and snapshots
 
-These are served by a Scan only.
+These are served by a Scan only, except `holdings_summary`, which a
+validator's scan-proxy serves too.
 
 - `member_traffic_status(synchronizer, member)` returns what a participant or
   mediator (`PAR::…`, `MED::…`) has consumed, its limit, and what it has

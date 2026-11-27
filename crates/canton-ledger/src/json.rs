@@ -2039,9 +2039,13 @@ fn transport_error(path: &str, e: reqwest::Error) -> Error {
         e.is_builder() || e.is_redirect(),
         e.is_decode(),
     );
-    // Without the URL reqwest prints into its own message: the certificate
-    // verdict below is read off the text, and a base URL with "certificate"
-    // in its host would otherwise decide it. `path` names the request.
+    // The URL goes into the message, redacted, and not into the text the
+    // certificate verdict below is read off: a host with "certificate" in it
+    // would otherwise decide it.
+    let path = e.url().map_or_else(
+        || path.to_string(),
+        |url| canton_core::redact_url(url.as_str()).into_owned(),
+    );
     let detail = canton_core::chain(&e.without_url());
     if timeout {
         return Error::Timeout;
@@ -2066,9 +2070,30 @@ fn transport_error(path: &str, e: reqwest::Error) -> Error {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    /// A real failed request: reqwest prints the URL into its own message,
+    /// and "certificate" in a host is not a certificate failure. The message
+    /// still names the participant, redacted.
+    #[tokio::test]
+    async fn a_refused_connection_is_retriable_whatever_the_url_spells() {
+        let failed = reqwest::Client::new()
+            .get("http://user:secret@127.0.0.1:1/certificate-proxy/v2/version")
+            .send()
+            .await
+            .expect_err("nothing listens there");
+        let error = transport_error("/v2/version", failed);
+        assert!(matches!(error, Error::Connection(_)), "{error:?}");
+        assert!(error.is_retriable(), "{error}");
+        let message = error.to_string();
+        assert!(
+            message.contains("127.0.0.1:1/certificate-proxy/v2/version"),
+            "{message}"
+        );
+        assert!(!message.contains("secret"), "{message}");
+    }
 
     #[test]
     fn updates_request_matches_grpc_and_includes_reassignments() {

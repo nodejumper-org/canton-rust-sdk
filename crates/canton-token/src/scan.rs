@@ -18,7 +18,9 @@
 //!   ([`with_token`](ScanClient::with_token),
 //!   [`with_token_source`](ScanClient::with_token_source)). It serves the
 //!   part of the API a wallet or an application backend needs, not the
-//!   history and snapshot reads; those are refused before anything is sent.
+//!   traffic, history and snapshot-page reads, which are refused before
+//!   anything is sent; of the snapshot reads it serves only
+//!   [`holdings_summary`](ScanClient::holdings_summary).
 //!
 //! A Scan asked directly is one Super Validator's word. This client does not
 //! compare several Scans; the scan-proxy is the route that does.
@@ -29,11 +31,12 @@
 //! mining round, a provider's `FeaturedAppRight`. Creating a
 //! `TransferPreapproval` is one such choice. The submitting party does not
 //! see those contracts, so they are passed as disclosed contracts, and Scan
-//! is where they are published. [`ScanClient::amulet_rules`],
-//! [`ScanClient::latest_open_mining_round`] and
-//! [`ScanClient::featured_app_right`] return them with
+//! is where they are published. [`ScanClient::amulet_rules`] and
+//! [`ScanClient::latest_open_mining_round`] return them with
 //! [`disclosed`](ContractWithState::disclosed), which is what a submission
-//! attaches.
+//! attaches. [`ScanClient::featured_app_right`] returns its contract without
+//! a synchronizer: disclose it on the rules' one, with
+//! [`ScanContract::disclosed`].
 //!
 //! # Splice versions
 //!

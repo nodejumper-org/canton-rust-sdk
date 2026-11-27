@@ -226,8 +226,9 @@ impl Prepare {
     ///
     /// `V3` needs a synchronizer at protocol version 35 or later (Canton
     /// 3.5.1). On an older one the participant refuses the scheme, and a max
-    /// record time cannot be signed for at all. The time is in whole
-    /// microseconds, the finest a ledger time is; a finer one is refused.
+    /// record time cannot be signed for at all. A ledger time is in whole
+    /// microseconds, so a finer one is rounded down to the microsecond before
+    /// it is sent, as Canton itself would round it.
     #[must_use]
     pub fn with_max_record_time(mut self, time: prost_types::Timestamp) -> Self {
         self.max_record_time = Some(time);
@@ -357,9 +358,10 @@ impl Prepare {
     /// epoch: the unit the prepared transaction's metadata carries it in, so
     /// that the response can be held to it exactly.
     ///
-    /// Whole microseconds only. A ledger time is no finer, and a deadline that
-    /// had to be rounded could not be compared with what comes back without
-    /// knowing which way the participant rounds.
+    /// Rounded down to the microsecond, which is the finest a ledger time is
+    /// and what Canton does with a finer one. The request is sent rounded the
+    /// same way ([`into_request`](Self::into_request)), so the participant
+    /// has nothing to round and the two can be compared exactly.
     pub(crate) fn requested_max_record_time(&self) -> Result<Option<u64>> {
         let Some(time) = &self.max_record_time else {
             return Ok(None);
@@ -373,11 +375,6 @@ impl Prepare {
         if !(0..1_000_000_000).contains(&time.nanos) {
             return Err(refuse(
                 "is not a timestamp: its nanoseconds are not within a second",
-            ));
-        }
-        if time.nanos % 1_000 != 0 {
-            return Err(refuse(
-                "is finer than a microsecond, which is the finest a ledger time is",
             ));
         }
         let micros = u64::try_from(time.seconds)
@@ -414,7 +411,11 @@ impl Prepare {
             package_id_selection_preference: self.package_id_selection_preference,
             verbose_hashing: self.verbose_hashing,
             prefetch_contract_keys: self.prefetch_contract_keys,
-            max_record_time: self.max_record_time,
+            // Whole microseconds, as `requested_max_record_time` counts it.
+            max_record_time: self.max_record_time.map(|time| prost_types::Timestamp {
+                seconds: time.seconds,
+                nanos: time.nanos.saturating_sub(time.nanos.rem_euclid(1_000)),
+            }),
             hashing_scheme_version,
             taps_max_passes: self.taps_max_passes,
             estimate_traffic_cost: (!self.estimate_traffic_cost).then_some(
@@ -1491,11 +1492,12 @@ mod tests {
         }
     }
 
-    /// The deadline is compared in microseconds, so the request has to be
-    /// one: a timestamp that is not a time, or is finer than a ledger time,
-    /// is refused before it is sent.
+    /// The deadline is compared in microseconds. A finer one, which is what a
+    /// `SystemTime` gives on Linux, is rounded down to the microsecond in the
+    /// request and in the comparison alike; a timestamp that is not a time is
+    /// refused before it is sent.
     #[test]
-    fn a_max_record_time_that_cannot_be_compared_exactly_is_refused_before_sending() {
+    fn a_max_record_time_is_rounded_down_to_the_microsecond_or_refused_before_sending() {
         let at = |seconds: i64, nanos: i32| {
             Prepare::new("alice").with_max_record_time(prost_types::Timestamp { seconds, nanos })
         };
@@ -1515,9 +1517,32 @@ mod tests {
                 .expect("no deadline"),
             None
         );
+        for (nanos, micros) in [
+            (1, 0),
+            (999, 0),
+            (123_456_789, 123_456),
+            (999_999_999, 999_999),
+        ] {
+            let prepare = at(1_900_000_000, nanos);
+            prepare
+                .check()
+                .expect("a deadline finer than a microsecond");
+            assert_eq!(
+                prepare.requested_max_record_time().expect("rounded down"),
+                Some(1_900_000_000_000_000 + micros)
+            );
+            let sent = prepare
+                .into_request()
+                .2
+                .max_record_time
+                .expect("the deadline is sent");
+            assert_eq!(
+                (sent.seconds, sent.nanos),
+                (1_900_000_000, i32::try_from(micros * 1_000).unwrap()),
+                "the request carries the deadline the response is held to"
+            );
+        }
         for prepare in [
-            at(1_900_000_000, 1),
-            at(1_900_000_000, 999),
             at(1_900_000_000, 1_000_000_000),
             at(1_900_000_000, -1_000),
             at(-1, 0),
