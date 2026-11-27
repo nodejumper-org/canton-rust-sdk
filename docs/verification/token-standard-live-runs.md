@@ -776,7 +776,7 @@ The sender ends 1 Amulet lower and the receiver, which held none, holds 1
 Amulet: the leg moved between two parties on two participants, settled by a
 third.
 
-# DevNet, 2026-11-26, at 0.3.3: the release's changes from a consumer crate
+# DevNet, 2026-11-27, at 0.3.3: the release's changes from a consumer crate
 
 0.3.3 changes what the SDK accepts from a participant before it signs, so the
 release was run as an application would use it:
@@ -786,7 +786,7 @@ public API. It builds with both rustls crypto providers and none installed.
 
 | | |
 |---|---|
-| Date | 2026-11-26 |
+| Date | 2026-11-27 |
 | Network | Canton Network DevNet |
 | Participant | Canton **3.7.3**, protocol version 37, over TLS with a Keycloak token |
 | Topology format | 31 by default; 30 on request (`protocol_version = 36`) |
@@ -817,9 +817,9 @@ Scan client ran against a LocalNet instead, on both of its routes: see the
 next section.
 
 ```text
-### release-check at 0.3.3 2026-11-26T14:31:31Z
+### release-check at 0.3.3 2026-11-27T08:42:00Z
 PASS  [hashing] #18 contract ids are decoded as bytes: 5 malformed contract ids refused under V2 and V3, a well-formed one hashed
-PASS  [hashing] #19 a shared node is hashed once: 60 doubled levels hashed twice in 3.1005ms; both cycles refused
+PASS  [hashing] #19 a shared node is hashed once: 60 doubled levels hashed twice in 3.176ms; both cycles refused
 PASS  [hashing] #23 metadata is hashed as Canton orders it: act_as reversed and repeated give the same hash
 PASS  [hashing] #26 a max record time is covered or refused: refused under V2; as prepared, moved and removed are three hashes under V3
 PASS  [tls] #20 precondition: rustls cannot pick a provider in this process: ring and aws-lc-rs are both compiled in and none is installed
@@ -831,9 +831,9 @@ PASS  [onboarding] reach the participant: Canton 3.7.3
 PASS  [onboarding] #22 a real reply passes the strict check, raw and DER key: topology format 31, fingerprint computed locally, host is this participant
 PASS  [onboarding] #22 a tampered real transaction never passes: each of 259 single-byte changes refused, and 6 other tamperings
 PASS  [onboarding] topology format 30, as Canton writes it: a format-30 transaction from the same participant passes, and the multi-hash matches
-PASS  [onboarding] a stored topology is rebuilt and allocated with a signature made later: allocated verify-d67b3b15::1220b7590f9…, topology format 31
-PASS  [submission] #24 a real prepare names the command and parties that were asked for: V2, committed at offset 5417002
-PASS  [submission] #26 a max record time is prepared and committed under V3: V3 without being asked, hash matched, committed at offset 5417005; V2 with a deadline refused before sending
+PASS  [onboarding] a stored topology is rebuilt and allocated with a signature made later: allocated verify-f5b70a1d::12207755acc…, topology format 31
+PASS  [submission] #24 a real prepare names the command and parties that were asked for: V2, committed at offset 5423011
+PASS  [submission] #26 a max record time is prepared and committed under V3: V3 without being asked, hash matched, committed at offset 5423014; V2 with a deadline refused before sending
 PASS  [scan] #21 the registry client still reads a live registry: the live registry names its admin party, and an unknown instrument is None
 PASS  [scan] #21 the Scan client against the configured Scan: NOT VERIFIED LIVE: this Scan answers 403 to this address (allow-list); the refusal is reported as Error::Http 403, not retried
 
@@ -845,7 +845,7 @@ day (`cargo test -p canton-ledger --features ws --test interactive_live`): 7
 passed, the keyed-contract test skipping for want of its DAR on this
 participant.
 
-## The same day, against a LocalNet: Canton 3.5.7, Splice 0.6.11
+## Against a LocalNet, 2026-11-26 and again the next day: Canton 3.5.7, Splice 0.6.11
 
 Canton Builder Tool's LocalNet, the app-provider validator, with the token
 `canton builder token --validator app-provider` prints. This is the Canton
@@ -859,7 +859,7 @@ scan-proxy on the validator's.
 | `canton-ledger` `interactive_live` | 7 passed, the keyed-contract test included |
 | `canton-admin` `live` | 5 passed |
 | `canton-token` `live` (the registry) | 5 passed |
-| `canton-token` `scan_live` | 5 passed, on a Scan and through the validator's scan-proxy; the snapshot pages skip, since `/v2/state/acs` is Splice 0.8.4's |
+| `canton-token` `scan_live` | 5 passed, on a Scan and through the validator's scan-proxy; the snapshot pages skip, since `/v2/state/acs` is Splice 0.7.5's |
 
 ```text
 test signing__an_external_party_is_onboarded_by_signing_its_own_topology ... allocated external party rust-sdk-onboard::1220078c3740eaf7877ce66463b95ec565fa85bb06a1520c2e82799efd769565dcee
@@ -881,4 +881,10 @@ On DevNet the `canton-ledger` `live` suite passed 39 as well, read as the
 validator operator's party, and the registry suite 5. The `canton-admin`
 suite's party listing pages through every party the participant knows, which
 on DevNet does not finish in minutes; its other four tests passed.
+
+Not run against any live Scan: the two snapshot page reads, `/v2/state/acs`
+and `/v2/holdings/state`. This LocalNet predates them, DevNet's Scans answer
+only allow-listed addresses, and the LocalNet the `LocalNet` workflow boots has
+not taken a snapshot by the time the suite runs. They are held to Splice's
+documents by the stub tests only.
 

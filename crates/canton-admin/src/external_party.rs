@@ -259,8 +259,10 @@ impl ExpectedHosting {
     /// Whether `participant_uid`, the host a transaction names, is the one
     /// expected.
     fn is_met_by(&self, participant_uid: &str) -> bool {
+        // The UID as given, or its member form. Not "strip the prefix and
+        // compare": a participant may itself be named `PAR`.
         self.participant.as_deref().is_none_or(|expected| {
-            expected.strip_prefix("PAR::").unwrap_or(expected) == participant_uid
+            expected == participant_uid || expected.strip_prefix("PAR::") == Some(participant_uid)
         })
     }
 }
@@ -585,7 +587,7 @@ impl ExternalPartyTopology {
 
     /// Rebuild a topology that was stored between
     /// [`generate_external_party_topology`] and [`allocate_external_party`],
-    /// running every check the first of them ran.
+    /// running the checks the first of them ran on what was stored.
     ///
     /// When the signature comes later (a user approving in a wallet, an HSM
     /// queue, a restart in between) the topology has to be kept somewhere,
@@ -594,6 +596,11 @@ impl ExternalPartyTopology {
     /// and pass them here with the key and the host that were expected. The
     /// fingerprint and the multi-hash are recomputed, never read back, so
     /// what gets signed is the hash of the transaction that was checked.
+    ///
+    /// One thing cannot be checked again: the hint. The party must be in the
+    /// key's namespace and be the party the transaction hosts, but its hint
+    /// is whatever the stored party id says. A caller that needs the hint to
+    /// be the one it asked for compares the party id with its own record.
     ///
     /// [`generate_external_party_topology`]: crate::AdminClient::generate_external_party_topology
     /// [`allocate_external_party`]: crate::AdminClient::allocate_external_party
@@ -1614,7 +1621,13 @@ mod tests {
                 assert_eq!(topology.hosting_participant(), HOST);
             }
 
-            for elsewhere in ["participant2::1220cc", "participant1::1220dd", "PAR::", ""] {
+            for elsewhere in [
+                "participant2::1220cc",
+                "participant1::1220dd",
+                "PAR::",
+                "",
+                "PAR::PAR::participant1::1220cc",
+            ] {
                 let error = ExternalPartyTopology::from_response(
                     honest(format),
                     HINT,
@@ -1632,6 +1645,34 @@ mod tests {
                     "{message}"
                 );
             }
+        }
+    }
+
+    /// The expected host is a UID, or the same in its member form. A
+    /// participant that is itself named `PAR` is one like any other.
+    #[test]
+    fn a_participant_named_par_is_matched_in_either_form() {
+        for format in FORMATS {
+            let named_par = hosting_with(format, |hosting| {
+                hosting.hosts = vec![host("PAR::1220cc", Confirmation)];
+            });
+            for expected in ["PAR::1220cc", "PAR::PAR::1220cc"] {
+                let topology = ExternalPartyTopology::from_response(
+                    named_par.clone(),
+                    HINT,
+                    &raw_key(),
+                    &ExpectedHosting::participant(expected),
+                )
+                .expect("the participant named PAR");
+                assert_eq!(topology.hosting_participant(), "PAR::1220cc");
+            }
+            ExternalPartyTopology::from_response(
+                named_par,
+                HINT,
+                &raw_key(),
+                &ExpectedHosting::participant("1220cc"),
+            )
+            .expect_err("a bare namespace is not the participant");
         }
     }
 

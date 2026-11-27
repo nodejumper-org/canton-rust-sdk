@@ -85,6 +85,15 @@ async fn the_dso_contracts_can_be_disclosed(client: &ScanClient) {
         rules.contract.contract_id,
         dso.amulet_rules.contract.contract_id
     );
+    // Without the opt-in the same contract comes from the external API.
+    if let Ok(url) = std::env::var("CANTON_SCAN_URL") {
+        let external = ScanClient::new(&url)
+            .expect("CANTON_SCAN_URL must be a URL")
+            .amulet_rules()
+            .await
+            .expect("the Amulet rules, from the DSO the external API publishes");
+        assert_eq!(external.contract.contract_id, rules.contract.contract_id);
+    }
     let disclosed = rules
         .disclosed()
         .expect("the rules as a disclosed contract");
@@ -261,10 +270,16 @@ async fn the_latest_snapshot_can_be_read() {
             break;
         }
     }
-    let (migration_id, record_time) = latest.expect("a Scan that has taken a snapshot");
+    let Some((migration_id, record_time)) = latest else {
+        skip!(
+            "this Scan has not taken a snapshot yet: it takes one every few hours, so a \
+             minutes-old LocalNet has none"
+        );
+        return;
+    };
     println!("latest snapshot: migration {migration_id} at {record_time}");
 
-    // What the DSO held at it. The summary is served by every Splice release.
+    // What the DSO held at it. The summary is served from Splice 0.6.3.
     let dso_party = client.dso_party_id().await.expect("the DSO party");
     let owners = SnapshotRequest::at(migration_id, record_time.clone())
         .with_page_size(5)
@@ -285,12 +300,12 @@ async fn the_latest_snapshot_can_be_read() {
     assert_eq!(later.record_time, summary.record_time);
     println!("{dso_party}: {} summary row(s)", summary.summaries.len());
 
-    // The page reads are Splice 0.8.4's.
+    // The page reads are Splice 0.7.5's.
     let request = SnapshotRequest::at(migration_id, record_time).with_page_size(5);
     let page = match client.acs_snapshot(&request).await {
         Err(canton_core::Error::Http { status: 404, .. }) => {
             skip!(
-                "this Scan predates /v2/state/acs (Splice 0.8.4), so the snapshot pages cannot be read"
+                "this Scan predates /v2/state/acs (Splice 0.7.5), so the snapshot pages cannot be read"
             );
             return;
         }

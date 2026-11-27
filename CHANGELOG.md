@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Generated protobuf types (the `canton-proto` crate and the `proto` re-exports)
 are **exempt from SemVer** — see the stability policy in `canton-proto`'s docs.
 
-## [0.3.3] — 2026-11-26
+## [0.3.3] — 2026-11-27
 
 The findings filed against 0.3.2 by Silvana (#18–#22, and the rest of the
 review they came from) and by Rumble Fish (#26), fixed, and the three pull
@@ -68,7 +68,14 @@ patch: `cargo update` brings them to every project on `0.3`.
   a scheme was chosen. One that sets a max record time and chooses V2 is
   refused as `Error::InvalidRequest` before it is sent, and
   `hashing::hash_prepared_transaction` refuses a V2 transaction that carries
-  one, as Digital Asset's own hashing library does. Without a max record time
+  one, as Digital Asset's own hashing library does. The prepared transaction
+  must then carry exactly the deadline that was asked for: one that comes back
+  without it, with another, or with one nobody asked for is refused as
+  `Error::UnexpectedResponse` before anything is signed, since hashing the
+  field is no use if the participant chose its value. The deadline is in whole
+  microseconds, the finest a ledger time is; a finer one is refused before
+  sending. V3 needs a synchronizer at protocol version 35 (Canton 3.5.1), so
+  on an older one a max record time cannot be used. Without a max record time
   nothing changes.
 - **Prepare now checks the command id and acting parties in the response**
   (#24, contributed by Equilibrium).
@@ -80,16 +87,22 @@ patch: `cargo update` brings them to every project on `0.3`.
   changed metadata still passes. `Prepared::from_response` now compares both
   against the request and refuses a mismatch as `Error::UnexpectedResponse`.
   Acting parties are compared as a set.
-- **An unreachable token endpoint is no longer reported as a credential
-  rejection** (#25, contributed by Equilibrium). `Error::Auth`'s doc says a
-  token-transport failure surfaces as `Error::Connection` or `Error::Http`.
-  The comment above the token fetch says the same. The fetch returned `Error::Auth` anyway, and an operator reading
-  "authentication failed" might rotate a working secret. An unreachable
-  endpoint is now `Error::Connection`, a TLS certificate that cannot be
-  verified is `Error::InvalidRequest`, a request that cannot be built is
-  `Error::InvalidRequest`, and a deadline is `Error::Timeout`. A 401 or 403
-  stays `Error::Auth`. This matches what `canton-token`'s registry client
-  already does with the same faults.
+- **A token fetch that fails in transport is no longer reported as a
+  credential rejection** (#25, contributed by Equilibrium). `Error::Auth`'s
+  doc says a token-transport failure surfaces as `Error::Connection` or
+  `Error::Http`, and the comment above the token fetch says the same. In 0.3.2
+  a TLS certificate that could not be verified, and a request that could not
+  be built, came back as `Error::Auth` anyway, and an operator reading
+  "authentication failed" might rotate a working secret. Both are
+  `Error::InvalidRequest` now. An unreachable endpoint is `Error::Connection`
+  and a deadline `Error::Timeout`, as before, and a 401 or 403 stays
+  `Error::Auth`. Two corrections were made on top, in this fetch and in the
+  registry, Scan and JSON clients, which read the same verdict off the error
+  text: a peer that hangs up during the TLS handshake is a retriable
+  `Error::Connection`, not a certificate failure (the registry client
+  reported it as permanent), and the request URL is no longer part of the
+  text that is read, so a URL with "certificate" in it does not decide the
+  verdict.
 - **A contract id must be lower-case hex** (#18). See Fixed.
 
 ### Added
@@ -114,16 +127,19 @@ patch: `cargo update` brings them to every project on `0.3`.
     `acs_snapshot_timestamp()`, `acs_snapshot()`, `holdings_state()`,
     `holdings_summary()`, and the name service. `get_json` and `post_json`
     reach the rest.
-  - Three of those calls reach endpoints Splice tags `internal` when asked of
-    a Scan directly. They need `ScanClient::with_internal_endpoints()` there,
-    and nothing through a validator.
+  - Two of those calls, `featured_app_right` and
+    `transfer_preapproval_by_party`, reach endpoints Splice tags `internal`
+    when asked of a Scan directly. They need
+    `ScanClient::with_internal_endpoints()` there, and nothing through a
+    validator. `amulet_rules()` needs it nowhere: a Scan is asked for the
+    rules through the external API, with the DSO's other contracts.
   - The same hardening as the registry client: no redirects, a bounded reply,
     percent-encoded path segments, a 30-second deadline.
   - Written against the documents of Splice 0.10.3. `dso()` asks `/v1/dso`,
     which is 0.10's, and falls back to the `/v0/dso` every release serves.
     The two snapshot page reads (`acs_snapshot`, `holdings_state`) need
-    Splice 0.8.4, where their paths appeared. The rest is served back to
-    Splice 0.6.
+    Splice 0.7.5, where their paths appeared, and `holdings_summary` needs
+    0.6.3. The rest is served by Splice 0.6.0 and later.
   - Not included: comparing several Scans' answers. A Scan asked directly is
     one Super Validator's word; the scan-proxy is the route that compares.
 - **Bearer tokens for `RegistryClient` and `ScanClient`** (#21): `with_token`
@@ -134,9 +150,11 @@ patch: `cargo update` brings them to every project on `0.3`.
   comes later (a wallet approval, a signing queue, a restart in between), the
   topology is stored, and what was stored is input again when it is read
   back. `ExternalPartyTopology::from_parts(party_id, transactions, key,
-  expected)` rebuilds it and runs every check
-  `generate_external_party_topology` ran, recomputing the fingerprint and the
-  multi-hash rather than reading them back.
+  expected)` rebuilds it and runs the checks
+  `generate_external_party_topology` ran on it again, recomputing the
+  fingerprint and the multi-hash rather than reading them back. The party's
+  hint is the one thing it cannot check, having only the stored party id to
+  go by.
   `AdminClient::allocate_external_party_with_signature` takes the signature
   that was made in between.
 - **The host can be held to a participant**: `ExpectedHosting::participant(uid)`
@@ -191,6 +209,16 @@ patch: `cargo update` brings them to every project on `0.3`.
   prepare response could hold a runtime worker that way. Each node is now
   hashed once per transaction, which changes no hash, and a node that is its
   own descendant is refused.
+- **An error reply with a long body lost its status** in the registry
+  client. A body over the 64 KiB kept for the message was refused for its
+  size, so a gateway's 503 page came back as a permanent "body above the
+  limit" rather than a retriable 503. An error body is now cut at the limit
+  and the status kept.
+- A `wss` connection with no CA configured, on a machine with no root
+  certificates, says so (`Error::InvalidRequest`) rather than failing every
+  handshake as an unknown issuer.
+- A token fetch that times out while the body is read is `Error::Timeout`,
+  as one that times out earlier already was.
 - **A retry or reconnect delay could overflow and panic.** `Duration * u32`
   panics when the product does not fit. The retry backoff doubled that way and
   the resumable streams multiplied their step by the reconnect count, on both

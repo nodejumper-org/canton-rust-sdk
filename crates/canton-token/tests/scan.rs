@@ -406,15 +406,17 @@ async fn what_a_validator_does_not_proxy_is_refused_before_it_is_sent() {
     assert!(asked.lock().expect("lock").is_empty(), "nothing was sent");
 }
 
-/// Three calls reach endpoints Splice tags `internal` on a Scan. They are
-/// refused until the caller accepts that, and never needed that through a
-/// validator, whose proxy serves them as its own API.
+/// Two calls reach endpoints Splice tags `internal` on a Scan and have no
+/// external equivalent. They are refused until the caller accepts that, and
+/// never needed that through a validator, whose proxy serves them as its own
+/// API. The Amulet rules need no such choice: the external API publishes
+/// them with the DSO, and that is where a Scan is asked unless the caller
+/// opted into the lighter internal endpoint.
 #[tokio::test]
 async fn a_scans_internal_endpoints_need_the_caller_to_opt_in() {
     let (base, asked) = stub(Vec::new()).await;
     let client = scan(&base);
     for refusal in [
-        client.amulet_rules().await.map(|_| ()),
         client.featured_app_right("provider").await.map(|_| ()),
         client
             .transfer_preapproval_by_party("party")
@@ -431,10 +433,38 @@ async fn a_scans_internal_endpoints_need_the_caller_to_opt_in() {
     }
     assert!(asked.lock().expect("lock").is_empty(), "nothing was sent");
 
-    // The external endpoints never needed it.
-    let (base, asked) = stub(vec![ok(&json!({ "dso_party_id": "DSO::1220" }))]).await;
-    assert_eq!(scan(&base).dso_party_id().await.unwrap(), "DSO::1220");
-    assert_eq!(asked.lock().expect("lock").len(), 1);
+    // The rules, from the external API by default and from the internal
+    // endpoint once opted in.
+    let dso = json!({
+        "dso_party_id": "DSO::1220",
+        "voting_threshold": 1,
+        "latest_mining_round": with_state("00round"),
+        "amulet_rules": with_state("00rules"),
+        "dso_rules": with_state("00dso"),
+        "sv_node_states": [],
+    });
+    let (base, asked) = stub(vec![
+        ok(&dso),
+        ok(&json!({ "amulet_rules_update": with_state("00rules") })),
+    ])
+    .await;
+    let external = scan(&base).amulet_rules().await.expect("the rules");
+    let internal = scan(&base)
+        .with_internal_endpoints()
+        .amulet_rules()
+        .await
+        .expect("the rules");
+    assert_eq!(external.contract.contract_id, "00rules");
+    assert_eq!(internal.contract.contract_id, "00rules");
+    let asked = asked.lock().expect("lock").clone();
+    assert_eq!(
+        (asked[0].method.as_str(), asked[0].path.as_str()),
+        ("GET", "/api/scan/v1/dso")
+    );
+    assert_eq!(
+        (asked[1].method.as_str(), asked[1].path.as_str()),
+        ("POST", "/api/scan/v0/amulet-rules")
+    );
 }
 
 /// A Scan and a validator answer the same two questions in different shapes:
@@ -781,6 +811,33 @@ async fn a_failing_scan_reports_its_own_message() {
 
     let error = client.dso_party_id().await.unwrap_err();
     assert!(matches!(error, Error::UnexpectedResponse(_)), "{error:?}");
+}
+
+/// The status is what a caller acts on, so an error keeps it however long
+/// its body is: a gateway's error page above the cap is cut, not turned into
+/// a complaint about size that hides a retriable 503 or a 404 that is an
+/// answer.
+#[tokio::test]
+async fn an_error_with_a_long_body_keeps_its_status() {
+    let page = "x".repeat(200 * 1024);
+    let (base, _) = stub(vec![(503, page.clone()), (404, page)]).await;
+    let client = scan(&base);
+
+    let error = client.dso_party_id().await.unwrap_err();
+    assert!(
+        matches!(error, Error::Http { status: 503, .. }),
+        "{}",
+        &format!("{error:?}")[..80]
+    );
+    assert!(error.is_retriable());
+
+    // Not Scan's own "no such entry", so an error, and still a 404.
+    let error = client.ans_entry_by_party("alice").await.unwrap_err();
+    assert!(
+        matches!(error, Error::Http { status: 404, .. }),
+        "{}",
+        &format!("{error:?}")[..80]
+    );
 }
 
 /// What Scan answers goes into commands the caller signs, so it has to come

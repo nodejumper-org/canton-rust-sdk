@@ -40,3 +40,6 @@ Thumbs.db
 /fuzz/corpus/
 /fuzz/artifacts/
 /fuzz/Cargo.lock
+
+# Python bytecode from the docs-site scripts.
+__pycache__/

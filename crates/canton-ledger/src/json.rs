@@ -911,10 +911,7 @@ impl JsonClient {
                 request = request.bearer_auth(token);
             }
             request = with_trace_context(request);
-            let response = request
-                .send()
-                .await
-                .map_err(|e| transport_error(path, &e))?;
+            let response = request.send().await.map_err(|e| transport_error(path, e))?;
             read_json(response, path, self.max_decoding_message_size).await
         })
         .await
@@ -946,10 +943,7 @@ impl JsonClient {
         request = with_trace_context(request);
         // main's structure (one-shot core under the retrying wrapper) with this
         // branch's transport classification instead of a blanket Connection.
-        let response = request
-            .send()
-            .await
-            .map_err(|e| transport_error(path, &e))?;
+        let response = request.send().await.map_err(|e| transport_error(path, e))?;
         read_json(response, path, self.max_decoding_message_size).await
     }
 
@@ -969,10 +963,7 @@ impl JsonClient {
             request = request.bearer_auth(token);
         }
         request = with_trace_context(request);
-        let response = request
-            .send()
-            .await
-            .map_err(|e| transport_error(path, &e))?;
+        let response = request.send().await.map_err(|e| transport_error(path, e))?;
         read_json(response, path, self.max_decoding_message_size).await
     }
 
@@ -2042,15 +2033,23 @@ impl JsonClient {
 /// URL and a redirect loop each ran the full retry schedule and then reported
 /// `error sending request for url (…)`, with the word *certificate* left in the
 /// source chain nobody read.
-fn transport_error(path: &str, e: &reqwest::Error) -> Error {
-    let detail = canton_core::chain(e);
-    if e.is_timeout() {
+fn transport_error(path: &str, e: reqwest::Error) -> Error {
+    let (timeout, unsendable, undecodable) = (
+        e.is_timeout(),
+        e.is_builder() || e.is_redirect(),
+        e.is_decode(),
+    );
+    // Without the URL reqwest prints into its own message: the certificate
+    // verdict below is read off the text, and a base URL with "certificate"
+    // in its host would otherwise decide it. `path` names the request.
+    let detail = canton_core::chain(&e.without_url());
+    if timeout {
         return Error::Timeout;
     }
-    if e.is_builder() || e.is_redirect() {
+    if unsendable {
         return Error::InvalidRequest(format!("the request to {path} could not be made: {detail}"));
     }
-    if e.is_decode() {
+    if undecodable {
         return Error::UnexpectedResponse(format!(
             "{path} returned a body this cannot read: {detail}"
         ));

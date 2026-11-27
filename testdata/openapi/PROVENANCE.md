@@ -47,8 +47,9 @@ tests read the paths and their HTTP methods, not the schemas.
 
 Splice moved some of these paths between releases, and the client says which
 it needs: `/v1/dso` is 0.10's (the client falls back to `/v0/dso`, which every
-release serves), and `/v2/state/acs` and `/v2/holdings/state` are 0.8.4's (an
-older Scan has no equivalent the client speaks).
+release serves), `/v2/state/acs` and `/v2/holdings/state` are 0.7.5's (an
+older Scan has no equivalent the client speaks), and `/v1/holdings/summary` is
+0.6.3's.
 
 To bump: refetch both at the new revision, update this section, and run
 `cargo test -p canton-token --test scan`, which checks every path and method

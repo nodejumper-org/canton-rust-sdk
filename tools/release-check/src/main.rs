@@ -844,7 +844,7 @@ async fn scan(report: &mut Report) {
         let base = format!("{}/api/scan", env("CANTON_TOKEN_REGISTRY_URL")?.trim_end_matches('/'));
         let client = canton::token::scan::ScanClient::new(&base).map_err(|e| e.to_string())?;
         // Refused before anything is sent, whatever the Scan would say.
-        match client.amulet_rules().await {
+        match client.featured_app_right("nobody::1220").await {
             Err(Error::InvalidRequest(_)) => {}
             other => return Err(format!("an internal endpoint without the opt-in: {:?}", other.map(|_| "answered"))),
         }
@@ -853,7 +853,7 @@ async fn scan(report: &mut Report) {
                 let rounds = client.open_and_issuing_mining_rounds().await.map_err(|e| e.to_string())?;
                 let round = client.latest_open_mining_round().await.map_err(|e| e.to_string())?;
                 round.disclosed().map_err(|e| e.to_string())?;
-                let rules = client.with_internal_endpoints().amulet_rules().await.map_err(|e| e.to_string())?;
+                let rules = client.amulet_rules().await.map_err(|e| e.to_string())?;
                 rules.disclosed().map_err(|e| e.to_string())?;
                 Ok(format!("a live Scan: DSO party, {} open rounds, the rules and the round both disclose", rounds.open.len()))
             }

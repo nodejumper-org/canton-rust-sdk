@@ -175,7 +175,10 @@ signature covers the deadline, and only hashing scheme V3 hashes it: under V2
 an executing participant can change or drop it and the signature still
 verifies. So a `Prepare` with a max record time asks for V3 unless you chose a
 scheme, and one that sets a max record time and chooses V2 is refused as
-`Error::InvalidRequest` before anything is sent.
+`Error::InvalidRequest` before anything is sent. The prepared transaction must
+then carry exactly that deadline, or it is refused before anything is signed.
+V3 needs a synchronizer at protocol version 35 (Canton 3.5.1), and the time is
+in whole microseconds.
 
 ## Several acting parties
 
@@ -236,7 +239,9 @@ signed, when the response has no transaction or no hash; is hashed under an
 unknown scheme or one other than requested; has a hash that is not 32 bytes
 (every scheme is SHA-256); under V2 or V3, carries a hash that is not the
 returned transaction's, or a transaction that cannot be hashed under that
-scheme; or uses any other scheme without the opt-in.
+scheme; uses any other scheme without the opt-in; or carries a transaction
+that is not the one asked for: another command id, other acting parties, or a
+max record time other than the requested one (none, where none was requested).
 
 [`trust_participant_hash()`](https://docs.rs/canton-ledger/latest/canton_ledger/interactive/struct.Prepare.html#method.trust_participant_hash)
 signs the participant's hash as returned and logs a warning. An unchecked hash

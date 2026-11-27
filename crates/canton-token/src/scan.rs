@@ -37,26 +37,31 @@
 //!
 //! # Splice versions
 //!
-//! Written against the documents of Splice 0.10.3. Two things differ on an
-//! older Scan or validator: [`dso`](ScanClient::dso) falls back to the
-//! `/v0/dso` every release serves, and the two snapshot page reads
+//! Written against the documents of Splice 0.10.3. On an older Scan or
+//! validator: [`dso`](ScanClient::dso) falls back to the `/v0/dso` every
+//! release serves; the two snapshot page reads
 //! ([`acs_snapshot`](ScanClient::acs_snapshot),
-//! [`holdings_state`](ScanClient::holdings_state)) need Splice 0.8.4, which
-//! is where their `/v2` paths appeared. Everything else is served back to
-//! Splice 0.6.
+//! [`holdings_state`](ScanClient::holdings_state)) need Splice 0.7.5, which
+//! is where their `/v2` paths appeared;
+//! [`holdings_summary`](ScanClient::holdings_summary) needs 0.6.3. Everything
+//! else is served by Splice 0.6.0 and later.
 //!
 //! # Stability
 //!
 //! Splice tags each Scan endpoint `external` or `internal`. The external ones
 //! are its public API. The internal ones may change in any Splice release,
-//! and three of them are the only source of contracts applications need:
-//! [`amulet_rules`](ScanClient::amulet_rules),
-//! [`featured_app_right`](ScanClient::featured_app_right) and
+//! and two of them are the only source of a contract an application may
+//! need: [`featured_app_right`](ScanClient::featured_app_right) and
 //! [`transfer_preapproval_by_party`](ScanClient::transfer_preapproval_by_party).
 //! Asked of a Scan directly, these are refused unless the client was built
 //! with [`with_internal_endpoints`](ScanClient::with_internal_endpoints),
 //! which is the caller accepting that. Through a validator's scan-proxy they
 //! are part of the proxy's own API and need no opt-in.
+//!
+//! [`amulet_rules`](ScanClient::amulet_rules) needs no opt-in either way:
+//! the external API publishes the rules with the rest of the DSO's contracts,
+//! and that is where a Scan is asked for them. With the opt-in it asks the
+//! internal endpoint, which returns the one contract and nothing else.
 //!
 //! Contract payloads, choice arguments and results stay JSON
 //! ([`serde_json::Value`]): they are Daml values of whatever template the
@@ -73,7 +78,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::registry::{
-    ERROR_BODY_CAP, ErrorResponse, MAX_RESPONSE_BYTES, read_body_from, transport_error, truncate,
+    ErrorResponse, MAX_RESPONSE_BYTES, read_body_from, read_error_body, transport_error, truncate,
 };
 
 /// How Scan is named in an error.
@@ -666,6 +671,32 @@ pub struct ScanEventItem {
     /// reports them.
     #[serde(default)]
     pub app_activity_records: Option<Value>,
+    /// The asset activity records the update produced, where Scan reports
+    /// them.
+    #[serde(default)]
+    pub asset_activity_records: Option<Value>,
+    /// The application provider the submission was made through, where Scan
+    /// reports one.
+    #[serde(default)]
+    pub submitting_app_provider: Option<String>,
+}
+
+impl ScanEventItem {
+    /// Where this entry is in history, to read on from: the update's
+    /// position, or the verdict's where there is no update, as for a
+    /// transaction the mediator rejected. `None` only for an entry with
+    /// neither, or a verdict without its migration and record time.
+    #[must_use]
+    pub fn position(&self) -> Option<HistoryPosition> {
+        if let Some(update) = &self.update {
+            return Some(update.position());
+        }
+        let verdict = self.verdict.as_ref()?;
+        Some(HistoryPosition {
+            migration_id: verdict.get("migration_id")?.as_i64()?,
+            record_time: verdict.get("record_time")?.as_str()?.to_string(),
+        })
+    }
 }
 
 /// Which snapshot of the active contracts to read, and which part of it.
@@ -909,9 +940,10 @@ impl ScanClient {
 
     /// Allow the calls that reach endpoints Splice tags `internal` when the
     /// client asks a Scan directly:
-    /// [`amulet_rules`](Self::amulet_rules),
     /// [`featured_app_right`](Self::featured_app_right) and
-    /// [`transfer_preapproval_by_party`](Self::transfer_preapproval_by_party).
+    /// [`transfer_preapproval_by_party`](Self::transfer_preapproval_by_party),
+    /// and the lighter of the two ways to read
+    /// [`amulet_rules`](Self::amulet_rules).
     ///
     /// Splice may change an internal endpoint in any release, and these
     /// methods change with it. Through a validator's scan-proxy the same
@@ -1119,12 +1151,15 @@ impl ScanClient {
 
     /// The `AmuletRules` contract.
     ///
-    /// On a Scan this is an internal endpoint: see
-    /// [`with_internal_endpoints`](Self::with_internal_endpoints).
+    /// A Scan publishes it twice: with the rest of the DSO's contracts in the
+    /// external API ([`dso`](Self::dso)), and alone at an internal endpoint.
+    /// The external one is asked, unless the client opted into the internal
+    /// endpoints ([`with_internal_endpoints`](Self::with_internal_endpoints)),
+    /// whose reply is the one contract. A validator's scan-proxy serves it as
+    /// part of its own API.
     ///
     /// # Errors
-    /// As [`dso_party_id`](Self::dso_party_id), and
-    /// [`Error::InvalidRequest`] on a Scan without the opt-in.
+    /// As [`dso_party_id`](Self::dso_party_id).
     pub async fn amulet_rules(&self) -> Result<ContractWithState> {
         #[derive(Deserialize)]
         struct MaybeCached {
@@ -1141,7 +1176,9 @@ impl ScanClient {
         struct FromProxy {
             amulet_rules: ContractWithState,
         }
-        self.internal("the Amulet rules")?;
+        if self.route == Route::Scan && !self.internal_endpoints {
+            return Ok(self.dso().await?.amulet_rules);
+        }
         let url = self.url("v0", &["amulet-rules"])?;
         match self.route {
             Route::Scan => {
@@ -1177,7 +1214,8 @@ impl ScanClient {
     /// [`with_internal_endpoints`](Self::with_internal_endpoints).
     ///
     /// # Errors
-    /// As [`amulet_rules`](Self::amulet_rules).
+    /// As [`dso_party_id`](Self::dso_party_id), and
+    /// [`Error::InvalidRequest`] on a Scan without the opt-in.
     pub async fn featured_app_right(&self, provider: &str) -> Result<Option<ScanContract>> {
         #[derive(Deserialize)]
         struct Reply {
@@ -1198,7 +1236,7 @@ impl ScanClient {
     /// [`with_internal_endpoints`](Self::with_internal_endpoints).
     ///
     /// # Errors
-    /// As [`amulet_rules`](Self::amulet_rules).
+    /// As [`featured_app_right`](Self::featured_app_right).
     pub async fn transfer_preapproval_by_party(
         &self,
         party: &str,
@@ -1352,7 +1390,9 @@ impl ScanClient {
 
     /// Up to `page_size` entries of the event history after `after`: each
     /// update with the mediator's verdict on it. Paged as
-    /// [`updates`](Self::updates).
+    /// [`updates`](Self::updates), from the last entry's
+    /// [`position`](ScanEventItem::position), which an entry has also when it
+    /// is a verdict with no update.
     ///
     /// # Errors
     /// As [`scans`](Self::scans).
@@ -1401,7 +1441,7 @@ impl ScanClient {
 
     /// A page of a snapshot of the active contracts.
     ///
-    /// Splice 0.8.4 and later: an older Scan has no `/v2/state/acs` and
+    /// Splice 0.7.5 and later: an older Scan has no `/v2/state/acs` and
     /// answers `404`.
     ///
     /// # Errors
@@ -1432,7 +1472,7 @@ impl ScanClient {
     }
 
     /// A page of the Amulet and locked Amulet contracts the request's parties
-    /// owned at a snapshot. Splice 0.8.4 and later, as
+    /// owned at a snapshot. Splice 0.7.5 and later, as
     /// [`acs_snapshot`](Self::acs_snapshot).
     ///
     /// # Errors
@@ -1455,7 +1495,8 @@ impl ScanClient {
     }
 
     /// The Amulet totals the request's parties held at a snapshot. The page
-    /// size, page token and templates of the request are not used.
+    /// size, page token and templates of the request are not used. Splice
+    /// 0.6.3 and later.
     ///
     /// # Errors
     /// As [`dso_party_id`](Self::dso_party_id), and
@@ -1509,7 +1550,7 @@ impl ScanClient {
             Some(token) => request.bearer_auth(token),
             None => request,
         };
-        request.send().await.map_err(|e| transport_error(&e, SCAN))
+        request.send().await.map_err(|e| transport_error(e, SCAN))
     }
 
     async fn get<T: serde::de::DeserializeOwned>(&self, url: reqwest::Url) -> Result<T> {
@@ -1538,7 +1579,7 @@ impl ScanClient {
     ) -> Result<Option<T>> {
         let response = self.send(self.http.get(url.clone())).await?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            let body = read_body_from(response, ERROR_BODY_CAP, url.as_str(), SCAN).await?;
+            let body = read_error_body(response, url.as_str(), SCAN).await?;
             let trimmed = body.trim();
             if serde_json::from_str::<ErrorResponse>(trimmed).is_ok() {
                 return Ok(None);
@@ -1596,12 +1637,11 @@ async fn decode<T: serde::de::DeserializeOwned>(
     url: &str,
 ) -> Result<T> {
     let status = response.status();
-    let cap = if status.is_success() {
-        MAX_RESPONSE_BYTES
+    let body = if status.is_success() {
+        read_body_from(response, MAX_RESPONSE_BYTES, url, SCAN).await?
     } else {
-        ERROR_BODY_CAP
+        read_error_body(response, url, SCAN).await?
     };
-    let body = read_body_from(response, cap, url, SCAN).await?;
     if !status.is_success() {
         // Splice's error body is `{"error": "…"}`; anything else is passed
         // through. The body stays the body, since the shared error model
@@ -1845,6 +1885,47 @@ mod tests {
         }))
         .unwrap_err();
         assert!(neither.to_string().contains("events_by_id"), "{neither}");
+    }
+
+    /// The last entry of an event page is what the next page is read from,
+    /// and it can be a verdict with no update: a transaction the mediator
+    /// rejected. Its position comes from the verdict then.
+    #[test]
+    fn an_event_entry_has_a_position_with_or_without_an_update() {
+        let rejected: ScanEventItem = serde_json::from_value(serde_json::json!({
+            "update": null,
+            "verdict": {
+                "update_id": "1220rejected",
+                "migration_id": 4,
+                "domain_id": "global-domain::1220aa",
+                "record_time": "2026-11-26T10:02:00.000000Z",
+                "finalization_time": "2026-11-26T10:02:01.000000Z",
+                "submitting_parties": ["alice::1220"],
+                "submitting_participant_uid": "participant::1220",
+                "verdict_result": "VERDICT_RESULT_REJECTED",
+                "mediator_group": 0,
+                "transaction_views": { "views": [], "root_views": [] },
+            },
+            "asset_activity_records": [],
+            "submitting_app_provider": "provider::1220",
+        }))
+        .unwrap();
+        assert!(rejected.update.is_none());
+        assert_eq!(
+            rejected.position(),
+            Some(HistoryPosition {
+                migration_id: 4,
+                record_time: "2026-11-26T10:02:00.000000Z".to_string(),
+            })
+        );
+        assert_eq!(
+            rejected.submitting_app_provider.as_deref(),
+            Some("provider::1220")
+        );
+        assert!(rejected.asset_activity_records.is_some());
+
+        let empty: ScanEventItem = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(empty.position(), None);
     }
 
     /// The position serializes as the `after` object the history reads take.

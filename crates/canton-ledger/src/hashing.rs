@@ -1324,6 +1324,53 @@ mod tests {
         }
     }
 
+    /// A chain of exercise nodes, each with the next as its only child, down
+    /// to a fetch: the deepest a tree of `levels` nodes can be, through the
+    /// node kind with the largest frame.
+    fn deep(levels: usize) -> ipb::DamlTransaction {
+        let mut nodes = vec![wrap("0", node::node::NodeType::Fetch(fetch()))];
+        let mut node_seeds = Vec::new();
+        for level in 1..=levels {
+            let child = (level - 1).to_string();
+            nodes.push(wrap(
+                &level.to_string(),
+                node::node::NodeType::Exercise(exercise(&[&child])),
+            ));
+            node_seeds.push(ipb::daml_transaction::NodeSeed {
+                node_id: i32::try_from(level).unwrap(),
+                seed: hex(EXERCISE_SEED),
+            });
+        }
+        ipb::DamlTransaction {
+            version: "2.1".to_string(),
+            roots: vec![levels.to_string()],
+            nodes,
+            node_seeds,
+        }
+    }
+
+    /// The depth limit still holds now that a self-reference is caught
+    /// before it: a transaction nested one level past it is refused, and one
+    /// exactly at it hashes. The walk is recursive, so the limit is also what
+    /// bounds the stack, and the deepest accepted transaction has to fit the
+    /// stack of the thread an async runtime gives a task: two mebibytes, in
+    /// an unoptimized build, where frames are at their largest.
+    #[test]
+    fn the_deepest_transaction_is_hashed_on_a_small_stack_and_one_deeper_is_refused() {
+        let hashed = std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(|| {
+                for scheme in [Scheme::V2, Scheme::V3] {
+                    hash_transaction(&deep(MAX_DEPTH), scheme).unwrap();
+                    let error = hash_transaction(&deep(MAX_DEPTH + 1), scheme).unwrap_err();
+                    assert!(error.to_string().contains("deeper"), "{error}");
+                }
+            })
+            .unwrap()
+            .join();
+        assert!(hashed.is_ok(), "the walk overflowed a two-mebibyte stack");
+    }
+
     /// A node listed more than once is hashed once. Each node here lists the
     /// next one twice, so hashing every listing would take 2^200 node hashes
     /// and this test would not return; `MAX_DEPTH` does not help, since the
@@ -1352,12 +1399,12 @@ mod tests {
         }
     }
 
-    /// A node listed twice hashes as it does listed once: Canton's own vector
-    /// has `create` and `fetch` both as roots' descendants and under the
-    /// exercise, and a second listing in one node changes that node's hash
-    /// only by the repeated child hash.
+    /// What a second listing changes and what it does not: the listed node's
+    /// own hash is the same wherever and however often it is listed, and the
+    /// node listing it twice hashes differently from one listing it once,
+    /// since it hashes each listing. The cache must keep both true.
     #[test]
-    fn a_repeated_listing_reuses_the_hash_and_does_not_change_it() {
+    fn a_second_listing_changes_the_parents_hash_and_not_the_childs() {
         for scheme in [Scheme::V2, Scheme::V3] {
             let once = chain(1, 1);
             let twice = chain(1, 2);

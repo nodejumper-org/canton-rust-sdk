@@ -1,6 +1,7 @@
 //! An application that compiles in both rustls crypto providers and installs
-//! one for the process. The SDK uses the installed one rather than putting
-//! its own `ring` beside it, as its gRPC and HTTP transports already do.
+//! one for the process. The SDK's TLS setup works there too, on both lanes.
+//! That it is the installed provider the SDK then uses, rather than its own
+//! `ring` beside it, is shown in `unusable_installed_provider.rs`.
 
 use std::time::Duration;
 
@@ -8,7 +9,7 @@ use canton_ledger::{Error, JsonClient};
 use canton_pqs::PqsClient;
 
 #[tokio::test]
-async fn tls_setup_uses_the_provider_the_application_installed() {
+async fn tls_setup_works_with_a_provider_the_application_installed() {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("nothing was installed before this");

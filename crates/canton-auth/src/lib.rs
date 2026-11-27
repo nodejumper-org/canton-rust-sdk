@@ -392,7 +392,7 @@ impl TokenProvider {
         let response = request
             .send()
             .await
-            .map_err(|e| send_failure(&e, &canton_core::redact_url(&config.token_url)))?;
+            .map_err(|e| send_failure(e, &canton_core::redact_url(&config.token_url)))?;
 
         // A credential rejection (401/403, e.g. `invalid_client`) is a definite
         // auth failure; other non-success statuses keep their code so 5xx/429
@@ -441,7 +441,7 @@ enum SendFailure {
     Connect,
 }
 
-fn send_failure(e: &reqwest::Error, url: &str) -> Error {
+fn send_failure(e: reqwest::Error, url: &str) -> Error {
     let kind = if e.is_timeout() {
         SendFailure::Timeout
     } else if e.is_builder() {
@@ -449,7 +449,11 @@ fn send_failure(e: &reqwest::Error, url: &str) -> Error {
     } else {
         SendFailure::Connect
     };
-    classify_send(kind, url, &canton_core::chain(e))
+    // Without the URL reqwest prints into its own message: the verdict below
+    // is read off the text, and a token URL with "certificate" in its host or
+    // path would otherwise decide it. `url` is the redacted form for the
+    // message.
+    classify_send(kind, url, &canton_core::chain(&e.without_url()))
 }
 
 fn classify_send(kind: SendFailure, url: &str, detail: &str) -> Error {
@@ -463,9 +467,11 @@ fn classify_send(kind: SendFailure, url: &str, detail: &str) -> Error {
         SendFailure::Connect => {}
     }
     // reqwest does not expose a typed TLS error. The chain is the only place
-    // a certificate failure shows.
+    // a certificate failure shows. Only that: a handshake that ends early
+    // ("tls handshake eof") is the peer hanging up, which a restart or a
+    // rolling deploy does, and it passes.
     let lower = detail.to_ascii_lowercase();
-    if lower.contains("certificate") || lower.contains("tls handshake") {
+    if lower.contains("certificate") {
         return Error::InvalidRequest(format!(
             "the token endpoint {url} has a TLS certificate that could not be verified: {detail}"
         ));
@@ -494,9 +500,12 @@ async fn read_body(mut response: reqwest::Response, cap: usize) -> Result<String
     }
     let mut buffer: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|e| {
+        if e.is_timeout() {
+            return Error::Timeout;
+        }
         Error::Connection(format!(
             "reading token response failed: {}",
-            canton_core::chain(&e)
+            canton_core::chain(&e.without_url())
         ))
     })? {
         if buffer.len() + chunk.len() > cap {
@@ -554,6 +563,16 @@ mod tests {
 
         let builder = classify_send(SendFailure::Builder, url, "builder error");
         assert!(matches!(builder, Error::InvalidRequest(_)), "{builder:?}");
+
+        // The peer hanging up in the middle of the handshake is not a verdict
+        // on its certificate: a load balancer restarting does it.
+        let hung_up = classify_send(
+            SendFailure::Connect,
+            url,
+            "client error (Connect): tls handshake eof",
+        );
+        assert!(matches!(hung_up, Error::Connection(_)), "{hung_up:?}");
+        assert!(hung_up.is_retriable(), "{hung_up}");
     }
 
     #[test]

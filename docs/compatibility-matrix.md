@@ -5,7 +5,7 @@ listed on the strength of "it should work" — but not everything is checked by
 CI on every push, and the table under [What CI runs, and what it cannot](#what-ci-runs-and-what-it-cannot)
 says exactly which rows run only in the nightly `LocalNet` workflow.
 
-Version **0.3.3**, released 2026-11-26 (the review fixes over 0.3.2: a strict check of external-party onboarding, topology transactions of protocol version 37, a signed max record time, a Scan client).
+Version **0.3.3**, released 2026-11-27 (the review fixes over 0.3.2: a strict check of external-party onboarding, topology transactions of protocol version 37, a signed max record time, a Scan client).
 
 ## Rust
 
@@ -175,14 +175,16 @@ each file name ends with the package id that hashes its bytes.
 | live Ledger API, interactive submission | yes, against LocalNet in the `LocalNet` workflow (nightly, on demand) | a Canton participant |
 | live admin (`canton-admin`) | yes, against LocalNet in the `LocalNet` workflow (nightly, on demand); the `vetted(synchronizer)` branch of the topology test does not run, because `CANTON_TEST_SYNC_ID` is unset | a Canton participant with its admin API reachable |
 | live PQS | yes, against LocalNet in the `LocalNet` workflow (nightly, on demand) | a Scribe store following the participant — [`tools/pqs/compose.yaml`](../tools/pqs/compose.yaml) runs one against any LocalNet on the host |
-| Scan (`canton-token`'s `scan_live`) | yes, the Scan route, against LocalNet in the `LocalNet` workflow (nightly, on demand); the scan-proxy route does not run there | a Splice Scan at `<scan>/api/scan` (`CANTON_SCAN_URL`), or a validator's scan-proxy at `<validator>/api/validator` with a token (`CANTON_SCAN_PROXY_URL`, `CANTON_TOKEN`). A Super Validator's Scan on DevNet, TestNet and MainNet answers only to allow-listed addresses |
+| Scan (`canton-token`'s `scan_live`) | yes, the Scan route, against LocalNet in the `LocalNet` workflow (nightly, on demand); the scan-proxy route and the snapshot reads do not run there | a Splice Scan at `<scan>/api/scan` (`CANTON_SCAN_URL`), or a validator's scan-proxy at `<validator>/api/validator` with a token (`CANTON_SCAN_PROXY_URL`, `CANTON_TOKEN`). A Super Validator's Scan on DevNet, TestNet and MainNet answers only to allow-listed addresses |
 | token-standard registry | yes, against LocalNet in the `LocalNet` workflow (nightly, on demand) | a Splice Scan — the **super-validator** runs one: a Splice LocalNet or Canton Builder Tool publishes it at `scan.localhost:4000`; cn-quickstart with `SV_PROFILE=on` serves it on `:5012` without publishing the port. The public DevNet Scan serves the same paths unauthenticated |
 
 The `LocalNet` workflow sets `CANTON_TEST_REQUIRE_LIVE`, so a suite that cannot
 reach its environment **fails rather than skips**, and it asserts each suite's
 exact passed count and zero ignored tests: ledger 39, interactive 7, admin 5,
-PQS 9, token 5, Scan 4 (the scan-proxy test is left out by name, since the
-workflow fetches no token for the validator's API). One PQS test skips without that guard when the store holds no
+PQS 9, token 5, Scan 3 (two are left out by name: the scan-proxy test, since
+the workflow fetches no token for the validator's API, and the snapshot test,
+since a Scan takes a snapshot every few hours and a minutes-old LocalNet has
+none). One PQS test skips without that guard when the store holds no
 Amulet, so the workflow also requires the line that test prints when it
 compares. Outside CI, a suite gated on an environment variable skips when the
 variable is unset and fails when it is set and the connection fails — a

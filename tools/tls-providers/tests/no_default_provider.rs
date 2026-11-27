@@ -56,7 +56,13 @@ async fn a_wss_stream_with_no_tls_settings_fails_without_panicking() {
 
     match client.ws_updates(vec!["alice".to_string()], 0, None).await {
         Ok(_) => panic!("a server that hangs up completed a TLS handshake"),
-        Err(error) => assert!(matches!(error, Error::Connection(_)), "{error:?}"),
+        // Without root certificates the client stops before any TLS setup,
+        // on the old code as on the new, and the run would pass without
+        // having reached the code it is about.
+        Err(error) => assert!(
+            matches!(error, Error::Connection(_)),
+            "the TLS setup was not reached, or failed for another reason: {error:?}"
+        ),
     }
     match client.ws_completions(vec!["alice".to_string()], 0).await {
         Ok(_) => panic!("a server that hangs up completed a TLS handshake"),

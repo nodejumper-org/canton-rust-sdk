@@ -342,12 +342,12 @@ impl RegistryClient {
             .await?
             .send()
             .await
-            .map_err(|e| connection(&e))?;
+            .map_err(connection)?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             // A failed body read on a 404 is not "the registry does not issue
             // it": it is a transport failure, and reporting it as `None`
             // would tell a wallet the instrument does not exist.
-            let body = read_body(response, ERROR_BODY_CAP, url.as_str()).await?;
+            let body = read_error_body(response, url.as_str(), REGISTRY).await?;
             let trimmed = body.trim();
             if trimmed.is_empty() || serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
                 return Ok(None);
@@ -641,7 +641,7 @@ impl RegistryClient {
             })
             .send()
             .await
-            .map_err(|e| connection(&e))?;
+            .map_err(connection)?;
         Self::decode(response, url.as_str()).await
     }
 
@@ -656,7 +656,7 @@ impl RegistryClient {
             .json(request)
             .send()
             .await
-            .map_err(|e| connection(&e))?;
+            .map_err(connection)?;
         let wire: WireChoiceContext = Self::decode(response, url.as_str()).await?;
         ChoiceContext::from_wire(wire)
     }
@@ -667,7 +667,7 @@ impl RegistryClient {
             .await?
             .send()
             .await
-            .map_err(|e| connection(&e))?;
+            .map_err(connection)?;
         Self::decode(response, url.as_str()).await
     }
 
@@ -678,12 +678,11 @@ impl RegistryClient {
         url: &str,
     ) -> Result<T> {
         let status = response.status();
-        let cap = if status.is_success() {
-            MAX_RESPONSE_BYTES
+        let body = if status.is_success() {
+            read_body(response, MAX_RESPONSE_BYTES, url).await?
         } else {
-            ERROR_BODY_CAP
+            read_error_body(response, url, REGISTRY).await?
         };
-        let body = read_body(response, cap, url).await?;
         if status == reqwest::StatusCode::CONFLICT {
             // Every token-standard document defines 409 the same way: a
             // contract the reply would name is in the middle of a
@@ -756,6 +755,32 @@ async fn read_body(response: reqwest::Response, cap: usize, url: &str) -> Result
     read_body_from(response, cap, url, REGISTRY).await
 }
 
+/// The body of a reply that is already an error, up to [`ERROR_BODY_CAP`].
+///
+/// Cut off at the cap rather than refused for exceeding it: the status is
+/// what the caller acts on (a 503 is retried, a 404 may be an answer), and a
+/// gateway's long error page must not turn it into a complaint about size.
+pub(crate) async fn read_error_body(
+    mut response: reqwest::Response,
+    url: &str,
+    who: &str,
+) -> Result<String> {
+    let mut buffer: Vec<u8> = Vec::new();
+    while buffer.len() < ERROR_BODY_CAP {
+        let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|e| transport_error(e, who))?
+        else {
+            break;
+        };
+        let room = ERROR_BODY_CAP.saturating_sub(buffer.len());
+        buffer.extend_from_slice(chunk.get(..room).unwrap_or(&chunk));
+    }
+    tracing::trace!(%url, bytes = buffer.len(), "read an error body");
+    Ok(String::from_utf8_lossy(&buffer).into_owned())
+}
+
 /// [`read_body`] for any service this crate talks to; `who` names it in the
 /// errors ("the registry", "Scan").
 pub(crate) async fn read_body_from(
@@ -778,7 +803,7 @@ pub(crate) async fn read_body_from(
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|e| transport_error(&e, who))?
+        .map_err(|e| transport_error(e, who))?
     {
         if buffer.len() + chunk.len() > cap {
             return Err(Error::UnexpectedResponse(format!(
@@ -796,13 +821,13 @@ pub(crate) async fn read_body_from(
 
 /// cannot verify, a URL it cannot build, a redirect loop. Those are reported as
 /// [`Error::InvalidRequest`], which is not retriable.
-fn connection(e: &reqwest::Error) -> Error {
+fn connection(e: reqwest::Error) -> Error {
     transport_error(e, REGISTRY)
 }
 
 /// [`connection`] for any service this crate talks to; `who` names it in the
 /// error ("the registry", "Scan").
-pub(crate) fn transport_error(e: &reqwest::Error, who: &str) -> Error {
+pub(crate) fn transport_error(e: reqwest::Error, who: &str) -> Error {
     let kind = if e.is_timeout() {
         Transport::Timeout
     } else if e.is_builder() {
@@ -814,7 +839,10 @@ pub(crate) fn transport_error(e: &reqwest::Error, who: &str) -> Error {
     } else {
         Transport::Connect
     };
-    classify_transport(kind, &canton_core::chain(e), who)
+    // Without the URL reqwest prints into its own message: the verdict is
+    // read off the text, and a URL with "certificate" in its host or path
+    // would otherwise decide it.
+    classify_transport(kind, &canton_core::chain(&e.without_url()), who)
 }
 
 /// What `reqwest` says about a failure, by type, in the order the verdict
@@ -849,7 +877,7 @@ fn classify_transport(kind: Transport, detail: &str, who: &str) -> Error {
     // certificate the client cannot verify is permanent, and retrying it
     // forever is the failure this whole function exists to avoid.
     let lower = detail.to_ascii_lowercase();
-    if lower.contains("certificate") || lower.contains("tls handshake") {
+    if lower.contains("certificate") {
         return Error::InvalidRequest(format!(
             "{who}'s TLS certificate could not be verified: {detail}"
         ));
@@ -1130,13 +1158,21 @@ mod tests {
     }
 
     /// The transport verdict, on the strings it has to read. A certificate
-    /// failure is permanent whichever of the two phrasings the chain carries;
-    /// a refused connection is not.
+    /// failure is permanent, however the chain capitalizes it; a refused
+    /// connection is not, and neither is a handshake the peer hung up on,
+    /// which is what a restart looks like from here.
     #[test]
-    fn a_tls_failure_is_permanent_under_either_phrasing() {
+    fn a_certificate_failure_is_permanent_and_a_dropped_handshake_is_not() {
+        let hung_up = classify_transport(
+            Transport::Connect,
+            "client error (Connect): tls handshake eof",
+            REGISTRY,
+        );
+        assert!(matches!(hung_up, Error::Connection(_)), "{hung_up:?}");
+        assert!(hung_up.is_retriable(), "{hung_up}");
+
         for detail in [
             "error sending request: invalid peer certificate: UnknownIssuer",
-            "error sending request: tls handshake eof",
             "CERTIFICATE verify failed",
         ] {
             let error = classify_transport(Transport::Connect, detail, REGISTRY);

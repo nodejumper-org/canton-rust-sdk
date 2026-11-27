@@ -577,8 +577,15 @@ impl CantonClient {
     /// Retried like any other read: preparation commits nothing.
     ///
     /// # Errors
-    /// As any gRPC call, plus [`Error::UnexpectedResponse`] if the participant
-    /// returns no hash — which would leave nothing to sign.
+    /// As any gRPC call, plus:
+    /// - [`Error::InvalidRequest`], before anything is sent, for a max record
+    ///   time under an explicitly chosen `V2`, or one that is not a whole
+    ///   number of microseconds;
+    /// - [`Error::UnexpectedResponse`], with nothing signed, if the
+    ///   participant returns no transaction or no hash; a hash under another
+    ///   scheme than was asked for, or that is not the hash of the
+    ///   transaction it returned; or a transaction for another command id,
+    ///   other acting parties or another max record time than requested.
     pub async fn prepare_submission(
         &self,
         prepare: crate::interactive::Prepare,
@@ -594,6 +601,7 @@ impl CantonClient {
         let read_as = prepare.read_as().to_vec();
         let requested_scheme = prepare.requested_hashing_scheme();
         let trust_participant_hash = prepare.trusts_participant_hash();
+        let max_record_time = prepare.requested_max_record_time()?;
         let (command_id, user_id, request) = prepare.into_request();
         telemetry::instrument("prepare_submission", TRANSPORT_GRPC, async move {
             let response = self
@@ -616,6 +624,7 @@ impl CantonClient {
                 read_as,
                 command_id,
                 user_id,
+                max_record_time,
             )
         })
         .await

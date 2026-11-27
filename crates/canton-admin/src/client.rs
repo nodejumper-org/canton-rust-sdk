@@ -178,6 +178,10 @@ impl AdminClient {
         public_key: &canton_signer::PublicKey,
         expected: &crate::ExpectedHosting,
     ) -> Result<crate::external_party::ExternalPartyTopology> {
+        // Before the participant is asked: a key this SDK cannot fingerprint
+        // is the caller's mistake, and it should hear so from here rather
+        // than as whatever the participant makes of the key.
+        public_key.fingerprint()?;
         let request = pb::GenerateExternalPartyTopologyRequest {
             synchronizer: synchronizer.to_string(),
             party_hint: party_hint.to_string(),

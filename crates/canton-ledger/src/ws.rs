@@ -56,27 +56,33 @@ pub(crate) fn build_connector(tls: Option<&TlsConfig>, secure: bool) -> Result<O
 
     // Root store: the custom CA when given, else the platform's native roots.
     let mut roots = rustls::RootCertStore::empty();
-    match ca {
-        Some(ca) => {
-            for cert in CertificateDer::pem_slice_iter(ca) {
-                let cert = cert
-                    .map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
-                roots
-                    .add(cert)
-                    .map_err(|e| Error::InvalidRequest(format!("rejected CA certificate: {e}")))?;
-            }
-            if roots.is_empty() {
-                return Err(Error::InvalidRequest(
-                    "the CA PEM contained no certificates".to_string(),
-                ));
-            }
+    if let Some(ca) = ca {
+        for cert in CertificateDer::pem_slice_iter(ca) {
+            let cert =
+                cert.map_err(|e| Error::InvalidRequest(format!("invalid CA certificate: {e}")))?;
+            roots
+                .add(cert)
+                .map_err(|e| Error::InvalidRequest(format!("rejected CA certificate: {e}")))?;
         }
-        None => {
-            // Best-effort like tungstenite's own default: unloadable
-            // individual certs are skipped.
-            for cert in rustls_native_certs::load_native_certs().certs {
-                let _ = roots.add(cert);
-            }
+        if roots.is_empty() {
+            return Err(Error::InvalidRequest(
+                "the CA PEM contained no certificates".to_string(),
+            ));
+        }
+    } else {
+        // Best-effort like tungstenite's own default: unloadable individual
+        // certs are skipped.
+        for cert in rustls_native_certs::load_native_certs().certs {
+            let _ = roots.add(cert);
+        }
+        // With none at all every handshake would fail as an unknown issuer,
+        // which names the server for what is missing here.
+        if roots.is_empty() {
+            return Err(Error::InvalidRequest(
+                "no native root certificates were found, so a wss connection could not be \
+                 verified; give a CA with TlsConfig::with_ca_certificate"
+                    .to_string(),
+            ));
         }
     }
 

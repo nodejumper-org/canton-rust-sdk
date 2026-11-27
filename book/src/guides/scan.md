@@ -47,10 +47,11 @@ answers goes into commands you sign, so it has to come from the Scan you
 named.
 
 The client is written against the documents of Splice 0.10.3. On an older
-Scan or validator two things differ: `dso()` falls back from `/v1/dso`, which
-0.10 added, to the `/v0/dso` every release serves, and the two snapshot page
-reads (`acs_snapshot`, `holdings_state`) need Splice 0.8.4, where their paths
-appeared. Everything else is served back to Splice 0.6.
+Scan or validator: `dso()` falls back from `/v1/dso`, which 0.10 added, to the
+`/v0/dso` every release serves; the two snapshot page reads (`acs_snapshot`,
+`holdings_state`) need Splice 0.7.5, where their paths appeared; and
+`holdings_summary` needs 0.6.3. Everything else is served by Splice 0.6.0 and
+later.
 
 ## Contracts to disclose
 
@@ -61,7 +62,8 @@ let round = scan.latest_open_mining_round().await?;
 let disclosed = vec![rules.disclosed()?, round.disclosed()?];
 ```
 
-- `amulet_rules()` returns the `AmuletRules` contract.
+- `amulet_rules()` returns the `AmuletRules` contract. A Scan is asked for
+  it through the external API, where it comes with the DSO's other contracts.
 - `latest_open_mining_round()` returns the open round to pass to a choice now.
   Several rounds are open at once and the newest has usually not reached its
   opening time. The one to use is the highest-numbered round whose `opensAt`
@@ -85,15 +87,18 @@ is retriable, and it passes in seconds.
 ## Internal endpoints
 
 Splice tags each Scan endpoint `external` or `internal`. The external ones are
-its public API. The internal ones may change in any Splice release, and three
-of them are the only source of contracts applications need: `amulet_rules`,
+its public API. The internal ones may change in any Splice release, and two of
+them are the only source of a contract an application may need:
 `featured_app_right` and `transfer_preapproval_by_party`.
 
-Asked of a Scan directly, those three are refused with
-`Error::InvalidRequest` unless the client was built with
-`with_internal_endpoints()`, which is you accepting that they follow Splice's
-internal API. Through a validator's scan-proxy they are part of the proxy's
-own API and need no opt-in.
+Asked of a Scan directly, those two are refused with `Error::InvalidRequest`
+unless the client was built with `with_internal_endpoints()`, which is you
+accepting that they follow Splice's internal API. Through a validator's
+scan-proxy they are part of the proxy's own API and need no opt-in.
+
+`amulet_rules()` works without the opt-in, since the external API publishes
+the rules with the rest of the DSO's contracts (`dso()`). With the opt-in it
+asks the internal endpoint instead, whose reply is the one contract.
 
 ## Traffic, history and snapshots
 
@@ -106,7 +111,9 @@ These are served by a Scan only.
   The last update's `position()` is the `after` of the next page, and fewer
   than `page_size` updates means the end of what Scan has so far. Every Scan
   returns the same updates in the same order. `update(id)` reads one, and
-  `events(after, page_size)` reads each update with the mediator's verdict.
+  `events(after, page_size)` reads each update with the mediator's verdict,
+  paged from the last entry's `position()`, which an entry has also when it is
+  a verdict with no update.
 - `acs_snapshot_timestamp(before, migration_id)` returns the record time of
   the most recent snapshot before a moment. `acs_snapshot(&request)`,
   `holdings_state(&request)` and `holdings_summary(&request)` read it. A
